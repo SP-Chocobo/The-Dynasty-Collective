@@ -93,3 +93,76 @@ and is untouched.
   That token stays named and unassigned, for the reason the vocabulary already gives.
 * It does not touch the `#34`/`#168` design question. Those 8 rows are still declined; they now say
   so.
+
+---
+
+# Applied, and re-measured
+
+## The repair
+
+One line in `compute_draft_board`, immediately after `bpa` is computed and beside the line that
+already nulls `replacement_basis` for the same population:
+
+```python
+pool.loc[pool["_vor"].isna() & pool["absence_kind"].isna(),
+         "absence_kind"] = ABSENCE_NO_REPLACEMENT
+```
+
+`.isna()` is the same predicate the `replacement_basis` line above uses, not a second reading of the
+same columns. A row that already carries a kind keeps it, because `no_input` is the first and
+stronger fact about a row nothing could price at all.
+
+## Re-measured on the same drained `12T_ppr_SF` board
+
+```
+board 935 rows
+IFF BREACHES: 0                        (was 8)
+absence_kind census: {None: 439, 'no_input': 488, 'no_replacement_level': 8}
+NO_REPLACEMENT rows: 8    positions ['QB']
+kind on a PRICED row: 0                (must be 0)
+NO_INPUT rows still: 488               (unchanged -- not overwritten)
+example: Michael Penix QB  bpa=None  final_score=None  kind='no_replacement_level'
+```
+
+So the 8 breaching rows are now the 8 `no_replacement_level` rows, the 488-row `no_input`
+population is untouched, and no priced row acquired a kind.
+
+## The guard can now see it, and IS SENSITIVE
+
+`test_absence_kind.TheIFFHoldsWHEREITUSEDTOBEFALSE` — a **drained superflex** fixture, built by
+reading an opening board's own `projected_points` and drafting every quarterback who clears
+`dr.qb_startable_floor(merger)`, the engine's sole producer of that threshold. Neither the threshold
+nor the projections are typed into the test, so it cannot drift from the branch it exercises.
+
+Sensitivity proven rather than assumed. Setting `dr.ABSENCE_NO_REPLACEMENT = None` in memory makes
+the new line write `None` and reproduces the pre-repair board exactly, without touching a file:
+
+```
+WITH THE STAMP UNDONE -- iff breaches: 1
+  S Sanders   bpa=None  basis=None  kind=None  source='points_vor_draftsharks'
+```
+
+One row rather than eight because this fixture is the small one — but it is the same shape
+(a projected player, no level, no stated reason), and `test_the_iff_holds_here_too` fails on it.
+The shipped class's board **cannot contain such a row at all**, which is the whole finding.
+
+## Two mistakes made building the guard, both caught by its own non-vacuity test
+
+1. The first fixture drafted "all but the last two" quarterbacks. Three of the four left still
+   cleared the floor, so no decline fired and the class was vacuous.
+2. The second derived the drain list by reconstructing `norm_name` and looking it up in the
+   projections frame. Two rows shared one name, `.iloc[0]` took the wrong one, and **the four best
+   quarterbacks were left undrafted** — Josh Allen at 379 projected points sat on the board as
+   "remaining". Reading the board's own numbers removed the lookup entirely.
+
+Both were caught by `test_the_population_this_class_exists_for_is_not_empty`, which is the reason
+that test exists and is worth more than the three assertions it guards.
+
+## What this did not do
+
+* No value moved. The 8 rows keep `final_score = None`; they now say why.
+* `ABSENCE_BELOW_SOURCE_CUTOFF` still has no producer and still needs evidence this pool does not
+  carry. `WhatTheFieldMayNotBecome` was renamed from "the kinds nobody produces" to the singular and
+  says which one, so the docstring is not left claiming two.
+* `#50` is untouched. Whether an anchor should fill a startable-floor decline at all remains open,
+  and the measured counterfactual says filling it moves no pick on the data we have.

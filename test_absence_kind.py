@@ -133,12 +133,16 @@ class WhatTheFieldMayNotBecome(unittest.TestCase):
                 self.assertIsInstance(kind, str)
                 self.assertTrue(kind.strip())
 
-    def test_the_kinds_nobody_produces_today_are_KEPT(self):
-        """Two of three have no producer. Deleting them would make the vocabulary describe this
-        dataset rather than the domain -- see the module docstring."""
-        for kind in (dr.ABSENCE_NO_REPLACEMENT, dr.ABSENCE_BELOW_SOURCE_CUTOFF):
-            with self.subTest(kind):
-                self.assertIn(kind, dr.ABSENCE_KINDS)
+    def test_the_kind_nobody_produces_today_is_KEPT(self):
+        """ONE of three has no producer, and it is BELOW_SOURCE_CUTOFF. Deleting it would make the
+        vocabulary describe this dataset rather than the domain -- see the module docstring.
+
+        This used to name two. NO_REPLACEMENT acquired a producer in `compute_draft_board` when the
+        iff below was found to be false on a drained superflex board; the class beneath this one is
+        that producer's guard. BELOW_SOURCE_CUTOFF still needs evidence the pool does not carry --
+        that a source LISTS a player while declining to price him."""
+        self.assertIn(dr.ABSENCE_BELOW_SOURCE_CUTOFF, dr.ABSENCE_KINDS)
+        self.assertIn(dr.ABSENCE_NO_REPLACEMENT, dr.ABSENCE_KINDS)
 
 
 class TheBoardClassifiesOnlyWhatItActuallyKnows(unittest.TestCase):
@@ -187,6 +191,97 @@ class TheBoardClassifiesOnlyWhatItActuallyKnows(unittest.TestCase):
         assign = [line for line in src.splitlines() if '"absence_kind"' in line and "=" in line]
         self.assertTrue(any("bpa_source" in line for line in assign),
                         "the kind is assigned from something other than the source label")
+
+
+class TheIFFHoldsWHEREITUSEDTOBEFALSE(unittest.TestCase):
+    """The population the class above CANNOT REACH, and where the iff was measured false.
+
+    `TheBoardClassifiesOnlyWhatItActuallyKnows` builds an OPENING board in a NON-SUPERFLEX league.
+    `startable_floors` is produced only when SUPER_FLEX is on the roster, and a decline needs a
+    position the pool has drained past, so NEITHER condition is reachable there -- the violating
+    rows could not exist on that board whether or not the invariant held. It passed by sampling the
+    wrong board, which is the shape this repository's audit keeps finding: an invariant proven over
+    one population and never re-checked against another.
+
+    MEASURED BEFORE THE REPAIR: 8 breaches on a drained `12T_ppr_SF` board built from the capture's
+    own universe, and 10 on a drained `10T_ppr_SF` final board, independently. All QB, every one
+    `bpa=None` with `absence_kind=None`. `pick_debate` printed "NOT PRICED" for exactly those rows
+    with no reason beside it. Full write-up:
+    evidence/absence_kind/IFF_BREACH_ON_A_DRAINED_BOARD.md.
+
+    This fixture is the SMALL one, drained, so the guard costs a board build rather than a draft.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        merger, players_db, _ = _fixture()
+        league = dr.build_mock_league(teams=12, superflex=True, scoring="ppr", te_premium=False,
+                                     dynasty=True)
+        # DRAIN QB PAST ITS OWN FLOOR. The threshold comes from `dr.qb_startable_floor` -- the
+        # engine's own sole producer of it -- and the projections come from an OPENING BOARD's own
+        # `projected_points`, so neither the threshold nor the values are typed here and the
+        # fixture cannot drift from the branch it exists to exercise (#126). Every quarterback who
+        # CLEARS the floor is drafted; whoever is left does not, which is exactly the condition
+        # under which `replacement_levels` declines to return a QB rank at all.
+        #
+        # Reading the board rather than name-matching the projections frame is deliberate: the
+        # first version of this fixture looked players up by reconstructed `norm_name`, two rows
+        # shared one name, `.iloc[0]` took the wrong one, and the four best quarterbacks were left
+        # undrafted. The non-vacuity test below is what caught it.
+        #
+        # Picks are built directly rather than simulated: the question is about a board STATE, and
+        # a draft would only be a slow way to reach one.
+        floor = dr.qb_startable_floor(merger)
+        assert floor is not None, "no startable floor in this fixture -- nothing to drain past"
+        opening = dr.compute_draft_board(merger, players_db, [], my_roster_id="1", league=league,
+                                        mode="balanced")
+        cls.drafted = [r["player_id"] for r in opening
+                       if r["position"] == "QB"
+                       and r.get("projected_points") is not None
+                       and float(r["projected_points"]) >= floor]
+        picks = [{"pick_no": n + 1, "round": n // 12 + 1, "roster_id": str(n % 12 + 1),
+                  "player_id": pid} for n, pid in enumerate(cls.drafted)]
+        cls.board = dr.compute_draft_board(merger, players_db, picks, my_roster_id="1",
+                                          league=league, mode="balanced")
+
+    def test_the_population_this_class_exists_for_is_not_empty(self):
+        """NON-VACUITY, and it is the whole point. If no row on this board is level-declined, this
+        class is measuring the same thing as the one above and the guard is still blind."""
+        declined = [r for r in self.board
+                    if r.get("absence_kind") == dr.ABSENCE_NO_REPLACEMENT]
+        self.assertTrue(declined,
+                        "no level-declined row on this board -- the fixture no longer drains the "
+                        "position, so this class has stopped guarding anything")
+
+    def test_the_iff_holds_here_too(self):
+        for row in self.board:
+            with self.subTest(row["player_id"]):
+                self.assertEqual(row.get("absence_kind") is not None, row.get("bpa") is None)
+
+    def test_a_level_declined_row_says_STRUCTURAL_and_not_coverage_gap(self):
+        """The two absences are different facts and the label must not confuse them: these rows
+        HAVE a projection. Calling them a coverage gap would be a false statement about the data."""
+        for row in self.board:
+            if row.get("absence_kind") == dr.ABSENCE_NO_REPLACEMENT:
+                with self.subTest(row["player_id"]):
+                    self.assertIsNone(row.get("bpa"))
+                    self.assertNotEqual(row["bpa_source"], dr.NO_PRICEABLE_INPUT,
+                                        "a row with no priceable input must keep no_input")
+                    self.assertIsNone(row.get("replacement_basis"),
+                                      "a row with no level cannot carry a basis for one")
+
+    def test_no_input_is_not_OVERWRITTEN_by_the_new_producer(self):
+        """The first and stronger fact wins. A row nothing could price at all is a coverage gap
+        whether or not its position also happens to have no level."""
+        for row in self.board:
+            if row["bpa_source"] == dr.NO_PRICEABLE_INPUT:
+                with self.subTest(row["player_id"]):
+                    self.assertEqual(row.get("absence_kind"), dr.ABSENCE_NO_INPUT)
+
+    def test_no_priced_row_acquired_a_kind(self):
+        offenders = [r["player_id"] for r in self.board
+                     if r.get("bpa") is not None and r.get("absence_kind") is not None]
+        self.assertEqual(offenders, [], "an absence kind on a row that has a number")
 
 
 class TheKindSurvivesTheBoundary(unittest.TestCase):

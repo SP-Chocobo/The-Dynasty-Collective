@@ -623,17 +623,27 @@ NO_PRICEABLE_INPUT = "no_priceable_input"
 # asserted the strongest of the three about all of them. None of these is a threshold -- each is
 # a statement about which inputs EXIST, so #56 is not engaged.
 #
-# ONLY THE FIRST IS PRODUCED TODAY, and a reader who misses that will misread every board.
+# TWO OF THE THREE ARE PRODUCED, IN DIFFERENT PLACES -- a reader who misses that will misread
+# every board. ABSENCE_NO_INPUT is assigned in `_derive_points_and_source`, from the pool's own
+# source label. ABSENCE_NO_REPLACEMENT cannot be assigned there and is assigned in
+# `compute_draft_board`, beside `replacement_basis`'s own nulling, because whether a position has a
+# level is decided against the league's demand and not against the pool -- see both sites. It
+# reaches a measured 8 to 10 rows on a drained SUPERFLEX board, where `startable_floors` declines
+# QB a level and every remaining quarterback carries a projection but no price.
+# ABSENCE_BELOW_SOURCE_CUTOFF still has no producer, and still needs evidence this pool does not
+# carry.
+#
+# THE TWO COUNTS BELOW ARE THE NO_INPUT POPULATION and predate the second producer.
 # Measured on the real Fourth-and-Forever board: 1,119 rows of which 638 were unpriced
 # (2026-09-16), and 970 rows of which 489 are unpriced when re-measured on HEAD after #26
 # narrowed pool admission at 264e063. BOTH counts are kept because the second is the live one and
 # the first is what every evidence file written before #26 was measured against -- a re-measured
 # number that silently replaces its predecessor makes the older evidence look wrong rather than
-# dated. The SHAPE is unchanged and is the part that matters: ALL of them are ABSENCE_NO_INPUT. The other two are
-# named here and assigned by `_derive_points_and_source` to nobody -- see its own comment for
-# why each needs evidence this pool does not carry. They are kept rather than deleted because a
-# vocabulary trimmed to its current population describes the dataset instead of the domain, and
-# the next league with an unpriceable position would have nowhere to land.
+# dated. On both of those boards ALL of the unpriced rows are ABSENCE_NO_INPUT, and that stays
+# true of them: neither is a SUPERFLEX board, so neither can contain a level-declined row.
+# ABSENCE_BELOW_SOURCE_CUTOFF is kept rather than deleted because a vocabulary trimmed to its
+# current population describes the dataset instead of the domain, and the next league with a
+# source that LISTS a player while declining to price him would have nowhere to land.
 #
 # SO THE FINDING OUTLIVES THE REPAIR: ORDER LAST is applied to a population that is entirely
 # "unknown, not bad", containing none of the evidence that would justify it. Whether that is the
@@ -2725,8 +2735,10 @@ def _derive_points_and_source(pool: pd.DataFrame) -> pd.Series:
     # because that branch currently has zero rows (0 of 1,119). A latent breach, not a live one
     # -- which is exactly the kind that survives a green suite.
     #
-    # SO ONLY ONE KIND IS PRODUCED HERE. The other two are named in the vocabulary and assigned
-    # by nobody:
+    # SO ONLY ONE KIND IS PRODUCED HERE -- a statement about THIS FUNCTION, not about the board.
+    # ABSENCE_NO_REPLACEMENT is assigned in `compute_draft_board`, at the point where the second
+    # question below actually gets answered. The reason it cannot be answered HERE is the reason
+    # given here, and it stands.
     #   ABSENCE_BELOW_SOURCE_CUTOFF needs evidence this pool does not carry -- that a source
     #     LISTS the player while declining to price him. Admission (#193) and pricing are
     #     separate questions here, but the pool records only the outcome, not which sources
@@ -3863,6 +3875,41 @@ def compute_draft_board(
     # priceable input at all, so the unpriced case went from a rarity to a routine state.
     pool.loc[pool["_vor"].isna(), "replacement_basis"] = None
     pool["bpa"] = _scale_vor_to_bpa(pool["_vor"])
+    # THE MIRROR OF THE LINE ABOVE, and the repair for a REGISTERED INVARIANT THAT WAS FALSE.
+    #
+    # `replacement_basis` explains a price, so a row with no price must not carry one -- that is
+    # the line above. The other half is that the absence must then be STATED, because
+    # `absence_kind` is what says why a blank is blank. It was not stated, and test_absence_kind
+    # asserts over EVERY row that `absence_kind is not None` iff `bpa is None`.
+    #
+    # MEASURED BREACH, twice and independently: 8 rows on a drained 12T_ppr_SF board (the top 40
+    # QBs by league-scored season projection drafted) and 10 on a drained 10T_ppr_SF final board.
+    # All QB, every one `bpa=None` with `absence_kind=None`, and `pick_debate` printed "NOT PRICED"
+    # for exactly those rows with no reason beside it. The guard could not see it: its fixture is an
+    # OPENING board in a NON-SUPERFLEX league, where `startable_floors` is never produced at all,
+    # so the violating population is structurally unreachable there. The test passed by sampling
+    # the wrong board -- the #52 shape, with the ratchet built to catch it standing still.
+    #
+    # WHY `_derive_points_and_source` CANNOT DO IT, and is right not to try: those rows HAVE a
+    # projection, so their `bpa_source` is a points source rather than NO_PRICEABLE_INPUT and its
+    # one branch correctly skips them. Its own comment gives the reason -- "whether a position has
+    # a replacement level is decided later against the league's own demand" -- and that reason
+    # stands. This is where it is decided, so this is where it is said.
+    #
+    # DERIVED, not re-derived (#126): a row that arrives here WITH a priceable input and still has
+    # no `_vor` got there for exactly one reason, that its position received no replacement level,
+    # which is ABSENCE_NO_REPLACEMENT's own definition. `.isna()` is the same predicate the line
+    # above uses, not a second reading of the same two columns.
+    #
+    # A ROW THAT ALREADY CARRIES A KIND KEEPS IT. `no_input` is the first and stronger fact about a
+    # row nothing could price at all; overwriting it here would trade a true statement about
+    # coverage for a true statement about levels and lose the one that matters more.
+    #
+    # DISCLOSURE, NOT VALUATION. Nothing reads `absence_kind` into a score, an ordering or a pick,
+    # and `final_score` on these rows is None either way. Whether an anchor should fill a
+    # startable-floor decline at all is #50's question, and is untouched.
+    pool.loc[pool["_vor"].isna() & pool["absence_kind"].isna(),
+             "absence_kind"] = ABSENCE_NO_REPLACEMENT
 
     if upside_rule == UPSIDE_RULE_CROSSING:
         # #261. Deliberately decided HERE and not beside the round rule at the top: `_vor` does
