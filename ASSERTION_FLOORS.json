@@ -620,22 +620,27 @@
       }
     },
     "test_absence_kind.py": {
-      "test_methods": 23,
+      "test_methods": 28,
       "asserts": {
-        "assertEqual": 11,
+        "assertEqual": 14,
         "assertGreater": 2,
         "assertGreaterEqual": 1,
-        "assertIn": 4,
+        "assertIn": 5,
         "assertIs": 2,
         "assertIsInstance": 1,
-        "assertIsNone": 3,
+        "assertIsNone": 5,
         "assertIsNotNone": 1,
+        "assertNotEqual": 1,
         "assertNotIn": 6,
-        "assertTrue": 4
+        "assertTrue": 5
       },
       "by_method": {
         "test_a_kind_is_present_EXACTLY_when_the_row_has_no_price": {
           "assertEqual": 1
+        },
+        "test_a_level_declined_row_says_STRUCTURAL_and_not_coverage_gap": {
+          "assertIsNone": 2,
+          "assertNotEqual": 1
         },
         "test_a_priced_row_reaches_the_snapshot_carrying_no_kind": {
           "assertIsNone": 1,
@@ -661,9 +666,15 @@
           "assertEqual": 1,
           "assertNotIn": 1
         },
+        "test_no_input_is_not_OVERWRITTEN_by_the_new_producer": {
+          "assertEqual": 1
+        },
         "test_no_kind_is_spelled_as_a_number_or_a_bool": {
           "assertIsInstance": 1,
           "assertTrue": 1
+        },
+        "test_no_priced_row_acquired_a_kind": {
+          "assertEqual": 1
         },
         "test_no_priced_row_carries_a_kind": {
           "assertEqual": 1
@@ -681,17 +692,23 @@
         "test_the_coverage_gap_denies_the_low_grade_reading": {
           "assertIn": 2
         },
+        "test_the_iff_holds_here_too": {
+          "assertEqual": 1
+        },
         "test_the_kind_is_derived_from_the_source_label_not_re_derived": {
           "assertTrue": 1
+        },
+        "test_the_kind_nobody_produces_today_is_KEPT": {
+          "assertIn": 2
         },
         "test_the_kinds_are_not_the_collapsed_token_they_replace": {
           "assertNotIn": 1
         },
-        "test_the_kinds_nobody_produces_today_are_KEPT": {
-          "assertIn": 1
-        },
         "test_the_population_is_not_vacuous": {
           "assertGreater": 2
+        },
+        "test_the_population_this_class_exists_for_is_not_empty": {
+          "assertTrue": 1
         },
         "test_the_prose_table_is_keyed_on_the_vocabulary_not_a_parallel_list": {
           "assertTrue": 1
@@ -1251,6 +1268,61 @@
         },
         "test_the_season_length_is_a_fact_not_a_tunable": {
           "assertEqual": 1
+        }
+      }
+    },
+    "test_backtest_anachronism.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 11,
+        "assertGreater": 1,
+        "assertIn": 6,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_faint_but_real_projection_survives": {
+          "assertEqual": 2
+        },
+        "test_a_player_missing_from_the_projection_dict_entirely_is_dropped": {
+          "assertEqual": 2
+        },
+        "test_a_player_with_no_projection_that_season_is_dropped": {
+          "assertEqual": 2
+        },
+        "test_a_real_player_keeps_his_board_price_not_his_projection": {
+          "assertEqual": 1
+        },
+        "test_it_clears_the_dynasty_flag_without_touching_the_caller": {
+          "assertEqual": 1,
+          "assertNotEqual": 1
+        },
+        "test_it_keeps_everything_else": {
+          "assertEqual": 3
+        },
+        "test_the_board_still_treats_a_zero_scored_projection_as_no_projection": {
+          "assertIn": 1
+        },
+        "test_the_engine_still_gates_the_multi_year_term_on_that_flag": {
+          "assertIn": 2
+        },
+        "test_the_ghost_carried_a_top_of_board_price_before_the_guard": {
+          "assertGreater": 1,
+          "assertNotIn": 1
+        },
+        "test_the_grader_drafts_from_the_trimmed_universe": {
+          "assertIn": 1,
+          "assertIsNotNone": 1,
+          "assertNotIn": 1
+        },
+        "test_the_guard_uses_the_same_zero_test": {
+          "assertIn": 1
+        },
+        "test_the_ruler_still_scores_from_the_full_universe": {
+          "assertIn": 1,
+          "assertTrue": 1
         }
       }
     },
@@ -4441,14 +4513,14 @@
       }
     },
     "test_draft_battery.py": {
-      "test_methods": 40,
+      "test_methods": 46,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 48,
+        "assertEqual": 60,
         "assertFalse": 1,
         "assertGreater": 3,
         "assertGreaterEqual": 1,
-        "assertIn": 7,
+        "assertIn": 9,
         "assertIsInstance": 2,
         "assertIsNone": 1,
         "assertNotIn": 1,
@@ -4459,6 +4531,9 @@
           "assertEqual": 1
         },
         "test_a_flex_chain_is_not_reported_as_a_hole": {
+          "assertEqual": 1
+        },
+        "test_a_flex_reachable_position_is_exempt_at_any_depth": {
           "assertEqual": 1
         },
         "test_a_measured_growth_of_zero_is_not_reported_as_no_growth": {
@@ -4532,9 +4607,18 @@
           "assertEqual": 1,
           "assertIsNone": 1
         },
+        "test_it_is_wired_into_structural_findings": {
+          "assertIn": 1
+        },
         "test_it_spans_the_axes_a_real_league_varies_on": {
           "assertGreater": 2,
           "assertTrue": 3
+        },
+        "test_it_still_runs_on_a_short_draft": {
+          "assertIn": 1
+        },
+        "test_nine_defenses_in_a_one_def_league_is_caught": {
+          "assertEqual": 6
         },
         "test_roster_shape_counts_by_position": {
           "assertEqual": 1
@@ -4545,9 +4629,15 @@
         "test_the_ablation_failure_mode_is_caught": {
           "assertEqual": 2
         },
+        "test_the_bye_backup_is_not_a_finding": {
+          "assertEqual": 1
+        },
         "test_the_finding_reports_the_eligible_set_not_just_the_primary": {
           "assertEqual": 1,
           "assertIn": 1
+        },
+        "test_the_four_older_audits_all_pass_on_the_nine_defense_roster": {
+          "assertEqual": 4
         },
         "test_the_hint_is_derived_from_the_league_not_carried_beside_it": {
           "assertEqual": 3
@@ -4768,20 +4858,21 @@
       }
     },
     "test_draft_counterfactual.py": {
-      "test_methods": 21,
+      "test_methods": 25,
       "asserts": {
         "assertAlmostEqual": 1,
-        "assertEqual": 15,
+        "assertEqual": 19,
         "assertFalse": 1,
         "assertGreater": 1,
         "assertGreaterEqual": 2,
         "assertIn": 4,
         "assertIs": 2,
-        "assertIsNone": 9,
-        "assertIsNotNone": 2,
+        "assertIsInstance": 1,
+        "assertIsNone": 12,
+        "assertIsNotNone": 3,
         "assertNotIn": 1,
         "assertRaises": 1,
-        "assertTrue": 2
+        "assertTrue": 4
       },
       "by_method": {
         "test_a_candidate_this_harness_cannot_find_reads_unknown": {
@@ -4835,9 +4926,16 @@
         "test_equals_bpa_implies_zero_regret": {
           "assertAlmostEqual": 1
         },
+        "test_every_OTHER_node_is_untouched": {
+          "assertEqual": 2,
+          "assertTrue": 1
+        },
         "test_every_basis_the_classifier_can_return_is_in_the_published_vocabulary": {
           "assertGreaterEqual": 1,
           "assertTrue": 1
+        },
+        "test_it_does_not_raise": {
+          "assertEqual": 1
         },
         "test_nothing_deviates_silently": {
           "assertIn": 1,
@@ -4849,12 +4947,20 @@
         "test_that_the_deviation_population_is_not_empty": {
           "assertGreater": 1
         },
+        "test_the_bpa_side_is_still_reported": {
+          "assertIsInstance": 1,
+          "assertIsNotNone": 1
+        },
         "test_the_engine_is_the_tav_argmax_again": {
+          "assertEqual": 1,
           "assertGreaterEqual": 1
         },
         "test_the_ordering_key_basis_is_gone_with_the_ordering_it_described": {
           "assertNotIn": 1,
           "assertRaises": 1
+        },
+        "test_the_regret_is_absent_rather_than_zero": {
+          "assertIsNone": 3
         }
       }
     },
@@ -10098,6 +10204,49 @@
         }
       }
     },
+    "test_realized_ruler.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 9,
+        "assertGreater": 1,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertNotIn": 1
+      },
+      "by_method": {
+        "test_a_backup_who_covers_an_absence_scores": {
+          "assertGreater": 1
+        },
+        "test_a_dual_eligible_player_can_fill_either_slot": {
+          "assertEqual": 1
+        },
+        "test_a_player_who_never_started_is_counted": {
+          "assertEqual": 2
+        },
+        "test_a_player_with_no_line_is_not_offered_to_the_solve": {
+          "assertEqual": 1
+        },
+        "test_a_week_nobody_played_is_skipped_not_scored_as_zero": {
+          "assertEqual": 1
+        },
+        "test_and_the_premium_is_exactly_the_covered_week": {
+          "assertEqual": 2
+        },
+        "test_he_is_startable_in_the_WR_slot_despite_a_primary_of_RB": {
+          "assertEqual": 1
+        },
+        "test_it_scores_from_realized_stats_and_league_scoring_only": {
+          "assertNotIn": 1
+        },
+        "test_it_states_that_it_models_no_waivers": {
+          "assertIn": 1
+        },
+        "test_points_per_week_is_None_when_no_week_could_be_scored": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        }
+      }
+    },
     "test_reconciliation_boundary.py": {
       "test_methods": 27,
       "asserts": {
@@ -12357,6 +12506,86 @@
         }
       }
     },
+    "test_streaming_replacement.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 8,
+        "assertFalse": 1,
+        "assertGreater": 2,
+        "assertIn": 4,
+        "assertIs": 1,
+        "assertIsNotNone": 1,
+        "assertLess": 2,
+        "assertNotEqual": 2,
+        "assertNotIn": 3,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_higher_streaming_level_replaces_the_rank_based_one": {
+          "assertEqual": 1,
+          "assertLess": 1
+        },
+        "test_a_lower_streaming_level_changes_nothing": {
+          "assertEqual": 1
+        },
+        "test_a_position_the_rank_math_DECLINED_stays_declined": {
+          "assertNotIn": 1
+        },
+        "test_a_position_with_no_wire_left_is_omitted_not_zeroed": {
+          "assertNotIn": 1
+        },
+        "test_a_week_that_did_not_answer_contributes_nothing_rather_than_zero": {
+          "assertEqual": 1
+        },
+        "test_an_empty_slot_list_gives_a_DIFFERENT_and_higher_level": {
+          "assertGreater": 1,
+          "assertNotEqual": 1
+        },
+        "test_k_and_def_are_the_scope": {
+          "assertEqual": 1
+        },
+        "test_no_weekly_projections_means_no_opinion": {
+          "assertEqual": 1
+        },
+        "test_none_is_the_previous_behaviour_exactly": {
+          "assertEqual": 1
+        },
+        "test_rb_and_wr_are_deliberately_out": {
+          "assertNotIn": 1
+        },
+        "test_that_beats_holding_either_wire_player_all_season": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
+        "test_the_anchor_cache_key_covers_it": {
+          "assertIn": 1
+        },
+        "test_the_anchor_forwards_the_streaming_floor": {
+          "assertIn": 1,
+          "assertIsNotNone": 1
+        },
+        "test_the_experiment_module_carries_no_slot_list_global": {
+          "assertFalse": 1
+        },
+        "test_the_experiment_wrapper_requires_the_slot_list": {
+          "assertIn": 1,
+          "assertIs": 1
+        },
+        "test_the_key_actually_changes_when_the_floor_does": {
+          "assertNotEqual": 1
+        },
+        "test_the_scope_and_the_falsification_are_both_written_down": {
+          "assertIn": 1
+        },
+        "test_the_streamer_takes_each_week_s_best_wire_player": {
+          "assertEqual": 1
+        },
+        "test_the_trade_value_branch_does_NOT_get_it": {
+          "assertLess": 1,
+          "assertTrue": 1
+        }
+      }
+    },
     "test_suite_taxonomy.py": {
       "test_methods": 8,
       "asserts": {
@@ -13280,6 +13509,98 @@
         }
       }
     },
+    "test_unfieldable_backstop.py": {
+      "test_methods": 27,
+      "asserts": {
+        "assertEqual": 27,
+        "assertIn": 3,
+        "assertNotIn": 2
+      },
+      "by_method": {
+        "test_a_dedicated_position_gets_its_slots_plus_the_one_bye": {
+          "assertEqual": 3
+        },
+        "test_a_dual_eligible_player_is_demoted_once_BOTH_are_saturated": {
+          "assertEqual": 1
+        },
+        "test_a_dual_eligible_player_survives_while_one_of_his_positions_is_open": {
+          "assertEqual": 1
+        },
+        "test_a_flex_reachable_position_has_no_ceiling_at_all": {
+          "assertNotIn": 1
+        },
+        "test_a_fourth_running_back_is_never_demoted": {
+          "assertEqual": 1
+        },
+        "test_a_multi_eligible_player_saturates_no_dedicated_position": {
+          "assertEqual": 1
+        },
+        "test_a_rookie_draft_demotes_nobody": {
+          "assertEqual": 1
+        },
+        "test_a_row_whose_eligibility_cannot_be_read_is_not_demoted": {
+          "assertEqual": 1
+        },
+        "test_a_row_without_the_flag_is_treated_as_fieldable": {
+          "assertEqual": 1
+        },
+        "test_a_single_position_player_at_the_same_position_IS_demoted": {
+          "assertEqual": 1
+        },
+        "test_a_third_defense_is_demoted": {
+          "assertEqual": 1
+        },
+        "test_a_two_slot_idp_position_gets_three": {
+          "assertEqual": 1
+        },
+        "test_a_veterans_only_draft_is_NOT_exempt": {
+          "assertEqual": 1
+        },
+        "test_an_empty_roster_demotes_nobody": {
+          "assertEqual": 1
+        },
+        "test_an_empty_slot_list_yields_no_ceilings_rather_than_an_empty_opinion": {
+          "assertEqual": 1
+        },
+        "test_another_seats_defenses_do_not_saturate_mine": {
+          "assertEqual": 1
+        },
+        "test_board_order_sinks_an_unfieldable_row_below_a_worse_scoring_one": {
+          "assertEqual": 1
+        },
+        "test_no_flex_reachable_position_is_ceilinged_in_any_format": {
+          "assertNotIn": 1
+        },
+        "test_no_roster_id_is_a_no_op": {
+          "assertEqual": 1
+        },
+        "test_superflex_has_no_ceilings_at_all": {
+          "assertEqual": 1
+        },
+        "test_the_board_hands_its_scope_to_the_backstop": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_the_bye_backup_is_NOT_demoted": {
+          "assertEqual": 1
+        },
+        "test_the_column_is_emitted_on_both_boards": {
+          "assertIn": 2
+        },
+        "test_the_feasibility_backstop_still_outranks_it": {
+          "assertEqual": 1
+        },
+        "test_the_kdst_format_ceilings_qb_k_and_def_at_two": {
+          "assertEqual": 1
+        },
+        "test_the_same_board_in_a_full_draft_DOES_demote": {
+          "assertEqual": 1
+        },
+        "test_two_dedicated_slots_raise_the_ceiling_by_exactly_one_each": {
+          "assertEqual": 2
+        }
+      }
+    },
     "test_unpriced_driver_instrument.py": {
       "test_methods": 6,
       "asserts": {
@@ -13619,6 +13940,66 @@
         "test_upside_mode_withholds_the_sum_and_SAYS_SO": {
           "assertIn": 2,
           "assertNotIn": 1
+        }
+      }
+    },
+    "test_vds_battery.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreater": 1,
+        "assertIn": 11,
+        "assertIsNone": 1,
+        "assertNotIn": 3,
+        "assertRaises": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_missing_format_is_REFUSED_rather_than_skipped": {
+          "assertIn": 1,
+          "assertRaises": 1
+        },
+        "test_arms_carry_the_axes_the_simulator_reads": {
+          "assertIn": 3
+        },
+        "test_every_format_crossed_with_every_strategy": {
+          "assertEqual": 1
+        },
+        "test_every_format_resolves_to_a_real_league": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "test_every_noisy_strategy_carries_a_seed": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_no_two_strategies_are_the_same_configuration": {
+          "assertNotIn": 1
+        },
+        "test_run_battery_forwards_upside_rule_and_opponent_noise": {
+          "assertIn": 2
+        },
+        "test_the_K_DEF_format_is_present": {
+          "assertIn": 1
+        },
+        "test_the_arm_loop_carries_the_pick_sequence_for_inertness": {
+          "assertIn": 1
+        },
+        "test_the_control_is_the_SHIPPED_behaviour": {
+          "assertEqual": 2,
+          "assertIsNone": 1
+        },
+        "test_the_control_strategy_is_in_the_sweep": {
+          "assertIn": 1
+        },
+        "test_the_format_matrix_carries_neither_so_its_arms_are_unchanged": {
+          "assertNotIn": 2
+        },
+        "test_the_superflex_format_is_present": {
+          "assertIn": 1
+        },
+        "test_the_swept_top_k_values_are_all_used": {
+          "assertEqual": 1
         }
       }
     },
