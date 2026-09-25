@@ -5,6 +5,7 @@ omit the true UV-argmax), that ADP is honestly reported unavailable for a 1QB le
 than approximated, and that repeated runs against the same trajectory are deterministic.
 """
 
+import copy
 import unittest
 
 import data_merger as dm
@@ -67,11 +68,22 @@ class CompareTrajectoryTests(unittest.TestCase):
         outside it is not a candidate at all. Either turns this into a conditional, not a
         defect. What must never come back is a negative population produced by the ORDER.
         """
+        # A node whose engine pick carried no price has NO regret to check (`#187`), so it is
+        # skipped -- and the population is asserted non-empty afterwards, because a guard that
+        # skipped everything would turn this test green by measuring nothing.
+        checked = 0
         for cmp_ in self.comparisons_1qb + self.comparisons_sf:
+            if cmp_.regret_vs_bpa is None:
+                continue
+            checked += 1
             self.assertGreaterEqual(
                 cmp_.regret_vs_bpa, -1e-6,
                 f"pick {cmp_.pick_no} gave up {-cmp_.regret_vs_bpa:.2f} tav -- see this test's "
                 "docstring for the two legitimate causes before reading it as a regression")
+        self.assertEqual(checked, len(self.comparisons_1qb) + len(self.comparisons_sf),
+                         "these fixtures have no unpriced engine picks, so every node must have "
+                         "been checked -- a skip here means the fixture changed, not that the "
+                         "invariant holds")
 
     def test_nothing_deviates_silently(self):
         """The invariant that survives whichever way the sign goes: a pick that is not the BPA
@@ -270,6 +282,81 @@ class DeviationSupportCarriesItsBasisTests(unittest.TestCase):
                     else:
                         self.assertIn(c.deviation_supported, (True, False))
 
+
+
+class AnUnpricedENGINEPickIsMeasuredAsAbsentNotAsZeroTests(unittest.TestCase):
+    """`#187` at the one boundary on this path that never got the treatment.
+
+    `_near_tie` already answers `None` for a candidate whose `tav` is None, and this file already
+    pins that in three tests. `regret_vs_bpa` did not: it was `round(engine_tav - bpa_tav, 3)`
+    with both fields annotated non-Optional `float`, so an unpriced ENGINE pick raised
+    `TypeError` and took the whole harness down.
+
+    NOT HYPOTHETICAL. The board legitimately carries unpriced rows -- `bpa_row` has its own
+    documented filter for them, and `pick_synthesis._board_order` sorts them last so a sharp
+    chair walks past them. An `opponent_noise` arm drawing from its own top-k does not: the
+    trajectory that produced `#34` took Jake Haener at 15.08 and Stetson Bennett at 15.10, both
+    with `final_score is None`. Running this harness over that trajectory crashed.
+
+    The fix is absence, not a substitute: no engine price means no regret to report. A 0.0 there
+    would be the worse failure, because it reads as "the engine gave up nothing" -- a measured
+    verdict in the engine's favour, invented out of a missing number."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db(("QB", "RB", "WR", "TE"))
+        cls.league = dr.build_mock_league(teams=4, superflex=False, scoring="ppr",
+                                         te_premium=False, dynasty=True)
+        pick_order = ds.generate_pick_order(["1", "2", "3", "4"], total_rounds=2)
+        cls.traj = simulate_full_draft(cls.merger, cls.players_db, cls.league, pick_order)
+
+    def _trajectory_with_an_unpriced_engine_pick(self):
+        """The same trajectory with the FIRST pick's chosen candidate de-priced, which is exactly
+        the shape a noise arm's unpriced take arrives in. A copy -- the class fixture is shared."""
+        traj = copy.deepcopy(self.traj)
+        rec = traj.picks[0]
+        found = [c for c in rec.snapshot["candidates"] if c["id"] == rec.chosen_player_id]
+        self.assertTrue(found, "fixture broken: the chosen player is not among his own candidates")
+        for cand in found:
+            cand["tav"] = None
+            cand["uv"] = None
+        return traj
+
+    def test_it_does_not_raise(self):
+        # The regression itself. Before the guard this was a TypeError out of round().
+        comparisons = compare_trajectory(self.merger, self.players_db, self.league,
+                                         self._trajectory_with_an_unpriced_engine_pick())
+        self.assertEqual(len(comparisons), len(self.traj.picks))
+
+    def test_the_regret_is_absent_rather_than_zero(self):
+        comparisons = compare_trajectory(self.merger, self.players_db, self.league,
+                                         self._trajectory_with_an_unpriced_engine_pick())
+        first = comparisons[0]
+        self.assertIsNone(first.engine_tav, "the de-priced pick must carry no tav")
+        self.assertIsNone(first.regret_vs_bpa,
+                          "no engine price means no regret -- 0.0 would read as 'gave up nothing'")
+        self.assertIsNone(first.regret_vs_adp,
+                          "the ADP comparison has the same missing left-hand side")
+
+    def test_the_bpa_side_is_still_reported(self):
+        """Absence on one side of a difference does not erase what WAS measured. The board still
+        had a best available player and his price is still a fact about this node."""
+        first = compare_trajectory(self.merger, self.players_db, self.league,
+                                   self._trajectory_with_an_unpriced_engine_pick())[0]
+        self.assertIsNotNone(first.bpa_player_id)
+        self.assertIsInstance(first.bpa_tav, float)
+
+    def test_every_OTHER_node_is_untouched(self):
+        """NON-VACUITY, and in the direction that matters: a guard that returned None everywhere
+        would pass the three tests above and destroy the instrument."""
+        patched = compare_trajectory(self.merger, self.players_db, self.league,
+                                     self._trajectory_with_an_unpriced_engine_pick())
+        clean = compare_trajectory(self.merger, self.players_db, self.league, self.traj)
+        self.assertEqual(len(patched), len(clean))
+        measured = [c for c in patched[1:] if c.regret_vs_bpa is not None]
+        self.assertTrue(measured, "every node came back absent -- the guard swallowed the run")
+        for a, b in zip(patched[1:], clean[1:]):
+            self.assertEqual(a.regret_vs_bpa, b.regret_vs_bpa)
 
 
 class NoMutationTests(unittest.TestCase):

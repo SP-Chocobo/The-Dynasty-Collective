@@ -84,7 +84,14 @@ def main() -> None:
             if not c.equals_bpa and c.adp_available and not c.equals_adp
         )
 
-        regret_vs_bpa_values = [c.regret_vs_bpa for c in comparisons]
+        # FILTERED, and the count travels with the mean. `regret_vs_bpa` is None for a node
+        # whose engine pick carried no price at all (draft_counterfactual, `#187`), and summing
+        # over that raised TypeError before it was Optional. Averaging it as 0.0 would be worse
+        # than the crash: a node the engine could not be scored at would enter the mean as "gave
+        # up nothing" and pull every average toward the engine's favour. So the population is
+        # reported beside its own statistic -- a mean over n is not a mean over len(comparisons).
+        regret_vs_bpa_values = [c.regret_vs_bpa for c in comparisons if c.regret_vs_bpa is not None]
+        regret_unmeasurable = sum(1 for c in comparisons if c.regret_vs_bpa is None)
         regret_vs_adp_values = [c.regret_vs_adp for c in comparisons if c.regret_vs_adp is not None]
 
         by_round_supported = defaultdict(Counter)
@@ -112,6 +119,8 @@ def main() -> None:
             "deviation_supported": deviation_supported,
             "deviation_unsupported": deviation_unsupported,
             "differs_from_both_bpa_and_adp": differs_from_both,
+            "regret_vs_bpa_nodes": len(regret_vs_bpa_values),
+            "regret_vs_bpa_unmeasurable_nodes": regret_unmeasurable,
             "avg_regret_vs_bpa": round(sum(regret_vs_bpa_values) / len(regret_vs_bpa_values), 3) if regret_vs_bpa_values else None,
             "max_regret_vs_bpa": round(max(regret_vs_bpa_values), 3) if regret_vs_bpa_values else None,
             "avg_regret_vs_adp": round(sum(regret_vs_adp_values) / len(regret_vs_adp_values), 3) if regret_vs_adp_values else None,

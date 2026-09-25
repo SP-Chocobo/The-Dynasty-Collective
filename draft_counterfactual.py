@@ -56,8 +56,15 @@ class NodeComparison:
     engine_player_id: str
     engine_player_name: str
     engine_position: str
-    engine_uv: float
-    engine_tav: float
+    #: OPTIONAL, and the annotation was a lie before this. Both come straight off the
+    #: trajectory's own snapshot, where `CandidateSnapshot.universal_value` and
+    #: `.team_acquisition_value` are `Optional[float]` because a row the pricing layer could not
+    #: value at all carries neither. A sharp chair never takes such a row -- `_board_order` sorts
+    #: unpriced last -- but an `opponent_noise` arm drawing from its own top-k does, and the
+    #: trajectory that produced `#34` took two of them in round 15. Annotating them `float` did
+    #: not make them floats; it hid that `regret_vs_bpa` below had to cope.
+    engine_uv: Optional[float]
+    engine_tav: Optional[float]
     engine_necessity: str
     engine_near_tie: Optional[bool]   # None: the tie comparison was never made (#61 rule 5)
 
@@ -84,7 +91,13 @@ class NodeComparison:
     #: recorded -- not an error, and specifically not evidence the engine picked badly. What
     #: changed at the revert is the FREQUENCY, not the contract: it should now be rare rather
     #: than routine. Reading it as a defect count is what this comment exists to prevent.
-    regret_vs_bpa: float
+    #: NONE WHEN engine_tav IS ABSENT (`#187`). No engine price means there is no difference to
+    #: report, and 0.0 there would be the worse failure of the two: it reads as "the engine gave
+    #: up nothing", a measured verdict in the engine's own favour invented out of a missing
+    #: number. Every consumer that averages or maximises this must filter on `is not None` and
+    #: say how many nodes it dropped -- an absence folded into a mean is the same fabrication one
+    #: layer along. `_near_tie` on this path already answers None for exactly this reason.
+    regret_vs_bpa: Optional[float]
     regret_vs_adp: Optional[float]  # engine_tav - adp_tav; sign is NOT constrained
 
     equals_bpa: bool
@@ -203,8 +216,9 @@ def compare_trajectory(
             adp_player_name=adp_row["name"] if adp_row is not None else None,
             adp_consensus_rank=adp_row["_consensus_rank"] if adp_row is not None else None,
             adp_tav=adp_tav,
-            regret_vs_bpa=round(engine_tav - bpa_tav, 3),
-            regret_vs_adp=(round(engine_tav - adp_tav, 3) if adp_tav is not None else None),
+            regret_vs_bpa=(round(engine_tav - bpa_tav, 3) if engine_tav is not None else None),
+            regret_vs_adp=(round(engine_tav - adp_tav, 3)
+                           if engine_tav is not None and adp_tav is not None else None),
             equals_bpa=equals_bpa, equals_adp=equals_adp, deviation_supported=deviation_supported,
             deviation_support_basis=deviation_support_basis,
         ))
