@@ -82,3 +82,61 @@ non-positivity for a single-position candidate, and that premise is what
 constants derive from. A positive outcome here does not create a bound that does not exist; it
 only decides whether the derivation is worth attempting. That question is being answered
 separately and neither answer overrides the other.
+
+---
+
+# AMENDMENT — the arm set changed mid-flight, and why
+
+Written **before any result from the amended run was read**, and the original text above is left
+exactly as it was rather than edited, because a pre-registration that gets tidied afterwards is
+not one.
+
+## What happened
+
+The three-arm run (`control`, `capped`, `capped_no_backstop`) was launched at `343cad1` and had
+reached seat 5 of 12 of its first arm when a measurement showed that **C's cap binds on `#30`'s
+streaming floors from the opening board** — DEF 146.05 → 121.49, K 164.50 → 159.88, before a single
+pick. `SYNTHESIS.md` §2 has the derivation and the verification.
+
+That does not invalidate the `capped` arm. It **re-labels** it: `capped` measures C *and* a partial
+`#30` revert, and `#30` was worth +328 on 2024 and +85 on 2023. So a loss on that arm cannot be
+attributed to C, which is precisely the attribution the original reading depended on. The
+`capped_no_backstop` arm inherits the same confound and therefore cannot answer the ceiling
+question cleanly either, which was its whole purpose.
+
+The three-arm run was stopped and relaunched with four arms. Nothing was read from it beyond the
+control-arm seat totals already printed above.
+
+## The amended arms, and the question each answers
+
+| pairing | question |
+|---|---|
+| `capped` − `control` | C **as specified** — C together with the `#30` revert |
+| `capped_floor_exempt` − `control` | **C isolated. This is the measurement.** |
+| `capped_floor_exempt` − `capped` | how much of C-as-specified's result is the `#30` revert |
+| `capped_floor_exempt_no_backstop` − `capped_floor_exempt` | is the fieldability ceiling still load-bearing once C prices correctly — the owner's own question |
+
+`capped_no_backstop` is dropped: confounded by the revert, so it cannot answer what it was for.
+
+## The reading, amended
+
+**Everything in "The reading, fixed in advance" above now attaches to
+`capped_floor_exempt` − `control`, not to `capped` − `control`.** C is retired on outcome grounds
+unless that pairing is positive on BOTH seasons with a clear majority of seats improved on each; an
+indeterminate result (both seasons inside ±25 per seat) retires it as "no measured benefit".
+
+Two additions, fixed now:
+
+* **`capped` − `control` is not a test of C.** It is reported to quantify the revert and for no
+  other purpose. It must come out WORSE than `capped_floor_exempt` on both seasons, or the
+  exemption is not doing what the derivation says it does and both arms are suspect.
+* **The ceiling pairing keeps its original two-part reading** — A becomes reconsiderable only if
+  `capped_floor_exempt_no_backstop` is within noise of `capped_floor_exempt` **and** its rosters
+  hold no position past `slots(P) + 1`. Matching on points while still hoarding means the oracle
+  ruler cannot see the defect, which is its known blind spot.
+
+## Non-vacuity, extended
+
+`cap_stats.slots_floor_exempt` must be > 0 in both floor-exempt arms and **0** in `capped`, or the
+exemption is not firing where it was measured to be needed. `cap_stats.capped_by_position` must
+show the cap biting somewhere other than K and DEF, or C is a `#30` revert wearing another name.
