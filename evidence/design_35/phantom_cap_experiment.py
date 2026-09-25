@@ -105,7 +105,11 @@ _CAP_STATS: dict = {"slots_priced": 0, "slots_capped": 0, "reduction_sum": 0.0,
                     #: How often the #30 floor exemption saved a slot, and WHICH slots the cap
                     #: actually bit -- a cap that only ever bit K and DEF would be a #30 revert
                     #: wearing C's name, and a count that cannot tell them apart says nothing.
-                    "slots_floor_exempt": 0, "capped_by_position": {}}
+                    "slots_floor_exempt": 0, "capped_by_position": {},
+                    #: C-prime's own counters. `levels_capped` must be > 0 in that arm or the
+                    #: anchor cap never fired and the arm is C wearing another name.
+                    "levels_capped": 0, "level_reduction_sum": 0.0, "max_level_reduction": 0.0,
+                    "level_capped_by_position": {}}
 
 
 def install_pool_recorder():
@@ -222,6 +226,93 @@ def capped_slot_alternatives(levels, roster_positions, exempt_floors: bool = Fal
     return out
 
 
+#: FORMULATION C-PRIME: cap `bpa`'s ANCHOR instead of the slot alternative, keeping C's slot
+#: alternatives. The derivation (evidence/DESIGN_35_CAPS_REDERIVATION.md) shows this prices every
+#: row IDENTICALLY to C in balanced mode -- with `L'(p) = min(L(p), b(p))`, `bpa' = bpa + stale(p)`
+#: and `adj' = adj - stale(p)`, so `team_acquisition_value` is unchanged -- while restoring the
+#: registered non-positivity invariant verbatim and putting the premium back inside
+#: TEAM_SPECIFIC_CAPS. That makes it the only ADMISSIBLE form of C.
+#:
+#: It is not identical everywhere, and this arm exists to measure exactly where it is not. Upside
+#: mode scores `bpa + 0.5 * growth` and carries NO displacement term -- it reads nothing off the
+#: roster -- so the cancellation has nothing to cancel against and C-prime's score exceeds C's by
+#: exactly `stale(p)` on every row at a drained position. `stale(p)` is a non-negative per-position
+#: constant, so it RE-ORDERS POSITIONS against each other in upside mode. Magnitude unmeasured
+#: until this arm; shape derived.
+#:
+#: WHERE THE CAP IS APPLIED, and why not at `replacement_levels`. The level `bpa` actually uses is
+#: whatever `point_replacement` holds AFTER `_fill_omitted_from_anchor` has filled the
+#: exhausted-demand positions from the pre-draft anchor. Capping inside `replacement_levels` would
+#: miss those; capping inside `predraft_replacement_anchor` would poison `_ANCHOR_CACHE`, which is
+#: keyed by (universe, league) and carries no remaining-pool term, so one board's remaining pool
+#: would leak into every later board's anchor. Wrapping `_fill_omitted_from_anchor` and capping the
+#: dict it was handed, in place, after it returns, is the one seam that sees the final level and
+#: leaves the cache alone -- and it runs before `_vor`, before `displacement_adjustments`, and
+#: before the upside branch returns, which is every consumer that matters.
+#:
+#: THE BRANCH IS IDENTIFIED EXACTLY, not guessed. `_fill_omitted_from_anchor` is called once for
+#: the points levels and once for the trade-value levels, and the two differ only in the anchor
+#: factory they are handed: `lambda: _anchor("_points", ...)` against
+#: `lambda: _anchor("trade_value", None)`. That literal is in the lambda's own `co_consts`, so the
+#: wrapper reads which branch it is on from the engine's own code rather than inferring it from the
+#: magnitude of the numbers. Capping a 0-100 vendor level with a season-points bound would be the
+#: currency-mixing error this repository keeps removing, and a "it would be a no-op in practice"
+#: argument is not a reason to risk it.
+_UNCAPPED_LEVELS: list = [None]
+_CPRIME_ACTIVE: list = [False]
+
+
+def install_level_cap():
+    """Wrap `_fill_omitted_from_anchor` so C-prime can cap the level `bpa` actually uses."""
+    real = dr._fill_omitted_from_anchor
+
+    def wrapper(levels, present_positions, startable_floors, build_anchor):
+        filled = real(levels, present_positions, startable_floors, build_anchor)
+        if not _CPRIME_ACTIVE[0]:
+            return filled
+        if "_points" not in (build_anchor.__code__.co_consts or ()):
+            return filled          # the trade-value branch: a different currency, left alone
+        # The UNCAPPED levels, kept for the slot alternatives, which C-prime leaves as C's.
+        _UNCAPPED_LEVELS[0] = {k: v for k, v in levels.items()}
+        best = best_remaining_by_position()
+        if best is None:
+            _CAP_STATS["pool_missing"] += 1
+            return filled
+        # A floor is not a pool reading, so it is not capped -- the same derived exemption as C's,
+        # and `startable_floors` is added because a startability threshold is not a pool reading
+        # either (this format produces none, so that half is untested here and says so).
+        floored = floor_set_positions(levels) | set(startable_floors or {})
+        for position, level in list(levels.items()):
+            if level is None or pd.isna(level) or position in floored:
+                continue
+            bound = best.get(position)
+            if bound is None or bound >= float(level):
+                continue
+            _CAP_STATS["levels_capped"] += 1
+            _CAP_STATS["level_reduction_sum"] += float(level) - bound
+            _CAP_STATS["max_level_reduction"] = max(
+                _CAP_STATS["max_level_reduction"], float(level) - bound)
+            _CAP_STATS["level_capped_by_position"][position] = (
+                _CAP_STATS["level_capped_by_position"].get(position, 0) + 1)
+            levels[position] = bound
+        return filled
+
+    dr._fill_omitted_from_anchor = wrapper
+    return real
+
+
+def c_prime_slot_alternatives(levels, roster_positions):
+    """C's slot alternatives, computed from the UNCAPPED levels.
+
+    `levels` arrives already capped (the wrapper mutated the board's dict in place), and using it
+    here would cap twice and stop being C-prime. Falling back to `levels` when nothing was recorded
+    is the honest degenerate case: a board with no projected rows never reached the points branch,
+    and its levels dict is empty anyway."""
+    source = _UNCAPPED_LEVELS[0]
+    return capped_slot_alternatives(levels if source is None else source,
+                                    roster_positions, exempt_floors=True)
+
+
 def floor_exempt_slot_alternatives(levels, roster_positions):
     return capped_slot_alternatives(levels, roster_positions, exempt_floors=True)
 
@@ -246,8 +337,11 @@ ARMS = {
     "control_no_backstop": {"cap": None,           "backstop": False},
 }
 
+ARMS["c_prime"] = {"cap": "c_prime", "backstop": True}
+
 CAP_FUNCTIONS = {"as_specified": capped_slot_alternatives,
-                 "floor_exempt": floor_exempt_slot_alternatives}
+                 "floor_exempt": floor_exempt_slot_alternatives,
+                 "c_prime": c_prime_slot_alternatives}
 
 #: `unfieldable_last` returns a SORT KEY, one row per candidate, 1 meaning "demote". All-zero is
 #: the no-op, and it is built the same way `feasibility_first` is switched off in the skill's own
@@ -280,6 +374,7 @@ def main(argv=None) -> int:
     shipped_backstop = dr.unfieldable_last
     install_pool_recorder()
     install_floor_recorder()
+    install_level_cap()
 
     common = ["--season", args.season]
     if args.streaming:
@@ -292,6 +387,8 @@ def main(argv=None) -> int:
         # ONE PROCESS, ONE CODE VERSION, ONE THING TOGGLED PER ARM.
         config = ARMS[name]
         dr.board_slot_alternatives = CAP_FUNCTIONS.get(config["cap"], shipped)
+        _CPRIME_ACTIVE[0] = config["cap"] == "c_prime"
+        _UNCAPPED_LEVELS[0] = None
         dr.unfieldable_last = (shipped_backstop if config["backstop"] else _no_backstop)
         for key, value in list(_CAP_STATS.items()):
             _CAP_STATS[key] = {} if isinstance(value, dict) else type(value)(0)
@@ -319,6 +416,7 @@ def main(argv=None) -> int:
 
     dr.board_slot_alternatives = shipped
     dr.unfieldable_last = shipped_backstop
+    _CPRIME_ACTIVE[0] = False
 
     # PAIRED BY SEAT, against the FIRST arm named. The unpaired means are in the arm blocks; the
     # paired delta is the measurement, because every arm drafts the same seat against the same
