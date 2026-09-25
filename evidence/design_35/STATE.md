@@ -19,73 +19,51 @@ about C so far is an argument; nothing about it is a measurement.
 | C (cap the slot phantom) | **OPEN.** Coherent, and it inverts a registered invariant |
 | E (raw projection as bench value) | **rejected** — the owner's own correction |
 
-## Status as of the last update to this file
+## FINISHED. What the overnight run established.
 
-**Both Fable passes handed back and are committed.**
+All eight arms complete, full suite green (3496 tests, `OK`, 1 skip, 1 expected failure) at
+`1649s`. Every arm report and both paired summaries are committed in `runs/`, so nothing here
+depends on the scratchpad surviving.
 
-* `evidence/DESIGN_35_CAPS_REDERIVATION.md` — verdict (b): the registered non-positivity invariant
-  does not survive C and has an exact derived replacement; the caps' exemption is REFUTED and no
-  constant can be derived for it; **and the same prices are available in the right column** by
-  capping `bpa`'s anchor instead, which leaves the invariant and the caps intact. See
-  `SYNTHESIS.md` §1.
-* `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md` — `#34` closes as a duplicate of `#168`. Declining
-  moves NO pick (measured counterfactual, top 12 byte-identical). Three consumer gaps; one was a
-  reachable crash and is fixed, one is a false registered invariant, one cannot be fixed the obvious
-  way. See `SYNTHESIS.md` §3.
-* **My own finding, which neither pass could make:** C's cap binds on `#30`'s streaming floors from
-  the opening board. `SYNTHESIS.md` §2.
+### The three questions and their answers
 
-**Running now** (from the repo root, launched at `6cd3be0`):
+| question | answer | where |
+|---|---|---|
+| Is C **admissible** as specified? | **No.** It inverts a registered invariant and refutes `TEAM_SPECIFIC_CAPS`' exemption over 8,500 rows, and the lift it introduces has no supremum, so no constant can be derived and `#56` forbids choosing one. | `../DESIGN_35_CAPS_REDERIVATION.md` |
+| Is there an admissible shape? | **Yes, one.** Cap `bpa`'s anchor with the same quantity. The level cancels between the two terms, so `team_acquisition_value` is algebraically identical (measured 0.00 over 388 rows) and the board drafts the same in balanced mode, with the invariant and the caps intact. Differs in **upside mode**, which is unmeasured. | same |
+| Is C **worth** its cost? | **Yes, by the pre-registered reading.** Positive on both seasons: **+21.7/seat** (2024) and **+43.7/seat** (2023), 9 of 12 and 8 of 12 seats improved. 2024's figure sits inside the ±25 band that would have been indeterminate on its own. | `RESULT_C.md` |
+| Does C's pricing replace the ceiling? | **No, decisively.** Removing A costs **−103.5/seat** on 2023 (0 of 12 improved) and **−28.3/seat** on 2024, and **12 of 12 seats hoard past the ceiling on both** — kickers in 2023, defenses in 2024. | `RESULT_CEILING.md` |
 
-| what | state |
-|---|---|
-| `c4_2024` — four arms, 12 seats | control arm in progress |
-| `c4_2023` — four arms, 12 seats | control arm in progress |
-| full test suite, after the `draft_counterfactual` fix | ~25% at last check; it LICENSES the push of `8f8ca9e` and everything stacked on it |
+### The finding neither derivation pass could make
 
-Four arms each: `control`, `capped`, `capped_floor_exempt`, `capped_floor_exempt_no_backstop`. What
-each pairing answers is in `PREREGISTRATION_C.md`'s amendment. **Read that before the numbers.**
+C as specified caps `#30`'s **streaming floors**, from the opening board: DEF 146.05 -> 121.49, K
+164.50 -> 159.88. Measured cost **+53 to +54 per seat**, and the signature is first-K/DST placement
+collapsing to rounds 6-7 at every seat. The exemption is DERIVED, not chosen -- a streaming floor is
+the season sum of each week's best wire option and exceeds any individual's projection on purpose.
+Verified exact and narrow: `slots_floor_exempt` is 5,496, precisely the 2,748 K plus 2,748 DEF slots,
+and neither exempt arm's cap touches K or DEF.
 
-`RESUME.md` says how to restart after a reclaim, and `checkpoint.sh` copies every completed arm
-report into `evidence/design_35/runs/` so a reclaim costs at most the arm in flight.
+### `#34` closed, and two repairs shipped
 
-## Not applied, deliberately
+`#34` is a duplicate of `#168`; anchor-filling the declined QBs leaves the top 12 byte-identical, so
+declining moves no pick. Two of its three consumer gaps are repaired and pushed: a reachable
+`TypeError` in `draft_counterfactual` (reproduced first), and a **registered invariant that was
+false** -- `absence_kind` unstamped on 8 to 10 unpriced QB rows, with its guard blind because the
+fixture was an opening board in a non-superflex league. The third gap cannot be fixed the obvious way
+and is recorded as a limit.
 
-The one-line `absence_kind` repair from `evidence/absence_kind/IFF_BREACH_ON_A_DRAINED_BOARD.md`. It
-touches `draft_room.py`, and the suite currently running licenses a DIFFERENT change; a second edit
-mid-suite would invalidate it. Apply after that suite is green and `8f8ca9e` is pushed, then run the
-suite again.
+### What the owner still has to rule
 
-## The experiment in this directory
+1. Whether to implement the anchor-capped reformulation at all, given it moves `universal_value` at
+   drained positions (the best remaining receiver's `bpa` becomes 0.00) and changes upside mode.
+2. `#29` -- resume or retire the VDS battery, still stopped at 13 of 36.
+3. Re-capturing the fixture with weekly lines.
+4. Gap 3's limit statement in `roster_diagnostics`.
 
-`phantom_cap_experiment.py` — an in-process A/B with **no engine edit**. It wraps
-`dr.build_available_pool` to remember the board's own remaining pool (the cap needs a pool and
-`board_slot_alternatives(levels, roster_positions)` never receives one — that is the first thing
-recorded about C), wraps `dr.streaming_replacement_levels` so a floor can be told from a pool
-reading, and toggles `dr.board_slot_alternatives` (and, for the fourth arm, `dr.unfieldable_last`).
+### Blocked, not forgotten
 
-Verified before any arm was read:
-
-* the cap reproduces the measured round-14 phantom exactly — both FLEX slots 216.25 -> 173.00,
-  a reduction of 43.25, which is the number that motivated C;
-* the cap can only LOWER a slot and never changes WHICH slots are priced (so the arm differs in
-  one thing, not two);
-* the `#30` floor exemption is exact and NARROW — it restores K and DEF to their floors and moves
-  nothing else;
-* with no pool recorded it falls back to the shipped construction **and says so** in
-  `cap_stats.pool_missing`, rather than treating absence as a number (`#187`);
-* the control arm reproduced 2024 seat 1 at **+168.4**, exactly the shipped figure from when `#30`
-  closed;
-* the cap is not vacuous: 1050 of 2420 priced slots capped on the smoke, `pool_missing` 0;
-* the working directory is asserted to be the repo root before anything is imported, because this
-  file sits two directories down and `sys.path[0]` would otherwise not be the root.
-
-### What a result would and would not settle
-
-It settles **whether C is worth its cost**, and nothing about whether C is admissible — the
-derivation already answered that: **not as specified.** A null or negative result retires C on
-outcome grounds. A positive result makes the anchor-capped reformulation the thing to put to the
-owner, since it prices identically in balanced mode without inverting anything.
+`#30`'s live-sync verification. `api.sleeper.app` is denied by the environment's network policy
+(403 on CONNECT, re-confirmed). Needs a change to Network access in the environment settings.
 
 ## Standing constraints that apply here
 
