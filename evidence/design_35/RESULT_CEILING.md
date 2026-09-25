@@ -73,9 +73,65 @@ manager must fill that allowance. Worth noting that today the engine does fill i
 every A-on arm carries exactly K2 and DEF2. Whether a second kicker is wanted is a product question,
 and it is the one place a "C later" preference would visibly pay.
 
+---
+
+# 2024 landed, and it is the case this reading was WRITTEN FOR
+
+| 2024 arm | wins | mean | median |
+|---|---:|---:|---:|
+| control (A on, no C) | 11/12 | +82.9 | +66.5 |
+| `capped_floor_exempt` (A on, C on) | 10/12 | +97.7 | +104.4 |
+| `capped_floor_exempt_no_backstop` (A **off**, C on) | **11/12** | **+73.8** | +90.2 |
+
+Paired: no-ceiling − ceiling **−28.3 per seat** (4 up, 8 down, median −33.0); no-ceiling − control
+only **−6.6 per seat** (5 up, 7 down). On points alone, and against the shipped engine, **2024's
+no-ceiling arm is nearly indistinguishable — it even wins the same 11 of 12 seats.**
+
+**And its rosters are just as broken: 12 of 12 seats past the ceiling.** With a different position:
+
+```
+2024, no ceiling:   seat 3   WR6 DEF4 RB2 QB2 TE1 K1
+                    seat 7   WR5 DEF4 RB3 QB2 TE1 K1
+                    seat 12  WR5 RB4 DEF3 QB2 TE1 K1
+                    ... DEF4 at eight seats, DEF3 at three, and K falls to 1 everywhere
+
+2023, no ceiling:   K4 at eleven seats, K5 at one, and DEF falls to 1
+```
+
+So the hoard is **universal (12 of 12 on both seasons) and its position is season-dependent** —
+kickers in 2023, defenses in 2024. It lands on whichever flat shallow position happens to price best
+that year, which is the flat-position VOR pathology stated exactly.
+
+## This is why the reading required BOTH conditions
+
+The pre-registration said A becomes reconsiderable only if the no-ceiling arm is within noise on
+points **and** holds no position past `slots(P) + 1` — "matching on points while still hoarding would
+mean the oracle ruler cannot see the defect, which is its known blind spot."
+
+2024 is that case, arriving exactly as described. Points nearly match; shape fails at every seat. And
+the reason the ruler under-penalises it is structural, not incidental: the oracle starts the best
+ACTUAL scorer each week, so a fourth defense is nearly free — there is almost always some week it
+outscored the other three. A manager choosing on Saturday gets none of that. **The ruler is the most
+forgiving possible judge of hoarding, and even it charges −28.3 a seat.**
+
+Had the reading been "either condition", 2024 would have licensed removing the ceiling, and the
+engine would have shipped drafting four defenses in a one-defense league.
+
+## The answer, over both seasons
+
+| | 2023 | 2024 |
+|---|---|---|
+| no-ceiling − ceiling, points | **−103.5/seat**, 0 of 12 improved | **−28.3/seat**, 4 of 12 improved |
+| seats past the ceiling, A on | 0 of 12 | 0 of 12 |
+| seats past the ceiling, A off | **12 of 12** (K4–K5) | **12 of 12** (DEF3–DEF4) |
+
+**A stays.** Its points value is season-dependent — three figures a seat on 2023, tens on 2024 — but
+the shape failure is total and identical on both, and the cheaper season is cheap only because the
+ruler cannot see what went wrong.
+
 ## Limits
 
-One season and one format for the shape reading; the 2024 no-backstop arm was still running when
-this was written and is reported separately. The ruler is an oracle weekly lineup with no waivers,
-which **rewards** hoarding if anything — a bench body can always be started in a week its starter
-scored less. So −103.5 per seat is a LOWER bound on what the ceiling is worth, not an upper one.
+Two seasons, one format. The ruler is an oracle weekly lineup with no waivers, which **rewards**
+hoarding if anything, so both figures are LOWER bounds on what the ceiling is worth. The shape check
+uses `dr.fieldable_ceiling`, so it says nothing about positions that reach a shared or flex slot —
+RB, WR and TE are outside the bound by construction and no claim is made about them here.
