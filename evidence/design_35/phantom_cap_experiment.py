@@ -17,10 +17,19 @@ single-position candidate) and reaches two derived constants through
 `pick_synthesis.TEAM_SPECIFIC_CAPS`. This instrument answers the prior question -- does capping
 the phantom draft BETTER ROSTERS -- before any of that is paid for.
 
-NO ENGINE EDIT. Both arms run the same working tree at the same commit, in ONE process, and
-differ in exactly one thing: whether `dr.board_slot_alternatives` is the shipped function or the
-capped one. That is the in-process A/B the engine-measurement skill requires, and both of the
-functions this patches document themselves as module-level and patchable for exactly this.
+NO ENGINE EDIT. Every arm runs the same working tree at the same commit, in ONE process, and
+differs from the baseline in exactly one thing: whether `dr.board_slot_alternatives` is the
+shipped construction or the capped one, and -- for the third arm -- whether `dr.unfieldable_last`
+returns its real sort key or an all-zero no-op. That is the in-process A/B the engine-measurement
+skill requires, and both of the functions the cap patches document themselves as module-level and
+patchable for exactly this.
+
+THE THIRD ARM IS THE ONE THE OWNER ASKED FOR. A (the fieldability ceiling) is shipped and is what
+took the engine from 0 of 12 seats to 11 of 12 on 2024; the owner's stated discomfort is with it
+("I don't love forcing a ceiling"). C is a PRICING change where A is a COUNTING one, so
+`capped_no_backstop` asks whether C's pricing would have made A's counting unnecessary. Pricing
+alone has already failed this test once in a different guise: #30's streaming floor, without the
+backstop, relocated the hoarding from defenses to KICKERS rather than removing it.
 
 WHERE THE REMAINING POOL COMES FROM. `board_slot_alternatives(levels, roster_positions)` never
 receives the pool -- that is the first thing recorded about C, and it is why this cannot be a
@@ -89,7 +98,10 @@ _LIVE_POOL: list = [None]
 #: How often the cap actually bit, and by how much -- so a null result can be told apart from a
 #: patch that never fired. `#246`'s lesson: identical arms usually mean a broken instrument.
 _CAP_STATS: dict = {"slots_priced": 0, "slots_capped": 0, "reduction_sum": 0.0,
-                    "max_reduction": 0.0, "no_reach": 0, "pool_missing": 0}
+                    "max_reduction": 0.0, "no_reach": 0, "pool_missing": 0,
+                    #: NON-VACUITY FOR THE THIRD ARM, in the same spirit. A no-backstop arm that
+                    #: never reached the stand-in would be the shipped arm wearing another name.
+                    "backstop_suppressed_calls": 0}
 
 
 def install_pool_recorder():
@@ -151,21 +163,53 @@ def capped_slot_alternatives(levels, roster_positions):
     return out
 
 
+#: THE ARMS, and why the third one exists. `A` (the fieldability backstop, `unfieldable_last`) is
+#: SHIPPED and measured: it is what took the engine from 0 of 12 seats to 11 of 12 on 2024. The
+#: owner's stated discomfort is with it -- "I don't love forcing a ceiling" -- and C is a PRICING
+#: change where A is a COUNTING one, so the live question is not only "is C worth its cost" but
+#: "would C's pricing have made A's counting unnecessary". `capped_no_backstop` is the only arm
+#: that can answer that, and it is the arm whose result the owner actually asked for.
+#:
+#: `control_no_backstop` is deliberately NOT here: it is the already-measured streaming-only arm
+#: (2024 3 of 12, -18.5; 2023 0 of 12, -299.6), and re-running it would spend a season's compute
+#: to reproduce a number rather than to learn one. Anyone who wants the full 2x2 in one process
+#: can name it; the table admits it.
+ARMS = {
+    "control":            {"cap": False, "backstop": True},
+    "capped":             {"cap": True,  "backstop": True},
+    "capped_no_backstop": {"cap": True,  "backstop": False},
+    "control_no_backstop": {"cap": False, "backstop": False},
+}
+
+#: `unfieldable_last` returns a SORT KEY, one row per candidate, 1 meaning "demote". All-zero is
+#: the no-op, and it is built the same way `feasibility_first` is switched off in the skill's own
+#: example -- an index-aligned Series of the right dtype, never a bare 0, so the sort behaves
+#: identically except for this one key.
+def _no_backstop(scored, picks, players_db, my_roster_id, roster_positions, pool_scope="all"):
+    _CAP_STATS["backstop_suppressed_calls"] += 1
+    return pd.Series(0, index=scored.index, dtype=int)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--season", default="2024")
     parser.add_argument("--out", required=True,
-                        help="a DIRECTORY for the two arm reports and the summary")
+                        help="a DIRECTORY for the arm reports and the summary")
     parser.add_argument("--seats", type=int, default=0)
     parser.add_argument("--streaming", action="store_true", default=True,
                         help="grade the SHIPPED path (#30's floor wired), which is the "
                              "configuration the cap would ship into")
     parser.add_argument("--no-streaming", dest="streaming", action="store_false")
+    parser.add_argument("--arms", nargs="+", default=["control", "capped", "capped_no_backstop"],
+                        choices=sorted(ARMS),
+                        help="which arms to run, in order. The FIRST is the baseline every "
+                             "paired delta is taken against.")
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     shipped = dr.board_slot_alternatives
+    shipped_backstop = dr.unfieldable_last
     install_pool_recorder()
 
     common = ["--season", args.season]
@@ -175,9 +219,11 @@ def main(argv=None) -> int:
         common += ["--seats", str(args.seats)]
 
     arms = {}
-    for name in ("control", "capped"):
-        # ONE PROCESS, ONE CODE VERSION, ONE THING TOGGLED.
-        dr.board_slot_alternatives = shipped if name == "control" else capped_slot_alternatives
+    for name in args.arms:
+        # ONE PROCESS, ONE CODE VERSION, ONE THING TOGGLED PER ARM.
+        config = ARMS[name]
+        dr.board_slot_alternatives = (capped_slot_alternatives if config["cap"] else shipped)
+        dr.unfieldable_last = (shipped_backstop if config["backstop"] else _no_backstop)
         for key in _CAP_STATS:
             _CAP_STATS[key] = 0 if isinstance(_CAP_STATS[key], int) else 0.0
         _LIVE_POOL[0] = None
@@ -203,16 +249,27 @@ def main(argv=None) -> int:
               f"mean {block['mean_delta']:+.1f}  cap {_CAP_STATS}", flush=True)
 
     dr.board_slot_alternatives = shipped
+    dr.unfieldable_last = shipped_backstop
 
-    # PAIRED BY SEAT. The unpaired means are in the arm blocks; the paired delta is the
-    # measurement, because the two arms draft the same seat against the same field.
-    paired = {}
-    for seat, control_total in arms["control"]["engine_totals"].items():
-        capped_total = arms["capped"]["engine_totals"].get(seat)
-        if capped_total is not None:
-            paired[seat] = round(capped_total - control_total, 2)
-    improved = sum(1 for v in paired.values() if v > 0)
-    worsened = sum(1 for v in paired.values() if v < 0)
+    # PAIRED BY SEAT, against the FIRST arm named. The unpaired means are in the arm blocks; the
+    # paired delta is the measurement, because every arm drafts the same seat against the same
+    # field, so a seat is its own control and the seat-to-seat variance drops out.
+    base = args.arms[0]
+    paired_all = {}
+    for name in args.arms[1:]:
+        deltas = {}
+        for seat, base_total in arms[base]["engine_totals"].items():
+            other = arms[name]["engine_totals"].get(seat)
+            if other is not None:
+                deltas[seat] = round(other - base_total, 2)
+        paired_all[f"{name}_minus_{base}"] = {
+            "by_seat": deltas,
+            "improved": sum(1 for v in deltas.values() if v > 0),
+            "unchanged": sum(1 for v in deltas.values() if v == 0),
+            "worsened": sum(1 for v in deltas.values() if v < 0),
+            "total": round(sum(deltas.values()), 2),
+            "mean": round(sum(deltas.values()) / len(deltas), 2) if deltas else None,
+        }
     summary = {
         "_comment": ("#35 Formulation C (cap each slot's free-player alternative at the best "
                      "REMAINING player eligible for that slot) vs the shipped construction, "
@@ -221,12 +278,9 @@ def main(argv=None) -> int:
         "season": args.season,
         "streaming_floor": bool(args.streaming),
         "arms": arms,
-        "paired_capped_minus_control": paired,
-        "seats_improved": improved,
-        "seats_unchanged": len(paired) - improved - worsened,
-        "seats_worsened": worsened,
-        "paired_total": round(sum(paired.values()), 2),
-        "paired_mean": round(sum(paired.values()) / len(paired), 2) if paired else None,
+        "arm_order": list(args.arms),
+        "baseline_arm": base,
+        "paired": paired_all,
     }
     (out_dir / f"SUMMARY_{args.season}.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n")
@@ -234,9 +288,11 @@ def main(argv=None) -> int:
     for name, block in arms.items():
         print(f"{name:>8}: wins {block['wins']}/{block['seats']}  "
               f"mean {block['mean_delta']:+.1f}  median {block['median_delta']:+.1f}")
-    print(f"paired (capped - control): {improved} improved, {worsened} worsened, "
-          f"total {summary['paired_total']:+.1f}, mean {summary['paired_mean']}")
-    print(f"cap fired: {arms['capped']['cap_stats']}")
+    for key, block in paired_all.items():
+        print(f"paired {key}: {block['improved']} improved, {block['unchanged']} unchanged, "
+              f"{block['worsened']} worsened, total {block['total']:+.1f}, mean {block['mean']}")
+    for name in args.arms:
+        print(f"cap fired ({name}): {arms[name]['cap_stats']}")
     print(f"-> {out_dir}/SUMMARY_{args.season}.json")
     return 0
 
