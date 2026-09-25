@@ -79,12 +79,34 @@ touches nothing else.
 **1. This measured C, and C is NOT the admissible form.** The derivation
 (`evidence/DESIGN_35_CAPS_REDERIVATION.md`) establishes that C as specified inverts a registered
 invariant and refutes `TEAM_SPECIFIC_CAPS`' exemption, with no constant available to re-derive — so C
-cannot ship. The admissible form caps **`bpa`'s anchor** with the same quantity, which is
-algebraically identical in `team_acquisition_value` (the level cancels between the two terms;
-measured 0.00 across 388 rows) and therefore drafts identically **in balanced mode**. It differs in
-**upside mode**, which scores on `bpa` alone — and in this 16-round format the last rounds are upside
-mode. So this result transfers to the admissible form for most of the draft and not all of it. That
-gap is unmeasured.
+cannot ship. The admissible form caps **`bpa`'s anchor** with the same quantity.
+
+**The transfer to that form is EXACT in balanced mode, and it is a derived identity rather than a
+coincidence measured at one state.** `point_replacement` is read at exactly four places in
+`compute_draft_board`, verified by reading every reference to the name: `_vor` (and so `bpa`),
+`displacement_adjustments`, `board_slot_alternatives`, and `score_row`'s multi-eligible displacement
+call. A fifth reference sets a LABEL (`_floor_priced` → `replacement_basis`), not a value. **Nothing
+else reads it** — in particular neither `need_bonus` nor `lineup_optimizer.depth_exposure`, which take
+no levels at all. So with `L'(p) = min(L(p), b(p))` and the slot alternatives left as C's:
+
+    bpa'  = points − L'        adj'  = L' − X        bpa' + adj'  =  points − X  =  bpa + adj
+
+for **both** populations — the single-position rows and the multi-eligible rows, which anchor on their
+primary level through the same seam. Every other term in `team_acquisition_value` is untouched, so the
+sum is identical row for row. Fable's measured `max |TAV difference| = 0.00` over 388 rows is that
+identity confirmed, not the evidence for it.
+
+**Where it diverges is also exact.** Upside mode scores `upside_score = bpa + 0.5 × growth` and carries
+**no displacement term at all** — it "reads nothing off the roster". So the cancellation has nothing to
+cancel against: the variant's score is higher than C's by exactly `stale(p)` on every row at a drained
+position, while C's upside score is unchanged from the shipped engine (its cap only touches slot
+alternatives, which upside mode never consults). Since `stale(p)` is a per-position constant and is
+`≥ 0`, the variant **re-orders positions against each other in upside mode**, favouring whichever
+positions the pool has drained past their anchor.
+
+In this 16-round format the last rounds are upside mode, so that divergence is live — its
+**magnitude is unmeasured**, and measuring it is the right first step if the owner wants the variant.
+What is no longer uncertain is its shape.
 
 **2. The ruler's own limits stand.** No waivers or trades, and the weekly lineup is an ORACLE — it
 starts the best actual scorers, not the ones a manager would have guessed. Every arm gets the same
