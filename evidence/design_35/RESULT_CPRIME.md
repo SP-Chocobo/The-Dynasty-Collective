@@ -59,10 +59,8 @@ Both arms' value against the shipped engine stands as measured: **+21.7/seat on 
 
 **Does not settle:**
 
-* **`startable_floors`.** The anchor cap exempts them by the same derivation that exempts the
-  streaming floors — a startability threshold is not a pool reading. This format produces none, so
-  **that half of the exemption is untested** and needs a superflex arm. It is the one hole left in
-  C′'s implementation.
+* ~~**`startable_floors` is untested.**~~ **CLOSED, and it corrects my own derivation.** See the
+  section below.
 * **`universal_value` moves, and that is the real cost of C′.** At a drained position the best
   remaining player's `bpa` becomes 0.00. Nothing in the draft loop noticed — the rosters prove that —
   but `universal_value` is read by `pick_synthesis` for context elevation, by `draft_strategy` to rank
@@ -77,3 +75,70 @@ Both arms' value against the shipped engine stands as measured: **+21.7/seat on 
 If C ships at all, it ships as **C′**. The outcome evidence is identical, the admissibility case is
 one-sided, and the remaining work is bounded and named: a superflex arm for the `startable_floors`
 exemption, and a pass over the four `universal_value` consumers above.
+
+---
+
+# The `startable_floors` hole is closed, and my derivation of it was WRONG
+
+I exempted `startable_floors` from the anchor cap "by the same derivation that exempts the streaming
+floors — a startability threshold is not a pool reading", and recorded it as the one untested half of
+C′. **The conclusion is right, the reason was wrong, and the true reason is stronger.**
+
+## What the branch actually returns
+
+`replacement_levels`, the startable-floor branch:
+
+```python
+rank = int((at_pos[value_col] >= floor).sum()) or None   # how many REMAINING players clear it
+idx  = min(rank - 1, len(at_pos) - 1)
+levels[position] = float(at_pos.iloc[idx][value_col])    # a REMAINING player's own points
+```
+
+`at_pos` is the remaining pool at that position, sorted best first. So the level is **the points of
+the last remaining player who clears the floor** — and since `idx >= 0`,
+
+    L(p) = at_pos.iloc[rank-1]  <=  at_pos.iloc[0]  =  b(p)
+
+**`L(p) <= b(p)` always, on this branch, by construction.** Therefore `min(L(p), b(p)) = L(p)` and the
+anchor cap is provably a **no-op** there. The exemption is not wrong — it is unnecessary.
+
+Measured on a real `12T_ppr_SF` board, draining QB pick by pick (board builds only, no drafts):
+
+| QBs drafted | QB level | basis | best remaining QB | cap would bite? |
+|---:|---:|---|---:|---|
+| 0 | 207.50 | `startable_floor` | 372.46 | no |
+| 24 | 207.50 | `startable_floor` | 281.89 | no |
+| 30 | 207.50 | `startable_floor` | 215.37 | no |
+| **31** | 207.50 | `startable_floor` | **207.50** | no — *exactly equal* |
+| 32+ | *(declined)* | — | — | no level to cap |
+
+The bound is tight and never crossed: the best remaining QB descends to exactly the level, and one
+pick later the branch declines entirely and there is no level at all. **The situation the exemption
+guards against cannot arise.**
+
+## Why the streaming floor is genuinely different
+
+    streaming:  levels[position] = float(floor)        # an ASSIGNED value no player need have
+    startable:  levels[position] = at_pos.iloc[idx]    # a REMAINING player's own points
+
+`#30`'s floor is the season sum of each week's best wire option, assigned raise-only as a value. No
+single player has it, so it can and does exceed `b(p)` — measured on the 2024 opening board at DEF
+146.05 against a best remaining defense of 121.49. That is why its exemption is load-bearing and
+worth +53 to +54 a seat.
+
+**So the distinction that matters is not "threshold versus pool reading" but HOW THE LEVEL IS
+PRODUCED: assigned as a value, or selected as a rank within the remaining pool.** A rank selection
+can never exceed the pool's own best. Only an assignment can. That is the general statement, and it
+is the right one to carry into any future level that gets added:
+
+> C′'s anchor cap must exempt exactly those levels that are ASSIGNED a value rather than SELECTED
+> from the remaining pool. Today that is `streaming_floors` and nothing else.
+
+The exemption for `startable_floors` stays in the instrument — it costs nothing and removing it would
+be a change with no measured cause — but it is now documented as redundant rather than as untested.
+
+## What remains unmeasured on C′
+
+Only the consumer boundary: `universal_value` moves at drained positions, and `pick_synthesis`,
+`draft_strategy`, `draft_counterfactual` and `roster_diagnostics` all read it. The draft loop is
+proven indifferent (identical rosters, both seasons); those four are not.

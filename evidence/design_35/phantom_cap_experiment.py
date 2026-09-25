@@ -278,9 +278,19 @@ def install_level_cap():
         if best is None:
             _CAP_STATS["pool_missing"] += 1
             return filled
-        # A floor is not a pool reading, so it is not capped -- the same derived exemption as C's,
-        # and `startable_floors` is added because a startability threshold is not a pool reading
-        # either (this format produces none, so that half is untested here and says so).
+        # EXEMPT exactly the levels that are ASSIGNED A VALUE rather than SELECTED FROM THE
+        # REMAINING POOL. Only an assigned level can exceed the pool's own best and so be capped;
+        # a rank selection cannot, by construction. #30's streaming floor is assigned
+        # (`levels[position] = float(floor)`) and does exceed it -- measured on the 2024 opening
+        # board at DEF 146.05 against a best remaining defense of 121.49.
+        #
+        # `startable_floors` is included and is REDUNDANT, which is recorded rather than quietly
+        # left to look load-bearing. That branch sets `levels[position] = at_pos.iloc[rank-1]`,
+        # a REMAINING player's own points, so L(p) <= b(p) always and `min(L, b) = L` is a no-op.
+        # Measured draining QB on a 12T_ppr_SF board: the level holds at 207.50 while the best
+        # remaining QB descends 372.46 -> 207.50, touching it exactly and never going below,
+        # and one pick later the branch declines and there is no level at all. Kept because
+        # removing it would be a change with no measured cause.
         floored = floor_set_positions(levels) | set(startable_floors or {})
         for position, level in list(levels.items()):
             if level is None or pd.isna(level) or position in floored:
