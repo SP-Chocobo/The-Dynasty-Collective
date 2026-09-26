@@ -7,9 +7,9 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 28 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 33 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 34 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 24 | says what kind of document it is before making claims. |
-| UNDECLARED | 109 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 108 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -50,6 +50,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ENGINEERING_DOCTRINE.md`
 - `ENGINE_WIRING_PASS.md`
 - `FREEZE_CHECKLIST.md`
+- `FREEZE_RECORD_V2.md`
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`
 - `evidence/backtest/README.md`
@@ -109,7 +110,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 - `.claude/skills/close-register-item/SKILL.md`
 - `FREEZE_RECORD.md`
-- `FREEZE_RECORD_V2.md`
 - `README.md`
 - `WARPATH.md`
 - `data/baseline/external/dynastyprocess/ATTRIBUTION.md`

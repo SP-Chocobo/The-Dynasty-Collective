@@ -1,9 +1,25 @@
-# v2 Freeze Record — what was frozen, on what evidence, and what it does not claim
+# v2 Freeze CANDIDATE — what it rests on, what is still gating it, and what it does not claim
 
-> Same standing as `FREEZE_RECORD.md` does for v1. `POST_AUDIT_PLAN.md` remains the numbered
-> record and wins over any status flag anywhere (`#292`). Written to be read cold.
+> **THIS IS NOT YET THE FREEZE.** The owner's ordering: *"freeze is the last item before audit. if we
+> find more tinkering to do, that happens before freeze."* So this document stands where
+> `FREEZE_CHECKLIST.md` stood for v1 — what is left *before* — and becomes the record, in
+> `FREEZE_RECORD.md`'s shape, once the freeze is actually cut. `POST_AUDIT_PLAN.md` remains the
+> numbered record and wins over any status flag anywhere (`#292`). Written to be read cold.
+>
+> **CORRECTED.** This file first declared v2 frozen at `43c8188` and a local `v2-freeze` tag was cut
+> there. Both were premature: the varied-field battery had not run, and under the ordering above a
+> battery finding sends work back before the freeze rather than after it. **The tag has been
+> deleted** — a marker naming a commit that is not the freeze is the stale-marker failure this
+> repository has already had once, when a branch name in a skill file sent finished work to a branch
+> nobody reads. Nothing is tagged until a commit clears the gate.
 
-**Frozen commit: `43c8188`** on the branch this session was designated
+**THE ONE GATE OUTSTANDING:** the varied-drafting-strategy battery (`#29`), 36 arms, running at
+`04bccb5`. Meet-or-beat on a varied field is the bar the owner set for the K/DST work, and it is the
+one thing the realized-outcome grader structurally cannot see, because it fields a fixed two-style
+table. `evidence/design_35/GATE_FOR_VDS.md` carries the gate and the record of why the battery runs one
+commit past the candidate.
+
+**Candidate commit: `43c8188`** on the branch this session was designated
 (`git rev-parse --abbrev-ref HEAD` — derived, never restated, `#126`).
 
 **Certified at that commit:** full suite **3512 tests, OK, 1761.3s**, `__pycache__` cleared first
@@ -13,10 +29,11 @@ The local tag sits at that commit exactly, and **this record is one commit past 
 that writes it down. No engine or test code differs: this commit adds only this file and
 `DOC_INDEX.md`. So the tree frozen is the tree measured. Quote `43c8188` as the freeze.
 
-## THE TAG IS CUT LOCALLY AND COULD NOT BE PUBLISHED
+## THE TAG: NOT CUT, AND THE PUSH IS BLOCKED ANYWAY
 
-`v2-freeze` is an annotated tag at `43c8188` in this container, and the push was **refused with
-HTTP 403** by the environment's gateway:
+No tag exists. One was cut at `43c8188` and **deleted** when the ordering above was made explicit.
+Separately, and still true whenever a tag IS cut: pushing it is **refused with HTTP 403** by the
+environment's gateway:
 
 ```
 error: RPC failed; HTTP 403 curl 22 The requested URL returned error: 403
@@ -35,7 +52,7 @@ git fetch origin && git tag -a v2-freeze 43c8188 && git push origin v2-freeze
 v1 was published as a GitHub **pre-release**; v2 has been through `#52`'s blind adversarial pass
 and its nine-phase repair, so that qualifier no longer applies for the same reason.
 
-## What v2 carries that v1 did not, with the measurement that licensed each
+## What the candidate carries that v1 did not, with the measurement that licensed each
 
 | | change | licence |
 |---|---|---|
@@ -96,8 +113,10 @@ board-value difference is real but never reaches a pick on this data.
   `UPSIDE_BOARD_COLUMNS` are swapped relative to the branches that use them. Left alone at the
   freeze; it is why "on BOTH serializations" is the rule for any new companion column.
 
-## What the freeze does NOT claim
+## What the candidate does NOT claim
 
 That the engine is right about value. It claims the engine drafts **competitively** and in a
 **fieldable shape**, on a ruler it cannot game, with every constant derived rather than chosen —
-and that where a claim is untested, this record says so.
+and that where a claim is untested, this record says so. **It does not yet claim the varied-field
+bar is met**; that is what the running battery decides, and a finding there is tinkering to be done
+*before* the freeze, not a footnote after it.

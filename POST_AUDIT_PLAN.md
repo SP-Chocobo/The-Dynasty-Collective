@@ -14558,6 +14558,13 @@ to be pre-registered before it is run.
 
 ## #35 CLOSED — THE DEFECT WAS A STALE ANCHOR, AND IT HAD TO BE FIXED ON `bpa`, NOT ON THE SLOT
 
+> **This item is closed; the v2 FREEZE IS NOT CUT.** Owner's ordering: *"freeze is the last item
+> before audit. if we find more tinkering to do, that happens before freeze."* The outstanding gate is
+> the varied-drafting-strategy battery (`#29`). An earlier version of this entry and of
+> `FREEZE_RECORD_V2.md` read as though v2 were already frozen at `43c8188`, and a local tag was cut
+> there; the tag has been deleted and both documents corrected. `FREEZE_RECORD_V2.md` is a freeze
+> CANDIDATE, not a record.
+
 The finding is not "VOR misprices bench bodies". It is narrower and it is arithmetic: **a position
 whose starter demand is exhausted gets the PRE-DRAFT ANCHOR as its replacement level, and that
 anchor knows nothing about what is left.** Measured on a real round-14 board: WR's level was
