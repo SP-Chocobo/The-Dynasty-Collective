@@ -363,6 +363,18 @@ QB_STARTABLE_FLOOR_FRACTION = 0.5
 REPLACEMENT_BASIS_LIVE_DEMAND = "live_starter_demand"
 REPLACEMENT_BASIS_PREDRAFT = "predraft_anchor"
 REPLACEMENT_BASIS_STARTABLE_FLOOR = "startable_floor"
+#: #35 DID NOT ADD A TOKEN HERE, and the attempt is recorded because it was wrong in an
+#: instructive way. Capping a level (cap_levels_at_best_remaining) was first disclosed by
+#: OVERWRITING this field with "best_remaining", and three tests caught it: `predraft_anchor`
+#: became UNREACHABLE on two real fixtures. That is not a fixture artifact -- a position that gets
+#: the anchor is one whose demand is exhausted, which is very nearly the same population whose
+#: anchor the pool has drained past, so the overwrite retired the token in practice.
+#:
+#: TWO FACTS, AND BOTH ARE TRUE of a capped anchor row: which authority SELECTED the level, and
+#: whether that level was then corrected downward. Collapsing them into one token loses the first,
+#: which is the same defect #112 split absence_kind to fix. So this field keeps answering only
+#: "which authority selected it", and the correction travels beside it in
+#: `replacement_level_capped`.
 #: #214/F3. The demand rank fell PAST THE END of the priced list, so the "replacement level" is
 #: the worst player the vendor happens to cover rather than the player a real replacement would
 #: be. horizon_replacement REFUSES this exact case on the record -- "a floor read off the bottom
@@ -2544,6 +2556,11 @@ BALANCED_BOARD_COLUMNS = [
     # a companion that reaches only one board is the #174 defect (the number crossed the
     # boundary, its basis did not). See unfieldable_last.
     "cannot_be_fielded",
+    # #35, on BOTH serializations for that same reason. `replacement_basis` says which authority
+    # SELECTED this row's level; this says whether the level was then capped at the best player
+    # left at the position (cap_levels_at_best_remaining). Two facts, two fields -- the first
+    # attempt overwrote the basis and made `predraft_anchor` unreachable, which is the #112 shape.
+    "replacement_level_capped",
 ]
 
 UPSIDE_BOARD_COLUMNS = [
@@ -2555,6 +2572,12 @@ UPSIDE_BOARD_COLUMNS = [
     "horizon_floor", "horizon_sensitivity", "waiting_cost", "replacement_basis",
     "horizon_basis", "identity_basis", "availability_basis", "absence_kind",
     "fills_required_slot", "cannot_be_fielded",
+    # #35. On this list too -- see the note beside it in BALANCED_BOARD_COLUMNS. Worth knowing
+    # while reading either list: the two NAMES are inverted relative to the branches that use
+    # them (the upside branch returns BALANCED_BOARD_COLUMNS and the balanced path returns this
+    # one), which is pre-existing and is exactly why "on BOTH serializations" is the rule rather
+    # than "on the one this change affects".
+    "replacement_level_capped",
 ]
 
 
@@ -2936,6 +2959,71 @@ def _remember_anchor(key: str, levels: dict[str, float]) -> dict[str, float]:
     while len(_ANCHOR_CACHE) > ANCHOR_CACHE_ENTRIES:
         _ANCHOR_CACHE.popitem(last=False)
     return dict(levels)
+
+
+def cap_levels_at_best_remaining(levels, priced_pool, streaming_floors=None) -> set:
+    """#35. No position's replacement level may exceed the best player actually left at it.
+
+    Returns the positions capped, so the board can label them; `levels` is corrected in place,
+    the same shape `_fill_omitted_from_anchor` has.
+
+    WHY. A replacement level is a price the board asserts a free player at this position still
+    commands. Once the pool has drained past that price the assertion is simply false, and the
+    level that is most often false is the PRE-DRAFT ANCHOR, which `_fill_omitted_from_anchor`
+    installs for a position whose starter demand is used up and which by construction knows
+    nothing about what is left. Measured on a real round-14 board: WR's level was 216.25 while the
+    best receiver remaining projected 173.00 -- a 43.25-point fiction, which then priced both FLEX
+    slots and drove `displacement_adj` to exactly 0.00 on all 145 WR rows.
+
+    WHAT IT DOES NOT DO, and this is the whole reason this correction lives HERE rather than in
+    the displacement term. Capping the SLOT ALTERNATIVE instead (the other obvious site) prices
+    every row identically -- the level cancels between `bpa` and `displacement_adj` -- but it files
+    a UNIVERSAL correction in a TEAM-SPECIFIC column: it makes `displacement_adj` positive for a
+    single-position candidate, which inverts a registered invariant, and it pushes
+    `team_acquisition_value - universal_value` past the bound `pick_synthesis.TEAM_SPECIFIC_CAPS`
+    asserts, whose saturation constant has no re-derivation available (the lift is bounded by the
+    anchor's staleness, which has no supremum, and #56 forbids choosing a number). Capping the
+    ANCHOR keeps every price the same and keeps the invariant and the caps intact. Both forms were
+    measured over two seasons and 12 seats: identical rosters, pick for pick, at every seat.
+    See evidence/design_35/.
+
+    THE EXEMPTION IS DERIVED. A level may be capped only where it is a claim about a PLAYER. #30's
+    streaming floor is not: it is the season sum of each week's best WIRE option, larger than any
+    individual's season projection on purpose, because a manager streams. Capping it does not
+    correct a stale anchor, it REVERTS #30 -- measured on the 2024 opening board before a single
+    pick, DEF 146.05 -> 121.49 and K 164.50 -> 159.88, costing 53 to 54 points a seat and pulling
+    the first K/DST pick to round 6-7 at every seat.
+
+    The general rule, which is what to apply to any level added later: **exempt exactly those
+    levels that are ASSIGNED a value, never those SELECTED as a rank within the remaining pool.**
+    A rank selection cannot exceed the pool's own best; only an assignment can.
+
+    `startable_floors` therefore needs NO exemption and is deliberately not given one.
+    `replacement_levels`' floor branch counts the remaining players clearing the threshold and
+    returns `at_pos.iloc[rank - 1]` -- a remaining player's OWN points -- so `L(p) <= b(p)` always
+    and this function is a no-op there by construction, not by special case. Measured draining QB
+    on a 12T_ppr_SF board: the level held at 207.50 while the best remaining QB fell 372.46 ->
+    207.50, touching it exactly and never passing it, and one pick later the branch declined
+    entirely. `test_35_anchor_cap` pins that property so a future change to that branch fails a
+    test instead of silently mis-pricing.
+    """
+    if priced_pool is None or priced_pool.empty:
+        return set()
+    best = priced_pool.groupby("position")["_points"].max()
+    floors = streaming_floors or {}
+    capped = set()
+    for position, level in list(levels.items()):
+        if level is None or pd.isna(level):
+            continue
+        floor = floors.get(position)
+        if floor is not None and float(level) == float(floor):
+            continue          # an ASSIGNED level -- see the exemption above
+        bound = best.get(position)
+        if bound is None or pd.isna(bound) or float(bound) >= float(level):
+            continue
+        levels[position] = float(bound)
+        capped.add(position)
+    return capped
 
 
 def _fill_omitted_from_anchor(levels, present_positions, startable_floors, build_anchor):
@@ -3736,6 +3824,10 @@ def compute_draft_board(
     # (#216) reads the points levels after the branch, and a board with no projected rows has
     # none -- an empty dict, not an unbound name.
     point_replacement: dict[str, float] = {}
+    #: #35. Positions whose level was capped at the best player left, bound outside the branch for
+    #: the same reason point_replacement is: a board with no projected rows must reach the basis
+    #: stamping below with a real value rather than an unbound name.
+    _best_remaining_capped: set = set()
     # Bound before the branch for the same reason point_replacement is: a board with no
     # projected rows must reach the code below with a real value, not an unbound name.
     streaming_floors: Optional[dict[str, float]] = None
@@ -3759,6 +3851,14 @@ def compute_draft_board(
             point_replacement, set(proj_pool["position"].unique()), startable_floors,
             lambda: _anchor("_points", startable_floors, streaming_floors),
         )
+        # #35, AFTER the anchor fill and BEFORE `_vor`, and both halves of that matter. After,
+        # because the level most often worth capping is the one the anchor just installed; before,
+        # because `_vor` is the first thing that spends it. ONLY the points branch: the cap
+        # compares a level against a season-points bound, and the trade_value branch below prices
+        # on a 0-100 vendor scale where that comparison means nothing -- the same reasoning that
+        # keeps startable_floors and streaming_floors off that branch.
+        _best_remaining_capped |= cap_levels_at_best_remaining(
+            point_replacement, proj_pool, streaming_floors)
         pool.loc[has_proj, "_vor"] = proj_pool.apply(
             lambda r: (r["_points"] - point_replacement[r["position"]])
             if r["position"] in point_replacement else float("nan"),
@@ -3826,6 +3926,12 @@ def compute_draft_board(
     # league the ceiling is mostly the unit rather than the demand.
     if _anchored:
         pool.loc[pool["position"].isin(_anchored), "replacement_basis"] = REPLACEMENT_BASIS_PREDRAFT
+    # #35 BESIDE the basis, never over it. The first version overwrote `replacement_basis` with a
+    # "best_remaining" token and three tests caught it: `predraft_anchor` went UNREACHABLE on two
+    # real fixtures, because a position that gets the anchor is very nearly the same population
+    # whose anchor the pool has drained past. Which authority selected the level and whether it was
+    # then corrected are two different facts and both are true; one token can only carry one.
+    pool["replacement_level_capped"] = pool["position"].isin(_best_remaining_capped)
     # THE FLOOR IS NOT DEMAND (#185). replacement_levels' startable_floors branch counts how
     # many remaining players clear a projection threshold; it never reads `demand` at all (see
     # the `if floor is not None` arm). Every superflex QB row was nonetheless labelled

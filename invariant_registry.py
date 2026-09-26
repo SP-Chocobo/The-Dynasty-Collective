@@ -332,9 +332,18 @@ REGISTRY: tuple[Invariant, ...] = (
                    "`cannot_be_fielded`, the fieldability backstop's companion flag "
                    "(draft_room.unfieldable_last): a bool the board always computes, never "
                    "absent, so it widens the population without widening the claim -- and it is "
-                   "signed for here rather than absorbed by a --write, for the reason above.",
+                   "signed for here rather than absorbed by a --write, for the reason above. "
+                   "30 -> 31 with `replacement_level_capped` (#35), the anchor cap's companion "
+                   "flag (draft_room.cap_levels_at_best_remaining): also a bool the board always "
+                   "computes and never leaves absent, so it widens the population without "
+                   "widening the claim. It exists as a SEPARATE field rather than as a new "
+                   "`replacement_basis` token because the first attempt was a token and three "
+                   "tests caught it -- overwriting the basis made `predraft_anchor` unreachable, "
+                   "since a position that gets the anchor is very nearly the same population whose "
+                   "anchor the pool has drained past. Which authority selected a level and whether "
+                   "it was then corrected are two facts; one token carries one.",
         members=_board_emitted_columns,
-        census=30,
+        census=31,
         pinned_by=(
             "test_identity_provenance.ItReachesTheBoardInBothModesTests"
             ".test_no_emitted_value_on_the_board_is_a_nan",

@@ -14553,3 +14553,162 @@ cannot optimise toward, and the honest way to settle whether a round-5 defense c
 
 **STATUS: OPEN, BLOCKING. Nothing implemented.** The lead is a hypothesis with a derivation path,
 to be pre-registered before it is run.
+
+---
+
+## #35 CLOSED — THE DEFECT WAS A STALE ANCHOR, AND IT HAD TO BE FIXED ON `bpa`, NOT ON THE SLOT
+
+The finding is not "VOR misprices bench bodies". It is narrower and it is arithmetic: **a position
+whose starter demand is exhausted gets the PRE-DRAFT ANCHOR as its replacement level, and that
+anchor knows nothing about what is left.** Measured on a real round-14 board: WR's level was
+**216.25** while the best receiver remaining projected **173.00** — a 43.25-point fiction, which
+then priced both FLEX slots and drove `displacement_adj` to exactly **0.00 on all 145 WR rows**.
+
+**SHIPPED:** `draft_room.cap_levels_at_best_remaining`, applied to the points levels after
+`_fill_omitted_from_anchor` and before `_vor`. No position's level may exceed the best player
+actually left at it. Disclosed by a new board column, **`replacement_level_capped`**, on both
+serializations — `replacement_basis` keeps answering only "which authority SELECTED this level",
+and the correction travels beside it. Board-column census signed **30 → 31** in
+`invariant_registry`.
+
+### Two sites price identically; only one is admissible
+
+| | caps the SLOT ALTERNATIVE (C) | caps `bpa`'s ANCHOR (C′, shipped) |
+|---|---|---|
+| `team_acquisition_value` | — | **algebraically identical**; the level cancels between `bpa` and `displacement_adj` |
+| measured board prices | — | `max ǀTAV(C′) − TAV(C)ǀ` = **0.00** over 388 rows, and over 1034 rows in balanced mode |
+| `displacement_adj <= 0` for a single-position row | **INVERTED** — 8,500 rows lifted, 144 at one state | **holds verbatim** |
+| `TEAM_SPECIFIC_CAPS`' exemption | **REFUTED**; the lift is bounded by anchor staleness, which has **no supremum** (43.25 here, 142.68 for TE at the last pick of a 26-round startup), so no constant can be derived and `#56` forbids choosing one | **intact**; `rival_premium` moves DOWN, and 0 rows exceed the 24.0 saturation |
+
+So C and C′ draft the same board and differ only in which column carries the correction — and the
+correction is **roster-independent** (it is the pool's staleness, identical on every seat's board),
+so a team-specific column is the wrong home for it. That is the whole ruling.
+
+### Measured on realized outcomes, 12 seats, two seasons, `12T_ppr_K_DEF`
+
+| arm | 2024 wins/mean | 2023 wins/mean | paired vs control |
+|---|---|---|---|
+| control (shipped before this) | 11/12, +82.89 | 4/12, −49.91 | — |
+| C as specified | 9/12, +45.76 | 2/12, −55.78 | −31.6 / −10.3 per seat |
+| **C′ (shipped)** | **10/12, +97.74** | **4/12, +1.00** | **+21.7 / +43.69 per seat** |
+
+C and C′ produced **identical rosters, pick for pick, at all 12 seats on both seasons**, with the
+anchor cap firing 1,461 and 1,392 times. The upside-mode divergence is real in the scores
+(`bpa′ − bpa` = +13.33 for QB, 0.00 elsewhere) and **moved no pick in 384 picks**: it is a
+per-position CONSTANT, so it reorders positions against each other but never rows within a
+position.
+
+### The exemption is DERIVED, and capping without it REVERTS `#30`
+
+C as specified caps `#30`'s streaming floors **from the opening board, before a single pick**:
+DEF 146.05 → 121.49, K 164.50 → 159.88. Cost: **53–54 points a seat**, with first-K/DST placement
+collapsing from a seat-varying 8–12 to a uniform 6–7. A streaming floor is the season sum of each
+week's best WIRE option and exceeds any individual's projection on purpose.
+
+**The general rule:** exempt exactly those levels that are **ASSIGNED** a value, never those
+**SELECTED** as a rank within the remaining pool. A rank selection cannot exceed the pool's own
+best; only an assignment can. Today `streaming_floors` is the only assigned level.
+
+### What this RULES OUT, so nobody re-runs it
+
+- **The fieldability ceiling is not replaceable by pricing.** Removing it while keeping C′ costs
+  **−103.5/seat on 2023 (0 of 12 seats improved)** and **−28.3/seat on 2024**, and hoards past the
+  ceiling at **12 of 12 seats on both** — kickers in 2023, defenses in 2024. `#30`'s floor had
+  already failed the same test. Two pricing changes, both relocating the hoard rather than removing
+  it.
+- **`startable_floors` needs no exemption** and was given none. That branch returns
+  `at_pos.iloc[rank - 1]` — a remaining player's own points — so `L(p) <= b(p)` always. Measured
+  draining QB on `12T_ppr_SF`: the level held at 207.50 while the best remaining QB fell
+  372.46 → 207.50, touching it exactly and never passing it.
+- **`universal_value`'s consumers.** Five are exactly unaffected (within-position ranking, forfeit
+  curve STEPS, `replacement_level_surplus` which cancels to `+0.0000`, the pre-draft battery ruler
+  at `0.0`, and `draft_counterfactual`'s BPA argmax). Three move: `rival_premium` DOWN by
+  `stale(p)`, `accumulated_value` by +599.85 on one board (= 45 QB rows × 13.33 exactly), and
+  `expected_value_of_waiting` by `stale(p) × survival`.
+
+### NOT fixed, and which kind of not-fixed
+
+- **`pure_value` is untested on a shifted row.** It is exercised (it fires at 360-drafted,
+  identically in both arms) but at 168, 240, 360 and 480 drafted **no QB reached the top 20 being
+  compared**, so the exposure — a shifted row becoming the field's `best_uv` — was never touched.
+  Structurally it should be small: the shift exists only at a DRAINED position, and there the best
+  remaining player's `uv` is exactly 0.00 because he IS the replacement. **Owner ruled to ship with
+  this documented rather than manufacture a stronger claim.**
+- **`#29`** (VDS battery, stopped at 13/36) is separate and does not gate this. **`#30`**'s
+  live-sync verification remains blocked by the environment's network policy on `api.sleeper.app`.
+
+### CORRECTIONS, in full
+
+1. **My derivation of the `startable_floors` exemption was wrong.** I wrote that it was exempt
+   because "a startability threshold is not a pool reading". That is true of the THRESHOLD and
+   false of the LEVEL, which is a remaining player's own points. The conclusion survives; the
+   reason was wrong and the true reason is stronger — the cap is a no-op there by construction, so
+   no exemption is needed at all. `test_35_anchor_cap` pins the property.
+2. **I named four `universal_value` consumers; the list was wrong in composition.**
+   `pick_synthesis`' context elevation is not a consumer — it was retired with its flag at `#25`.
+   Two were missing: `draft_strategy`'s positional-forfeit curves and `draft_battery`'s pre-draft
+   reference ruler.
+3. **An instrument defect was found and was INERT, and the explanation is the point.** The
+   experiment's pool recorder refreshed only when the drafted set was non-empty, or while the
+   holder was unset, and the holder was reset once per ARM rather than once per draft. All eight
+   arms were re-run on the fixed instrument: identical wins, identical means, `max ǀseat deltaǀ`
+   0.0, **0 of 12 rosters differing**, and every `cap_stats` counter identical to the last decimal.
+   Why it was inert, preserved verbatim because it is what makes "everything reproduced" a causal
+   explanation rather than a regression-test coincidence:
+
+   > **Only the engine seat builds a board.** `run_smoke_seats.draft` calls
+   > `pick_synthesis.build_snapshot` for the engine's turns and settles every other chair with a
+   > heuristic over `points` — no board. So within one draft, boards exist only at the engine's
+   > turns, and for seat *s* the engine's first turn already has *s − 1* picks behind it. The only
+   > draft whose first board sees an empty pick list is **seat 1's**, and that is also the only
+   > moment the holder is freshly reset (once per arm).
+   >
+   > So the stale-holder path was never taken in an arm. It was taken in my probe, which built a
+   > **drained** board and then an **opening** board in one process — a sequence a real draft
+   > cannot produce, which is why the defect hid behind eight reproducing arms and surfaced only
+   > against a prediction.
+
+4. **I pushed a failing tree once during this work.** `84c1af2` went out on 87 targeted tests and
+   the full suite then failed on `test_assertion_floors`, which flagged a test-method RENAME as a
+   deletion. Fixed forward. The rule stands: a subset never licenses a push.
+5. **My first disclosure of the cap was wrong, and the SUITE caught it — not a targeted run.** I
+   added a `replacement_basis` token, `best_remaining`, and OVERWROTE the basis on capped
+   positions. Three tests failed:
+
+   ```
+   test_decision_qualifiers.ReplacementBasisReachesItsConsumersTests
+       .test_both_states_are_reachable_through_the_snapshot_layer
+       -> 'predraft_anchor' not found in {'best_remaining', 'live_starter_demand'}
+   test_replacement_anchor_boundary.ExhaustedDemandKeepsItsPrice
+       .test_every_row_records_which_anchor_its_price_rests_on
+       -> {'best_remaining', 'live_starter_demand'}
+   test_replacement_basis_vocabulary.TheVocabularyHasOneHomeTests
+       .test_every_token_the_engine_can_emit_has_words
+   ```
+
+   **`predraft_anchor` had become UNREACHABLE**, and that is not a fixture artifact: a position
+   that gets the anchor is one whose starter demand is exhausted, which is very nearly the same
+   population whose anchor the pool has drained past — so the overwrite retired the token in
+   practice. Two facts are true of a capped anchor row (which authority selected the level, and
+   whether it was then corrected) and one token carries one. Replaced with a separate field, which
+   is the same split `#112` made for `absence_kind`. The withdrawn token is recorded at the
+   vocabulary's own site so the next person does not re-try it.
+
+   Worth noting while reading either column list: **`BALANCED_BOARD_COLUMNS` and
+   `UPSIDE_BOARD_COLUMNS` are inverted relative to the branches that use them** — the upside branch
+   returns `BALANCED_BOARD_COLUMNS` and the balanced path returns `UPSIDE_BOARD_COLUMNS`. That is
+   pre-existing, was not touched here, and is exactly why the rule is "on BOTH serializations"
+   rather than "on the one this change affects".
+
+### Evidence
+
+`evidence/design_35/` — `RESULT_C.md`, `RESULT_CEILING.md`, `RESULT_CPRIME.md`,
+`RESULT_UV_CONSUMERS.md`, `SYNTHESIS.md`, both pre-registrations and their amendment, every arm
+report under `runs/`, `runs_cprime/` and `runs_fixed/`. Derivations:
+`evidence/DESIGN_35_CAPS_REDERIVATION.md`, `evidence/DESIGN_35_FABLE_CONTEMPLATION.md`.
+
+Tests: `test_35_anchor_cap.py`, 16 tests. Mutation-checked **6 / 1 / 9 / 2** against four mutants
+(cap removed, streaming-floor exemption removed, cap raises instead of lowers, companion flag never
+stamped), restore green. The non-vacuity test earned its keep twice: it caught an integration
+fixture that drained the board's TOP rather than a position's DEMAND, so no anchor ever went stale
+and the cap correctly did nothing.

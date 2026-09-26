@@ -619,6 +619,72 @@
         }
       }
     },
+    "test_35_anchor_cap.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 18,
+        "assertIn": 3,
+        "assertIs": 1,
+        "assertIsNone": 1,
+        "assertLessEqual": 3,
+        "assertTrue": 6
+      },
+      "by_method": {
+        "test_a_capped_row_SAYS_SO_BESIDE_its_basis_rather_than_instead_of_it": {
+          "assertIn": 1,
+          "assertIs": 1,
+          "assertTrue": 3
+        },
+        "test_a_level_above_the_best_remaining_is_pulled_down_to_him": {
+          "assertEqual": 2
+        },
+        "test_a_level_at_or_below_the_best_remaining_is_untouched": {
+          "assertEqual": 2
+        },
+        "test_a_level_that_IS_the_floor_is_left_alone": {
+          "assertEqual": 2
+        },
+        "test_a_position_with_nothing_left_keeps_its_level": {
+          "assertEqual": 2
+        },
+        "test_an_absent_level_is_not_invented": {
+          "assertEqual": 1,
+          "assertIsNone": 1,
+          "assertTrue": 1
+        },
+        "test_an_empty_pool_caps_nothing_rather_than_capping_everything": {
+          "assertEqual": 3
+        },
+        "test_and_so_the_cap_is_a_no_op_on_such_a_level": {
+          "assertEqual": 2
+        },
+        "test_displacement_adj_is_STILL_non_positive_for_a_single_position_row": {
+          "assertEqual": 1
+        },
+        "test_it_never_RAISES_a_level": {
+          "assertLessEqual": 1
+        },
+        "test_no_floors_at_all_is_not_read_as_every_level_being_a_floor": {
+          "assertEqual": 1
+        },
+        "test_no_priced_level_exceeds_the_best_remaining_player_at_its_position": {
+          "assertLessEqual": 1,
+          "assertTrue": 1
+        },
+        "test_the_exemption_is_NARROW_and_does_not_shelter_the_position_generally": {
+          "assertEqual": 2
+        },
+        "test_the_flag_reaches_BOTH_serializations": {
+          "assertIn": 2
+        },
+        "test_the_level_never_exceeds_the_best_remaining_player": {
+          "assertLessEqual": 1
+        },
+        "test_the_population_is_not_vacuous": {
+          "assertTrue": 1
+        }
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {
