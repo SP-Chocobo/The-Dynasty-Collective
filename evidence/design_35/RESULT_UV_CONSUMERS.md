@@ -105,3 +105,50 @@ why the defect hid behind eight reproducing arms and surfaced only against a pre
 **Nothing published from these arms changes.** The defect was real, the fix is right, and the honest
 result is that it cost nothing — established by re-running rather than by arguing that eleven boards
 sound small.
+
+---
+
+# `pure_value` closed — the exposure is structurally out of reach, and here is why
+
+This was the last claim in `#35` marked untested: `pure_value` had been exercised but never on a row
+whose position's level was capped, so "a capped row becomes the field's `best_uv` when it was not" was
+never touched. Measured on the SHIPPED cap (`cap_levels_at_best_remaining` toggled against itself in
+one process), 2024 `12T_ppr_K_DEF`, eight drain depths:
+
+| drafted | capped | best `uv` AT a capped position | best `uv` at an UNCAPPED position | `pure_value` on/off | differs |
+|---:|---|---:|---:|---|---|
+| 120 | QB | −0.12 | +126.62 | 0 / 0 | no |
+| 168 | QB | −0.14 | +123.84 | 0 / 0 | no |
+| 240 | QB | 0.00 | +124.65 | 0 / 0 | no |
+| 300 | QB | 0.00 | +116.96 | **1 / 1** | no |
+| 360 | QB | 0.00 | +99.92 | **1 / 1** | no |
+| 420 | QB | 0.00 | +42.89 | **1 / 1** | no |
+| 480 | QB | 0.00 | +105.92 | 0 / 0 | no |
+| 540 | QB | 0.00 | +105.89 | 0 / 0 | no |
+
+**0 of 8 states differ**, and the flag is NOT vacuous — it fires at three of them.
+
+## Why it cannot reach the flag, which is the part worth keeping
+
+The cap sets a position's level to its own best remaining player's points. So **that player's `bpa`
+becomes exactly 0** — he *is* the bound. Meanwhile an UNCAPPED position's level is a deeper rank than
+its own best, so its best player's `bpa` is strictly positive. And a position whose best had NEGATIVE
+`bpa` is precisely a position whose level exceeded its best, which is the capping condition — so
+capping pushes every position's best to `bpa >= 0` and leaves the field maximum at an uncapped
+position.
+
+Measured, that is not a narrow margin: **0.00 against +42.89 to +126.62**, two orders of magnitude,
+at every depth. For a capped row to hold `best_uv` at all, **every** position would have to be capped
+simultaneously, which did not occur at any depth from 120 to 540 drafted.
+
+The small negatives at 120 and 168 are not noise and are worth naming: `universal_value` is
+`bpa + time_horizon_adj + risk_adj`, so a capped row sits at ~0 rather than exactly 0 — in a dynasty
+league the time-horizon term moves it a fraction either way.
+
+## What is still not claimed
+
+That all-positions-capped is impossible. It was not observed across eight depths on this format, and
+the argument above says the field maximum sits at an uncapped position whenever one exists — but a
+format or a drain state where every position is capped at once has not been constructed. The exposure
+is **out of reach on the measured states with a two-order-of-magnitude margin**, which is a stronger
+statement than the null result this started as and a weaker one than a proof.
