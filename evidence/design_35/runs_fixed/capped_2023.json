@@ -1,0 +1,2896 @@
+{
+  "_comment": "Engine vs a field of sane styles, drafted on a FINISHED season's projections and scored on that season's REALIZED weekly outcomes. The first grade in this repository the engine cannot optimise toward. No waivers, oracle weekly lineup -- see run_backtest_grade.py.",
+  "results": [
+    {
+      "distinct_engine_rosters": 12,
+      "draftable_universe": 6462,
+      "dropped_not_projected_this_season": 133,
+      "duplicate_seats": [],
+      "horizon": "dynasty",
+      "kdst_slots": [
+        "K",
+        "DEF"
+      ],
+      "label": "12T_ppr_K_DEF",
+      "mean_delta": -55.78,
+      "mean_delta_distinct": -55.78,
+      "median_delta": -61.19,
+      "median_delta_distinct": -61.19,
+      "pool": 570,
+      "pool_before_anachronism_guard": 703,
+      "rounds": 16,
+      "rows": [
+        {
+          "best_field_roster": [
+            {
+              "player": "CeeDee Lamb",
+              "position": "WR",
+              "projected": 349.5,
+              "realized": 423.2,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected": 248.3,
+              "realized": 311.5,
+              "round": 3
+            },
+            {
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected": 238.0,
+              "realized": 242.1,
+              "round": 4
+            },
+            {
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected": 214.0,
+              "realized": 179.2,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "James Conner",
+              "position": "RB",
+              "projected": 179.4,
+              "realized": 204.5,
+              "round": 7
+            },
+            {
+              "player": "Cole Kmet",
+              "position": "TE",
+              "projected": 161.3,
+              "realized": 190.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Moody",
+              "position": "K",
+              "projected": 139.7,
+              "realized": 126.0,
+              "round": 9
+            },
+            {
+              "player": "Pittsburgh Steelers",
+              "position": "DEF",
+              "projected": 124.5,
+              "realized": 161.0,
+              "round": 10
+            },
+            {
+              "player": "Joe Burrow",
+              "position": "QB",
+              "projected": 227.0,
+              "realized": 176.6,
+              "round": 11
+            },
+            {
+              "player": "Ezekiel Elliott",
+              "position": "RB",
+              "projected": 165.3,
+              "realized": 175.5,
+              "round": 12
+            },
+            {
+              "player": "Kenny Pickett",
+              "position": "QB",
+              "projected": 145.0,
+              "realized": 123.3,
+              "round": 13
+            },
+            {
+              "player": "Zack Moss",
+              "position": "RB",
+              "projected": 135.9,
+              "realized": 180.6,
+              "round": 14
+            },
+            {
+              "player": "Tank Dell",
+              "position": "WR",
+              "projected": 127.8,
+              "realized": 183.0,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "9",
+          "delta": -59.26,
+          "engine_first_kdst_round": 6,
+          "engine_never_started": 0,
+          "engine_realized": 2673.92,
+          "engine_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Austin Ekeler",
+              "position": "RB",
+              "projected": 259.1,
+              "realized": 189.4,
+              "round": 2
+            },
+            {
+              "player": "T.J. Hockenson",
+              "position": "TE",
+              "projected": 219.4,
+              "realized": 220.0,
+              "round": 3
+            },
+            {
+              "player": "Tyler Lockett",
+              "position": "WR",
+              "projected": 225.4,
+              "realized": 205.4,
+              "round": 4
+            },
+            {
+              "player": "Justin Jefferson",
+              "position": "WR",
+              "projected": 223.3,
+              "realized": 215.2,
+              "round": 5
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 6
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 7
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 8
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 9
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 10
+            },
+            {
+              "player": "Elijah Moore",
+              "position": "WR",
+              "projected": 170.3,
+              "realized": 137.1,
+              "round": 11
+            },
+            {
+              "player": "Curtis Samuel",
+              "position": "WR",
+              "projected": 156.3,
+              "realized": 160.2,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Brandon McManus",
+              "position": "K",
+              "projected": 131.2,
+              "realized": 139.0,
+              "round": 14
+            },
+            {
+              "player": "Michael Thomas",
+              "position": "WR",
+              "projected": 131.1,
+              "realized": 90.8,
+              "round": 15
+            },
+            {
+              "player": "Darius Slayton",
+              "position": "WR",
+              "projected": 116.8,
+              "realized": 176.0,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2733.18,
+          "seat": "1",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "CeeDee Lamb",
+              "position": "WR",
+              "projected": 349.5,
+              "realized": 423.2,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected": 248.3,
+              "realized": 311.5,
+              "round": 3
+            },
+            {
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected": 238.0,
+              "realized": 242.1,
+              "round": 4
+            },
+            {
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected": 214.0,
+              "realized": 179.2,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "Jahan Dotson",
+              "position": "WR",
+              "projected": 179.0,
+              "realized": 124.8,
+              "round": 7
+            },
+            {
+              "player": "Cole Kmet",
+              "position": "TE",
+              "projected": 161.3,
+              "realized": 190.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Moody",
+              "position": "K",
+              "projected": 139.7,
+              "realized": 126.0,
+              "round": 9
+            },
+            {
+              "player": "Pittsburgh Steelers",
+              "position": "DEF",
+              "projected": 124.5,
+              "realized": 161.0,
+              "round": 10
+            },
+            {
+              "player": "Joe Burrow",
+              "position": "QB",
+              "projected": 227.0,
+              "realized": 176.6,
+              "round": 11
+            },
+            {
+              "player": "Jayden Reed",
+              "position": "WR",
+              "projected": 165.9,
+              "realized": 227.2,
+              "round": 12
+            },
+            {
+              "player": "Mac Jones",
+              "position": "QB",
+              "projected": 145.9,
+              "realized": 98.8,
+              "round": 13
+            },
+            {
+              "player": "Zack Moss",
+              "position": "RB",
+              "projected": 135.9,
+              "realized": 180.6,
+              "round": 14
+            },
+            {
+              "player": "Tank Dell",
+              "position": "WR",
+              "projected": 127.8,
+              "realized": 183.0,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "9",
+          "delta": -131.99,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2599.22,
+          "engine_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Austin Ekeler",
+              "position": "RB",
+              "projected": 259.1,
+              "realized": 189.4,
+              "round": 2
+            },
+            {
+              "player": "T.J. Hockenson",
+              "position": "TE",
+              "projected": 219.4,
+              "realized": 220.0,
+              "round": 3
+            },
+            {
+              "player": "Tyler Lockett",
+              "position": "WR",
+              "projected": 225.4,
+              "realized": 205.4,
+              "round": 4
+            },
+            {
+              "player": "Justin Jefferson",
+              "position": "WR",
+              "projected": 223.3,
+              "realized": 215.2,
+              "round": 5
+            },
+            {
+              "player": "Tyler Boyd",
+              "position": "WR",
+              "projected": 188.3,
+              "realized": 151.8,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 10
+            },
+            {
+              "player": "Elijah Moore",
+              "position": "WR",
+              "projected": 170.3,
+              "realized": 137.1,
+              "round": 11
+            },
+            {
+              "player": "Curtis Samuel",
+              "position": "WR",
+              "projected": 156.3,
+              "realized": 160.2,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Brandon McManus",
+              "position": "K",
+              "projected": 131.2,
+              "realized": 139.0,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "Roschon Johnson",
+              "position": "RB",
+              "projected": 119.9,
+              "realized": 103.1,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2731.21,
+          "seat": "2",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "CeeDee Lamb",
+              "position": "WR",
+              "projected": 349.5,
+              "realized": 423.2,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected": 248.3,
+              "realized": 311.5,
+              "round": 3
+            },
+            {
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected": 238.0,
+              "realized": 242.1,
+              "round": 4
+            },
+            {
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected": 214.0,
+              "realized": 179.2,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "Jahan Dotson",
+              "position": "WR",
+              "projected": 179.0,
+              "realized": 124.8,
+              "round": 7
+            },
+            {
+              "player": "Cole Kmet",
+              "position": "TE",
+              "projected": 161.3,
+              "realized": 190.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Moody",
+              "position": "K",
+              "projected": 139.7,
+              "realized": 126.0,
+              "round": 9
+            },
+            {
+              "player": "Pittsburgh Steelers",
+              "position": "DEF",
+              "projected": 124.5,
+              "realized": 161.0,
+              "round": 10
+            },
+            {
+              "player": "Joe Burrow",
+              "position": "QB",
+              "projected": 227.0,
+              "realized": 176.6,
+              "round": 11
+            },
+            {
+              "player": "Ezekiel Elliott",
+              "position": "RB",
+              "projected": 165.3,
+              "realized": 175.5,
+              "round": 12
+            },
+            {
+              "player": "Kenny Pickett",
+              "position": "QB",
+              "projected": 145.0,
+              "realized": 123.3,
+              "round": 13
+            },
+            {
+              "player": "Zack Moss",
+              "position": "RB",
+              "projected": 135.9,
+              "realized": 180.6,
+              "round": 14
+            },
+            {
+              "player": "Tank Dell",
+              "position": "WR",
+              "projected": 127.8,
+              "realized": 183.0,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "9",
+          "delta": -34.56,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2688.12,
+          "engine_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Travis Etienne",
+              "position": "RB",
+              "projected": 269.5,
+              "realized": 300.4,
+              "round": 2
+            },
+            {
+              "player": "T.J. Hockenson",
+              "position": "TE",
+              "projected": 219.4,
+              "realized": 220.0,
+              "round": 3
+            },
+            {
+              "player": "Jaylen Waddle",
+              "position": "WR",
+              "projected": 229.3,
+              "realized": 212.6,
+              "round": 4
+            },
+            {
+              "player": "Justin Jefferson",
+              "position": "WR",
+              "projected": 223.3,
+              "realized": 215.2,
+              "round": 5
+            },
+            {
+              "player": "Tyler Boyd",
+              "position": "WR",
+              "projected": 188.3,
+              "realized": 151.8,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 10
+            },
+            {
+              "player": "Elijah Moore",
+              "position": "WR",
+              "projected": 170.3,
+              "realized": 137.1,
+              "round": 11
+            },
+            {
+              "player": "Curtis Samuel",
+              "position": "WR",
+              "projected": 156.3,
+              "realized": 160.2,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Wil Lutz",
+              "position": "K",
+              "projected": 132.1,
+              "realized": 123.0,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "Tyler Higbee",
+              "position": "TE",
+              "projected": 120.3,
+              "realized": 110.5,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2722.68,
+          "seat": "3",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "CeeDee Lamb",
+              "position": "WR",
+              "projected": 349.5,
+              "realized": 423.2,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected": 248.3,
+              "realized": 311.5,
+              "round": 3
+            },
+            {
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected": 238.0,
+              "realized": 242.1,
+              "round": 4
+            },
+            {
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected": 214.0,
+              "realized": 179.2,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "Jahan Dotson",
+              "position": "WR",
+              "projected": 179.0,
+              "realized": 124.8,
+              "round": 7
+            },
+            {
+              "player": "Cole Kmet",
+              "position": "TE",
+              "projected": 161.3,
+              "realized": 190.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Moody",
+              "position": "K",
+              "projected": 139.7,
+              "realized": 126.0,
+              "round": 9
+            },
+            {
+              "player": "Pittsburgh Steelers",
+              "position": "DEF",
+              "projected": 124.5,
+              "realized": 161.0,
+              "round": 10
+            },
+            {
+              "player": "Joe Burrow",
+              "position": "QB",
+              "projected": 227.0,
+              "realized": 176.6,
+              "round": 11
+            },
+            {
+              "player": "Jayden Reed",
+              "position": "WR",
+              "projected": 165.9,
+              "realized": 227.2,
+              "round": 12
+            },
+            {
+              "player": "Kenny Pickett",
+              "position": "QB",
+              "projected": 145.0,
+              "realized": 123.3,
+              "round": 13
+            },
+            {
+              "player": "Zack Moss",
+              "position": "RB",
+              "projected": 135.9,
+              "realized": 180.6,
+              "round": 14
+            },
+            {
+              "player": "Tank Dell",
+              "position": "WR",
+              "projected": 127.8,
+              "realized": 183.0,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "9",
+          "delta": 6.89,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2727.42,
+          "engine_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Tony Pollard",
+              "position": "RB",
+              "projected": 278.5,
+              "realized": 225.6,
+              "round": 2
+            },
+            {
+              "player": "T.J. Hockenson",
+              "position": "TE",
+              "projected": 219.4,
+              "realized": 220.0,
+              "round": 3
+            },
+            {
+              "player": "Jaylen Waddle",
+              "position": "WR",
+              "projected": 229.3,
+              "realized": 212.6,
+              "round": 4
+            },
+            {
+              "player": "Adam Thielen",
+              "position": "WR",
+              "projected": 219.0,
+              "realized": 231.0,
+              "round": 5
+            },
+            {
+              "player": "Gabe Davis",
+              "position": "WR",
+              "projected": 192.6,
+              "realized": 176.4,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Brian Robinson",
+              "position": "RB",
+              "projected": 160.5,
+              "realized": 210.1,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Wil Lutz",
+              "position": "K",
+              "projected": 132.1,
+              "realized": 123.0,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "Tyler Conklin",
+              "position": "TE",
+              "projected": 120.5,
+              "realized": 123.1,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2720.53,
+          "seat": "4",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Tyreek Hill",
+              "position": "WR",
+              "projected": 357.0,
+              "realized": 438.4,
+              "round": 1
+            },
+            {
+              "player": "Justin Herbert",
+              "position": "QB",
+              "projected": 301.4,
+              "realized": 262.9,
+              "round": 2
+            },
+            {
+              "player": "DeVonta Smith",
+              "position": "WR",
+              "projected": 249.6,
+              "realized": 243.6,
+              "round": 3
+            },
+            {
+              "player": "Alvin Kamara",
+              "position": "RB",
+              "projected": 235.3,
+              "realized": 234.0,
+              "round": 4
+            },
+            {
+              "player": "Evan Engram",
+              "position": "TE",
+              "projected": 215.9,
+              "realized": 233.3,
+              "round": 5
+            },
+            {
+              "player": "George Pickens",
+              "position": "WR",
+              "projected": 204.9,
+              "realized": 247.8,
+              "round": 6
+            },
+            {
+              "player": "Jaxon Smith-Njigba",
+              "position": "WR",
+              "projected": 182.1,
+              "realized": 151.8,
+              "round": 7
+            },
+            {
+              "player": "Jerome Ford",
+              "position": "RB",
+              "projected": 167.8,
+              "realized": 230.2,
+              "round": 8
+            },
+            {
+              "player": "Jake Elliott",
+              "position": "K",
+              "projected": 145.0,
+              "realized": 153.0,
+              "round": 9
+            },
+            {
+              "player": "Miami Dolphins",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 165.0,
+              "round": 10
+            },
+            {
+              "player": "Baker Mayfield",
+              "position": "QB",
+              "projected": 240.5,
+              "realized": 347.5,
+              "round": 11
+            },
+            {
+              "player": "Jayden Reed",
+              "position": "WR",
+              "projected": 165.9,
+              "realized": 227.2,
+              "round": 12
+            },
+            {
+              "player": "Gus Edwards",
+              "position": "RB",
+              "projected": 148.9,
+              "realized": 194.0,
+              "round": 13
+            },
+            {
+              "player": "Wan'Dale Robinson",
+              "position": "WR",
+              "projected": 135.0,
+              "realized": 133.2,
+              "round": 14
+            },
+            {
+              "player": "Tyler Allgeier",
+              "position": "RB",
+              "projected": 129.8,
+              "realized": 149.6,
+              "round": 15
+            },
+            {
+              "player": "Dameon Pierce",
+              "position": "RB",
+              "projected": 122.1,
+              "realized": 82.7,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "7",
+          "delta": -63.12,
+          "engine_first_kdst_round": 8,
+          "engine_never_started": 0,
+          "engine_realized": 2657.12,
+          "engine_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "T.J. Hockenson",
+              "position": "TE",
+              "projected": 219.4,
+              "realized": 220.0,
+              "round": 3
+            },
+            {
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected": 233.0,
+              "realized": 177.4,
+              "round": 4
+            },
+            {
+              "player": "Adam Thielen",
+              "position": "WR",
+              "projected": 219.0,
+              "realized": 231.0,
+              "round": 5
+            },
+            {
+              "player": "Sam LaPorta",
+              "position": "TE",
+              "projected": 199.5,
+              "realized": 254.3,
+              "round": 6
+            },
+            {
+              "player": "Marquise Brown",
+              "position": "WR",
+              "projected": 185.5,
+              "realized": 139.7,
+              "round": 7
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 8
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 9
+            },
+            {
+              "player": "New Orleans Saints",
+              "position": "DEF",
+              "projected": 122.8,
+              "realized": 151.0,
+              "round": 10
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 11
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 12
+            },
+            {
+              "player": "K.J. Osborn",
+              "position": "WR",
+              "projected": 150.8,
+              "realized": 127.0,
+              "round": 13
+            },
+            {
+              "player": "Tutu Atwell",
+              "position": "WR",
+              "projected": 132.8,
+              "realized": 120.4,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "DJ Chark",
+              "position": "WR",
+              "projected": 120.9,
+              "realized": 127.5,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2720.24,
+          "seat": "5",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "CeeDee Lamb",
+              "position": "WR",
+              "projected": 349.5,
+              "realized": 423.2,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected": 248.3,
+              "realized": 311.5,
+              "round": 3
+            },
+            {
+              "player": "Chris Godwin",
+              "position": "WR",
+              "projected": 235.4,
+              "realized": 222.2,
+              "round": 4
+            },
+            {
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected": 214.0,
+              "realized": 179.2,
+              "round": 5
+            },
+            {
+              "player": "George Pickens",
+              "position": "WR",
+              "projected": 204.9,
+              "realized": 247.8,
+              "round": 6
+            },
+            {
+              "player": "David Montgomery",
+              "position": "RB",
+              "projected": 175.8,
+              "realized": 224.2,
+              "round": 7
+            },
+            {
+              "player": "Cole Kmet",
+              "position": "TE",
+              "projected": 161.3,
+              "realized": 190.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Moody",
+              "position": "K",
+              "projected": 139.7,
+              "realized": 126.0,
+              "round": 9
+            },
+            {
+              "player": "Pittsburgh Steelers",
+              "position": "DEF",
+              "projected": 124.5,
+              "realized": 161.0,
+              "round": 10
+            },
+            {
+              "player": "Joe Burrow",
+              "position": "QB",
+              "projected": 227.0,
+              "realized": 176.6,
+              "round": 11
+            },
+            {
+              "player": "Christian Kirk",
+              "position": "WR",
+              "projected": 167.2,
+              "realized": 165.4,
+              "round": 12
+            },
+            {
+              "player": "Rashid Shaheed",
+              "position": "WR",
+              "projected": 146.3,
+              "realized": 186.6,
+              "round": 13
+            },
+            {
+              "player": "Zack Moss",
+              "position": "RB",
+              "projected": 135.9,
+              "realized": 180.6,
+              "round": 14
+            },
+            {
+              "player": "Tank Dell",
+              "position": "WR",
+              "projected": 127.8,
+              "realized": 183.0,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "9",
+          "delta": 81.93,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2792.72,
+          "engine_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 2
+            },
+            {
+              "player": "Joe Mixon",
+              "position": "RB",
+              "projected": 247.9,
+              "realized": 273.0,
+              "round": 3
+            },
+            {
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected": 233.0,
+              "realized": 177.4,
+              "round": 4
+            },
+            {
+              "player": "Adam Thielen",
+              "position": "WR",
+              "projected": 219.0,
+              "realized": 231.0,
+              "round": 5
+            },
+            {
+              "player": "Sam LaPorta",
+              "position": "TE",
+              "projected": 199.5,
+              "realized": 254.3,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Diontae Johnson",
+              "position": "WR",
+              "projected": 163.0,
+              "realized": 164.7,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "DJ Chark",
+              "position": "WR",
+              "projected": 120.9,
+              "realized": 127.5,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2710.79,
+          "seat": "6",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Tyreek Hill",
+              "position": "WR",
+              "projected": 357.0,
+              "realized": 438.4,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Calvin Ridley",
+              "position": "WR",
+              "projected": 248.7,
+              "realized": 241.9,
+              "round": 3
+            },
+            {
+              "player": "Alvin Kamara",
+              "position": "RB",
+              "projected": 235.3,
+              "realized": 234.0,
+              "round": 4
+            },
+            {
+              "player": "Evan Engram",
+              "position": "TE",
+              "projected": 215.9,
+              "realized": 233.3,
+              "round": 5
+            },
+            {
+              "player": "Raheem Mostert",
+              "position": "RB",
+              "projected": 202.7,
+              "realized": 278.7,
+              "round": 6
+            },
+            {
+              "player": "James Conner",
+              "position": "RB",
+              "projected": 179.4,
+              "realized": 204.5,
+              "round": 7
+            },
+            {
+              "player": "Jahan Dotson",
+              "position": "WR",
+              "projected": 179.0,
+              "realized": 124.8,
+              "round": 8
+            },
+            {
+              "player": "Younghoe Koo",
+              "position": "K",
+              "projected": 140.9,
+              "realized": 132.0,
+              "round": 9
+            },
+            {
+              "player": "Miami Dolphins",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 165.0,
+              "round": 10
+            },
+            {
+              "player": "Justin Fields",
+              "position": "QB",
+              "projected": 233.1,
+              "realized": 201.9,
+              "round": 11
+            },
+            {
+              "player": "Jayden Reed",
+              "position": "WR",
+              "projected": 165.9,
+              "realized": 227.2,
+              "round": 12
+            },
+            {
+              "player": "Rashid Shaheed",
+              "position": "WR",
+              "projected": 146.3,
+              "realized": 186.6,
+              "round": 13
+            },
+            {
+              "player": "Wan'Dale Robinson",
+              "position": "WR",
+              "projected": 135.0,
+              "realized": 133.2,
+              "round": 14
+            },
+            {
+              "player": "Chig Okonkwo",
+              "position": "TE",
+              "projected": 129.4,
+              "realized": 113.4,
+              "round": 15
+            },
+            {
+              "player": "Nick Folk",
+              "position": "K",
+              "projected": 122.7,
+              "realized": 128.0,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "8",
+          "delta": -151.49,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2591.42,
+          "engine_roster": [
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "Joe Mixon",
+              "position": "RB",
+              "projected": 247.9,
+              "realized": 273.0,
+              "round": 3
+            },
+            {
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected": 233.0,
+              "realized": 177.4,
+              "round": 4
+            },
+            {
+              "player": "Amari Cooper",
+              "position": "WR",
+              "projected": 215.3,
+              "realized": 267.0,
+              "round": 5
+            },
+            {
+              "player": "Najee Harris",
+              "position": "RB",
+              "projected": 202.5,
+              "realized": 195.5,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Diontae Johnson",
+              "position": "WR",
+              "projected": 163.0,
+              "realized": 164.7,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "Dameon Pierce",
+              "position": "RB",
+              "projected": 122.1,
+              "realized": 82.7,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2742.91,
+          "seat": "7",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Amon-Ra St. Brown",
+              "position": "WR",
+              "projected": 307.8,
+              "realized": 349.9,
+              "round": 2
+            },
+            {
+              "player": "Justin Herbert",
+              "position": "QB",
+              "projected": 301.4,
+              "realized": 262.9,
+              "round": 3
+            },
+            {
+              "player": "Breece Hall",
+              "position": "RB",
+              "projected": 234.0,
+              "realized": 322.5,
+              "round": 4
+            },
+            {
+              "player": "Adam Thielen",
+              "position": "WR",
+              "projected": 219.0,
+              "realized": 231.0,
+              "round": 5
+            },
+            {
+              "player": "George Kittle",
+              "position": "TE",
+              "projected": 199.7,
+              "realized": 223.2,
+              "round": 6
+            },
+            {
+              "player": "Jake Ferguson",
+              "position": "TE",
+              "projected": 180.4,
+              "realized": 180.1,
+              "round": 7
+            },
+            {
+              "player": "Jerry Jeudy",
+              "position": "WR",
+              "projected": 178.3,
+              "realized": 157.8,
+              "round": 8
+            },
+            {
+              "player": "Jake Elliott",
+              "position": "K",
+              "projected": 145.0,
+              "realized": 153.0,
+              "round": 9
+            },
+            {
+              "player": "Buffalo Bills",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 172.0,
+              "round": 10
+            },
+            {
+              "player": "Baker Mayfield",
+              "position": "QB",
+              "projected": 240.5,
+              "realized": 347.5,
+              "round": 11
+            },
+            {
+              "player": "Brandin Cooks",
+              "position": "WR",
+              "projected": 162.6,
+              "realized": 173.2,
+              "round": 12
+            },
+            {
+              "player": "Antonio Gibson",
+              "position": "RB",
+              "projected": 146.5,
+              "realized": 132.4,
+              "round": 13
+            },
+            {
+              "player": "Kyler Murray",
+              "position": "QB",
+              "projected": 134.5,
+              "realized": 145.0,
+              "round": 14
+            },
+            {
+              "player": "Tyler Allgeier",
+              "position": "RB",
+              "projected": 129.8,
+              "realized": 149.6,
+              "round": 15
+            },
+            {
+              "player": "Rashod Bateman",
+              "position": "WR",
+              "projected": 121.0,
+              "realized": 77.5,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "6",
+          "delta": -73.12,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2661.62,
+          "engine_roster": [
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "Joe Mixon",
+              "position": "RB",
+              "projected": 247.9,
+              "realized": 273.0,
+              "round": 3
+            },
+            {
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected": 233.0,
+              "realized": 177.4,
+              "round": 4
+            },
+            {
+              "player": "Amari Cooper",
+              "position": "WR",
+              "projected": 215.3,
+              "realized": 267.0,
+              "round": 5
+            },
+            {
+              "player": "Raheem Mostert",
+              "position": "RB",
+              "projected": 202.7,
+              "realized": 278.7,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Diontae Johnson",
+              "position": "WR",
+              "projected": 163.0,
+              "realized": 164.7,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "Dameon Pierce",
+              "position": "RB",
+              "projected": 122.1,
+              "realized": 82.7,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2734.74,
+          "seat": "8",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Amon-Ra St. Brown",
+              "position": "WR",
+              "projected": 307.8,
+              "realized": 349.9,
+              "round": 2
+            },
+            {
+              "player": "Justin Herbert",
+              "position": "QB",
+              "projected": 301.4,
+              "realized": 262.9,
+              "round": 3
+            },
+            {
+              "player": "Breece Hall",
+              "position": "RB",
+              "projected": 234.0,
+              "realized": 322.5,
+              "round": 4
+            },
+            {
+              "player": "Adam Thielen",
+              "position": "WR",
+              "projected": 219.0,
+              "realized": 231.0,
+              "round": 5
+            },
+            {
+              "player": "George Kittle",
+              "position": "TE",
+              "projected": 199.7,
+              "realized": 223.2,
+              "round": 6
+            },
+            {
+              "player": "Jake Ferguson",
+              "position": "TE",
+              "projected": 180.4,
+              "realized": 180.1,
+              "round": 7
+            },
+            {
+              "player": "Josh Downs",
+              "position": "WR",
+              "projected": 177.8,
+              "realized": 170.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Elliott",
+              "position": "K",
+              "projected": 145.0,
+              "realized": 153.0,
+              "round": 9
+            },
+            {
+              "player": "Buffalo Bills",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 172.0,
+              "round": 10
+            },
+            {
+              "player": "Baker Mayfield",
+              "position": "QB",
+              "projected": 240.5,
+              "realized": 347.5,
+              "round": 11
+            },
+            {
+              "player": "Brandin Cooks",
+              "position": "WR",
+              "projected": 162.6,
+              "realized": 173.2,
+              "round": 12
+            },
+            {
+              "player": "Antonio Gibson",
+              "position": "RB",
+              "projected": 146.5,
+              "realized": 132.4,
+              "round": 13
+            },
+            {
+              "player": "Kyler Murray",
+              "position": "QB",
+              "projected": 134.5,
+              "realized": 145.0,
+              "round": 14
+            },
+            {
+              "player": "Tyler Allgeier",
+              "position": "RB",
+              "projected": 129.8,
+              "realized": 149.6,
+              "round": 15
+            },
+            {
+              "player": "Rashod Bateman",
+              "position": "WR",
+              "projected": 121.0,
+              "realized": 77.5,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "6",
+          "delta": -30.72,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2697.9,
+          "engine_roster": [
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "Joe Mixon",
+              "position": "RB",
+              "projected": 247.9,
+              "realized": 273.0,
+              "round": 3
+            },
+            {
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected": 233.0,
+              "realized": 177.4,
+              "round": 4
+            },
+            {
+              "player": "Drake London",
+              "position": "WR",
+              "projected": 210.7,
+              "realized": 180.5,
+              "round": 5
+            },
+            {
+              "player": "Raheem Mostert",
+              "position": "RB",
+              "projected": 202.7,
+              "realized": 278.7,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Ezekiel Elliott",
+              "position": "RB",
+              "projected": 165.3,
+              "realized": 175.5,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 14
+            },
+            {
+              "player": "Tank Dell",
+              "position": "WR",
+              "projected": 127.8,
+              "realized": 183.0,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2728.62,
+          "seat": "9",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected": 368.8,
+              "realized": 415.3,
+              "round": 1
+            },
+            {
+              "player": "Amon-Ra St. Brown",
+              "position": "WR",
+              "projected": 307.8,
+              "realized": 349.9,
+              "round": 2
+            },
+            {
+              "player": "Justin Herbert",
+              "position": "QB",
+              "projected": 301.4,
+              "realized": 262.9,
+              "round": 3
+            },
+            {
+              "player": "Breece Hall",
+              "position": "RB",
+              "projected": 234.0,
+              "realized": 322.5,
+              "round": 4
+            },
+            {
+              "player": "Adam Thielen",
+              "position": "WR",
+              "projected": 219.0,
+              "realized": 231.0,
+              "round": 5
+            },
+            {
+              "player": "George Kittle",
+              "position": "TE",
+              "projected": 199.7,
+              "realized": 223.2,
+              "round": 6
+            },
+            {
+              "player": "Jake Ferguson",
+              "position": "TE",
+              "projected": 180.4,
+              "realized": 180.1,
+              "round": 7
+            },
+            {
+              "player": "Josh Downs",
+              "position": "WR",
+              "projected": 177.8,
+              "realized": 170.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Elliott",
+              "position": "K",
+              "projected": 145.0,
+              "realized": 153.0,
+              "round": 9
+            },
+            {
+              "player": "Buffalo Bills",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 172.0,
+              "round": 10
+            },
+            {
+              "player": "Baker Mayfield",
+              "position": "QB",
+              "projected": 240.5,
+              "realized": 347.5,
+              "round": 11
+            },
+            {
+              "player": "Brandin Cooks",
+              "position": "WR",
+              "projected": 162.6,
+              "realized": 173.2,
+              "round": 12
+            },
+            {
+              "player": "Antonio Gibson",
+              "position": "RB",
+              "projected": 146.5,
+              "realized": 132.4,
+              "round": 13
+            },
+            {
+              "player": "Kyler Murray",
+              "position": "QB",
+              "projected": 134.5,
+              "realized": 145.0,
+              "round": 14
+            },
+            {
+              "player": "Tyler Allgeier",
+              "position": "RB",
+              "projected": 129.8,
+              "realized": 149.6,
+              "round": 15
+            },
+            {
+              "player": "Rashod Bateman",
+              "position": "WR",
+              "projected": 121.0,
+              "realized": 77.5,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "6",
+          "delta": -97.79,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2639.16,
+          "engine_roster": [
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "Joe Mixon",
+              "position": "RB",
+              "projected": 247.9,
+              "realized": 273.0,
+              "round": 3
+            },
+            {
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected": 233.0,
+              "realized": 177.4,
+              "round": 4
+            },
+            {
+              "player": "Drake London",
+              "position": "WR",
+              "projected": 210.7,
+              "realized": 180.5,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Christian Kirk",
+              "position": "WR",
+              "projected": 167.2,
+              "realized": 165.4,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 14
+            },
+            {
+              "player": "Gerald Everett",
+              "position": "TE",
+              "projected": 127.1,
+              "realized": 111.1,
+              "round": 15
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2736.95,
+          "seat": "10",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Tyreek Hill",
+              "position": "WR",
+              "projected": 357.0,
+              "realized": 438.4,
+              "round": 1
+            },
+            {
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected": 315.4,
+              "realized": 319.5,
+              "round": 2
+            },
+            {
+              "player": "Calvin Ridley",
+              "position": "WR",
+              "projected": 248.7,
+              "realized": 241.9,
+              "round": 3
+            },
+            {
+              "player": "Breece Hall",
+              "position": "RB",
+              "projected": 234.0,
+              "realized": 322.5,
+              "round": 4
+            },
+            {
+              "player": "Evan Engram",
+              "position": "TE",
+              "projected": 215.9,
+              "realized": 233.3,
+              "round": 5
+            },
+            {
+              "player": "Najee Harris",
+              "position": "RB",
+              "projected": 202.5,
+              "realized": 195.5,
+              "round": 6
+            },
+            {
+              "player": "James Conner",
+              "position": "RB",
+              "projected": 179.4,
+              "realized": 204.5,
+              "round": 7
+            },
+            {
+              "player": "Josh Downs",
+              "position": "WR",
+              "projected": 177.8,
+              "realized": 170.1,
+              "round": 8
+            },
+            {
+              "player": "Younghoe Koo",
+              "position": "K",
+              "projected": 140.9,
+              "realized": 132.0,
+              "round": 9
+            },
+            {
+              "player": "Miami Dolphins",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 165.0,
+              "round": 10
+            },
+            {
+              "player": "Justin Fields",
+              "position": "QB",
+              "projected": 233.1,
+              "realized": 201.9,
+              "round": 11
+            },
+            {
+              "player": "Diontae Johnson",
+              "position": "WR",
+              "projected": 163.0,
+              "realized": 164.7,
+              "round": 12
+            },
+            {
+              "player": "Rashid Shaheed",
+              "position": "WR",
+              "projected": 146.3,
+              "realized": 186.6,
+              "round": 13
+            },
+            {
+              "player": "Wan'Dale Robinson",
+              "position": "WR",
+              "projected": 135.0,
+              "realized": 133.2,
+              "round": 14
+            },
+            {
+              "player": "Chig Okonkwo",
+              "position": "TE",
+              "projected": 129.4,
+              "realized": 113.4,
+              "round": 15
+            },
+            {
+              "player": "Dameon Pierce",
+              "position": "RB",
+              "projected": 122.1,
+              "realized": 82.7,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "7",
+          "delta": -91.65,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2644.22,
+          "engine_roster": [
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected": 238.0,
+              "realized": 242.1,
+              "round": 3
+            },
+            {
+              "player": "Brandon Aiyuk",
+              "position": "WR",
+              "projected": 238.5,
+              "realized": 264.2,
+              "round": 4
+            },
+            {
+              "player": "Zay Flowers",
+              "position": "WR",
+              "projected": 208.8,
+              "realized": 224.4,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "San Francisco 49ers",
+              "position": "DEF",
+              "projected": 135.3,
+              "realized": 150.0,
+              "round": 9
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 10
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 11
+            },
+            {
+              "player": "Elijah Moore",
+              "position": "WR",
+              "projected": 170.3,
+              "realized": 137.1,
+              "round": 12
+            },
+            {
+              "player": "New York Jets",
+              "position": "DEF",
+              "projected": 115.3,
+              "realized": 170.0,
+              "round": 13
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 14
+            },
+            {
+              "player": "Miles Sanders",
+              "position": "RB",
+              "projected": 123.2,
+              "realized": 90.6,
+              "round": 15
+            },
+            {
+              "player": "Robert Woods",
+              "position": "WR",
+              "projected": 123.3,
+              "realized": 91.3,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2735.87,
+          "seat": "11",
+          "weeks_scored": 18
+        },
+        {
+          "best_field_roster": [
+            {
+              "player": "Lamar Jackson",
+              "position": "QB",
+              "projected": 355.1,
+              "realized": 377.9,
+              "round": 1
+            },
+            {
+              "player": "Davante Adams",
+              "position": "WR",
+              "projected": 316.4,
+              "realized": 277.4,
+              "round": 2
+            },
+            {
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected": 248.3,
+              "realized": 311.5,
+              "round": 3
+            },
+            {
+              "player": "Alvin Kamara",
+              "position": "RB",
+              "projected": 235.3,
+              "realized": 234.0,
+              "round": 4
+            },
+            {
+              "player": "Amari Cooper",
+              "position": "WR",
+              "projected": 215.3,
+              "realized": 267.0,
+              "round": 5
+            },
+            {
+              "player": "Raheem Mostert",
+              "position": "RB",
+              "projected": 202.7,
+              "realized": 278.7,
+              "round": 6
+            },
+            {
+              "player": "Jahan Dotson",
+              "position": "WR",
+              "projected": 179.0,
+              "realized": 124.8,
+              "round": 7
+            },
+            {
+              "player": "Cole Kmet",
+              "position": "TE",
+              "projected": 161.3,
+              "realized": 190.1,
+              "round": 8
+            },
+            {
+              "player": "Jake Moody",
+              "position": "K",
+              "projected": 139.7,
+              "realized": 126.0,
+              "round": 9
+            },
+            {
+              "player": "Miami Dolphins",
+              "position": "DEF",
+              "projected": 123.1,
+              "realized": 165.0,
+              "round": 10
+            },
+            {
+              "player": "Joe Burrow",
+              "position": "QB",
+              "projected": 227.0,
+              "realized": 176.6,
+              "round": 11
+            },
+            {
+              "player": "Jayden Reed",
+              "position": "WR",
+              "projected": 165.9,
+              "realized": 227.2,
+              "round": 12
+            },
+            {
+              "player": "Rashid Shaheed",
+              "position": "WR",
+              "projected": 146.3,
+              "realized": 186.6,
+              "round": 13
+            },
+            {
+              "player": "Zack Moss",
+              "position": "RB",
+              "projected": 135.9,
+              "realized": 180.6,
+              "round": 14
+            },
+            {
+              "player": "Jonathan Mingo",
+              "position": "WR",
+              "projected": 128.0,
+              "realized": 89.8,
+              "round": 15
+            },
+            {
+              "player": "Nick Folk",
+              "position": "K",
+              "projected": 122.7,
+              "realized": 128.0,
+              "round": 16
+            }
+          ],
+          "best_field_seat": "8",
+          "delta": -24.47,
+          "engine_first_kdst_round": 7,
+          "engine_never_started": 0,
+          "engine_realized": 2715.02,
+          "engine_roster": [
+            {
+              "player": "Travis Kelce",
+              "position": "TE",
+              "projected": 293.8,
+              "realized": 226.4,
+              "round": 1
+            },
+            {
+              "player": "Bijan Robinson",
+              "position": "RB",
+              "projected": 287.6,
+              "realized": 256.3,
+              "round": 2
+            },
+            {
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected": 238.0,
+              "realized": 242.1,
+              "round": 3
+            },
+            {
+              "player": "DeAndre Hopkins",
+              "position": "WR",
+              "projected": 246.3,
+              "realized": 253.6,
+              "round": 4
+            },
+            {
+              "player": "Zay Flowers",
+              "position": "WR",
+              "projected": 208.8,
+              "realized": 224.4,
+              "round": 5
+            },
+            {
+              "player": "Nico Collins",
+              "position": "WR",
+              "projected": 205.9,
+              "realized": 289.4,
+              "round": 6
+            },
+            {
+              "player": "Justin Tucker",
+              "position": "K",
+              "projected": 154.5,
+              "realized": 154.0,
+              "round": 7
+            },
+            {
+              "player": "Derek Carr",
+              "position": "QB",
+              "projected": 272.4,
+              "realized": 295.6,
+              "round": 8
+            },
+            {
+              "player": "Dallas Cowboys",
+              "position": "DEF",
+              "projected": 130.6,
+              "realized": 192.0,
+              "round": 9
+            },
+            {
+              "player": "Baltimore Ravens",
+              "position": "DEF",
+              "projected": 128.0,
+              "realized": 188.0,
+              "round": 10
+            },
+            {
+              "player": "Tee Higgins",
+              "position": "WR",
+              "projected": 176.9,
+              "realized": 148.6,
+              "round": 11
+            },
+            {
+              "player": "Rashee Rice",
+              "position": "WR",
+              "projected": 176.0,
+              "realized": 218.5,
+              "round": 12
+            },
+            {
+              "player": "Cameron Dicker",
+              "position": "K",
+              "projected": 132.6,
+              "realized": 149.0,
+              "round": 13
+            },
+            {
+              "player": "AJ Dillon",
+              "position": "RB",
+              "projected": 141.6,
+              "realized": 120.6,
+              "round": 14
+            },
+            {
+              "player": "Robert Woods",
+              "position": "WR",
+              "projected": 123.3,
+              "realized": 91.3,
+              "round": 15
+            },
+            {
+              "player": "Michael Gallup",
+              "position": "WR",
+              "projected": 123.2,
+              "realized": 97.8,
+              "round": 16
+            }
+          ],
+          "field_mean_realized": 2739.49,
+          "seat": "12",
+          "weeks_scored": 18
+        }
+      ],
+      "season": "2023",
+      "seats_graded": 12,
+      "streaming_floor": true,
+      "styles": [
+        "need_first",
+        "points_need"
+      ],
+      "teams": 12,
+      "universe_before_guard": 6595,
+      "wins": 2,
+      "wins_distinct": 2
+    }
+  ],
+  "ruler": "realized: sum of each week's best legal lineup over actual stats",
+  "season": "2023",
+  "seconds": 1532.2
+}

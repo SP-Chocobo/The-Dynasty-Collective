@@ -67,3 +67,41 @@ anchor cap toggled, at commit `11fc59b`, on the **fixed** pool recorder. The pre
 measurement that exposed the recorder defect (see `install_pool_recorder`'s docstring); it read 13.33
 under the defect and 0.0 after the fix. Every other row was measured on drained boards, where the
 defect cannot bite because the drafted set is non-empty on every call.
+
+---
+
+# The recorder defect was INERT in the arms — re-run, all eight, roster for roster
+
+The defect (`install_pool_recorder`'s docstring has it) was found by a prediction failing during the
+consumer check. Every arm was re-run on the fixed instrument at `11fc59b`, and every arm reproduced:
+
+| season | arm | wins | mean | `max ǀseat deltaǀ` | rosters differing |
+|---|---|---|---|---:|---:|
+| 2024 | control | 11 → 11 | +82.89 → +82.89 | **0.0** | **0/12** |
+| 2024 | `capped` | 9 → 9 | +45.76 → +45.76 | **0.0** | **0/12** |
+| 2024 | `capped_floor_exempt` | 10 → 10 | +97.74 → +97.74 | **0.0** | **0/12** |
+| 2024 | `c_prime` | 10 → 10 | +97.74 → +97.74 | **0.0** | **0/12** |
+| 2023 | control | 4 → 4 | −49.91 → −49.91 | **0.0** | **0/12** |
+| 2023 | `capped` | 2 → 2 | −55.78 → −55.78 | **0.0** | **0/12** |
+| 2023 | `capped_floor_exempt` | 4 → 4 | +1.00 → +1.00 | **0.0** | **0/12** |
+| 2023 | `c_prime` | 4 → 4 | +1.00 → +1.00 | **0.0** | **0/12** |
+
+Every `cap_stats` counter is identical too, to the last decimal — including the C′ arms' own
+`levels_capped` (1,461 and 1,392) and `level_reduction_sum` (109413.82000000021 and 88605.3200000002).
+So the anchor cap fired the same ~1,400 times on the same boards with the same magnitudes.
+
+## Why it was inert, which is the part worth keeping
+
+**Only the engine seat builds a board.** `run_smoke_seats.draft` calls `pick_synthesis.build_snapshot`
+for the engine's turns and settles every other chair with a heuristic over `points` — no board. So
+within one draft, boards exist only at the engine's turns, and for seat *s* the engine's first turn
+already has *s − 1* picks behind it. The only draft whose first board sees an empty pick list is
+**seat 1's**, and that is also the only moment the holder is freshly reset (once per arm).
+
+So the stale-holder path was never taken in an arm. It was taken in my probe, which built a **drained**
+board and then an **opening** board in one process — a sequence a real draft cannot produce, which is
+why the defect hid behind eight reproducing arms and surfaced only against a prediction.
+
+**Nothing published from these arms changes.** The defect was real, the fix is right, and the honest
+result is that it cost nothing — established by re-running rather than by arguing that eleven boards
+sound small.
