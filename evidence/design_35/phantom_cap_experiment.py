@@ -112,14 +112,50 @@ _CAP_STATS: dict = {"slots_priced": 0, "slots_capped": 0, "reduction_sum": 0.0,
                     "level_capped_by_position": {}}
 
 
+#: True while the current `compute_draft_board` invocation has not yet had its live pool recorded.
+#: See install_pool_recorder for the defect this replaced.
+_BUILD_FRESH: list = [True]
+
+
+def install_board_wrapper():
+    """Wrap `dr.compute_draft_board` so the recorder knows when a NEW board build has started."""
+    real = dr.compute_draft_board
+
+    def wrapper(*args, **kwargs):
+        _BUILD_FRESH[0] = True
+        return real(*args, **kwargs)
+
+    dr.compute_draft_board = wrapper
+    return real
+
+
 def install_pool_recorder():
-    """Wrap `dr.build_available_pool` so the cap can see the board's own remaining pool."""
+    """Wrap `dr.build_available_pool` so the cap can see the board's own remaining pool.
+
+    RECORDS THE FIRST POOL OF EACH BOARD BUILD, which is the live one: `compute_draft_board`
+    builds its remaining pool before anything can trigger the pre-draft anchor's full-pool build.
+    Exact, and it needs no guess about the frame's contents.
+
+    THIS REPLACED A DEFECT, and the defect is recorded because two arms' numbers were produced
+    under it. The rule was `if drafted_player_ids or _LIVE_POOL[0] is None` -- record whenever the
+    drafted set is non-empty, and otherwise only while the holder is unset. That is correct within
+    ONE draft, where the drafted set only grows, and wrong ACROSS drafts: the holder was reset once
+    per ARM, not once per draft, so the OPENING board of every seat after the first found a
+    non-empty holder carrying the PREVIOUS SEAT'S fully drained pool and declined to refresh it.
+    Eleven boards per arm per season read a pool that was far too small, which understates
+    `b(p)` and therefore lets the cap bite where it should not.
+
+    It was found by a prediction failing: the battery's pre-draft reference ruler was expected to
+    be untouched by C-prime, because nothing is drafted there and so nothing can be drained, and it
+    measured a 13.33 shift instead. The prediction was right about the engine and wrong about the
+    instrument."""
     real = dr.build_available_pool
 
     def recorder(merger, players_db, drafted_player_ids, usable_positions, **kwargs):
         pool = real(merger, players_db, drafted_player_ids, usable_positions, **kwargs)
-        if drafted_player_ids or _LIVE_POOL[0] is None:
+        if _BUILD_FRESH[0]:
             _LIVE_POOL[0] = pool
+            _BUILD_FRESH[0] = False
         return pool
 
     dr.build_available_pool = recorder
@@ -382,6 +418,7 @@ def main(argv=None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     shipped = dr.board_slot_alternatives
     shipped_backstop = dr.unfieldable_last
+    install_board_wrapper()
     install_pool_recorder()
     install_floor_recorder()
     install_level_cap()
