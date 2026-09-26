@@ -14590,7 +14590,7 @@ so a team-specific column is the wrong home for it. That is the whole ruling.
 |---|---|---|---|
 | control (shipped before this) | 11/12, +82.89 | 4/12, −49.91 | — |
 | C as specified | 9/12, +45.76 | 2/12, −55.78 | −31.6 / −10.3 per seat |
-| **C′ (shipped)** | **10/12, +97.74** | **4/12, +1.00** | **+21.7 / +43.69 per seat** |
+| **C′ (shipped)** | **10/12, +97.74** | **4/12, +1.00** | **+21.70 / +43.69 per seat** |
 
 C and C′ produced **identical rosters, pick for pick, at all 12 seats on both seasons**, with the
 anchor cap firing 1,461 and 1,392 times. The upside-mode divergence is real in the scores
@@ -14699,6 +14699,30 @@ best; only an assignment can. Today `streaming_floors` is the only assigned leve
    returns `BALANCED_BOARD_COLUMNS` and the balanced path returns `UPSIDE_BOARD_COLUMNS`. That is
    pre-existing, was not touched here, and is exactly why the rule is "on BOTH serializations"
    rather than "on the one this change affects".
+
+### CORRECTION 6 — the figures were withdrawn as claims about shipped code, then REINSTATED
+
+The arm that produced +21.7 and +43.69 composed the slot alternatives differently from production:
+
+    graded arm:  alt(s) = min( max L_uncapped(p),  max b(p) )   over the slot's eligible p
+    SHIPPED:     alt(s) = max( min(L(p), b(p)) )                over the slot's eligible p
+
+`min`-of-maxes and `max`-of-mins are not the same function, and **226 of 1034 rows differ by up to
+16.68 points** on a drained 2024 board. So the shipped configuration's outcome had never been graded,
+and the figures were withdrawn rather than defended.
+
+Graded directly (`evidence/design_35/shipped_cap_ab.py`), with `cap_levels_at_best_remaining` toggled
+to a no-op for the OFF arm — which reproduced the known pre-`#35` baselines **exactly** on both
+seasons, so the reference is sound:
+
+| | cap_off (pre-`#35`) | SHIPPED | paired |
+|---|---|---|---|
+| 2024 | 11/12, +82.89 | 10/12, **+97.74** | **+21.70/seat**, 9 up 3 down, median +12.80 |
+| 2023 | 4/12, −49.91 | 4/12, **+1.00** | **+43.69/seat**, 8 up 3 down, median +60.70 |
+
+Cap fired 1,461 and 1,392 times, so neither arm is vacuous. **And the shipped composition drafts
+IDENTICALLY to the graded one** — max |seat delta| 0.0, 0 of 12 rosters differing, both seasons. The
+board-value difference is real and never reaches a pick on this data. Reinstated on measurement.
 
 ### Evidence
 

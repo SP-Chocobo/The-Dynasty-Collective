@@ -41,7 +41,7 @@ and its nine-phase repair, so that qualifier no longer applies for the same reas
 |---|---|---|
 | `#30` | streaming replacement floors for K and DEF, **derived** from the drafted season's own weekly projections | 2024 K 121.78 → 164.50, DEF 107.95 → 146.05. No constant selected |
 | A | the fieldability ceiling (`unfieldable_last`): at most `slots(P) + 1` of a dedicated position | **Mandatory.** Removing it costs **−103.5/seat on 2023 with 0 of 12 seats improving**, and hoards past the ceiling at **12 of 12 seats on both seasons** — kickers in 2023, defenses in 2024 |
-| `#35` | `cap_levels_at_best_remaining`: no replacement level may exceed the best player left at its position | **+21.7/seat (2024), +43.69/seat (2023)**, paired, on realized outcomes |
+| `#35` | `cap_levels_at_best_remaining`: no replacement level may exceed the best player left at its position | **+21.70/seat (2024), +43.69/seat (2023)**, paired, on realized outcomes — measured on the SHIPPED composition (`shipped_cap_ab.py`), 9 of 12 and 8 of 12 seats improved, cap firing 1,461 and 1,392 times |
 | `#31` | the backtest anachronism guard — pool **and** board trimmed | ~540 points a seat of false signal removed |
 | `#34` | two absence repairs: a reachable `TypeError` on an unpriced engine pick, and a registered invariant (`absence_kind` iff no price) that was **false** on a drained superflex board | reproduced before repair in both cases |
 
@@ -60,11 +60,34 @@ guessed on Saturday. Every arm shares the advantage so comparisons survive it; t
 are ceilings. The oracle also **rewards** hoarding, which makes the ceiling's measured value a
 lower bound rather than an upper one.
 
+## One claim was withdrawn and then reinstated, on measurement
+
+The `#35` figures above were first produced by an experiment arm that composed the slot alternatives
+differently from production:
+
+    graded arm:  alt(s) = min( max L_uncapped(p),  max b(p) )   over the slot's eligible p
+    SHIPPED:     alt(s) = max( min(L(p), b(p)) )                over the slot's eligible p
+
+`min`-of-maxes and `max`-of-mins are not the same function, and on a drained 2024 board **226 of 1034
+rows differ, by up to 16.68 points** in `final_score` and in `displacement_adj`. So the figures were
+**withdrawn** as claims about shipped code and the shipped configuration was graded directly:
+`cap_levels_at_best_remaining` toggled to a no-op for the OFF arm, which reproduced the known pre-`#35`
+baselines exactly on both seasons (2024 11/12 +82.89, 2023 4/12 −49.91).
+
+**Result: the shipped composition drafts IDENTICALLY** — max |seat delta| **0.0**, **0 of 12** rosters
+differing, on both seasons. The numbers are reinstated on measurement rather than on argument, and the
+board-value difference is real but never reaches a pick on this data.
+
 ## Open at the freeze, named rather than omitted
 
 - **`#21`** — blocked on `#50`.
-- **`#29`** — the varied-drafting-strategy battery, stopped at 13 of 36 arms. Separate; ruled not
-  to gate v2.
+- **`#29` — the varied-drafting-strategy battery. RESTARTED, all 36 arms, against this frozen
+  commit.** The earlier 13 were discarded rather than resumed: they predate `#35`, the `absence_kind`
+  repair and the `draft_counterfactual` fix, and pairing new arms against stale ones is the rule this
+  repo states as "never resume onto a report written by different code". **This is the one bar the
+  freeze does not yet clear** — meet-or-beat on a varied field, which the realized-outcome grader
+  structurally cannot see because it fields a fixed two-style table. The gate that authorised the
+  restart is `evidence/design_35/GATE_FOR_VDS.md`, fixed before the A/B was read.
 - **`#30` live-sync verification** — blocked by the environment's network policy on
   `api.sleeper.app` (403 on CONNECT). An environment issue, not an engine one.
 - **`#35` / `pure_value`** — exercised, but never on a level-capped row, so that one consumer
