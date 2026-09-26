@@ -102,16 +102,40 @@ def weekly_projections_from_capture(path: Path = CAPTURE_PATH) -> dict[str, dict
     cannot answer the question -- and it is a different failure from `season_projections`
     missing, where the board would silently price nothing under the league's own scoring.
 
-    THE CONSEQUENCE, stated so nobody reads more into a battery run than it carries: while the
-    committed capture has no weekly lines, a battery certifies the board WITHOUT #30's streaming
-    floor. That is #204's defect one layer up, and the evidence for the floor is the backtest
-    (`evidence/kdst_streaming/`), not the battery. Re-capture closes it.
+    THE CONSEQUENCE WHEN NEITHER SOURCE HAS THEM, stated so nobody reads more into a battery run
+    than it carries: a battery then certifies the board WITHOUT #30's streaming floor, which is
+    #204's defect one layer up, and the evidence for the floor is the backtest
+    (`evidence/kdst_streaming/`) rather than the battery.
+
+    THE FALLBACK, AND WHY IT IS NOT A RE-CAPTURE. This docstring used to end "Re-capture closes
+    it", and that was the only remedy it named -- which was wrong, and the cost of being wrong was
+    a 36-arm battery launched against an engine missing its own K/DST repair. `#30`'s floor needs
+    per-week projection lines for the capture's season, and `capture_weekly_lines` already stores
+    exactly those on disk: the committed capture declares `season` 2026 and the local store holds
+    18 weeks for 2026. So the lines were present the whole time, one directory away, and the gap
+    was WIRING rather than data. Re-capture would also have needed the Sleeper API, which this
+    environment's network policy denies.
+
+    VINTAGE-MATCHED, WHICH IS THE WHOLE SAFETY ARGUMENT. The season is read from the capture's own
+    `season` field and never chosen (`#126`): pairing a 2026 player universe with another season's
+    weekly lines would derive a wire baseline from a league that did not exist, which is the
+    anachronism class `period_correct_pool` was written to remove. A mismatch is not silently
+    tolerated -- there is nothing to fall back TO, so {} travels and the caller reports
+    `streaming_floor_exercised: False` as before.
     """
     if not path.exists():
         raise FileNotFoundError(
             f"{path} is missing -- same contract as season_projections_from_capture")
     import json
-    return json.loads(path.read_text()).get("weekly_projections") or {}
+    captured = json.loads(path.read_text())
+    stored = captured.get("weekly_projections") or {}
+    if stored:
+        return stored
+    season = captured.get("season")
+    if season is None:
+        return {}
+    import capture_weekly_lines as cwl
+    return cwl.load_season(str(season), "projections") or {}
 
 
 def scoring_settings_from_capture(path: Path = CAPTURE_PATH) -> dict:
