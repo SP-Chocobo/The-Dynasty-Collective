@@ -188,3 +188,27 @@ any claim resting on the two being one vintage.
    back early. Lens C's finding 3 was mid-probe: whether either committed mutation SURVIVES the
    engine suites once the self-referential anchors module is excluded is **untested**, and it is
    untested because I interrupted it. The design defect stands; the survival verdict does not exist.
+
+---
+
+# WAVE 2 — six lenses launched, all six killed by the session window
+
+Launched immediately after wave 1 reported: **F** (finish the interrupted mutation-survival probe),
+**G** (Streamlit state, caching, widget keys), **H** (the opponent model), **I** (a SKEPTIC given the
+five HIGH claims stripped of authorship, told to break them), **J** (the documentation corpus as
+claims to falsify), **K** (failure modes — API drift, malformed uploads, degenerate leagues,
+swallowed exceptions).
+
+**All six terminated within about two minutes** with `HTTP 429 · session limit · resets 10:10pm UTC`.
+None got past setup. The furthest along had reconstructed a correct tree and begun reading; another
+had just reported `draft_room.py is 2051 lines, battery files missing` — the stale-worktree problem
+again, now observed in a seventh independent pass.
+
+**The lesson, and it is about pacing rather than the audit.** A *weekly* usage reset does not reset
+the *five-hour session window*, and six concurrent Fable passes each carrying a full-repository
+context exhaust that window almost immediately. Wave 1's five survived because they were launched
+into a fresh window. A re-run should launch **three or four at a time and let them finish**, not six
+at once — a pass that dies in setup costs the whole window and returns nothing.
+
+Wave 2's lenses are worth running and none of their questions were answered. They are listed above
+so a re-run does not have to reinvent them.

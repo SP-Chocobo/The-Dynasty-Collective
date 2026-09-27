@@ -1,6 +1,5 @@
 {
-  "$comment": ["v2 blind pass WAVE 2 -- deny rules, active. Delete when the wave reports.",
-               "Extended again: FINDINGS_V2.md and MANDATE_V2.md now hold wave 1's conclusions."],
+  "$comment": ["v2 blind pass WAVE 2 (relaunch) -- deny rules, active. DELETE when the wave reports."],
   "permissions": {
     "deny": [
       "Read(./FREEZE_RECORD.md)", "Read(./FREEZE_RECORD_V2.md)", "Read(./FREEZE_CHECKLIST.md)",
