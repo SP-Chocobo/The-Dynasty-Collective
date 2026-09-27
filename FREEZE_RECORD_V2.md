@@ -60,12 +60,26 @@ instruments under `evidence/`, and the doc index — **no engine or scoring modu
 `43c8188`**, which was enumerated from `git diff --name-only`'s own output rather than asserted, twice,
 after getting it wrong twice.
 
-## THE TAG: THE PUSH IS BLOCKED FROM HERE, SO CUTTING IT IS AN OWNER ACTION
+## THE TAG: PUBLISHED
 
-No tag exists in this container. One was cut at `43c8188` early and **deleted** when the ordering
-above was made explicit; nothing has been tagged since, deliberately, because the freeze commit was
-not settled until the gate had run. Pushing a tag from here is **refused with HTTP 403** by the
-environment's gateway:
+**`v2-freeze` is published and verified.**
+
+```
+tag object            7e3cb15964c4400f395433da9b5d9c12674ba5cb   refs/tags/v2-freeze
+dereferences to       a8d16271f50fc838ca2dcc4d02ce04944d12adf3   <- the frozen commit
+annotation            "v2 freeze: full suite 3512 OK; see FREEZE_RECORD_V2.md"
+```
+
+Verified by dereferencing rather than by reading the tag object's own hash: `git ls-remote` prints
+`7e3cb15` for an ANNOTATED tag, which is the tag object, not the commit. `git rev-parse v2-freeze^{}`
+is what resolves it to `a8d1627`, and that is the check that was actually run.
+
+One tag was cut at `43c8188` early in this work and **deleted** when the ordering was made explicit;
+nothing was tagged again until the gate had run and the freeze commit was settled.
+
+### Why the owner cut it rather than this session
+
+Pushing a tag from the container is **refused with HTTP 403** by the environment's gateway:
 
 ```
 error: RPC failed; HTTP 403 curl 22 The requested URL returned error: 403
@@ -75,11 +89,12 @@ send-pack: unexpected disconnect while reading sideband packet
 Branch pushes to the same remote succeed; **tag pushes specifically are refused**, and the GitHub
 tooling available here exposes no ref- or tag-creation call. This is the identical blocker the
 earlier v2 attempt hit. The container is ephemeral, so **the local tag will not survive it** — this
-file is the durable marker, and publishing the tag is an owner action. Use the commit named in
-`FREEZE_CERTIFICATION` below rather than one quoted from anywhere else:
+file is the durable marker regardless. The tag was published from the owner's own machine with:
 
 ```
-git fetch origin && git tag -a v2-freeze <FREEZE_CERTIFICATION commit> && git push origin v2-freeze
+git fetch origin claude/fantasy-football-control-center-ff6qlu
+git tag -a v2-freeze a8d1627 -m "v2 freeze: full suite 3512 OK; see FREEZE_RECORD_V2.md"
+git push origin v2-freeze
 ```
 
 v1 was published as a GitHub **pre-release**; v2 has been through `#52`'s blind adversarial pass
@@ -187,5 +202,7 @@ own evidence documents and fixed by running the generator the failure message na
 `63c58a2` (1026.4s) and again here. A certification that mentions only the passing runs is not a
 certification.
 
-This record is one commit past the certified tree — the commit that writes the result down — and the
-only difference is this section and `DOC_INDEX.md`. The commit named above is the freeze.
+The certification above was written down one commit past the certified tree, at `f945984`, and the
+only difference between the two is this section — `git diff --name-only a8d1627 f945984` returns
+`FREEZE_RECORD_V2.md` alone. Any commit after that records the tag or later work and does not move
+the freeze: **the freeze is `a8d1627`**, and `v2-freeze` points at it.
