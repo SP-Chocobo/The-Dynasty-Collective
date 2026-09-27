@@ -176,10 +176,16 @@ than tuned away under a freeze.
 Filled in from the suite's own output. The full suite is what licenses this, never a subset, with
 `__pycache__` cleared first (`#240`).
 
-- **Frozen commit:** `PENDING — the suite is running`
-- **Full suite:** `PENDING`
-- **`assertion_floors --check`:** `PENDING`
-- **`doc_index --check`:** `PENDING`
+- **Frozen commit:** **`a8d1627`**
+- **Full suite:** `Ran 3512 tests in 1079.890s` — **`OK (skipped=1, expected failures=1)`**
+- **`assertion_floors --check`:** `no guarantee has shrunk (196 modules held to a floor)`
+- **`doc_index --check`:** `DOC_INDEX.md current`
+
+**Two suite runs earlier in this session are part of the record, not omitted from it.** At `cb87404`
+the suite came back `FAILED (failures=1)` on `test_doc_index_is_not_stale` — caused by this session's
+own evidence documents and fixed by running the generator the failure message names. It then passed at
+`63c58a2` (1026.4s) and again here. A certification that mentions only the passing runs is not a
+certification.
 
 This record is one commit past the certified tree — the commit that writes the result down — and the
 only difference is this section and `DOC_INDEX.md`. The commit named above is the freeze.
