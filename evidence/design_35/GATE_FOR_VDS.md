@@ -56,8 +56,35 @@ precisely the behaviour the "meet or beat, no draft-quality drop-off" bar was se
 The remedy `weekly_projections_from_capture`'s docstring named was "re-capture", which needs the
 Sleeper API and is denied by this environment's network policy. It was also unnecessary: the
 per-week lines for the capture's **own season** were on disk (`capture_weekly_lines`, 18 weeks for
-2026, the season the capture declares). The gap was **wiring**. Fixed at `04bccb5`, vintage-matched
-with the season read from the capture rather than chosen.
+2026, the season the capture declares). The gap was **wiring**. Fixed at `04bccb5`, with the season
+read from the capture rather than chosen.
+
+> ### CORRECTION — "vintage-matched" was wrong, and the word mattered
+>
+> This sentence originally read "vintage-matched with the season read from the capture rather than
+> chosen." It is **season-matched, not vintage-matched**, and the distinction is the whole point of
+> the phrase. Measured from the files themselves:
+>
+> ```
+> data/fixtures/sleeper_capture.json          captured_at 2026-09-07T08:14:10Z
+> data/fixtures/weekly_projections_2026.json.gz  captured_at 2026-09-22T05:58:05Z
+> ```
+>
+> **Fifteen days apart.** So `#30`'s streaming floor is derived from weekly lines fifteen days newer
+> than the season totals it is priced against, and nothing in the engine or the harness compares
+> `captured_at` between the two (`grep captured_at draft_room.py draft_battery.py
+> draft_simulation.py pick_synthesis.py` → no hits; `run_draft_battery` records only the capture's
+> own). An independent audit pass scored every player's 18 weekly lines under the league's rules and
+> compared them with the capture's season sum: **971 of 5,346 players differ by more than 0.5
+> points**, Jayden Reed 248.2 against 171.0.
+>
+> What this does and does not change. It does **not** change that `#30` fired — the floors were
+> derived, `streaming_floor_exercised` was true, and the battery's structural findings stand. It
+> **does** mean the K/DEF floor and the season totals it is subtracted from come from two different
+> fetches, which is precisely the drift production's own `sync_league` avoids by keeping both from
+> one fetch. Any claim resting on the two being one vintage is unsupported and is withdrawn here.
+>
+> Found by the v2 blind pass, not by me, and corrected in place rather than quietly edited away.
 
 ## So the battery runs at `04bccb5`, one commit past the freeze
 
