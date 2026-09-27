@@ -128,16 +128,38 @@ roster. On the three plain formats it is level with `sane_bpa` or a touch behind
 
 ## 4. Two coverage findings about the battery itself
 
-- **`crossing` reproduced `sharp_balanced` BYTE-FOR-BYTE in all six formats.** The `#261` crossing
-  rule contributed no independent evidence in any of the 36 arms. Whether the rule fired and agreed
-  or never fired is not distinguishable from the report; a replay would settle it.
-- **The battery's own `INERT_ARMS` detector cannot see this.** It compares each arm to the CONTROL
-  (`sharp_auto`) only, so it flagged 4 arms — `sharp_balanced` and `crossing` in the two formats
-  where they also match the control — and stayed silent on the pairwise duplication in the other
-  four. An inertness test that is not pairwise under-reports by exactly this shape.
+- **`crossing` reproduced `sharp_balanced` BYTE-FOR-BYTE in all six formats, and the report says
+  why.** `picks_with_growth_measured` — the count of picks whose chosen candidate carried a growth
+  signal, which is to say picks made in UPSIDE valuation — is **0 for every `crossing` arm in every
+  format**, exactly as it is for `sharp_balanced`. So the `#261` crossing rule **did not reach upside
+  mode on a single pick of any of the 36 arms.** `mode="auto"` under a rule that never fires is pure
+  balanced, which is why the drafts are identical. (An earlier draft of this file said the two cases
+  were indistinguishable from the report and would need a replay. They are not: this field
+  distinguishes them, and no replay was needed.)
+- **The mode coverage is fully accounted for, which is what makes that a coverage claim rather than a
+  guess.** `UPSIDE_MODE_DEFAULT_ROUND` is 15, and every `sharp_auto` count is exactly the picks from
+  round 15 on:
+
+  | format | rounds | rounds ≥ 15 | picks | `sharp_auto` growth_measured |
+  |---|---|---|---|---|
+  | 12T_ppr_K_DEF | 16 | 15–16 | 24 | 24 |
+  | 12T_ppr_SF | 15 | 15 | 12 | 12 |
+  | 4WR_TE_PREMIUM | 16 | 15–16 | 24 | 24 |
+  | HEAVY_IDP | 18 | 15–18 | 48 | 48 |
+  | 12T_ppr | 14 | none | 0 | 0 |
+  | 12T_ppr_SHORT_DRAFT | 8 | none | 0 | 0 |
+
+  So `sharp_auto` = `sharp_balanced` in exactly the two formats whose draft ends before round 15, and
+  `sharp_upside` measures growth on every pick (192/180/192/216/168/96 = every pick of each format).
+  Nothing about the mode axis is unexplained.
+- **The battery's own `INERT_ARMS` detector cannot see the `crossing` duplication.** It compares each
+  arm to the CONTROL (`sharp_auto`) only, so it flagged 4 arms — `sharp_balanced` and `crossing` in
+  the two formats where they also match the control — and stayed silent on the pairwise duplication
+  in the other four. An inertness test that is not pairwise under-reports by exactly this shape.
 
 Effective strategy count is therefore **5, not 6**: `sharp_auto`, `sharp_balanced` (= `crossing`),
-`sharp_upside`, `noisy_k3`, `noisy_k8`.
+`sharp_upside`, `noisy_k3`, `noisy_k8`. And the `#261` crossing rule is **unexercised** by this
+battery — a gap in what the run licenses, not a defect it found.
 
 ## 5. What this does and does not license
 

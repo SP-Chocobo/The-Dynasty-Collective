@@ -14743,3 +14743,75 @@ Tests: `test_35_anchor_cap.py`, 16 tests. Mutation-checked **6 / 1 / 9 / 2** aga
 stamped), restore green. The non-vacuity test earned its keep twice: it caught an integration
 fixture that drained the board's TOP rather than a position's DEMAND, so no anchor ever went stale
 and the cap correctly did nothing.
+
+## #29 RUN AND READ — THE ENGINE DRAFTS A FIELDABLE, SANELY-SHAPED ROSTER ON A VARIED FIELD
+
+36 arms (6 formats × 6 strategies), 32 effective, 76 findings, 6h43m, at `04bccb5`. Full reading in
+`evidence/design_35/RESULT_VDS.md`; the bars were fixed in `PREREGISTRATION_VDS_READING.md` before
+either follow-up instrument was built, and the launch gate in `GATE_FOR_VDS.md` before any arm
+reported.
+
+**The exercise flag was checked before any number was read**, which is the lesson the previous run
+paid for: `weekly_projection_weeks: 18`, `streaming_floor_exercised: true`. `#30` fired on the one
+format carrying K and DEF slots.
+
+### What it found
+
+**49 of the 73 `unfieldable_depth` findings are an audit artifact, not engine behaviour.**
+`draft_battery._position_of` returns the RAW Sleeper position by deliberate design — its docstring
+records this as a latent issue kept unchanged so five committed batteries stay comparable — so a
+player whose `fantasy_positions` are `['DL','LB']` counts as an LB while `player_position` buckets
+him DL, which is the slot family the optimizer fields him in. Recounted through that bucket, every
+flagged HEAVY_IDP roster under a noiseless strategy sits at **LB 3 against a ceiling of 3**. The
+audit is left alone for the reason it already states; the recount is committed as
+`evidence/design_35/idp_bucket_recount.py`.
+
+**17 of the 24 survivors are the noise model, and that is measured rather than argued.** `noisy_k8`
+sets `sharp_seats: []`, so every seat draws uniformly from its own top 8 and no seat is the sharp
+engine. `noise_replay.py` reproduces the arm's `pick_sequence` exactly (asserted first) and records
+the drawn rank on all 192 picks: all 7 over-ceiling picks came at **rank 5–7 out of candidate lists
+of 7–9, in rounds 15–16, and ZERO at rank 0**. The draw is over `min(top_k, len(candidates))`, so
+once the list falls below 8 it covers the whole list and reaches the bottom-sorted surplus with
+probability 1/7. **That is positive evidence `unfieldable_last` binds:** the only way a surplus body
+was taken is a random draw over a list shorter than `k`. In the five non-IDP formats the engine
+exceeds no ceiling under any noiseless strategy, and `12T_ppr_SHORT_DRAFT` finished with zero
+findings under all six.
+
+### The quality grade, and the one place the bar is missed
+
+Graded on the projected analogue of the realized ruler — each week's best legal lineup under
+`lineup_optimizer`, summed over the 18 weeks on disk. **Limit stated, not buried:** both chairs draft
+off the same projections, so this measures structure, not forecasting. Value over a best-available
+chair is what the 2023/2024 realized work speaks to.
+
+- **vs `raw_bpa` (position-blind): +118 to +496 a seat, 9–12 of 12 seats, all six formats.**
+- **vs `sane_bpa` (fills its starting slots first): −10.1 to +23.8 a seat, 5–7 of 12 seats.** The
+  pre-registered bar was "ahead in aggregate in every format AND on a majority of seats". **It is not
+  met, and it is not being moved after the fact.** The magnitudes are −0.2% to +0.9% of a ~2500-point
+  season. The ruler's own resolution, measured from this same run, is ~1%: it separates the engine
+  from `raw_bpa` by 118–496 and `sharp_upside` from `sharp_auto` in the same direction in all six
+  formats by 20–87. The engine-to-`sane_bpa` gap sits at or under that, so the tie is the ruler
+  declining to distinguish two need-aware chairs — the exact limitation `realized_ruler.py` exists to
+  escape, whose docstring already measured the projected ruler as INDIFFERENT to the K/DEF placement
+  this battery exists to police.
+- **Where it separates cleanly, and it is the owner's own question.** Mean players per roster who
+  never appear in any week's optimal lineup: `12T_ppr_K_DEF` raw 3.25 / sane 1.67 / **engine 0.50**;
+  `HEAVY_IDP` raw 3.75 / sane 1.00 / **engine 0.67**. On the two formats carrying dedicated
+  K/DEF/IDP slots the engine wastes a third to a fifth of what `raw_bpa` does and well under half of
+  `sane_bpa`'s, at the same or better points — in `12T_ppr_K_DEF`, +0.8 on the ruler with 1.17 fewer
+  dead roster spots a team. On the three plain formats it is level or a touch behind.
+
+### TWO THINGS FOR THE OWNER, not repair commits (`#184`)
+
+1. **Upside mode is worse on fieldable value in all six formats.** `sharp_upside` trails `sharp_auto`
+   everywhere and `sane_bpa` by 20.8 to 86.6 a seat, ahead on only 2–5 of 12 seats. Same direction,
+   six formats, no exceptions. First time the upside-mode gap has been measured on roster quality
+   rather than on a board diff.
+2. **The `#261` crossing rule is unexercised.** `crossing` reproduced `sharp_balanced` byte-for-byte
+   in all six formats, and `picks_with_growth_measured` is **0** for every `crossing` arm — so the
+   rule never reached upside mode on a single pick of any of the 36 arms. The battery's own
+   `INERT_ARMS` detector cannot see this: it compares each arm to the control only, never pairwise.
+   Effective strategy count is 5, not 6.
+
+Neither is a defect the run found in the frozen engine. Both are things the run cannot vouch for,
+and the second means a listed axis of this battery covers nothing.
