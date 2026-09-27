@@ -104,7 +104,7 @@ Missed: `@unittest.skip`, `@expectedFailure`, `self.skipTest()`, `return` before
 **Repair:** count skips and expected failures in CI and ratchet them; extend the scanner; correct the
 docstring's stated limits, which omit all of the above.
 
-## 0.5 The battery's chairs never exercise the valuation a human is shown
+## 0.5 The battery's chairs never exercise the valuation a human is shown **[VERIFIED, in part]**
 
 Chairs run `mode="auto"`; `app.py` passes no `mode=` at any call site, so the human board is always
 `balanced`. On every arm past 14 rounds, picks from round 15 on use upside scoring — which zeroes
@@ -119,7 +119,7 @@ applied to it.
 **Repair:** run the matrix in `balanced` (or add balanced arms at full length) and carry `settings`
 into the capture arms. Until then, no owner-league arm supports a claim about multi-year valuation.
 
-## 0.6 The battery's universe is outside the hashed input set — *two lenses*
+## 0.6 The battery's universe is outside the hashed input set — *two lenses* **[VERIFIED]**
 
 `baseline_manifest.DECLARED_INPUT_DIRS` covers `data/baseline` and `data/projections/_global`;
 `data/fixtures/sleeper_capture.json` is hashed by nothing, and `data/player_aliases.json`
@@ -186,7 +186,7 @@ unreachable today only because `decision_regime` never returns "decisive" while 
 **Repair:** make the panel ask `withheld_fields()`; add it to `test_withheld_propagation`'s surface
 list; gate line 788.
 
-## 1.3 `positional_forfeits` sums a conditional hazard as an expected count
+## 1.3 `positional_forfeits` sums a conditional hazard as an expected count **[VERIFIED]**
 
 `position_pace_probability` advances the expected cumulative count with each hypothetical intervening
 pick while `actual_now` is read off a fixed list, so the deficit grows every step. Defensible inside
@@ -275,7 +275,7 @@ freshness manifest reports that sync as the freshest input on the page.
 row that rests on one; (b) do not let a failed fetch replace a good snapshot; (c) surface coverage in
 the freshness manifest. (a) is the one that stops a wrong board.
 
-## 2.2 The league-config gate is unwired — *four lenses*
+## 2.2 The league-config gate is unwired — *four lenses* **[VERIFIED]**
 
 `ambiguities` / `confirmation_state` / `admits_decision` / `decision_config` have **zero production
 callers**. Measured consequences: empty `roster_positions` → 1944 rows, **0 priced, no reason on any
@@ -340,7 +340,7 @@ smallest at the top — which is where picks come from.
 whose measured effect on picks is zero — which makes it safe, and also means **no repair here should
 be justified by a claim that it changes recommendations.**
 
-## 3.2 The fieldability ceiling — and the bound the fix must use
+## 3.2 The fieldability ceiling — and the bound the fix must use **[VERIFIED]**
 
 The exemption is real: a flex-reachable position gets no ceiling at all, and a real draft left six of
 twelve rosters holding 6–7 IDP against a derivable bound of 2, with every guard silent.
@@ -447,3 +447,53 @@ next drift starts.
    battery inert, and then wrote a measurement-skill lesson telling a future reader to check the
    exercise flags — while leaving the other battery without one.
 3. **`draftable_rounds` mismatches on 35 of 36 arms, not 36.** One arm agrees.
+
+
+---
+
+# VERIFICATION LOG — what I checked myself, and two errors of my own
+
+Run against the frozen engine with the real capture, from the repository root. **Two of my own
+measurements initially appeared to contradict a pass, and both were my error, not theirs.** They are
+recorded here because the engine-measurement skill's whole warning is that the failure mode is not a
+crash but a plausible number about something else — and I produced two.
+
+## Confirmed exactly
+
+| item | what I measured |
+|---|---|
+| **3.2 joint bound** | `optimize_lineup` on `QB RB RB WR WR TE FLEX IDP_FLEX` with 2 DL + 2 LB + 2 DB held: **starts 1 of 6**. Per-position `slots_reachable+1` is **2 for each of DL, LB, DB — none exceeded**; the joint bound is also 2 and IS exceeded. The repair must use the joint form. |
+| **1.3 forfeit** | On `12T_ppr_SF` at 1.01, gap 22: **QB `expected_taken` = 15.54**, total across positions **26.15 against 22 picks** — exceeds the gap. QB forfeit 63.1. |
+| **2.2 gate** | Two non-test hits for `ambiguities`/`admits_decision`/`decision_config`/`confirmation_state`, and **both are prose in comments**, not calls. Zero production callers. |
+| **2.3 defenses** | On the **vendor-only fallback**: 32 DEF rows, **11 unpriced — GB, KC, LAC, LAR, LV, NE, NO, NYG, NYJ, SF, TB**, the exact eleven named. On the shipped season-sum path: **0 unpriced**. Scoping confirmed in both directions. |
+| **3.4 dead gate** | Real 1.01 board: 72 candidates, all carrying a take probability, **max 0.0250** against a threshold of **0.10**, **n ≥ threshold = 0**, `block_opportunity` **True on 0 of 72** while `rival_premium ≥ 8` fired on 24. |
+| **0.5 owner league** | `CAPTURE_owner_league` keys are `draft_rounds, roster_positions, scoring_settings, total_rosters` — **`settings` is absent, so `is_dynasty` is False**. Note the asymmetry the pass did not mention: `CAPTURE_fourth_and_forever` DOES carry `settings={'type': 2}` and is dynasty. The defect is specific to the owner-league arm. |
+| **0.6 manifest** | `DECLARED_INPUT_DIRS = ('data/baseline', 'data/projections/_global')` — the capture is not declared. |
+
+## My two errors
+
+1. **I first measured the forfeit on a non-superflex format and got a clean result.** On
+   `12T_ppr_K_DEF` the total was 12.03 against a 22-pick gap — no impossibility, QB `expected_taken`
+   0.83, QB forfeit 3.09. I briefly had that as a contradiction of the pass. It is not: the pass
+   stated plainly that the defect rides on superflex QB pace, and `12T_ppr_K_DEF` is not superflex.
+   Re-run on `12T_ppr_SF`, the pass's numbers reproduce to the digit (15.54). **Testing a
+   format-specific claim on the wrong format is not a refutation.**
+
+2. **I first counted defense resolution through `merge_player` and got 30 of 32.** The pass and the
+   SKEPTIC both counted through `_resolve` and got 21 of 32. I nearly recorded that as a
+   discrepancy. The question that matters is neither: it is what the **board** does. Built both ways,
+   the board answers it — 0 unpriced on the shipped path, exactly 11 on the fallback. **I was
+   measuring a different function than the one whose output reaches a price.**
+
+## Still unverified by me, and what that means for the repair
+
+- **2.1's QB collapse.** I verified the root cause (no pricing consumer reads
+  `season_projection_coverage`; `grep -c` in `app.py` returns 0) but not the 39-of-40 reordering,
+  which needs the weekly lines re-summed over a partial week set. The mechanism is confirmed and the
+  repair — refuse to price from an incomplete sum — does not depend on the magnitude.
+- **0.1's −23.66 / −15.94 K and DEF shift.** I verified the wiring gap itself, which is what the
+  repair fixes.
+- **0.2's 482-test result** was produced by a dedicated pass with a baseline arm; I verified the
+  committed evidence holds exactly two `"caught"` results against a harness defining three mutations.
+- **0.3, 0.4, 0.7's duplicate_arms, 2.4, 3.1's ordering claim, 3.3, and all of Tier 4** rest on pass
+  measurement. Each carries its own method in the verbatim reports.
