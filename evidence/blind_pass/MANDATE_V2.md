@@ -135,6 +135,38 @@ If you find nothing serious in an area you examined carefully, say that plainly 
 null result is a real contribution and will not be treated as failure.
 ```
 
+## THE ISOLATION DID NOT HAND THE PASSES THE FROZEN TREE — record this before re-running
+
+Reported independently by two passes and recorded here because it would otherwise be rediscovered
+every time:
+
+**`isolation: "worktree"` did not check out the branch under audit.** One pass found its worktree on
+`main` at `cf8fa0c`, with a **2051-line `draft_room.py`** against the real 4445, and without
+`draft_battery.py`, `run_draft_battery.py`, `league_config.py`, `invariant_registry.py`,
+`prose_names.py`, `quantity_readers.py` or `basis_semantics.py`. Another found the same files
+missing and rebuilt a view at the branch tip.
+
+Both detected it themselves, reconstructed a correct tree, and verified byte-identity of every
+module they audited against the real checkout before reporting — one by creating a local branch at
+the tip, the other by copying the working tree into its scratchpad **excluding every forbidden path**
+and running with `PYTHONPATH=.`. So their findings are about the frozen engine. But this was luck of
+the draw in how carefully each pass checked, not a property of the setup.
+
+**On a re-run, state the commit in the mandate and require the pass to verify it first.** Add to the
+SETUP block:
+
+```
+Before auditing anything, confirm you are reading the tree under audit:
+    git log --oneline -1
+    wc -l draft_room.py pick_synthesis.py
+Expected: a8d1627 or a descendant whose only differences are documents, draft_room.py ~4445 lines.
+If your checkout disagrees, say so in your report and reconstruct a correct view before proceeding
+-- and if you copy the tree, exclude every forbidden path from the copy.
+```
+
+Note what this does NOT do: it does not name the forbidden files a second time, and it does not
+describe where conclusions live. A line count and a commit are not a signpost.
+
 ## If the container was reclaimed before results landed
 
 Re-launch five agents on Fable with worktree isolation and the mandate above, unchanged, one lens
