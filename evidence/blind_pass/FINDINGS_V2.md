@@ -212,3 +212,88 @@ at once — a pass that dies in setup costs the whole window and returns nothing
 
 Wave 2's lenses are worth running and none of their questions were answered. They are listed above
 so a re-run does not have to reinvent them.
+
+---
+
+# WAVE 2 (relaunch) — the interrupted probe, finished
+
+Four lenses relaunched into a fresh window: the SKEPTIC (the five HIGH claims, authorship stripped),
+the mutation-survival probe, the UI/state lens, and the robustness lens.
+
+## THE MUTATION-SURVIVAL VERDICT — all three mutations SURVIVE
+
+This is the question I interrupted the first time, and it now has an answer.
+
+**`evidence/invariant_confirmation.json` claims a guarantee the suite does not provide.**
+
+The harness defines **three** mutations (`invariant_confirmation.py:82-108`), not two. The committed
+evidence records verdicts for two of them — I confirmed the file holds exactly two results, both
+`"caught"` (`feasibility_first never binds`, 550.1s; `board order ignores feasibility`, 571.5s).
+The third, `board order ignores fieldability`, has **no committed verdict at all.**
+
+The pass reconstructed the tree, copied it three times, applied one mutation per copy **using the
+harness's own `apply_mutation`**, and ran 482 tests over fifteen board- and backstop-touching modules
+with `test_invariant_confirmation_anchors.py` **excluded** and no `--failfast`:
+
+| tree | ran | result | failures |
+|---|---|---|---|
+| baseline (clean) | 482 | OK (skipped=1) | none |
+| #0 `feasibility_first never binds` | 482 | OK (skipped=1) | **none** |
+| #1 `board order ignores feasibility` | 482 | OK (skipped=1) | **none** |
+| #2 `board order ignores fieldability` | 482 | OK (skipped=1) | **none** |
+
+**All three SURVIVED.** The two recorded "caught" verdicts were produced by the anchors module
+failing on its own missing anchor text under `--failfast`, before any engine behaviour ran. The
+single skip is present on the baseline too.
+
+**Why nothing catches them, read off the tests rather than inferred:**
+
+- `test_feasibility_backstop.py:115-131` calls `dr.feasibility_first` directly and then does **its
+  own** `board.sort_values(["_feasible","final_score"])` — it never goes through
+  `compute_draft_board`'s sort, which is what the mutation changes.
+- `test_unfieldable_backstop.py:266-289` tests `pick_synthesis._board_order` on plain dicts; lines
+  161-171 only AST-check that `unfieldable_last(..., pool_scope=...)` is called twice. Neither
+  observes `draft_room`'s own `sort_values`.
+- `test_draft_room.py` — 98 tests — contains **zero** references to `_feasible`,
+  `fills_required_slot`, `_unfieldable` or `cannot_be_fielded`.
+- `test_216_value_board_falsification.py` takes `compute_draft_board(...)[0]` as the pick and was the
+  most plausible catcher; all 20 of its tests pass on every mutant, including
+  `test_the_backstop_arm_is_legal_which_is_what_makes_the_off_arm_the_engine`.
+- Mutations #0 and #1 leave `fills_required_slot` intact and remove `_feasible` only from
+  `draft_room`'s row ordering. Anything downstream that re-sorts through `ps._board_order` on
+  `fills_required_slot` masks the change from the pick, and **nothing asserts on the board's own row
+  order.**
+
+Additionally, mutation #2 is **inert on the harness's own fixture** — the mutant board fingerprints
+identically to the reference, so the harness would score it "MUTATION IS INERT" and produce no
+verdict even if it were run.
+
+The pass disclosed one non-load-bearing difference: `git archive` omits gitignored data, so its pool
+fingerprinted `753 964` against the committed evidence's `863 1113`. The baseline arm was run on the
+same pool as the mutants, so the comparison holds.
+
+**What this does and does not mean.** It does not say the backstops are broken — the engine still
+sorts on them. It says the committed evidence that the SUITE DEFENDS them is not evidence of that,
+and a future change that removed either backstop from the board's ordering would pass 482 tests
+including every test written for those backstops.
+
+## The UI/state lens
+
+Two findings I verified myself by grep:
+
+1. **The Live Draft Room never fetches picks on its own.** `get_draft_picks` has exactly ONE call
+   site in `app.py` (line 5327), behind the `↻ Refresh Picks` button. A live draft in round 4 opens
+   showing "ON THE CLOCK — 1.0X" with every drafted player still a candidate and a "0 pick(s) made"
+   tag, and nothing on screen says the picks were never pulled. Recurs on every league switch,
+   because the picks cache is correctly cleared and never refilled.
+2. **The Debate chip's attached context is displayed but never sent.** `debate_attached_context` is
+   written at `app.py:1484` and read at `app.py:6531`; that read is its only consumer, and
+   `build_context(snapshot, roster_table, player_universe, question, conversation_window)` has no
+   parameter for it. The panel prints "💬 Considering: On the clock for pick 2.03" and then answers
+   with no board, no candidates and no pick position.
+
+Unverified by me: the snapshot and anchor caches fingerprint only `position|team|fantasy_positions`
+while the pool build reads `injury_status`, `status` and `years_exp` (probe-confirmed identical
+fingerprints); a debate result survives a pool-scope change gated only on `pick_label`; and
+`season_projection_coverage` is recorded by `sleeper_client` and read by no consumer, so an
+11-of-18-week fetch reprices the board while the header says "synced just now".
