@@ -1,0 +1,15 @@
+{
+  "$comment": ["v2 blind pass WAVE 2 -- deny rules, active. Delete when the wave reports.",
+               "Extended again: FINDINGS_V2.md and MANDATE_V2.md now hold wave 1's conclusions."],
+  "permissions": {
+    "deny": [
+      "Read(./FREEZE_RECORD.md)", "Read(./FREEZE_RECORD_V2.md)", "Read(./FREEZE_CHECKLIST.md)",
+      "Read(./POST_AUDIT_PLAN.md)", "Read(./DOC_INDEX.md)",
+      "Read(./evidence/smoke_seats/**)", "Read(./evidence/batteries/**)",
+      "Read(./evidence/blind_pass/**)", "Read(./evidence/design_35/**)",
+      "Read(./evidence/upside_gap/**)",
+      "Read(./.claude/skills/close-register-item/**)",
+      "Read(./.claude/blind-pass.settings.json)"
+    ]
+  }
+}
