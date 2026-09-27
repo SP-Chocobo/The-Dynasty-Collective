@@ -1,13 +1,13 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 202 markdown documents.
+`python3 doc_index.py` regenerates this. 212 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
-| WITHDRAWN | 28 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 33 | still valid or partly valid, but something later changed what it means. |
+| WITHDRAWN | 29 | a published claim taken back. Kept, unedited, beneath its banner. |
+| SUPERSEDED | 42 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 29 | says what kind of document it is before making claims. |
 | UNDECLARED | 112 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
@@ -15,6 +15,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 - `evidence/PHASE_8_CERTIFICATION.md`
 - `evidence/batteries/SURPLUS_DEPTH_PRICING.md`
+- `evidence/blind_pass/reports_v2/skeptic.md`
 - `evidence/horizon_dark/README_HORIZON_DARK.md`
 - `evidence/kdst_streaming/PROBLEM.md`
 - `evidence/kdst_streaming/RESULT_2024.md`
@@ -57,6 +58,15 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/REPAIR_MANDATE.md`
 - `evidence/blind_pass/SYNTHESIS.md`
 - `evidence/blind_pass/TURN_ENDING_PICKS.md`
+- `evidence/blind_pass/reports_v2/README.md`
+- `evidence/blind_pass/reports_v2/a_valuation_arithmetic.md`
+- `evidence/blind_pass/reports_v2/b_absence_and_contracts.md`
+- `evidence/blind_pass/reports_v2/c_measurement_apparatus.md`
+- `evidence/blind_pass/reports_v2/d_roster_geometry.md`
+- `evidence/blind_pass/reports_v2/e_ingestion_identity.md`
+- `evidence/blind_pass/reports_v2/f_mutation_survival.md`
+- `evidence/blind_pass/reports_v2/g_ui_state.md`
+- `evidence/blind_pass/reports_v2/h_robustness.md`
 - `evidence/design_35/PREREGISTRATION_C.md`
 - `evidence/design_35/RESULT_UV_CONSUMERS.md`
 - `evidence/design_35/STATE.md`
