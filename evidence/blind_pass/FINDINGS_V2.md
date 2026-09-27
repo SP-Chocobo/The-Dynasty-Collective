@@ -297,3 +297,82 @@ while the pool build reads `injury_status`, `status` and `years_exp` (probe-conf
 fingerprints); a debate result survives a pool-scope change gated only on `pick_label`; and
 `season_projection_coverage` is recorded by `sleeper_client` and read by no consumer, so an
 11-of-18-week fetch reprices the board while the header says "synced just now".
+
+## The robustness lens — and the strongest convergence in the whole audit
+
+### THREE independent lenses landed on the same defect, from three different angles
+
+`season_projection_coverage` is written by `sleeper_client` and **read by no module that prices
+anything**. I verified it: the only consumers outside the client are in `sleeper_import_report.py`
+(a CLI), and `grep -c season_projection_coverage app.py` returns **0**. Wave 1's ingestion lens found
+the unread record; the UI lens found that an 11-of-18-week fetch reprices the board while the header
+says "synced just now"; the robustness lens supplied what neither had — **the consequence, measured.**
+
+**A partially-summed season projection is priced as a complete one, and in a superflex league it
+deletes every quarterback from the board.**
+
+`_sum_weeks` appends a failed week to `weeks_failed` and carries on summing. There is no retry,
+backoff or request spacing anywhere in `sleeper_client.py`, so `sync_league` fires 18 back-to-back
+requests at an endpoint the file's own comments call undocumented. `_derive_points_and_source` then
+promotes the Sleeper season sum OVER the vendor's complete full-season total, so a truncated sum
+replaces a complete number.
+
+The collapse mechanism is `qb_startable_floor`: an ABSOLUTE points threshold (163.5 on the fixture)
+derived from the vendor table, counted against `_points` that are now a partial Sleeper sum. Fewer
+answered weeks → fewer QBs clear a full-season threshold → the replacement rank shrinks toward the
+top → every QB's VOR goes negative.
+
+Measured, weeks 10–18 failing (a sustained 429 after the burst):
+
+- **39 of the top 40 rows move 3 or more places.** Jayden Daniels 31 → 321 (`universal_value`
+  107.34 → −38.42), Kyler Murray 27 → 299, Mahomes 14 → 163, Trevor Lawrence 5 → 96.
+- QBs clearing the floor: **31 of 355 → 10 of 355.** The new top ten contains **zero quarterbacks in
+  a superflex league.**
+- `bpa_source` stays `points_vor_sleeper_season_scored` on 1055 rows, `replacement_basis` stays
+  `startable_floor`, `absence_kind` stays None. **Nothing on any row says anything happened.**
+- A single failed week moves 9 of the top 40 by 3+ places.
+- Side effect: with ≤13 answered weeks the IR availability haircut silently becomes 1.0 while
+  `availability_basis` still reads `rule_floor`.
+
+**And a failed fetch overwrites a good snapshot.** `_write_snapshot` unconditionally replaces
+`{league_id}_latest.json`, so yesterday's 18-week sync is replaced by today's 0-week one with the
+error buried in the JSON. Measured: 1050 of 1906 rows change `bpa_source`, 31 of the top 40 move,
+Bijan Robinson goes #6 → #1895 `no_priceable_input` — while the freshness manifest reports the sync
+as the **freshest input on the page**.
+
+### The league-config gate, now found by a THIRD lens
+
+Measured consequences this time: `roster_positions = []` → 1944 rows, **0 priced, no reason on any
+row**; `["BN"]*15` → the same; an unknown `OP` slot → 820 priced rows with the slot silently ignored;
+`scoring_settings = None` → byte-for-byte the vendor-only board. And the gate's own collateral
+defect: it requires `bonus_rec_te` and `num_teams`, which **the real capture league lacks**, so
+wiring it as written would refuse legitimate leagues.
+
+### Other findings
+
+- **`load_all` swallows every unparsable source file** and keeps no record — 5 files in, 2 loaded,
+  3 skipped, `is_loaded=True`, no signal. Mitigated for user uploads (parse errors are reported at
+  upload time); not mitigated for a committed baseline file that stops parsing after a library
+  upgrade.
+- **`get_players` caches any truthy 200 body.** An error-shaped JSON object is cached for 24 hours
+  and every page load then raises `AttributeError: 'str' object has no attribute 'get'`, with no
+  in-app way to refetch.
+- **A 200 with a non-JSON body escapes as `JSONDecodeError`, not `SleeperAPIError`**, so the methods
+  documented to fail soft do not, and every `except SleeperAPIError` handler in `app.py` misses it.
+- **`season_projections_from_capture` returns `{}`** for a capture without projections despite
+  documenting a raise-on-missing contract, and neither it nor the battery reads the capture's own
+  coverage record — so a capture taken during a Sleeper hiccup would certify 36 arms against
+  half-season sums.
+
+### The pattern the pass names, and it is the right one
+
+> The engine's absence contract is honoured rigorously INSIDE the board (None never becomes 0.0),
+> but the two inputs that arrive from outside — the season-projection sum and the league config —
+> cross into it with no companion stating their completeness, and the one companion that does exist
+> is written to disk and read by nothing that prices.
+
+Its sound-on-inspection list is long and specific: `store_io`'s damaged-store handling and lock
+nesting, `draft_history`'s content addressing, `lineup_optimizer`'s empty and NaN guards,
+`replacement_levels`' omit-rather-than-clamp, `_board_order`'s None-safety, the upload path's
+refusal to guess a bad as-of date, and degenerate leagues (one team, more rounds than players)
+building a board without error.
