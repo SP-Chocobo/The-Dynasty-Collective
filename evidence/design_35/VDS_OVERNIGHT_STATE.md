@@ -12,6 +12,18 @@ python3 run_vds_battery.py --out <SCRATCH>/VDS_2026-09-26_varied_drafting_strate
 
 Launched from the repo root at commit **`04bccb5`**, **36 arms, no `--resume`**, all arms fresh.
 
+**Liveness check — use the right script name.** The running process is `run_vds_battery.py`, *not*
+`run_draft_battery.py`. Checking with `pgrep -f "run_draft_batter[y]"` returns nothing and reads
+exactly like a dead battery; it is a pattern error, not a death. The check is:
+
+```
+pgrep -f "run_vds_batter[y]"        # or: ps aux --sort=-%cpu | head -3
+```
+
+Two corroborating signals before ever concluding the run died: the log's mtime (it is appended once
+per arm, so up to ~20 minutes stale is normal) and `uptime` (a container restart resets it; a steady
+load average of ~1.0 means something is still burning a core).
+
 **Measured runtime, not estimated:** the first arm did 192 picks in **774.2s = 4.03 s/pick**. The six
 formats total 1,044 picks per strategy sweep, × 6 strategies = **6,264 picks ≈ 7.0 hours**. An earlier
 estimate of "2.5–3 hours" in this session was wrong — it came from the old 32-format battery, which is
