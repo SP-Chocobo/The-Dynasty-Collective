@@ -1,0 +1,110 @@
+{
+ "_doc": "M1d \u2014 the same cap-on/cap-off test at EVERY state where the upside board went flat.\n\nM1c ran the test at one state and found the board identical with the cap no-op'd -- but the\nrecording wrapper showed the cap was CALLED 13 times there and capped NOTHING, so that arm was\nvacuous: an identical board because the thing under test never fired. It refuted my `#35`\nprediction only for a state where `#35` does nothing. This runs all eight flat-board states from\nM1, records whether the cap fired at each, and only then compares.\n\nThe honest question it answers: at the states where the upside board is decided by the `player_id`\ntiebreak, is the tie at 0.00 there with or without `#35` doing anything?\n\nRun from the REPO ROOT.\n",
+ "states": [
+  {
+   "cap_calls": 13,
+   "format": "12T_ppr",
+   "positions_capped": [],
+   "reproduces_arm_pick": true,
+   "round": 13,
+   "same_pick": true,
+   "tie_cap_off": 4,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 2,
+   "format": "12T_ppr",
+   "positions_capped": [
+    "RB",
+    "WR"
+   ],
+   "reproduces_arm_pick": true,
+   "round": 14,
+   "same_pick": false,
+   "tie_cap_off": 2,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 13,
+   "format": "12T_ppr_K_DEF",
+   "positions_capped": [],
+   "reproduces_arm_pick": true,
+   "round": 12,
+   "same_pick": true,
+   "tie_cap_off": 4,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 13,
+   "format": "12T_ppr_K_DEF",
+   "positions_capped": [
+    "QB",
+    "TE"
+   ],
+   "reproduces_arm_pick": true,
+   "round": 13,
+   "same_pick": false,
+   "tie_cap_off": 2,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 13,
+   "format": "12T_ppr_K_DEF",
+   "positions_capped": [
+    "QB",
+    "TE"
+   ],
+   "reproduces_arm_pick": true,
+   "round": 14,
+   "same_pick": false,
+   "tie_cap_off": 2,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 13,
+   "format": "12T_ppr_K_DEF",
+   "positions_capped": [
+    "QB",
+    "TE"
+   ],
+   "reproduces_arm_pick": true,
+   "round": 15,
+   "same_pick": false,
+   "tie_cap_off": 2,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 13,
+   "format": "4WR_TE_PREMIUM",
+   "positions_capped": [
+    "WR"
+   ],
+   "reproduces_arm_pick": true,
+   "round": 15,
+   "same_pick": false,
+   "tie_cap_off": 3,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  },
+  {
+   "cap_calls": 2,
+   "format": "4WR_TE_PREMIUM",
+   "positions_capped": [
+    "TE",
+    "WR"
+   ],
+   "reproduces_arm_pick": true,
+   "round": 16,
+   "same_pick": false,
+   "tie_cap_off": 2,
+   "tie_cap_on": 4,
+   "top_bpa": 0.0
+  }
+ ]
+}
