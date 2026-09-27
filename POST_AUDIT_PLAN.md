@@ -14815,3 +14815,69 @@ chair is what the 2023/2024 realized work speaks to.
 
 Neither is a defect the run found in the frozen engine. Both are things the run cannot vouch for,
 and the second means a listed axis of this battery covers nothing.
+
+## `#184` DESIGN FINDING — `sharp_upside`'S DIFFERENTIATOR IS INERT, AND THAT IS NOT A PRODUCTION DEFECT
+
+Raised by `#29`, investigated to the arithmetic, ruled by the owner as a post-freeze design item.
+Evidence: `evidence/upside_gap/` — `PREREGISTRATION.md` (bars fixed before measuring),
+`CHRONOLOGY.md` (order of record, written while M1 was still running), `RESULT.md`, and the four
+instruments with their JSON.
+
+**The causal story, measured end to end.** `mode="upside"` discards `need_bonus`,
+`eligibility_bonus`, `depth_exposure`, `displacement_adj`, `time_horizon_adj` and `risk_adj` — its own
+branch comment says it has "no roster awareness of any kind" — in exchange for
+`growth_points = clamp(0.5 × (proj3yr_pct − season_pct), ±10)`. Measured over six pick-1 boards,
+6794 rows: `growth_signal > 0` on **200 rows (2.9%)**, tilt ≥ 1 point on **149 (2.2%)**, and the top
+row by `final_score` is **the same player as the top row by `bpa` alone in all six formats**. Across
+87 real drained states reconstructed from committed arms — `candidates[0]` matching the arm's actual
+pick at all 87 — the chosen pick carried positive growth on **2**. A ±10 tilt cannot reorder a board
+whose leading rows are tens of points apart.
+
+So the VDS loss of 20.8–86.6 a seat is **the cost of removing the roster-aware terms, not the price
+of future value.** M2 closes the alternative: on `proj_3yr`, the vendor quantity the growth term is a
+percentile difference OF, `sharp_upside` is behind `sharp_auto` on the best legal 3-year starting
+lineup in **all six formats** (−108.6 to −224.6) and on roster total in five of six — 0 of 6 against
+a pre-registered bar of "a majority of six". It does not win on the horizon it targets.
+
+**Not a broken implementation.** `upside_score` computes what its docstring says, the `_has_3yr`
+guard works (it is what keeps the K/DEF growth artifact out), and the clamp is applied as specified.
+No arithmetic defect exists.
+
+**Post-freeze work, stated as work rather than as a fix.** The growth term needs a DERIVED conversion
+from percentile difference to points. The ±10 clamp was borrowed from `time_horizon_adj` precisely
+because `#56` forbids calibrating a constant, and the borrowing is what makes the term argmax-neutral
+— so the answer is a derivation, not a bigger number.
+
+## CARRIED FORWARD — THE UPSIDE BOARD'S FLAT REGION AND ITS `player_id` TIEBREAK
+
+A separate finding from the same investigation, kept separate on the owner's instruction.
+
+**8 of 87 states had the upside board's top candidate tied on value with others; 0 of 87 in balanced
+mode at the identical states.** All eight are rounds 12–16 and every tie is at value exactly 0.00,
+because the replacement level is a rank SELECTED within the remaining pool, so the player at that
+rank prices at exactly zero — and with several positions exhausted, several "best remaining at
+position X" rows land on 0.00 together. `player_id` then decides.
+
+**What is tied is not equivalent.** `12T_ppr_K_DEF` R12, 25 candidates, four tied at 0.00: Darnold
+QB, Dulcich TE, Mitchell RB, Johnston WR. Balanced mode at the same state values them −41.22, −85.65,
+−87.51 and off-board (ranks 21, 22, 23), and takes a **DEF at +1.90** that upside mode does not
+surface at all.
+
+**Production cannot reach it.** All three `build_snapshot` call sites in `app.py` omit `mode`; the
+`**snapshot_inputs` dict carries no `mode` key; `build_snapshot`'s `"balanced"` default threads into
+`compute_draft_board` and into `pick_analysis` → `_build_opponent_boards`, so the rival boards are
+balanced too; `detect_positional_run` takes no mode and builds no board; and `app.py` never calls
+`roster_diagnostics`. AST-audited over the call sites rather than grepped for the word "upside".
+
+**The `#35` relationship, recorded with both of my wrong turns.** I predicted the tie was created by
+`#35`. The first cap-on/cap-off A/B returned an identical board and I called that a refutation — then
+the recording wrapper in the same run showed the cap had been **called 13 times and capped nothing**
+at that state, making the arm vacuous and the refutation worthless. The eight-state sweep
+(`m1d_tie_states_sweep.py`) gives the real relationship: **`#35` does not create the tie** — two
+states show a four-way tie with the cap firing on nothing — but where it fires, in 6 of 8 states, it
+**enlarges the tie from 2–3 to 4 and changes which player the upside board takes.** None of this
+disturbs `#35`, which was certified on realized outcomes on the balanced/auto path production does
+use (+21.70 and +43.69 a seat).
+
+**Post-freeze work:** the branch needs a deliberate ordering/tiebreak policy for its flat regions. No
+measurement here licenses a replacement, which is why nothing was changed before the freeze.

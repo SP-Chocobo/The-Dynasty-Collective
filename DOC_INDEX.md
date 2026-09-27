@@ -1,14 +1,14 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 198 markdown documents.
+`python3 doc_index.py` regenerates this. 200 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 28 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 34 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 26 | says what kind of document it is before making claims. |
+| SUPERSEDED | 33 | still valid or partly valid, but something later changed what it means. |
+| DECLARED | 29 | says what kind of document it is before making claims. |
 | UNDECLARED | 110 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
@@ -50,7 +50,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ENGINEERING_DOCTRINE.md`
 - `ENGINE_WIRING_PASS.md`
 - `FREEZE_CHECKLIST.md`
-- `FREEZE_RECORD_V2.md`
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`
 - `evidence/backtest/README.md`
@@ -82,6 +81,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 ## DECLARED
 
 - `.claude/skills/engine-measurement/SKILL.md`
+- `FREEZE_RECORD_V2.md`
 - `POST_AUDIT_PLAN.md`
 - `ROADMAP.md`
 - `evidence/backtest/ANACHRONISM.md`
@@ -107,6 +107,8 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/roster_shape/shared_slot/RESULT_shared_slot.md`
 - `evidence/smoke_seats/PREREGISTRATION.md`
 - `evidence/smoke_seats/RESULT.md`
+- `evidence/upside_gap/CHRONOLOGY.md`
+- `evidence/upside_gap/RESULT.md`
 
 ## UNDECLARED
 

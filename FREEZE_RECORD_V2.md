@@ -1,72 +1,70 @@
-# v2 Freeze CANDIDATE — what it rests on, what is still gating it, and what it does not claim
+# v2 FREEZE RECORD — what it rests on, what it does not claim, and what was left open
 
-> **THIS IS NOT YET THE FREEZE.** The owner's ordering: *"freeze is the last item before audit. if we
-> find more tinkering to do, that happens before freeze."* So this document stands where
-> `FREEZE_CHECKLIST.md` stood for v1 — what is left *before* — and becomes the record, in
-> `FREEZE_RECORD.md`'s shape, once the freeze is actually cut. `POST_AUDIT_PLAN.md` remains the
-> numbered record and wins over any status flag anywhere (`#292`). Written to be read cold.
+> **THIS IS THE FREEZE.** The owner's ordering held throughout: *"freeze is the last item before
+> audit. if we find more tinkering to do, that happens before freeze."* The last gate ran, the one
+> finding it raised was investigated to the arithmetic, the owner ruled it a post-freeze design item,
+> and the freeze was cut on that ruling: *"No production tinkering. #35 remains closed. The VDS gate
+> has done its job and has not found a production-engine defect… And then: freeze."*
 >
-> **CORRECTED.** This file first declared v2 frozen at `43c8188` and a local `v2-freeze` tag was cut
-> there. Both were premature: the varied-field battery had not run, and under the ordering above a
-> battery finding sends work back before the freeze rather than after it. **The tag has been
-> deleted** — a marker naming a commit that is not the freeze is the stale-marker failure this
-> repository has already had once, when a branch name in a skill file sent finished work to a branch
-> nobody reads. Nothing is tagged until a commit clears the gate.
+> `POST_AUDIT_PLAN.md` remains the numbered record and wins over any status flag anywhere (`#292`).
+> Written to be read cold.
+>
+> **THE HISTORY OF THIS FILE IS PART OF THE RECORD.** It first declared v2 frozen at `43c8188`, and a
+> local `v2-freeze` tag was cut there. Both were premature — the varied-field battery had not run, and
+> under the ordering above a battery finding sends work back before the freeze rather than after it.
+> The tag was deleted, the file was rewritten as a CANDIDATE naming its outstanding gate, and it
+> becomes the record only now. A marker naming a commit that is not the freeze is the stale-marker
+> failure this repository has already had once, when a branch name in a skill file sent finished work
+> to a branch nobody reads.
 
-**THE GATE HAS RUN.** The varied-drafting-strategy battery (`#29`) completed all 36 arms at
-`04bccb5` — 32 effective, 76 findings, 6h43m, with `streaming_floor_exercised: true` and 18 weeks of
-lines, so `#30` fired. Full reading: `evidence/design_35/RESULT_VDS.md`. What it settled and what it
-did not:
+## THE LAST GATE, AND WHAT IT ACTUALLY DID
+
+`#29`, the varied-drafting-strategy battery: 36 arms (6 formats × 6 strategies), 32 effective, 76
+findings, 6h43m, with `weekly_projection_weeks: 18` and `streaming_floor_exercised: true` — checked
+before any number was read, because the previous run of this battery drafted every arm with `#30`
+dormant and said so in a field nobody read.
 
 - **Structure: clean.** 49 of the 73 `unfieldable_depth` findings are the raw-vs-bucket position
-  artifact `draft_battery._position_of` documents, not engine behaviour. 17 of the 24 survivors come
-  from an all-noisy field, and a replay puts every one of the 7 over-ceiling picks at drawn rank 5–7
-  of candidate lists 7–9, **zero at rank 0** — the backstop ordered them last and only a uniform draw
-  over a list shorter than `k` could reach them. In the five non-IDP formats the engine exceeds no
-  ceiling under any noiseless strategy; `12T_ppr_SHORT_DRAFT` finished with zero findings under all six.
-- **Quality vs the strawman: decisive.** +118 to +496 a seat over position-blind best-available in all
-  six formats, 9–12 of 12 seats. On the two formats with dedicated K/DEF/IDP slots it carries a third
-  to a fifth as many never-fielded roster spots.
-- **Quality vs a need-aware chair: THE PRE-REGISTERED BAR IS NOT MET.** −10.1 to +23.8 a seat, 5–7 of
-  12 seats. Recorded as a miss, not reframed. The gap is −0.2% to +0.9% and the ruler's own resolution,
-  measured from the same run, is ~1%.
+  artifact `draft_battery._position_of` documents. Of the 24 survivors, 17 come from an all-noisy
+  field, and a replay puts all 7 over-ceiling picks at drawn rank 5–7 of candidate lists 7–9 with
+  **zero at rank 0** — the backstop ordered every surplus body last and only a uniform draw over a
+  list shorter than `k` could reach them. In the five non-IDP formats the engine exceeds no ceiling
+  under any noiseless strategy; `12T_ppr_SHORT_DRAFT` finished with zero findings under all six.
+- **Quality vs position-blind best-available: +118 to +496 a seat, all six formats, 9–12 of 12 seats.**
+  On the two formats with dedicated K/DEF/IDP slots it carries a third to a fifth as many
+  never-fielded roster spots (K_DEF 0.50 against 1.67 and 3.25; HEAVY_IDP 0.67 against 1.00 and 3.75).
+- **Quality vs a need-aware chair: the pre-registered bar is NOT met.** −10.1 to +23.8 a seat, 5–7 of
+  12 seats. Recorded as a miss and not reframed. The gap is −0.2% to +0.9%; the ruler's own
+  resolution, measured from the same run, is about 1%.
+- **It found one weird branch and traced it to the arithmetic.** `sharp_upside` is worse on fieldable
+  value in all six formats. The investigation established that its differentiator is inert (positive
+  growth on 2.9% of 6794 board rows, argmax identical to plain `bpa` in all six formats, positive on
+  2 of 87 real chosen picks), that it also loses on `proj_3yr` — the horizon it is derived from — in
+  all six formats, and that `app.py` cannot reach the branch at all. Two design items were carried
+  forward instead of being fixed under the freeze. Full record in `evidence/upside_gap/` and in
+  `POST_AUDIT_PLAN.md`.
 
-**ONE DECISION IS OUTSTANDING, AND IT IS THE OWNER'S** (`#184`): upside mode (`mode="upside"` from
-round 1) is worse on fieldable value in **all six formats**, by 20.8 to 86.6 a seat, ahead on only
-2–5 of 12 seats. Same direction, six formats, no exceptions. Under the owner's own ordering — *"if we
-find more tinkering to do, that happens before freeze"* — that is a finding that can send work back
-before the freeze, so **the freeze is not cut here.** Separately and non-blocking: the `#261`
-crossing rule is unexercised by this battery (`picks_with_growth_measured` is 0 for every `crossing`
-arm in every format), so a listed axis of the run covers nothing.
+**Nothing in the gate changed production code.** The engine frozen here is the engine the gate
+graded.
 
-**Candidate commit: `63c58a2`** on the branch this session was designated
-(`git rev-parse --abbrev-ref HEAD` — derived, never restated, `#126`).
+## THE FROZEN COMMIT AND ITS CERTIFICATION
 
-**Certified at that commit:** full suite **3512 tests, OK, 1026.4s**, `__pycache__` cleared first per
-`#240`. `assertion_floors --check` clean over 196 modules, `doc_index --check` current. The run
-before it, at `cb87404`, FAILED on one test — `test_doc_index_is_not_stale`, caused by this session's
-own doc additions and fixed by running the generator the failure message names. Recorded because a
-certification that mentions only the passing run is not a certification.
+**Frozen commit: see `FREEZE_CERTIFICATION` below** — filled in from the suite run, never from
+memory, on the branch this session was designated (`git rev-parse --abbrev-ref HEAD` — derived, never
+restated, `#126`).
 
-**What differs from the earlier candidate `43c8188`, enumerated from the command's own output rather
-than from memory:**
+**Relationship to the earlier candidates.** `43c8188` was the `#35` certification. `04bccb5` added the
+battery's weekly-lines loader (`#30`'s wiring fix) and is the commit the battery ran at. `63c58a2`
+certified the tree after the battery was read. Everything since is documents, arm reports, evidence
+instruments under `evidence/`, and the doc index — **no engine or scoring module has changed since
+`43c8188`**, which was enumerated from `git diff --name-only`'s own output rather than asserted, twice,
+after getting it wrong twice.
 
-```
-$ git diff --name-only 43c8188 63c58a2
-23 paths; .py files: evidence/design_35/bpa_projected_ruler.py,
-evidence/design_35/idp_bucket_recount.py, evidence/design_35/noise_replay.py,
-evidence/design_35/shipped_cap_ab.py, run_draft_battery.py
-```
+## THE TAG: THE PUSH IS BLOCKED FROM HERE, SO CUTTING IT IS AN OWNER ACTION
 
-Four of the five `.py` files are instruments under `evidence/`; the fifth is `run_draft_battery.py`,
-the battery's weekly-lines loader (`#30`'s wiring fix). **No engine or scoring module differs**, so
-the engine certified here is the engine certified at `43c8188`. Everything else is a document, an arm
-report or the doc index.
-
-## THE TAG: NOT CUT, AND THE PUSH IS BLOCKED ANYWAY
-
-No tag exists. One was cut at `43c8188` and **deleted** when the ordering above was made explicit.
-Separately, and still true whenever a tag IS cut: pushing it is **refused with HTTP 403** by the
+No tag exists in this container. One was cut at `43c8188` early and **deleted** when the ordering
+above was made explicit; nothing has been tagged since, deliberately, because the freeze commit was
+not settled until the gate had run. Pushing a tag from here is **refused with HTTP 403** by the
 environment's gateway:
 
 ```
@@ -77,10 +75,11 @@ send-pack: unexpected disconnect while reading sideband packet
 Branch pushes to the same remote succeed; **tag pushes specifically are refused**, and the GitHub
 tooling available here exposes no ref- or tag-creation call. This is the identical blocker the
 earlier v2 attempt hit. The container is ephemeral, so **the local tag will not survive it** — this
-file is the durable marker, and publishing the tag is an owner action:
+file is the durable marker, and publishing the tag is an owner action. Use the commit named in
+`FREEZE_CERTIFICATION` below rather than one quoted from anywhere else:
 
 ```
-git fetch origin && git tag -a v2-freeze 43c8188 && git push origin v2-freeze
+git fetch origin && git tag -a v2-freeze <FREEZE_CERTIFICATION commit> && git push origin v2-freeze
 ```
 
 v1 was published as a GitHub **pre-release**; v2 has been through `#52`'s blind adversarial pass
@@ -132,13 +131,22 @@ board-value difference is real but never reaches a pick on this data.
 ## Open at the freeze, named rather than omitted
 
 - **`#21`** — blocked on `#50`.
-- **`#29` — the varied-drafting-strategy battery. RESTARTED, all 36 arms, against this frozen
-  commit.** The earlier 13 were discarded rather than resumed: they predate `#35`, the `absence_kind`
-  repair and the `draft_counterfactual` fix, and pairing new arms against stale ones is the rule this
-  repo states as "never resume onto a report written by different code". **This is the one bar the
-  freeze does not yet clear** — meet-or-beat on a varied field, which the realized-outcome grader
-  structurally cannot see because it fields a fixed two-style table. The gate that authorised the
-  restart is `evidence/design_35/GATE_FOR_VDS.md`, fixed before the A/B was read.
+- **`#29` — RUN AND READ.** All 36 arms at `04bccb5`, `#30` exercised. Clean on structure, decisive
+  over position-blind best-available, and a recorded MISS against the pre-registered bar for a
+  need-aware chair (−0.2% to +0.9%, at or under the ruler's own ~1% resolution). Not open any more;
+  the two findings it raised are the next two entries.
+- **`#184` — `sharp_upside`'s differentiator is inert. A design item, ruled post-freeze by the
+  owner.** Positive growth on 2.9% of 6794 board rows, argmax identical to plain `bpa` in all six
+  formats, positive on 2 of 87 real chosen picks; and it loses to `sharp_auto` on `proj_3yr` — the
+  horizon it is derived from — in all six formats. Not a broken implementation: the arithmetic does
+  what its docstring says. The work is a DERIVED percentile-to-points conversion, since the ±10 clamp
+  was borrowed from `time_horizon_adj` precisely because `#56` forbids calibrating one.
+  `evidence/upside_gap/`.
+- **The upside board's flat region.** 8 of 87 states have its top decided by `player_id` among
+  candidates tied at value exactly 0.00, against 0 of 87 in balanced mode at the identical states, and
+  what is tied is not equivalent. **`app.py` cannot reach the branch** — every `build_snapshot` call
+  site omits `mode`, AST-audited. Carried forward as a separate finding; no measurement here licenses
+  a replacement ordering, which is why nothing was changed under the freeze.
 - **`#30` live-sync verification** — blocked by the environment's network policy on
   `api.sleeper.app` (403 on CONNECT). An environment issue, not an engine one.
 - **`#35` / `pure_value`** — exercised, but never on a level-capped row, so that one consumer
@@ -151,6 +159,27 @@ board-value difference is real but never reaches a pick on this data.
 
 That the engine is right about value. It claims the engine drafts **competitively** and in a
 **fieldable shape**, on a ruler it cannot game, with every constant derived rather than chosen —
-and that where a claim is untested, this record says so. **It does not yet claim the varied-field
-bar is met**; that is what the running battery decides, and a finding there is tinkering to be done
-*before* the freeze, not a footnote after it.
+and that where a claim is untested, this record says so.
+
+On the varied field specifically, stated at the precision the evidence supports and no further: the
+engine **beats position-blind best-available in all six formats by 118 to 496 points a seat**, and it
+**ties a need-aware best-available chair** at −0.2% to +0.9%, which is at or under the resolution that
+same run demonstrates. It does **not** claim to beat a need-aware chair on that ruler. The
+value-over-best-available claim rests on the 2023/2024 REALIZED work, not on this battery.
+
+And it does not claim `mode="upside"` is a working strategy. It claims production never uses it, that
+its differentiator was measured inert, and that two named design items were carried forward rather
+than tuned away under a freeze.
+
+## FREEZE_CERTIFICATION
+
+Filled in from the suite's own output. The full suite is what licenses this, never a subset, with
+`__pycache__` cleared first (`#240`).
+
+- **Frozen commit:** `PENDING — the suite is running`
+- **Full suite:** `PENDING`
+- **`assertion_floors --check`:** `PENDING`
+- **`doc_index --check`:** `PENDING`
+
+This record is one commit past the certified tree — the commit that writes the result down — and the
+only difference is this section and `DOC_INDEX.md`. The commit named above is the freeze.
