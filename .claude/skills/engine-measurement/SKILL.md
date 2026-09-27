@@ -703,3 +703,39 @@ three-hour run in another process cannot be affected, and there is no `__pycache
 It does not cover everything -- a mutation inside a function BODY still needs the file. Queue
 those. But the ones that reach for a constant, a table, a threshold or a whole function are the
 common case, and they no longer have to wait for the machine to go idle.
+
+## Ask the instrument whether the feature fired — it usually already tells you
+
+`#30` shipped derived streaming floors, with unit tests, a two-season measurement and a holdout.
+Then a 36-arm battery ran for hours against a harness whose weekly-projection loader returned
+`{}`, so **every arm drafted with the floors dormant**. The report said so plainly, in a field the
+harness writes on every arm:
+
+```
+"streaming_floor_exercised": false
+```
+
+Nobody read it. The run was only caught because the owner asked an unrelated question —
+"would `#30` invalidate the current battery?" — which forced a look at the wiring.
+
+**Before reading any battery, grep its own report for the exercise flags and assert them.** Not the
+findings, not the totals — the flags. A `false` there means the arms measured a configuration that
+does not exist in production, and every number in the run is about something else. This is the
+"plausible number about something else" failure at battery scale, and it costs a full re-run.
+
+Two corollaries:
+
+- **A feature is not exercised because it shipped.** Between the engine and the harness sits a
+  loader, and a loader that returns empty is silent. If the battery reaches production code by a
+  path other than the app's, that path needs its own verification.
+- **When you add an exercise flag, add the assertion in the same commit.** A flag nobody checks is
+  a comment. `#30`'s flag existed and was correct for the entire dormant run.
+
+## Liveness: check the script's real name before declaring a run dead
+
+`pgrep -f "run_draft_batter[y]"` returns nothing for a run of `run_vds_battery.py`, and nothing is
+indistinguishable from a dead process. Confirm liveness on three signals before concluding
+anything: the actual process table (`ps aux --sort=-%cpu | head -3`), the log's mtime measured
+against the run's per-arm cadence (a ~20-minute-old log is normal when arms take 18 minutes), and
+`uptime` — a container restart resets it, and a steady load average near 1.0 means something is
+still burning a core.
