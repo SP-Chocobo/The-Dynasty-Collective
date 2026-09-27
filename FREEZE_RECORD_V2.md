@@ -13,21 +13,55 @@
 > repository has already had once, when a branch name in a skill file sent finished work to a branch
 > nobody reads. Nothing is tagged until a commit clears the gate.
 
-**THE ONE GATE OUTSTANDING:** the varied-drafting-strategy battery (`#29`), 36 arms, running at
-`04bccb5`. Meet-or-beat on a varied field is the bar the owner set for the K/DST work, and it is the
-one thing the realized-outcome grader structurally cannot see, because it fields a fixed two-style
-table. `evidence/design_35/GATE_FOR_VDS.md` carries the gate and the record of why the battery runs one
-commit past the candidate.
+**THE GATE HAS RUN.** The varied-drafting-strategy battery (`#29`) completed all 36 arms at
+`04bccb5` — 32 effective, 76 findings, 6h43m, with `streaming_floor_exercised: true` and 18 weeks of
+lines, so `#30` fired. Full reading: `evidence/design_35/RESULT_VDS.md`. What it settled and what it
+did not:
 
-**Candidate commit: `43c8188`** on the branch this session was designated
+- **Structure: clean.** 49 of the 73 `unfieldable_depth` findings are the raw-vs-bucket position
+  artifact `draft_battery._position_of` documents, not engine behaviour. 17 of the 24 survivors come
+  from an all-noisy field, and a replay puts every one of the 7 over-ceiling picks at drawn rank 5–7
+  of candidate lists 7–9, **zero at rank 0** — the backstop ordered them last and only a uniform draw
+  over a list shorter than `k` could reach them. In the five non-IDP formats the engine exceeds no
+  ceiling under any noiseless strategy; `12T_ppr_SHORT_DRAFT` finished with zero findings under all six.
+- **Quality vs the strawman: decisive.** +118 to +496 a seat over position-blind best-available in all
+  six formats, 9–12 of 12 seats. On the two formats with dedicated K/DEF/IDP slots it carries a third
+  to a fifth as many never-fielded roster spots.
+- **Quality vs a need-aware chair: THE PRE-REGISTERED BAR IS NOT MET.** −10.1 to +23.8 a seat, 5–7 of
+  12 seats. Recorded as a miss, not reframed. The gap is −0.2% to +0.9% and the ruler's own resolution,
+  measured from the same run, is ~1%.
+
+**ONE DECISION IS OUTSTANDING, AND IT IS THE OWNER'S** (`#184`): upside mode (`mode="upside"` from
+round 1) is worse on fieldable value in **all six formats**, by 20.8 to 86.6 a seat, ahead on only
+2–5 of 12 seats. Same direction, six formats, no exceptions. Under the owner's own ordering — *"if we
+find more tinkering to do, that happens before freeze"* — that is a finding that can send work back
+before the freeze, so **the freeze is not cut here.** Separately and non-blocking: the `#261`
+crossing rule is unexercised by this battery (`picks_with_growth_measured` is 0 for every `crossing`
+arm in every format), so a listed axis of the run covers nothing.
+
+**Candidate commit: `63c58a2`** on the branch this session was designated
 (`git rev-parse --abbrev-ref HEAD` — derived, never restated, `#126`).
 
-**Certified at that commit:** full suite **3512 tests, OK, 1761.3s**, `__pycache__` cleared first
-per `#240`. `assertion_floors --check` clean over 196 modules.
+**Certified at that commit:** full suite **3512 tests, OK, 1026.4s**, `__pycache__` cleared first per
+`#240`. `assertion_floors --check` clean over 196 modules, `doc_index --check` current. The run
+before it, at `cb87404`, FAILED on one test — `test_doc_index_is_not_stale`, caused by this session's
+own doc additions and fixed by running the generator the failure message names. Recorded because a
+certification that mentions only the passing run is not a certification.
 
-The local tag sits at that commit exactly, and **this record is one commit past it** — the commit
-that writes it down. No engine or test code differs: this commit adds only this file and
-`DOC_INDEX.md`. So the tree frozen is the tree measured. Quote `43c8188` as the freeze.
+**What differs from the earlier candidate `43c8188`, enumerated from the command's own output rather
+than from memory:**
+
+```
+$ git diff --name-only 43c8188 63c58a2
+23 paths; .py files: evidence/design_35/bpa_projected_ruler.py,
+evidence/design_35/idp_bucket_recount.py, evidence/design_35/noise_replay.py,
+evidence/design_35/shipped_cap_ab.py, run_draft_battery.py
+```
+
+Four of the five `.py` files are instruments under `evidence/`; the fifth is `run_draft_battery.py`,
+the battery's weekly-lines loader (`#30`'s wiring fix). **No engine or scoring module differs**, so
+the engine certified here is the engine certified at `43c8188`. Everything else is a document, an arm
+report or the doc index.
 
 ## THE TAG: NOT CUT, AND THE PUSH IS BLOCKED ANYWAY
 
