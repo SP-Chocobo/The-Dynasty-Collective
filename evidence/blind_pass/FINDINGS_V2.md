@@ -376,3 +376,103 @@ nesting, `draft_history`'s content addressing, `lineup_optimizer`'s empty and Na
 `replacement_levels`' omit-rather-than-clamp, `_board_order`'s None-safety, the upload path's
 refusal to guess a bad as-of date, and degenerate leagues (one team, more rounds than players)
 building a board without error.
+
+## THE SKEPTIC — the five HIGH claims, adjudicated
+
+Given the five claims with authorship stripped and told to break them. It disclosed its own
+instrument error (a probe whose arm labels were inverted, superseded by a corrected one) before
+reporting — which is the discipline the mandate asks for.
+
+| claim | verdict |
+|---|---|
+| 1. `time_horizon_adj` population split | **mechanism STANDS, ordering OVERSTATED** |
+| 2. withheld survival rendered to a human | **STANDS**, with a reachability qualifier |
+| 3. fieldability exemption | **STANDS**, and the derivation is REFINED |
+| 4. multi-word DEF names unresolvable | **STANDS**, scoped to the fallback path |
+| 5. one player, two canonical records | **mechanism STANDS, consequence OVERSTATED** |
+
+### 1 — the bias is exactly as measured; the pick does not move
+
+Populations confirmed by spying on `_percentile_map` per build: season n=481, 3yr n=259, the extra
+222 averaging 32.3 points against 186.2. Production mean `time_horizon_adj` **−3.710** against
+**−0.021** matched, 91 of 259 rows flipping sign, and the bias persists mid-draft (−4.02 at round 3
+through −3.30 at round 12).
+
+**But run through `build_snapshot` — backstops and `narrow_candidates`' own re-sort included — the
+top candidate is identical in 16 of 16 states** (12 opening across 4 leagues × 3 seats, 4 mid-draft).
+Top-5 identical in 15 of 16. Candidates move by at most 5 places. The reason is that the bias among
+the *actual* candidates is about a third of the population figure (−0.94 to −1.65): a rank-percentile
+shift is smallest at the top of the distribution, which is where picks come from.
+
+So: real defect, real magnitude, and the wave-1 claim overstates it if read as changing picks.
+
+### 2 — stands, and the leak is wider than claimed
+
+`withheld_fields()` returns **three** names, and `_render_pick_metrics` renders all three —
+`survival_probability`, `opportunity_cost` and `expected_value_of_waiting`. On F&F opening snapshots
+**48 of 48 candidates carry non-None survival**, so line 1545 would print `'55%'`, `'100%'`, `'72%'`.
+Reachable from both the live Draft Room and the Mock Draft twin.
+
+The qualifier: it is reached only after "Debate This Pick" runs **with a configured LLM provider**
+and the Caller names a candidate. With no provider, `debate_pick` returns `recommended=None` and the
+panel never renders. `RENDER_TRACE.json` therefore has zero survival entries — which is the same
+empty-state blindness the instruments lens found. **With a key configured, the leak is live in the
+shipped app.**
+
+New side finding: `draft_board_ui.py:788` prints `c.survival` **without** the `survivalWithheld`
+gate that lines 811-816 and 921 honour. Unreachable today because `decision_regime` never returns
+"decisive" while uncalibrated — but it is an ungated read sitting behind a reachable regime.
+
+### 3 — stands, and the derivation the fix would use is WRONG
+
+This is the entry that vindicates investigating everything before consolidating.
+
+The skeptic attacked the derivation rather than the measurement, and found that
+`slots_reachable(P) + 1` **is** a valid upper bound — competition for shared slots can only make it
+loose, never wrong — but that it is **too loose to catch the real case**. Verified against the
+production optimizer: a roster holding 2 DL + 2 LB + 2 DB is at **exactly the per-position bound for
+all three**, yet the optimizer starts **one** of the six. Five are permanently unfieldable and no
+per-position ceiling is exceeded.
+
+The tight derivable bound is the **joint** one:
+
+> Σ over the group of `held` ≤ |slots admitting any member of the group| + 1
+
+On its own 168-pick LIGHT_IDP draft: `structural_findings` = **0**; six rosters exceed the
+per-position bound (20 excess players), **seven exceed the joint bound (29 excess)** — the extra
+roster being exactly the 2 LB + 1 DB case the per-position form misses. One roster holds 7 IDP and
+the optimizer starts 1.
+
+And it is **not IDP-specific**: one roster holds **7 TE** against a bound of 3, and three hold 7 WR
+against a bound of 4. The exemption is silent on all of it.
+
+Had we consolidated after wave 1, the repair would have implemented the per-position bound and
+missed the case that motivates the fix.
+
+### 4 — stands, scoped
+
+11 of 32 defenses unresolvable (GB, KC, LAC, LAR, LV, NE, NO, NYG, NYJ, SF, TB), confirmed by
+`_resolve` returning `(None, 0 candidates)` for exactly those. On the vendor-only board they price
+`no_priceable_input`. **But on the shipped season-sum path all 32 price**, by `player_id`, no name
+match needed. So the consequence is real only on the degraded fallback — which the robustness lens
+independently showed is entered silently on any fetch exception.
+
+### 5 — mechanism yes, consequence no
+
+Two canonical records for Kyren Williams exist in **all 12 format hints**, and the lower-precedence
+file wins in **5 of 12** (including all three superflex non-TEP hints). `match_verified=False` and
+`identity_basis="ambiguous"` are emitted and read by nothing.
+
+But the A/B, removing one record at a time in one process: **≤0.12 universal-value points and no
+rank change** on the production season-sum board (12T_ppr_SF: uv 80.06 vs 80.18, rank 51 in both).
+On three formats the two records carry identical projections, so the difference is exactly zero. The
+wave-1 claim that the owner's league "prices Kyren Williams off the worst-matching export" is true
+and costs almost nothing on the shipped path.
+
+### What the skeptic changed
+
+Two of five claims narrowed, three confirmed, one derivation corrected, and one new ungated read
+found. Nothing was withdrawn outright. The two narrowings both cut the same way: a real mechanism
+whose *consequence on the shipped path* is smaller than the finding implied — which is the failure
+mode this repository has withdrawn findings for before, caught this time before anything was
+repaired.
