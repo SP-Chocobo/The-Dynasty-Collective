@@ -128,7 +128,7 @@ matches".
 
 **Repair:** declare both. This is small and it protects every number below.
 
-## 0.7 Report fields that do not mean their names
+## 0.7 Report fields that do not mean their names **[VERIFIED: `draftable_rounds` only]**
 
 - `roster_shape_axes["draftable_rounds"]` is the **starting-slot count**. **[VERIFIED]** I measure
   **35 of 36 arms** disagreeing with the arm's own `draft_rounds` (the pass said 36; it is 35). The
@@ -230,7 +230,7 @@ understands what I was looking at."*
 
 **Repair:** pass it, or remove the claim. Passing it is the one the comment intends.
 
-## 1.6 The candidate matcher returns the highest-ranked name *mentioned*
+## 1.6 The candidate matcher returns the highest-ranked name *mentioned* **[VERIFIED]**
 
 `pick_debate.py:626-629`: after an exact-match miss it returns the first candidate in board order
 whose name appears anywhere in the RECOMMENDATION text. Measured against a real board —
@@ -253,7 +253,7 @@ The pattern one pass named, and it is the right frame for this whole tier:
 > their completeness, and the one companion that does exist is written to disk and read by nothing
 > that prices.
 
-## 2.1 A partial projection sum is priced as complete — *three lenses* **[VERIFIED]**
+## 2.1 A partial projection sum is priced as complete — *three lenses* **[VERIFIED: root cause only]**
 
 `season_projection_coverage` is written by `sleeper_client` and read by **no module that prices**.
 The only consumers are in `sleeper_import_report.py`, a CLI; `grep -c season_projection_coverage
@@ -290,7 +290,7 @@ while pricing QBs under the 1QB regime (Josh Allen 91.03 against 170.02).
 What is not a design question: a board built on a config the gate would refuse should not be silently
 priced.
 
-## 2.3 Identity and reach into the stat line
+## 2.3 Identity and reach into the stat line **[VERIFIED: the 11 defenses only]**
 
 - **11 of 32 team defenses cannot resolve** to their transcribed row — `name_key` takes the first
   initial plus everything after the first token, so "Green Bay Packers" never matches "G Packers".
@@ -373,7 +373,7 @@ priced rows (gap ≈556 against a cap of 12), so the invariant it guards is **va
 **These are `#56` territory — a re-derivation, not a re-tuning — and re-deriving a conversion is real
 work. See Owner Decisions.** The vacuous test should be fixed regardless, in Tier 0.
 
-## 3.4 Terms that are dead or describe the wrong roster
+## 3.4 Terms that are dead or describe the wrong roster **[VERIFIED: `block_opportunity` only]**
 
 - **`block_opportunity` has been dead since the `#206` normalisation.** Its 0.10 threshold means
   "rank-4-or-better" on the raw table; normalised over ~960 rows rank-1 is 0.025. Measured: 4,812
@@ -484,6 +484,29 @@ crash but a plausible number about something else — and I produced two.
    discrepancy. The question that matters is neither: it is what the **board** does. Built both ways,
    the board answers it — 0 unpriced on the shipped path, exactly 11 on the fallback. **I was
    measuring a different function than the one whose output reaches a price.**
+
+## Added after the first pass over this log
+
+**1.6 the candidate matcher — VERIFIED.** Driven directly against `_match_candidate` with a
+three-candidate snapshot:
+
+```
+'Nico Collins over CeeDee Lamb'       -> 'CeeDee Lamb'
+'Nico Collins, not CeeDee Lamb'       -> 'CeeDee Lamb'
+'Not CeeDee Lamb'                     -> 'CeeDee Lamb'
+'Either Nico Collins or CeeDee Lamb'  -> 'CeeDee Lamb'
+'CeeDee Lamb - no wait, Nico Collins' -> 'CeeDee Lamb'
+'D'                                   -> 'CeeDee Lamb'
+'Nico Collins'                        -> 'Nico Collins'   (exact match, correct)
+```
+
+Its own docstring: *"returns None (never a guess) if nothing lines up"*. It guesses whenever two
+things line up, and a single character is enough.
+
+**Marker corrections in this document.** Four headings under-stated what I had checked (0.7's
+`draftable_rounds`, 1.6, 2.3's eleven defenses, 3.4's `block_opportunity`) and one over-stated it:
+**2.1 is verified at the ROOT CAUSE only** — no pricing consumer reads the coverage record — not at
+the 39-of-40 reordering. Corrected in place.
 
 ## Still unverified by me, and what that means for the repair
 
