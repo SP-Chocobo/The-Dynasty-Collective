@@ -7,7 +7,7 @@ and a render. Two blind passes reached it independently afterwards. This module 
 that section asked for.
 
 `render_debate_chip` writes a `ScreenContext` into `st.session_state.debate_attached_context`
-(`app.py:1484`). The debate dock reads it, prints "💬 **Considering:** On the clock for pick 2.03"
+(`app.py:1484`). The Prytaneum reads it, prints "💬 **Considering:** On the clock for pick 2.03"
 and offers a "Full evidence" expander -- and that read was its ONLY consumer. `build_context` had no
 parameter for it, so the panel then answered with no board, no candidates and no pick position, and
 could name a player who was already drafted. The dock's own comment says the line is meant to read

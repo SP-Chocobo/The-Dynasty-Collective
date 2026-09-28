@@ -392,15 +392,26 @@ REGISTRY: tuple[Invariant, ...] = (
                    "family: the diff, the chair prompt, the three system prompts (which named "
                    "it among 'real, already-computed numbers' and demonstrated citing it), and "
                    "the Prytaneum seed. A drop here is a surface that stopped asking; a rise is "
-                   "a new one that needs a case in test_withheld_propagation.py.",
+                   "a new one that needs a case in test_withheld_propagation.py.\n"
+                   "8 -> 11 (mandate 1.2). THIS CENSUS DID ITS JOB: repair 1.2 wired the live "
+                   "Draft Room's recommendation panel, which the count above could not see, "
+                   "because it never asked at all -- and this registry is what noticed the "
+                   "population had grown. The claim was re-verified over all 11 before the number "
+                   "moved. The three new members are app.py's survival card (which now shows the "
+                   "measured pick count in the withheld family's place), app.py's runner-up "
+                   "caption, and pick_synthesis.presentable_text, the function the two cards ask. "
+                   "Each has a case below; the last is value-based on both arms, which is what a "
+                   "Streamlit surface cannot be.",
         members=_surfaces_consulting_the_withholding_policy,
-        census=8,
+        census=11,
         pinned_by=(
             "test_withheld_propagation.TheDiffDoesNotReportAWithheldDeltaTests",
             "test_withheld_propagation.TheChairPromptDoesNotCarryItTests",
             "test_withheld_propagation.TheSystemPromptsDoNotInviteItTests",
             "test_withheld_propagation.ThePrytaneumSeedDoesNotCarryItTests",
             "test_withheld_propagation.TheBoardPayloadShipsThePolicyWithTheValueTests",
+            "test_withheld_propagation.TheFunctionTheDraftRoomCardsAskTests",
+            "test_withheld_propagation.TheDraftRoomPanelAsksTests",
         ),
     ),
     Invariant(

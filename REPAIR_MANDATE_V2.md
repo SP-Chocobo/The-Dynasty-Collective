@@ -528,7 +528,7 @@ move and is wrong.
 Found by repairing `0.3`, not by looking for it: the render trace had never entered the Mock branch, so
 the first recording that did crashed here immediately.
 
-## 1.2 The recommendation panel renders the withheld family to a person — *three lenses* **[VERIFIED]**
+## 1.2 The recommendation panel renders the withheld family to a person — *three lenses* **[REPAIRED]**
 
 `SURVIVAL_IS_CALIBRATED = False`; `withheld_fields()` names **three** quantities —
 `survival_probability`, `opportunity_cost`, `expected_value_of_waiting` — under the rule *"A quantity
@@ -548,7 +548,29 @@ unreachable today only because `decision_regime` never returns "decisive" while 
 **Repair:** make the panel ask `withheld_fields()`; add it to `test_withheld_propagation`'s surface
 list; gate line 788.
 
-## 1.3 `positional_forfeits` sums a conditional hazard as an expected count **[VERIFIED]**
+### REPAIRED
+
+The panel asks. The survival card does not go blank -- it shows the fact that IS true, the count of
+picks before your next turn, under a label naming it, which `survival_is_presentable`'s docstring has
+named as the replacement from the day it was written and which no Streamlit surface had ever shown.
+Four states, not three: "no next pick" outranks the withholding policy, because telling someone their
+estimate is withheld when the fact is that they have no further pick answers a question they are not
+in a position to ask.
+
+The two derived cards go through `pick_synthesis.presentable_text` -- the propagation rule with a
+return value a widget can take. What replaces a withheld number is "withheld", never the em dash: the
+panel already uses the dash for the absence contract, and a withheld number is the opposite case
+(`#187`).
+
+`draft_board_ui`'s decisive branch is gated directly. It was unreachable today only because
+`decision_regime` never returns "decisive" while the estimate is uncalibrated -- the same flag guarding
+it by accident, from another module. A guard that holds by coincidence is not a guard.
+
+The ratchet splits the work honestly: `app.py` is a Streamlit script whose import executes the page,
+so the panel is READ, while what the call RETURNS is proved by value on both arms with the same
+sentinel every other boundary in that file uses.
+
+## 1.3 `positional_forfeits` sums a conditional hazard as an expected count **[REPAIRED — one residual to the owner]**
 
 `position_pace_probability` advances the expected cumulative count with each hypothetical intervening
 pick while `actual_now` is read off a fixed list, so the deficit grows every step. Defensible inside
@@ -570,7 +592,35 @@ universal-value points by your next turn."
 expectation from the hazards properly. **Not** a per-position cap — that is a constant, and `#56`
 forbids it.
 
-## 1.4 The Live Draft Room never fetches picks on its own **[VERIFIED]**
+### REPAIRED
+
+The deficit closes. `positional_forfeits` advances `picks_made_now` one hypothetical pick at a time so
+`expected_now` climbs the convention's curve, while `actual_now` was counted off a FIXED list —
+nothing subtracted what the walk itself had consumed. The repair passes the walk's own running total,
+which is what makes the comment beside that call ("the deficit closes as picks are made") true of the
+code as well. Not a cap: no number is introduced, and the convention supplies its own ceiling by
+arithmetic.
+
+| state | gap | QB `expected_taken` | convention's own increment | all positions |
+|---|---|---|---|---|
+| 1.01 | 22 | 15.54 → **7.02** | 8.92 | 26.15 → **17.63 / 22** |
+| after 24 picks | 22 | 2.81 → **1.45** | 2.17 | 12.99 → **11.63 / 22** |
+
+QB forfeit at 1.01 falls 63.10 → 33.98, which is the number the sentence a person reads actually
+carries. RB, TE and WR are byte-identical at both states: no convention is documented for them.
+
+### CARRIED TO THE OWNER (`#184`)
+
+**The cross-position total can still exceed the gap**, and I found that by writing a test I expected
+to pass. The pace override sits OUTSIDE the per-pick normalisation, so when the convention raises one
+position above its normalised share, nothing removes the difference from the others. On a board built
+so one position saturates its own mass — 22 opponents each holding exactly one priced WR — the total
+is **29.02 across 22 picks**. On both real states it came in under the gap, so this is a structural
+gap rather than an observed production defect, and it is recorded as the first. Closing it means
+letting the pace override participate in the normalisation, and WHICH of the two models yields is a
+valuation decision, not an arithmetic one.
+
+## 1.4 The Live Draft Room never fetches picks on its own **[REPAIRED]**
 
 `get_draft_picks` has **exactly one call site** in `app.py` (line 5327), behind the `↻ Refresh Picks`
 button. A live draft in round 4 opens showing **"ON THE CLOCK — 1.0X"**, every drafted player still a
@@ -581,7 +631,21 @@ never refilled.
 **Repair:** fetch on load, or show a "picks as of" stamp and refuse to label the board live without
 one. The second is smaller and removes the false claim even if the fetch stays manual.
 
-## 1.5 The Debate chip's context is displayed and never sent — *two lenses* **[VERIFIED]**
+### REPAIRED
+
+BOTH, because either alone still leaves a person misled. The view pulls on load, once per draft per
+session, through the same call and the same exception handling as the button; a failure records itself
+and hands the retry to the button rather than letting every Streamlit rerun re-hit a failing endpoint.
+
+And the board no longer gets to call itself live on picks nobody pulled. `len(draft_picks)` is 0 both
+when no picks have been made and when nobody ever asked, and `is_live` is derived from it -- so the
+board could only ever have got this right by accident. A fetch stamp is written wherever picks enter
+the store, `ON THE CLOCK` requires it, and a PICKS AS OF / PICKS NOT PULLED tag sits on the board's own
+tag row either way. The hover caveat says "pulled from Sleeper at HH:MM:SS" rather than "N pick(s)
+made": one is a claim about the fetch, the other about the draft, and they differ by exactly the case
+that was wrong.
+
+## 1.5 The Debate chip's context is displayed and never sent — *two lenses* **[REPAIRED]**
 
 `debate_attached_context` is written at `app.py:1484`, read at `app.py:6531`, and that read is its
 only consumer. `build_context(snapshot, roster_table, player_universe, question, conversation_window)`
@@ -592,7 +656,20 @@ understands what I was looking at."*
 
 **Repair:** pass it, or remove the claim. Passing it is the one the comment intends.
 
-## 1.6 The candidate matcher returns the highest-ranked name *mentioned* **[VERIFIED]**
+### REPAIRED
+
+Passed, as `to_prompt_seed()` -- the ScreenContext's own text block, already the entry point the Trade
+Calculator's anvil buttons use. FENCED, with the app's instruction OUTSIDE the fence: most of a
+ScreenContext is app-generated prose over this process's own engine output, but a Trade Calculator
+context carries `trade_partner`, which is another Sleeper user's chosen display name. The heading stays
+outside, where "Answer about THIS" is still the app speaking; the body goes inside, where a display
+name cannot forge its way into that voice.
+
+ONE call site, deliberately. The condense-to-objective path does NOT get the screen: it asks a
+different question, and feeding a screen into it would write whatever board the user happened to be
+looking at into an objective's text. Pinned as a test so the asymmetry is a decision.
+
+## 1.6 The candidate matcher returns the highest-ranked name *mentioned* **[REPAIRED — one documented limit]**
 
 `pick_debate.py:626-629`: after an exact-match miss it returns the first candidate in board order
 whose name appears anywhere in the RECOMMENDATION text. Measured against a real board —
@@ -604,8 +681,27 @@ nothing lines up"; it guesses whenever two things line up.
 **Repair:** require an unambiguous match — fail to `None` when two candidate names appear — and let
 the existing `recommended=None` path handle it.
 
+### REPAIRED
 
-## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current
+ONE RULE: a candidate is REFERENCED when its full name appears in the text, or when a word of its
+name that belongs to no other candidate on this board appears as a word in the text. A match is the
+only candidate referenced; anything else is `None`.
+
+**Both halves are load-bearing, and I only learned that by writing the test.** Uniqueness alone does
+not dispose of the fragment case — `"r"` is a unique substring of "Brock Purdy" on a board whose
+other candidate is "Justin Fields", so my first attempt still resolved one letter to a player.
+Requiring a WORD closes it. Words alone would decline far too much: two candidates sharing a first
+name would make "Michael Thomas is the pick" ambiguous on the word "michael" while the full name sits
+right there, so a word shared across candidates refers to nobody and is dropped before the count —
+derived from the board, since a different board makes different words discriminating.
+
+**STILL NOT FIXED, and stated rather than implied:** a single name the text REJECTS still matches it.
+"Not Brock Purdy" resolves to Purdy. Reading negation out of free prose is a guess of a different
+kind; the `recommended=None` path exists so the panel can decline, and the Caller's contract asks for
+a bare name. Pinned as a characterization test that says to invert it when repaired.
+
+
+## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[3 OF 6 LIMBS REPAIRED]**
 
 Four lenses hit this from four directions, and it is one defect family: **what the person is looking at
 can be older or other than what the label says, and nothing in the apparatus can tell.**
@@ -626,6 +722,45 @@ can be older or other than what the label says, and nothing in the apparatus can
 **Repair:** one anchor, keyed on everything the board reads, cleared on every scope change. The
 individual fixes are small; the reason they are one item is that repairing any one of them alone leaves
 the person with the same wrong impression by a different route.
+
+### THREE OF SIX LIMBS REPAIRED
+
+**1. The cache fingerprint claimed every field the board reads and hashed four.**
+`_players_db_fingerprint` covered id, position, team and eligibility, under a docstring saying "every
+player field the pool build reads". The board also reads `status`, `years_exp` and `injury_status`.
+Both consumers are caches, so a change the key could not see was served the old answer with the
+staleness stamp saying current. Measured: `injury_status` ALONE moves the leader from first to third
+and his score 232.88 → 208.77, a 24.11-point swing under an identical key; `years_exp` and `status`
+change the pool only together (970 rows → 971), because the clauses reading them sit behind `team`,
+which was already hashed — narrower than the finding said, and still real. It now hashes the WHOLE
+ROW, so the claim is true by construction rather than by a maintained list that had already drifted
+once. Cost: a median 30.5 ms against 2.7 ms, ~3% of a warm board build, quoted as the measured spread.
+
+**2. A held debate now knows which world it saw.** The stamp was two fields; `pool_scope` and the
+player universe were invisible, so a debate over 59 rookies read as current beside a 970-row board.
+`PickSnapshot` now carries `pool_scope` and `players_db_stamp`, written by `build_snapshot` from its
+OWN arguments — a stamp a caller supplies is a stamp that can disagree with the board it is stapled
+to. The live values arrive in PAIRS with the stamped ones, so a caller with nothing to compare against
+asks exactly the question it used to. Annotate, never discard, unchanged.
+
+**3. Two pieces of one league's state followed the user into another.** `debate_attached_context` and
+`import_audit` sat under no swept prefix. The first was cosmetic while it was only rendered — and
+repair 1.5, earlier the same day, made it reach the model, which turns it into league A's board being
+described to a panel answering about league B. Repairing one limb raised the cost of another, which is
+the reason this item is one item. Both now cleared by prefix, and the audit panel additionally names
+the league its stored report was run for, because a label that is only right when a clearing path ran
+is a label that is wrong when it did not.
+
+### THREE LIMBS REMAINING
+
+- **"WHAT CHANGED SINCE THE LAST SNAPSHOT" has no anchor**, so the user's own picks read as board
+  movement.
+- **Failed or cut-off chairs** are reported only as a one-rerun toast while the persistent panel shows
+  a clean recommendation; `CONFIDENCE` is unvalidated, and failed-chair error strings are replayed into
+  conversation memory.
+- **`draft_history` cannot reproduce what was shown** — write-only today. This one is a REPLAY FEATURE,
+  not a defect fix: it needs a reader, a renderer and a decision about what "what was shown" means.
+  Named here as the scope call it is rather than folded in quietly.
 
 ---
 
