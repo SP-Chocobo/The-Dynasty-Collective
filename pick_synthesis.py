@@ -902,7 +902,19 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
         # `eligibility_bonus` was summed in here until the 6.1b ruling retired it. Measured
         # before removal: it reached 0.84 on five of 46,020 rows, so this component moves by at
         # most 0.67 anywhere, and on 46,015 rows by nothing at all.
-        roster_fit_component = c.get("need_bonus", 0.0) * NECESSITY_ROSTER_FIT_WEIGHT
+        # MANDATE 2.5: read WITHOUT a default, so an absent term cannot arrive as a measured zero.
+        #
+        # Numerically a missing term and a term worth 0.0 add the same amount to a sum, so the
+        # score does not move. What changes is whether it may be DESCRIBED as including roster fit,
+        # and in upside mode it may not. That fact needs no new flag: the candidate carries
+        # `need_bonus = None`, which says it. A separate necessity-basis field beside it would be a
+        # second statement of one fact -- the thing `#126` is about. (An earlier version of this
+        # comment named such a field in backticks. It does not exist; prose_names caught the
+        # invented name, which is what that instrument is for, and inventing the field to make the
+        # comment true would have been `0.8`'s defect written fresh.)
+        need_bonus = c.get("need_bonus")
+        roster_fit_component = (need_bonus * NECESSITY_ROSTER_FIT_WEIGHT
+                                if need_bonus is not None else 0.0)
 
         raw_score = (
             NECESSITY_BASELINE + standout_component
@@ -1469,7 +1481,9 @@ class CandidateSnapshot:
     bpa_source: str
     confidence: float
     universal_value: Optional[float]
-    need_bonus: float
+    #: MANDATE 2.5: Optional, because upside mode does not compute it and the board says so by
+    #: omitting it. A float here made every consumer read a fabricated zero as roster fit.
+    need_bonus: Optional[float]
     team_acquisition_value: Optional[float]
     survival_probability: Optional[float]
     #: The companion that makes survival_probability readable (#206/#187), same pattern as
@@ -1772,7 +1786,16 @@ def build_snapshot(
         raw_candidates.append({
             "player_id": pid, "name": row["name"], "position": row["position"], "team": row.get("team"),
             "bpa": row["bpa"], "bpa_source": row["bpa_source"], "confidence": row["confidence"],
-            "universal_value": universal_value, "need_bonus": row.get("need_bonus", 0.0),
+            "universal_value": universal_value,
+            # MANDATE 2.5 / `#187`: NOT DEFAULTED. This read `row.get("need_bonus", 0.0)`, and the
+            # comment four lines below it -- about the two terms beside it -- already stated the
+            # rule it was breaking: "Carried, never defaulted: upside mode genuinely does not
+            # compute them and a 0.0 here would fabricate a measurement". Measured: in upside mode
+            # compute_draft_board OMITS the key entirely, which is the honest absence, and this
+            # line turned it into a measured zero at the boundary. `#183`'s note in pick_debate
+            # anticipated the repair exactly -- "a contract violation rather than a live path, so
+            # it is guarded rather than repaired upstream" -- and this is the upstream.
+            "need_bonus": row.get("need_bonus"),
             # #119: the two terms that MAKE universal_value (bpa + time_horizon_adj + risk_adj).
             # The board computes both and, until now, nothing downstream read either -- so the
             # price crossed this boundary as a bare number and "why is he worth that?" had no

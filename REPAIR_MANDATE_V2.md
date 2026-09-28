@@ -937,7 +937,7 @@ with a non-JSON body escapes as `JSONDecodeError`, not `SleeperAPIError`, so the
 to fail soft do not.
 
 
-## 2.5 The absence contract breaks at the snapshot boundary (`#187`)
+## 2.5 The absence contract breaks at the snapshot boundary (`#187`) **[1 of 6 repaired; 1 contested with the reason]**
 
 `#187` says `None` never becomes `0.0`. At the snapshot boundary it does:
 
@@ -956,6 +956,48 @@ to fail soft do not.
 **Repair:** this is a contract, so it is repaired as one — at the boundary, not at seven call sites.
 Note the ordering dependency: 1.2 (rendering a withheld family) and 2.5 are the same boundary seen from
 the two sides, and 1.2's repair should land first so the boundary has a stated policy to enforce.
+
+### `need_bonus` REPAIRED at the boundary
+
+The board honours `#187` here: in upside mode `compute_draft_board` OMITS the key, which is the honest
+way to say "this valuation has no separated need term". `build_snapshot` read it as
+`row.get("need_bonus", 0.0)` and handed every consumer a roster-fit measurement of zero.
+
+**The file stated the rule it was breaking, four lines below the line that broke it** — the comment on
+`time_horizon_adj` and `risk_adj` reads *"Carried, never defaulted: upside mode genuinely does not
+compute them and a 0.0 here would fabricate a measurement"*. And `pick_debate` had already found the
+consequence downstream, guarded it, and said so in `#183`'s note: *"a contract violation rather than a
+live path, so it is guarded rather than repaired upstream, and saying so is the point of this note."*
+This is that upstream.
+
+Measured on `12T_ppr_SF` at 2.02 with 13 real picks: all 48 candidates carried `0.0` before and `None`
+after, while balanced mode carries real numbers (4.72–8.72), so the absence is mode-specific rather
+than everywhere. The necessity SCORE does not move — a missing term and a term worth 0.0 add the same
+amount to a sum — and that is pinned, so nobody reads this as a scoring change. What moves is whether
+the score may be described as including roster fit.
+
+### `rival_premium`'s "measured" 0.0 — CONTESTED, and left alone
+
+The mandate lists it beside the above. I could not overturn it: the code carries a reasoned rebuttal at
+the computation, and measurement agrees with the rebuttal rather than the finding.
+
+> *"No mode guard: upside boards now carry universal_value too, and there it equals final_score exactly
+> (upside_score reads nothing off the roster), so this subtraction is 0.0 for every player — the true
+> answer in that mode, not a missing one."*
+
+`rival_premium` is a rival's own team-specific premium. Upside mode has no team-specific terms, so the
+premium genuinely IS zero under that valuation — a measured zero.
+
+What remains arguable is narrower and is semantics, not arithmetic: a reader cannot tell *"no rival
+gains anything"* from *"this valuation has no notion of a rival gaining anything"*, because
+`rival_premium_basis` borrows `denial_basis` — one companion serving two quantities that can be absent
+for different reasons. Giving it its own vocabulary is a decision about what the field claims, so it
+goes to the owner. Pinned as a characterization test meanwhile.
+
+### STILL OPEN IN 2.5
+
+`diff_snapshots` dropping measured↔unmeasured transitions; the board payload's companions; injury
+status never crossing the boundary; `build_context`'s silent truncation.
 
 ## 2.6 Multi-eligible players are counted by their primary label (`#172`) **[the READERS unified; the COUNTING next]**
 

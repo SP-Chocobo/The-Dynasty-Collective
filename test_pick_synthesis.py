@@ -910,18 +910,25 @@ class BuildSnapshotTests(unittest.TestCase):
         self.assertTrue(snap.candidates)
 
     def test_upside_mode_preserves_the_value_layer_identity(self):
-        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus is the
-        # contract every consumer of a candidate reads. Upside mode has no separated need or
-        # eligibility term at all, so the identity must hold with both at 0.0 -- which is
-        # only true if universal_value falls back to the team-agnostic final_score, not to
-        # some other number. This is what stops the KeyError fix from quietly turning into a
-        # value fabrication.
+        # team_acquisition_value == universal_value + the team-specific terms is the contract every
+        # consumer of a candidate reads. Upside mode has no separated need term at all, so the
+        # identity must hold with that term contributing nothing -- which is only true if
+        # universal_value falls back to the team-agnostic final_score, not to some other number.
+        # This is what stops the KeyError fix from quietly turning into a value fabrication.
+        #
+        # MANDATE 2.5 CHANGED WHAT "NOTHING" LOOKS LIKE HERE, and the claim is stronger for it.
+        # This asserted `need_bonus == 0.0`, which was the boundary fabricating a measured zero out
+        # of a key compute_draft_board deliberately omits. The identity is about what
+        # team_acquisition_value CONTAINS; None says the term was never computed, 0.0 said it was
+        # computed and came out zero, and only one of those is true in upside mode. The sum below
+        # already treated an absent term as contributing nothing, so the identity is unchanged --
+        # it is the absence that is now stated honestly.
         snap = ps.build_snapshot(
             self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
             league=LEAGUE, pick_label="1.01", top_n=5, mode="upside",
         )
         for c in snap.candidates:
-            self.assertEqual(c.need_bonus, 0.0, c.name)
+            self.assertIsNone(c.need_bonus, c.name)
 
             self.assertAlmostEqual(
                 c.team_acquisition_value,

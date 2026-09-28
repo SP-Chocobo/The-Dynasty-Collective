@@ -1351,6 +1351,47 @@
         "early_returns": 0
       }
     },
+    "test_an_absent_term_is_not_a_measured_zero.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 3,
+        "assertGreater": 1,
+        "assertIn": 3,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "test_a_real_need_bonus_still_raises_the_score": {
+          "assertGreater": 1
+        },
+        "test_it_is_one_of_the_terms_whose_absence_the_identity_already_tolerates": {
+          "assertIn": 1
+        },
+        "test_necessity_reads_it_without_a_default": {
+          "assertIn": 2
+        },
+        "test_need_bonus_is_optional_on_the_candidate": {
+          "assertEqual": 1
+        },
+        "test_no_call_anywhere_defaults_it_to_zero": {
+          "assertEqual": 1
+        },
+        "test_rival_premium_still_borrows_the_denial_basis": {
+          "assertTrue": 1
+        },
+        "test_the_rebuttal_is_still_in_the_code_where_a_reader_will_find_it": {
+          "assertTrue": 1
+        },
+        "test_the_score_itself_does_not_move": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_anchor_cache_key.py": {
       "test_methods": 8,
       "asserts": {
@@ -10043,13 +10084,13 @@
       "test_methods": 114,
       "asserts": {
         "assertAlmostEqual": 17,
-        "assertEqual": 76,
+        "assertEqual": 75,
         "assertFalse": 19,
         "assertGreater": 10,
         "assertGreaterEqual": 7,
         "assertIn": 17,
         "assertIsInstance": 4,
-        "assertIsNone": 11,
+        "assertIsNone": 12,
         "assertIsNotNone": 8,
         "assertLess": 5,
         "assertLessEqual": 4,
@@ -10434,7 +10475,7 @@
         },
         "test_upside_mode_preserves_the_value_layer_identity": {
           "assertAlmostEqual": 1,
-          "assertEqual": 1
+          "assertIsNone": 1
         },
         "test_upside_mode_snapshots_build_at_all": {
           "assertTrue": 1
