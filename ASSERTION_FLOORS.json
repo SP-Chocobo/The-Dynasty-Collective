@@ -803,6 +803,86 @@
         "early_returns": 0
       }
     },
+    "test_a_partial_panel_does_not_read_as_a_whole_one.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertEqual": 5,
+        "assertFalse": 8,
+        "assertIn": 14,
+        "assertIsNotNone": 1,
+        "assertNotIn": 5,
+        "assertTrue": 3
+      },
+      "by_method": {
+        "test_a_percentage_does_not": {
+          "assertFalse": 3
+        },
+        "test_absence_is_not_an_answer_either": {
+          "assertFalse": 2
+        },
+        "test_an_out_of_contract_value_is_kept_and_labelled_rather_than_dropped": {
+          "assertIn": 3
+        },
+        "test_append_message_stamps_a_failed_call": {
+          "assertIn": 2
+        },
+        "test_conversation_memory_drops_a_failed_message_in_both_windows": {
+          "assertEqual": 1
+        },
+        "test_every_soft_fail_return_in_llm_engine_carries_it": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "test_no_panel_prints_a_bare_confidence_any_more": {
+          "assertNotIn": 2
+        },
+        "test_pick_debate_reads_the_named_check_rather_than_the_literal": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_branch_IS_the_contract_check_and_not_merely_near_it": {
+          "assertIn": 1,
+          "assertIsNotNone": 1
+        },
+        "test_the_integrity_warning_sits_above_the_recommendation_it_qualifies": {
+          "assertIn": 1
+        },
+        "test_the_marker_has_one_home_and_a_named_check": {
+          "assertEqual": 1,
+          "assertFalse": 3,
+          "assertTrue": 1
+        },
+        "test_the_message_is_kept_in_the_chat_rather_than_dropped": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_placeholder_is_actually_substituted": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_prompt_line_is_built_from_the_tuple": {
+          "assertIn": 2
+        },
+        "test_the_three_contract_values_pass_in_any_casing": {
+          "assertTrue": 1
+        },
+        "test_the_three_values_are_the_ones_the_prompt_explains": {
+          "assertIn": 1
+        },
+        "test_the_toast_is_kept_as_well": {
+          "assertEqual": 1
+        },
+        "test_there_is_one_definition_of_each_and_two_call_sites": {
+          "assertEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {
@@ -3418,7 +3498,7 @@
     "test_context_budget_boundary.py": {
       "test_methods": 16,
       "asserts": {
-        "assertEqual": 4,
+        "assertEqual": 5,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
         "assertIn": 14,
@@ -3436,7 +3516,7 @@
           "assertLess": 1
         },
         "test_a_downstream_draft_room_chair_receives_the_canonical_snapshot_itself": {
-          "assertEqual": 1,
+          "assertEqual": 2,
           "assertIn": 3
         },
         "test_a_downstream_prytaneum_chair_receives_prior_prose_and_a_rebuilt_context": {

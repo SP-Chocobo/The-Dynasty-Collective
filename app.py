@@ -872,6 +872,17 @@ def append_message(role: str, content: str, provider: Optional[str] = None, mode
     # different provider or model later, and an old message must keep showing who/what
     # actually answered it, not whatever's currently configured.
     msg = {"role": role, "content": content, "ts": time.time()}
+    # MANDATE 1.7: A FAILED CALL IS NOT THAT ROLE'S ANALYSIS. Every provider caller in llm_engine
+    # soft-fails by returning a marked string instead of raising, and those strings were appended
+    # here under the role that did not answer -- so "⚠️ Claude request failed: ..." became the
+    # Quant's turn, and CONVERSATION MEMORY replayed it to every later debate as `[quant] ⚠️ ...`.
+    # A model reading that has been handed a provider outage as prior reasoning about its league.
+    #
+    # STAMPED, NOT DROPPED. The message stays in the chat, where a person should see that a chair
+    # failed; the stamp is what keeps it out of the analytical record, exactly as `notice` messages
+    # are already kept out. Keyed off llm_engine's own check rather than a literal here.
+    if llm_engine.is_failed_call(content):
+        msg["failed"] = True
     if provider:
         msg["provider"] = provider
     if model:
@@ -1627,6 +1638,43 @@ def _render_pick_metrics(rec) -> None:
     )
 
 
+def _render_debate_integrity(result) -> None:
+    """MANDATE 1.7: WHICH CHAIRS FAILED, in the panel that persists.
+
+    `result.errors` was reported only through `notify()`, which is a one-rerun toast -- so a debate
+    whose Skeptic never answered showed a clean recommendation on every rerun after the first, with
+    nothing saying a third of the panel was missing. The toast stays, because it is the
+    at-the-moment signal; this is the standing one, beside the recommendation it qualifies.
+
+    Shared by the live Draft Room and its Mock Draft twin, for the reason `_render_pick_metrics`
+    is shared: #116 found those two as separate code carrying identical copy, and one function is
+    what makes "repaired together" structural rather than a test's hope."""
+    if result.errors:
+        st.warning("This recommendation was reached with part of the panel missing or cut off: "
+                   + "; ".join(result.errors))
+
+
+def _render_confidence_caption(result) -> None:
+    """The Caller's CONFIDENCE, said to be one of three things and checked against that.
+
+    MANDATE 1.7. The contract lives in the Caller's prompt -- `Unanimous / Lean / Split`, and
+    "CONFIDENCE is never a percentage -- percentages from an LLM are fake precision" -- and nothing
+    checked it. A model answering "85%" reached `PickDebateResult.confidence` unexamined and was
+    printed to a person as though this app had graded it.
+
+    An out-of-contract value is KEPT and LABELLED, not dropped: it is the Caller's own words about
+    its own certainty, which is worth reading; what it is not is a grade this app can interpret."""
+    if not result.confidence:
+        return
+    if pick_debate.confidence_is_in_contract(result.confidence):
+        st.caption(f"Confidence: {result.confidence}")
+        return
+    st.caption(
+        f"Confidence: {result.confidence} — OUTSIDE the panel's own vocabulary "
+        f"({' / '.join(pick_debate.CALLER_CONFIDENCE_VALUES)}), so read it as the Caller's own "
+        f"words rather than a grade this app can interpret")
+
+
 def _best_alternative_line(alt) -> str:
     """One sentence for the runner-up, its number carrying its unit (#116): the old line said
     "97 acquisition value", which names the quantity and not the scale it is on."""
@@ -1883,15 +1931,23 @@ def build_context(
     summary_msgs = [m for m in history if m.get("role") == "summary"]
     # "notice" messages (e.g. stale-data nudges) are UI bookkeeping, not part of the analytical
     # discussion — replaying them back as if they were a prior debate turn would be noise.
+    #
+    # MANDATE 1.7 adds `failed`: a chair whose provider call soft-failed left a marked string in the
+    # chat under its own role, and this window replayed it as that role's prior analysis. It is the
+    # same distinction `notice` already draws -- visible to a person, absent from the record -- and
+    # the stamp is put on the message at append time by append_message.
     if conversation_window is not None:
         # A caller centering context on one specific past message (the 🎯 "Add as objective"
         # action) needs messages surrounding THAT message -- both what led into it and what
         # came after -- not necessarily the tail end of the whole conversation, which wouldn't
         # even include anything after an older message at all. See that handler below for how
         # this window gets built.
-        recent_msgs = [m for m in conversation_window if m.get("role") not in ("summary", "notice")]
+        recent_msgs = [m for m in conversation_window
+                       if m.get("role") not in ("summary", "notice") and not m.get("failed")]
     else:
-        recent_msgs = [m for m in history if m.get("role") not in ("summary", "notice")][-RECENT_TURNS_IN_CONTEXT:]
+        recent_msgs = [m for m in history
+                       if m.get("role") not in ("summary", "notice")
+                       and not m.get("failed")][-RECENT_TURNS_IN_CONTEXT:]
     if summary_msgs or recent_msgs:
         lines.append("\nCONVERSATION MEMORY — prior debates in this league (older-to-newer):")
         memory = []
@@ -5281,13 +5337,13 @@ elif main_view == DRAFT_VIEW:
                                 live_players_db=players_db)
                             if mock_stale:
                                 st.warning(mock_stale)
+                            _render_debate_integrity(mock_current_debate)
                             mock_rec = mock_current_debate.recommended
                             if mock_rec is None:
                                 st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
                             else:
                                 st.markdown(f"## Recommendation: {mock_rec.name}")
-                                if mock_current_debate.confidence:
-                                    st.caption(f"Confidence: {mock_current_debate.confidence}")
+                                _render_confidence_caption(mock_current_debate)
                                 if mock_current_debate.why:
                                     st.markdown(f"**Why now?** {mock_current_debate.why}")
 
@@ -5760,13 +5816,13 @@ elif main_view == DRAFT_VIEW:
                                         live_players_db=players_db)
                                     if debate_stale:
                                         st.warning(debate_stale)
+                                    _render_debate_integrity(debate_result)
                                     rec = debate_result.recommended
                                     if rec is None:
                                         st.warning("The panel's recommendation didn't cleanly match a candidate -- see the raw reports below.")
                                     else:
                                         st.markdown(f"## Recommendation: {rec.name}")
-                                        conf_caption = f"Confidence: {debate_result.confidence}" if debate_result.confidence else ""
-                                        st.caption(conf_caption)
+                                        _render_confidence_caption(debate_result)
                                         if debate_result.why:
                                             st.markdown(f"**Why now?** {debate_result.why}")
 

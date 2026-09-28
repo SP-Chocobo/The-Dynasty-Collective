@@ -60,7 +60,7 @@ from typing import Optional
 from llm_engine import (
     ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY,
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
-    UNAVAILABLE_REPORT, _report_for_handoff,
+    UNAVAILABLE_REPORT, _report_for_handoff, is_failed_call,
 )
 import pick_synthesis as ps
 from pick_synthesis import (ABSENCE_KIND_LABELS,
@@ -198,6 +198,32 @@ def _survival_clause() -> str:
             "on two independent arms, and you must not reconstruct or estimate one)")
 
 
+#: MANDATE 1.7. THE ONLY CONFIDENCE VALUES THE CALLER'S CONTRACT ADMITS, as data.
+#:
+#: The contract was stated in the prompt and checked nowhere: `CONFIDENCE` arrived as free text,
+#: reached `PickDebateResult.confidence` unexamined, and the Draft Room printed it verbatim as
+#: "Confidence: <whatever>". A model answering "85%" -- which the prompt explicitly forbids, because
+#: "percentages from an LLM are fake precision" -- was rendered to a person as though the engine had
+#: produced it.
+#:
+#: The prompt line below is BUILT from this tuple rather than spelling it a second time, the same
+#: reason `_survival_clause` is built from `withheld_fields()`: a vocabulary with two statements
+#: has two things to keep in step, and the day one changes the other goes stale silently.
+CALLER_CONFIDENCE_VALUES = ("Unanimous", "Lean", "Split")
+
+
+def confidence_is_in_contract(value: Optional[str]) -> bool:
+    """Whether a parsed CONFIDENCE is one of the three the Caller was asked for.
+
+    Case-insensitive and whitespace-tolerant, because a model writing "unanimous" has met the
+    contract; anything else has not, and a surface must say so rather than presenting it as the
+    engine's own grading. ABSENT IS NOT IN CONTRACT and is not out of it either -- None means no
+    confidence was parsed at all, which a caller distinguishes before it asks this."""
+    if not value:
+        return False
+    return value.strip().lower() in {v.lower() for v in CALLER_CONFIDENCE_VALUES}
+
+
 #: The KEY FACTOR example the Caller is shown. It demonstrated citing the withheld number.
 def _disagree_example() -> str:
     """The term the Caller is shown as an example of something to DISAGREE with. Naming a
@@ -285,7 +311,7 @@ made up to make the case cleaner.
 End your response with this exact structured block, one field per line, using these exact labels:
 
 RECOMMENDATION: <the exact candidate name as given in the snapshot -- copy it exactly, do not paraphrase>
-CONFIDENCE: Unanimous / Lean / Split
+CONFIDENCE: {confidence_values}
 WHY: <the deciding case for this pick, one to three sentences, referencing the actual numbers -- the same
 "here's why X is right even though he isn't the top-ranked player" reasoning the Strategist built>
 DISSENT: <the strongest real counter-argument still standing after the debate -- omit only if there is genuinely
@@ -314,6 +340,7 @@ for _name in ("STRATEGIST_SYSTEM_PROMPT", "SKEPTIC_SYSTEM_PROMPT", "CALLER_SYSTE
         .replace("{survival_clause}", _survival_clause())
         .replace("{key_factor_example}", _key_factor_example())
         .replace("{disagree_example}", _disagree_example())
+        .replace("{confidence_values}", " / ".join(CALLER_CONFIDENCE_VALUES))
     )
 del _name
 
@@ -322,7 +349,8 @@ del _name
 #: substituted while the prompt still read plausibly.
 for _prompt in (STRATEGIST_SYSTEM_PROMPT, SKEPTIC_SYSTEM_PROMPT, CALLER_SYSTEM_PROMPT):
     assert "{survival_clause}" not in _prompt and "{key_factor_example}" not in _prompt \
-        and "{disagree_example}" not in _prompt, "a prompt placeholder was not substituted"
+        and "{disagree_example}" not in _prompt and "{confidence_values}" not in _prompt, \
+        "a prompt placeholder was not substituted"
 del _prompt
 
 
@@ -890,7 +918,9 @@ def debate_pick(
 
     chairs = (("strategist", strategist_report), ("skeptic", skeptic_report),
               ("caller", caller_report))
-    errors = [f"{role}: {text}" for role, text in chairs if text.startswith("⚠️")]
+    # MANDATE 1.7: through llm_engine's own named check. The marker is that module's contract and
+    # this was the only reader keying off it as a literal -- see FAILED_CALL_PREFIX.
+    errors = [f"{role}: {text}" for role, text in chairs if is_failed_call(text)]
     # TRUNCATION is a different condition from failure and is reported as one. A chair whose
     # report was cut off produced real analysis that simply stops early: the text is kept and
     # annotated in place (see provider_meter.annotate_if_incomplete), and this line is the

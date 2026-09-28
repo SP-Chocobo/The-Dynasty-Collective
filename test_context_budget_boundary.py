@@ -229,11 +229,26 @@ class HandoffCarriesProseNotEvidenceTests(unittest.TestCase):
     def test_a_downstream_draft_room_chair_receives_the_canonical_snapshot_itself(self):
         """The better of the two handoffs, and worth pinning as the standard: every Draft Room
         chair reasons over the same frozen PickSnapshot rather than a re-derivation of it."""
+        import ast
         import pick_debate
         source = inspect.getsource(pick_debate.debate_pick)
-        self.assertIn("evidence = format_snapshot_for_llm(snapshot, diffs)", source)
-        # Built once, handed to all three chairs -- not re-derived per chair.
-        self.assertEqual(source.count("format_snapshot_for_llm"), 1)
+        # READ THE CODE, NOT THE TEXT OF IT (`#200`). This asserted the call VERBATIM --
+        # `format_snapshot_for_llm(snapshot, diffs)` -- and mandate 1.7 added a third argument (the
+        # diff's anchor, so the chairs are told which two boards the diff is between). Every claim
+        # this test makes stayed true and the assertion went red on the spelling, which is the
+        # failure `test_display_contract_boundary` documents in its own comment: "a guard that
+        # cannot survive its subject being refactored is measuring the spelling, not the behaviour".
+        #
+        # So the CALL is read from the parsed function instead. What matters is that the evidence
+        # block is built from the canonical snapshot itself, first argument, once.
+        tree = ast.parse(source)
+        calls = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.Call)
+                 and getattr(node.func, "id", None) == "format_snapshot_for_llm"]
+        self.assertEqual(1, len(calls), "built more than once, or no longer built here")
+        self.assertEqual("snapshot", ast.unparse(calls[0].args[0]),
+                         "the chairs' evidence is no longer built from the snapshot itself")
+        self.assertIn("evidence = format_snapshot_for_llm(", source)
         for chair_prompt in ("skeptic_prompt", "caller_prompt"):
             self.assertIn(chair_prompt, source)
         self.assertIn('f"{evidence}\\n\\n--- STRATEGIST\'S CASE ---', source)
