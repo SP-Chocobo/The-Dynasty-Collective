@@ -3464,8 +3464,10 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
     for player_id in mine_ids:
         info = players_db.get(str(player_id)) or {}
         roster.append({"id": str(player_id), "value": 1.0,
-                       "eligible": set(info.get("fantasy_positions")
-                                       or ([info["position"]] if info.get("position") else []))})
+                       # MANDATE 2.6: the one eligibility reader. `#172`'s rule was restated
+                       # inline at eight places in this repository and they did not agree; see
+                       # player_eligible_positions for the two that mattered.
+                       "eligible": player_eligible_positions(info)})
     solved = lo.optimize_lineup(roster, slots)
     # optimize_lineup returns only the pairs it actually made, so the holes are the DIFFERENCE
     # against the slot list -- never a scan of the assignments for a missing id. Same reading
@@ -3628,8 +3630,8 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
         info = players_db.get(str(pick.get("player_id"))) or {}
         # #172: eligibility, not the single grouping bucket. A player who reaches a shared slot
         # is not saturating a dedicated one, so he is counted at no ceilinged position at all.
-        eligible = set(info.get("fantasy_positions")
-                       or ([info["position"]] if info.get("position") else []))
+        # MANDATE 2.6: read through the one function that answers this (`#126`).
+        eligible = player_eligible_positions(info)
         if len(eligible) == 1:
             position = next(iter(eligible))
             if position in ceilings:
@@ -3653,8 +3655,7 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
         of surplus.
         """
         info = players_db.get(str(player_id)) or {}
-        eligible = set(info.get("fantasy_positions")
-                       or ([info["position"]] if info.get("position") else []))
+        eligible = player_eligible_positions(info)          # MANDATE 2.6: one reader (`#126`)
         if not eligible:
             return 0
         # A flex-reachable position never enters `saturated` (it has no ceiling), so a subset

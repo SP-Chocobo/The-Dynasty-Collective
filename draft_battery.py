@@ -367,8 +367,9 @@ def unfilled_starting_slots(trajectory, league: dict, players_db: dict) -> list[
         for pid in player_ids:
             info = players_db.get(str(pid)) or {}
             players.append({"id": str(pid), "value": 1.0,
-                            "eligible": set(info.get("fantasy_positions")
-                                            or ([info["position"]] if info.get("position") else []))})
+                            # MANDATE 2.6: the one eligibility reader, not a third restatement
+                            # of `#172`'s rule. See player_eligible_positions.
+                            "eligible": player_eligible_positions(info)})
         solved = lo.optimize_lineup(players, slots)
         # optimize_lineup returns only the pairs it actually made -- an unfillable slot is
         # filtered back out rather than returned empty (see its docstring), so the holes are the
@@ -750,8 +751,8 @@ def roster_strength(trajectory, league: dict, players_db: dict,
                 unpriced += 1
             players.append({
                 "id": str(pid), "value": values.get(str(pid), 0.0),
-                "eligible": set(info.get("fantasy_positions")
-                                or ([info["position"]] if info.get("position") else [])),
+                # MANDATE 2.6: the one eligibility reader (`#126`).
+                "eligible": player_eligible_positions(info),
             })
         solved = lo.optimize_lineup(players, slots)
         starter_value = round(solved["total_value"], 2)

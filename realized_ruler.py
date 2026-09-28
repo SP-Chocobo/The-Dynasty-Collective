@@ -73,11 +73,12 @@ def score_roster_realized(player_ids, players_db: dict, weekly: dict[str, dict[s
     eligible = {}
     for pid in ids:
         info = players_db.get(pid) or {}
-        positions = set(info.get("fantasy_positions") or
-                        ([info["position"]] if info.get("position") else []))
-        # #172: eligibility comes from fantasy_positions, never the primary `position`. A player
-        # listed RB/WR is eligible at both, and collapsing him benches him out of a legal FLEX.
-        eligible[pid] = positions
+        # MANDATE 2.6: THROUGH THE ONE READER. #172's rule was restated here inline, and an
+        # inline restatement is a second reader: this one skipped the FANTASY_POSITIONS filter, so
+        # a kicker listed ["K", "P"] was offered to the solve at "P", and it took the raw
+        # `position` for a player whose own fantasy list says he is startable nowhere.
+        # `player_eligible_positions` is where that question has an answer (`#126`).
+        eligible[pid] = pu.player_eligible_positions(info)
 
     total, scored_weeks, starts = 0.0, 0, {}
     for week in weeks:

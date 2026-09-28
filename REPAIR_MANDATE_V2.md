@@ -957,7 +957,7 @@ to fail soft do not.
 Note the ordering dependency: 1.2 (rendering a withheld family) and 2.5 are the same boundary seen from
 the two sides, and 1.2's repair should land first so the boundary has a stated policy to enforce.
 
-## 2.6 Multi-eligible players are counted by their primary label (`#172`)
+## 2.6 Multi-eligible players are counted by their primary label (`#172`) **[the READERS unified; the COUNTING next]**
 
 **Roster fill is counted by primary label**, so `need_bonus` and league-wide starter demand mis-read
 every multi-eligible player; `roster_diagnostics` solves lineups with a single label, contradicting the
@@ -968,6 +968,45 @@ places that value.
 
 **Repair:** one eligibility reader (Tier 4 removes the other two), then count against it. 3.2's joint
 bound depends on this being right, so it lands first.
+
+### THE READERS ARE ONE NOW — and there were eight, not three
+
+The mandate said three. A structural check written for this repair found **eight** inline restatements
+of `#172`'s rule, five of them in `draft_room.py` — the production board — which was already importing
+and using `player_eligible_positions` at two other sites. A mixed file, which is how a rule with one
+home still gets answered three ways.
+
+**Two of those five are a different question and are deliberately left.** They build the set of buckets
+to look a player up under in the VENDOR TABLE, which legitimately wants the primary label even when the
+fantasy list excludes it. My first version of the check flagged them too, and flattening the two
+questions together would have been a worse repair than the one it replaced. So the check is keyed on
+eligibility — an inline set assigned to something *called* eligible — which is the population `#172`
+rules on.
+
+**And the home itself had this audit's own bug.** It tested `if eligible:` and fell back to the primary
+position whenever the filtered set came out empty — which is TWO situations: `fantasy_positions` absent
+(missing data, fallback correct) and `fantasy_positions` present with nothing startable in it (an
+ANSWER, which the fallback overrode with the very field `#172` says not to trust). `#187`'s distinction
+at a boundary nobody had looked at.
+
+**Measured, and small.** One row of the capture: Bradley Sowell, `position: TE`,
+`fantasy_positions: ["OL"]`, no team — an offensive lineman who was eligible at TE and could fill a
+legal TE slot in the battery's own lineup audit. The battery universe goes **6595 → 6594**, because
+that builder admits on eligibility and he has none. Three kickers listed `["K", "P"]` stop being
+offered at "P", a slot no league here has. That is the whole blast radius, stated at its real size.
+
+**Recorded, not repaired:** the two vendor-matching readers are still two, and they are not the same
+expression (union of the primary label versus fallback to it). They differ for exactly one kind of row
+— a player whose fantasy list contains nothing startable — so on the capture they now agree on all
+6,594 remaining rows, the one that separated them being the one the eligibility fix drops. A real
+divergence with no current observable consequence, in a vocabulary `#172` does not rule on. Pinned as a
+characterization test.
+
+### STILL TO DO IN 2.6
+
+**Roster fill is counted by primary label**, so `need_bonus` and league-wide starter demand mis-read
+every multi-eligible player — 178 of them in the capture universe. That is the half with the numbers
+in it, and it is next.
 
 ---
 

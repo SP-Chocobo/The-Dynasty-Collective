@@ -183,10 +183,30 @@ def player_eligible_positions(info: dict) -> set[str]:
     everywhere else in this app, which only ever needs one primary bucket for matching/
     grouping purposes. Falls back to {player_position(info)} when fantasy_positions is
     missing/empty, so a record with no real eligibility data still gets its one known
-    position rather than an empty, unassignable set."""
-    eligible = {pos for pos in (info.get("fantasy_positions") or []) if pos in FANTASY_POSITIONS}
-    if eligible:
-        return eligible
+    position rather than an empty, unassignable set.
+
+    MANDATE 2.6 / `#172`: TWO EMPTY SETS THAT MEAN DIFFERENT THINGS. This read
+    `if eligible:` and fell back to the primary position whenever the filtered set came out
+    empty -- which is two situations, not one. `fantasy_positions` ABSENT is missing data, and
+    the fallback is right there: use the one position we know. `fantasy_positions` PRESENT and
+    containing nothing startable is an ANSWER -- Sleeper saying this player is not startable
+    anywhere -- and resurrecting the raw `position` overrides it with the very field `#172` says
+    not to trust.
+
+    Measured on the committed capture, this is ONE row of 6,595: Bradley Sowell, `position: TE`,
+    `fantasy_positions: ["OL"]`. He was eligible at TE, which put him in a legal TE slot in the
+    battery's own lineup audit. He is not a tight end; he is an offensive lineman Sleeper still
+    files under a TE `position`. Reported at the size it is, not dressed up.
+
+    THE SAME CONFLATION IS IN `player_position` ABOVE and is deliberately left there: that
+    function answers "which bucket do I group this player under", it is read by the pool
+    admission and by every matching path in the app, and changing what it returns for that row is
+    a different repair with a much wider blast radius. Recorded here rather than quietly fixed at
+    one end and not the other.
+    """
+    listed = info.get("fantasy_positions")
+    if listed:
+        return {pos for pos in listed if pos in FANTASY_POSITIONS}
     primary = player_position(info)
     return {primary} if primary else set()
 

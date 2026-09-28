@@ -9144,6 +9144,62 @@
         "early_returns": 0
       }
     },
+    "test_one_eligibility_reader.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 9,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 4,
+        "fail": 1
+      },
+      "by_method": {
+        "test_a_genuinely_multi_eligible_player_keeps_both": {
+          "assertEqual": 1
+        },
+        "test_a_list_with_nothing_startable_in_it_IS_the_answer": {
+          "assertEqual": 1
+        },
+        "test_a_non_fantasy_slot_is_filtered_out_of_a_list_that_has_real_ones": {
+          "assertEqual": 1
+        },
+        "test_a_record_with_nothing_at_all_is_unassignable_rather_than_guessed": {
+          "assertEqual": 1
+        },
+        "test_an_absent_list_falls_back_to_the_one_position_we_know": {
+          "assertEqual": 2
+        },
+        "test_no_row_carries_a_slot_no_league_here_has": {
+          "fail": 1
+        },
+        "test_nobody_in_the_universe_is_eligible_nowhere": {
+          "assertEqual": 1
+        },
+        "test_nothing_assigns_an_ELIGIBLE_set_it_built_itself": {
+          "assertEqual": 1
+        },
+        "test_the_multi_eligible_population_is_not_empty": {
+          "assertGreater": 1
+        },
+        "test_the_two_former_readers_now_call_the_one": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_the_two_vendor_MATCHING_readers_are_recorded_rather_than_unified": {
+          "assertGreaterEqual": 1,
+          "assertIn": 2
+        },
+        "test_the_universe_builder_admits_on_the_same_reader": {
+          "assertIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_one_identity_one_answer.py": {
       "test_methods": 10,
       "asserts": {
