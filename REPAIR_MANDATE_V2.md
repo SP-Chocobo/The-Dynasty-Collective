@@ -187,7 +187,7 @@ a commit message about something else. That hazard is now in the harness docstri
 `engine-measurement` skill, because the next person to hit it will not have the diff in front of them.
 
 
-## 0.3 Every substantive view is traced in its empty state **[VERIFIED]**
+## 0.3 Every substantive view is traced in its empty state **[REPAIRED]**
 
 `render_trace.py` seeds the snapshot with `"rosters": [], "users": []`, so the Draft Room's 117
 recorded calls are a shared sidebar prefix plus `st.info("No roster found for your account in this
@@ -201,8 +201,40 @@ churned once inside an unrelated commit, and **goes red on 2026-11-19** with no 
 **Repair:** seed a roster into the trace fixture so the substantive branches render; blur or exclude
 the freshness string. An instrument that emits a scheduled false diff trains reviewers to regenerate
 without looking.
+### REPAIRED
 
-## 0.4 `assertion_floors` cannot see any silent way a test stops running **[VERIFIED: four vectors]**
+**Three causes, not one.** (a) The seed carried `"rosters": [], "users": []` and app.py resolves the
+viewer's team with `find_roster_for_user`, which returns `None` over an empty list — so every view
+fell to its guard. Twelve real-shaped rosters now, the viewer owning one, plus `users` and `user_id`.
+(b) **The mode radio.** `radio` returns `options[0]`, and the Draft Room's radio lists
+`"Live Draft (Sleeper)"` first — so **the Mock Draft branch had never been traced in any recording
+ever made.** Widgets are now steerable by key and the Draft Room is recorded once per branch.
+(c) **`get_drafts` was a live `api.sleeper.app` call inside the render** — the same defect the
+`get_players` override was added to fix, unfixed in a second place, with the same consequence: the
+fixture described whichever environment recorded it.
+
+**619 → 860 calls across 6 passes** (Live 130, Mock 142). Entering Mock added 22 calls that had never
+appeared in this fixture — the board container, the candidate selectbox, and the Debate chip.
+
+**The measurement that decides it.** Monkeypatching `compute_draft_board` to return nothing:
+
+| pass | before | after the repair |
+|---|---|---|
+| Live | byte-identical (118 = 118) | **−9 calls**, loses `draft_room_board_title_row` |
+| Mock | byte-identical | **−11 calls**, loses `mock_draft_board_title_row` |
+
+**The calendar dependency is blurred WHOLE.** My first attempt replaced only the grade word and left
+`class="status-bad"` and the ⚠️ icon — both derived from the same grade, so both still turn over on the
+same date. That would have moved the scheduled false diff rather than removed it. The other status
+strips were checked and are boolean presence markers, not date-derived.
+
+**It found 1.1.** The first recording that entered the Mock branch raised
+`TypeError: simulate_opponent_picks() got an unexpected keyword argument 'weekly_projections'` — a
+crash on a shipped path, behind a default this instrument had never varied. Repairing the instrument
+found the production defect; no test did.
+
+
+## 0.4 `assertion_floors` cannot see any silent way a test stops running **[REPAIRED]**
 
 Missed: `@unittest.skip`, `@expectedFailure`, `self.skipTest()`, `return` before the assertion,
 `if False:`, a loop over `[]`, `try/except AssertionError: pass`, a class that stops inheriting
@@ -217,6 +249,37 @@ docstring's stated limits, which omit all of the above.
 which is the test working, not a failure.) What is missed is narrower and more specific: the scanner
 counts `def test_` occurrences and `assert*` call sites **from source text**, so any change that stops
 a test *running* while leaving its text in place is invisible. That is the repair's target.
+### REPAIRED
+
+`DISABLERS` counts all four vectors via AST, and `drops()` treats an **increase** as the loss — the one
+place in that design where a number going up is the failure. A class-level skip counts **once per test
+it silences**: `@skip` on a nineteen-test TestCase is a loss of nineteen, and reporting `+1` would
+understate it nineteenfold. A `return` under an `if` is ordinary control flow and is not counted.
+
+**The census is sharper than this item's own text above.** It said "one test skips on the committed
+baseline today". Measured across 197 modules:
+
+| vector | count |
+|---|---|
+| skip decorators | **60** |
+| `self.skipTest()` calls | **24** |
+| expected failures | 1 |
+| early returns | 0 |
+
+**84 test methods sit behind a silent-disable vector across 20 modules while the suite reports
+`skipped=1`** — because the conditions are currently *satisfied*. Twelve of those modules gated on one
+predicate, `CAPTURE.exists()`, so **one missing file would turn ~57 passing tests into silent skips
+with the suite still printing OK.**
+
+That is the ratchet's own blind spot: it counts *syntactic* disablers and cannot see a *condition*
+flipping. So one guard test now fails loudly if the capture is missing, converting a silent 57-test
+mass-skip into a single visible failure — deliberately **not** a `skipUnless` itself, since a guard
+that skips when its subject is missing is the defect it exists to catch. Nine modules were rewired
+from hand-written capture paths to `rdb.CAPTURE_PATH`, with an AST check that keeps them there.
+
+Not forbidden, ratcheted: `skipUnless(CAPTURE.exists(), …)` is honest, and the floor is the current
+count, raised through `--write` in the diff like any other.
+
 
 ## 0.5 The battery's chairs never exercise the valuation a human is shown **[VERIFIED, in part]**
 
@@ -233,7 +296,7 @@ applied to it.
 **Repair:** run the matrix in `balanced` (or add balanced arms at full length) and carry `settings`
 into the capture arms. Until then, no owner-league arm supports a claim about multi-year valuation.
 
-## 0.6 The battery's universe is outside the hashed input set — *two lenses* **[VERIFIED]**
+## 0.6 The battery's universe is outside the hashed input set — *two lenses* **[REPAIRED]**
 
 `baseline_manifest.DECLARED_INPUT_DIRS` covers `data/baseline` and `data/projections/_global`;
 `data/fixtures/sleeper_capture.json` is hashed by nothing, and `data/player_aliases.json`
@@ -241,6 +304,14 @@ into the capture arms. Until then, no owner-league arm supports a claim about mu
 matches".
 
 **Repair:** declare both. This is small and it protects every number below.
+
+### REPAIRED
+
+`data/fixtures` is now declared; the manifest covers **23 input files**. That directory holds the
+capture every battery, the VDS battery, the roster proof, the smoke seats and the render trace take
+their player universe, season projections and scoring rulebook from. Two directories was never a claim
+about `DataMerger` alone — the manifest is read as the input set for the certification, and the
+certification's universe did not come from `DataMerger`.
 
 ## 0.7 Report fields that do not mean their names **[VERIFIED: `draftable_rounds` only]**
 
@@ -298,7 +369,7 @@ Six findings, one shape: an instrument reports a number that is not about the th
 
 # TIER 1 — production defects that crash, or put a false number in front of a person
 
-## 1.1 A `TypeError` in the shipped Mock Draft **[VERIFIED]**
+## 1.1 A `TypeError` in the shipped Mock Draft **[REPAIRED]**
 
 `app.py:4921` calls `draft_room.simulate_opponent_picks(...)` with
 `['pool_scope', 'sleeper_basis', 'sleeper_projections', 'weekly_projections']`. The function accepts
@@ -312,6 +383,17 @@ concrete defect in the audit: not a mispricing, an exception.
 **Repair:** add the parameter and thread it to the board, or drop the argument. Then ask why no test
 and no render trace reaches that path — 0.3 is the answer, and it is why this is Tier 1 and not
 Tier 0.
+
+### REPAIRED
+
+The parameter is **added and forwarded to `compute_draft_board`**, not the argument deleted. The call
+site's own comment cites `#30`, and deleting it would price the mock's rivals without the streaming
+floor while the human's board beside them has one — `0.1`'s defect reintroduced one layer over. **This
+repair depended on `0.1` being done first**; without that context, deleting the kwarg is the obvious
+move and is wrong.
+
+Found by repairing `0.3`, not by looking for it: the render trace had never entered the Mock branch, so
+the first recording that did crashed here immediately.
 
 ## 1.2 The recommendation panel renders the withheld family to a person — *three lenses* **[VERIFIED]**
 
