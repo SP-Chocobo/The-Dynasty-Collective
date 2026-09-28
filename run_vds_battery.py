@@ -78,14 +78,48 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
     # A finding under EVERY strategy in a format is a format finding; under ONE it is a strategy
     # finding. Derived here rather than left to a reader, because the whole reason this battery
     # exists is that nobody was reading the axis.
+    #
+    # INERT ARMS ARE EXCLUDED, AND THE DENOMINATOR IS WHAT RAN. Two defects lived here.
+    #
+    # (1) An inert arm reproduces its control byte for byte, so the control's finding appears
+    #     again under the inert arm's strategy name. Demonstrated: three arms run, two of them
+    #     inert copies of the control each carrying the control's single finding, and this block
+    #     listed ALL THREE strategies as carrying findings -- "the shape #22 had" reported over a
+    #     finding that is a property of the control. The `INERT_ARMS` line twelve lines above
+    #     exists to say those arms are not evidence about their strategy; this block then counted
+    #     them as exactly that.
+    #
+    # (2) `len(vds_battery.STRATEGIES)` is the denominator of the CODE's strategy list, not of
+    #     the arms in `results`. On a partial run, an `--only` run, or the mid-run file -- which
+    #     is what a reader usually holds, because this file is rewritten after every arm and long
+    #     runs are routinely killed -- a finding present under every strategy that RAN was
+    #     reported as strategy-specific because fewer strategies ran than exist.
+    #
+    # Also skipped: arms whose `sharp_seats` is empty. `noisy_k3`/`noisy_k8` contain no engine
+    # seat at all, so a finding there is a property of uniform random draws and belongs on no
+    # strategy's ledger.
+    inert_labels = set(inert)
+    # Every strategy that ran appears, at zero if it produced nothing under an effective arm --
+    # an absent key and a zero are different claims, and a reader comparing this against
+    # `findings_by_strategy` needs the same key set in both.
+    by_strategy_effective: dict[str, int] = collections.Counter(
+        {row["label"].partition("__")[2]: 0 for row in results})
+    for row in results:
+        if row["label"] in inert_labels:
+            continue
+        by_strategy_effective[row["label"].partition("__")[2]] += len(row.get("findings", []))
     per_format_strategies: dict[str, set] = collections.defaultdict(set)
+    per_format_ran: dict[str, set] = collections.defaultdict(set)
     for row in results:
         fmt, _, strategy = row["label"].partition("__")
+        if row["label"] in inert_labels or not row.get("sharp_seats", ["present"]):
+            continue
+        per_format_ran[fmt].add(strategy)
         if row.get("findings"):
             per_format_strategies[fmt].add(strategy)
     strategy_specific = {
         fmt: sorted(strategies) for fmt, strategies in per_format_strategies.items()
-        if 0 < len(strategies) < len(vds_battery.STRATEGIES)
+        if 0 < len(strategies) < len(per_format_ran[fmt])
     }
 
     return {
@@ -108,7 +142,23 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
         "findings_total": sum(len(r.get("findings", [])) for r in results),
         "findings_by_strategy": dict(by_strategy),
         "findings_by_format": dict(by_format),
+        # THE SAME TOTALS WITH THE INERT ARMS TAKEN OUT. Both are reported rather than one
+        # replacing the other: `findings_total` is what the run produced and is the right number
+        # for "did anything fire", while a per-strategy attribution that includes an arm which
+        # reproduced its control is counting the control again under another name.
+        "findings_total_effective": sum(len(r.get("findings", [])) for r in results
+                                        if r["label"] not in set(inert)),
+        "findings_by_strategy_effective": dict(by_strategy_effective),
+        "strategies_that_ran": sorted({r["label"].partition("__")[2] for r in results}),
         "STRATEGY_SPECIFIC_FINDINGS": strategy_specific,
+        # THE JOIN DISCLOSURE THE FORMAT BATTERY HAS AND THIS ONE DID NOT. `resume_join` treated
+        # every VDS file as a single process, so a resumed run could silently mix arms from two
+        # commits -- and `INERT_ARMS`, which compares a carried control's pick_sequence against a
+        # fresh arm's, would then read an ENGINE CHANGE BETWEEN COMMITS as a strategy effect, or
+        # hide a real one. Same three keys, same names as the format battery's (#126).
+        "commit": resume_join.head_commit(),
+        "commits_present": resume_join.commits_present(results),
+        "carried_forward": [r["label"] for r in results if r.get(resume_join.CARRIED)],
         "results": results,
     }
 

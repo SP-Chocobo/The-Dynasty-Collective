@@ -210,7 +210,7 @@ def _battery_report(universe: dict, results: list, started: float, *, complete: 
         # varying the export selection that value is supposed to drive. Scoped to the labels in
         # `results`, so a partial or resumed report describes itself rather than a fuller run.
         "format_axes": draft_battery.format_axes_exercised(
-            matrix, {r["label"] for r in results}),
+            matrix, {r["label"] for r in results}, results=results),
         "duplicate_arms": dupes,
         "picks": sum(r["picks"] for r in results),
         "total_findings": sum(len(r["findings"]) for r in results),

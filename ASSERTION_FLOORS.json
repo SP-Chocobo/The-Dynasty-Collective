@@ -11640,6 +11640,100 @@
         "early_returns": 0
       }
     },
+    "test_report_fields_mean_their_names.py": {
+      "test_methods": 26,
+      "asserts": {
+        "assertEqual": 28,
+        "assertIn": 9,
+        "assertIsNone": 1
+      },
+      "by_method": {
+        "test_a_finding_shared_by_every_effective_arm_is_not_strategy_specific": {
+          "assertEqual": 1
+        },
+        "test_a_genuinely_different_arm_is_not_flagged": {
+          "assertEqual": 1
+        },
+        "test_a_pick_whose_chosen_row_has_no_tav_is_counted_as_unmeasurable": {
+          "assertEqual": 2
+        },
+        "test_an_arm_drafted_under_a_changed_league_is_named": {
+          "assertEqual": 2
+        },
+        "test_an_explicit_mode_is_knowable_under_either_rule": {
+          "assertEqual": 2
+        },
+        "test_an_older_report_without_recorded_axes_still_aggregates": {
+          "assertEqual": 2
+        },
+        "test_and_records_the_axes_the_arm_was_drafted_under": {
+          "assertIn": 1
+        },
+        "test_audit_trajectory_copies_the_whole_config_except_the_label": {
+          "assertIn": 2
+        },
+        "test_both_axes_reach_the_advertised_set": {
+          "assertIn": 2
+        },
+        "test_it_equals_the_rounds_the_arm_actually_drafts": {
+          "assertEqual": 1
+        },
+        "test_no_inert_strategy_is_credited_with_the_controls_finding": {
+          "assertEqual": 3
+        },
+        "test_the_basis_is_stated_in_the_report": {
+          "assertIn": 1
+        },
+        "test_the_crossing_rule_reports_None": {
+          "assertIsNone": 1
+        },
+        "test_the_denominator_is_the_strategies_that_RAN": {
+          "assertEqual": 2
+        },
+        "test_the_effective_total_counts_the_control_finding_once": {
+          "assertEqual": 1
+        },
+        "test_the_inert_arms_are_identified": {
+          "assertEqual": 1
+        },
+        "test_the_join_disclosure_is_present": {
+          "assertIn": 1
+        },
+        "test_the_old_quantity_survives_under_its_true_name": {
+          "assertEqual": 1
+        },
+        "test_the_raw_total_still_says_what_the_run_produced": {
+          "assertEqual": 1
+        },
+        "test_the_round_rule_still_reports_a_split": {
+          "assertEqual": 1
+        },
+        "test_the_rule_itself_is_recorded_in_the_config": {
+          "assertIn": 1
+        },
+        "test_the_run_stamps_are_excluded_from_the_fingerprint": {
+          "assertIn": 1
+        },
+        "test_the_short_draft_arm_is_the_one_that_proves_it": {
+          "assertEqual": 2
+        },
+        "test_two_identical_arms_are_flagged_across_a_resume_boundary": {
+          "assertEqual": 1
+        },
+        "test_when_a_DEMOTED_row_is_taken_the_margin_is_negative_not_the_top_gap": {
+          "assertEqual": 2
+        },
+        "test_when_the_top_row_is_taken_the_margin_is_top_minus_second": {
+          "assertEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 4,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_report_survives_restart.py": {
       "test_methods": 6,
       "asserts": {

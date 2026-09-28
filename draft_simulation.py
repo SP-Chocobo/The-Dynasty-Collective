@@ -84,18 +84,35 @@ class DraftTrajectory:
         return rosters
 
 
-def _picks_by_mode(mode: str, total_picks: int, num_teams: int) -> dict[str, int]:
-    """How many picks of this trajectory each valuation actually produced (#222).
+def _picks_by_mode(mode: str, total_picks: int, num_teams: int,
+                   upside_rule: str = dr.UPSIDE_RULE_ROUND) -> Optional[dict[str, int]]:
+    """How many picks of this trajectory each valuation actually produced (#222), or None when
+    that cannot be known.
 
     Reported rather than assumed: mode="auto" flips at UPSIDE_MODE_DEFAULT_ROUND, which is a
     fixed ROUND INDEX, so the same setting buys a different FRACTION of every draft -- 26% of a
     19-round draft and 46% of a 26-round one. A reader of the artifact should not have to
     recompute that from a constant to know what they are comparing.
+
+    NONE UNDER THE CROSSING RULE, AND THAT IS THE REPAIR. This computed the split from
+    UPSIDE_MODE_DEFAULT_ROUND regardless of `upside_rule`, and it was never passed the rule at
+    all. Under UPSIDE_RULE_CROSSING the board flips wherever `_vor` is exhausted -- a property of
+    the pool at that pick, not of any constant -- so the VDS `crossing` arm's trajectory stated
+    `upside_from_round: 15` and a round-15 split while the real flip happened somewhere else
+    entirely. Nothing records the effective mode per pick (checked: neither the PickRecord nor the
+    serialized snapshot carries one), so the honest answer is that this is UNKNOWN, and `#187`
+    says an unknown crosses as None rather than as a plausible number.
+
+    The nearest available proxy is `qualifier_profile.picks_with_growth_measured`, which happens
+    to equal the true upside count -- but nothing guarantees the two agree, so it is not
+    substituted here.
     """
     if mode == "upside":
         return {"balanced": 0, "upside": total_picks}
     if mode != "auto":
         return {"balanced": total_picks, "upside": 0}
+    if upside_rule != dr.UPSIDE_RULE_ROUND:
+        return None
     balanced = min(max((dr.UPSIDE_MODE_DEFAULT_ROUND - 1) * num_teams, 0), total_picks)
     return {"balanced": balanced, "upside": total_picks - balanced}
 
@@ -213,9 +230,16 @@ def simulate_full_draft(
                 # draft -- and two trajectories drafted under different splits are no more
                 # comparable than two drafted off different point sources. Derived from the
                 # rounds actually run, never from an assumed draft length.
-                "upside_from_round": (dr.UPSIDE_MODE_DEFAULT_ROUND if mode == "auto"
-                                      else (1 if mode == "upside" else None)),
-                "picks_by_mode": _picks_by_mode(mode, len(pick_order), num_teams)},
+                # RECORDED, because it was not -- and its absence is why the two fields below
+                # were false on every crossing arm. A config that omits the rule cannot be used
+                # to tell two trajectories apart on the axis the rule controls.
+                "upside_rule": upside_rule,
+                "upside_from_round": (
+                    (dr.UPSIDE_MODE_DEFAULT_ROUND
+                     if (mode == "auto" and upside_rule == dr.UPSIDE_RULE_ROUND) else None)
+                    if mode != "upside" else 1),
+                "picks_by_mode": _picks_by_mode(mode, len(pick_order), num_teams,
+                                                upside_rule=upside_rule)},
         picks=tuple(records),
     )
 

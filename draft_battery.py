@@ -523,18 +523,41 @@ def tav_margin_profile(trajectory) -> dict:
     """
     margins, zero_by_round = [], collections.Counter()
     total_by_round: collections.Counter = collections.Counter()
+    unmeasurable_by_round: collections.Counter = collections.Counter()
     for pick in trajectory.picks:
         rows = [c for c in pick.snapshot["candidates"] if c.get("tav") is not None]
         total_by_round[pick.round] += 1
         if len(rows) < 2:
             continue
-        ordered = sorted((c["tav"] for c in rows), reverse=True)
-        margin = round(ordered[0] - ordered[1], 4)
+        # THE CHOSEN CANDIDATE, not the top of the list. This measured `top_tav - second_tav`
+        # regardless of who was actually taken -- and the chosen player is NOT the top-tav row
+        # whenever a backstop demotes it (feasibility, fieldability) or `opponent_noise` is on.
+        # So `zero_margin_share`, described as "how decisively the pick was made", was the gap
+        # between two rows that may both have been passed over. Reported under the old name it
+        # was a real number about a different question.
+        by_tav = sorted(rows, key=lambda c: -c["tav"])
+        chosen = next((c for c in rows if c.get("id") == pick.chosen_player_id), None)
+        if chosen is None:
+            # The chosen row carried no tav (or is absent from the candidate set). Counted, not
+            # silently skipped: a pick whose own margin cannot be computed is a gap in this
+            # profile's coverage, and `picks_measured` below would otherwise hide it.
+            unmeasurable_by_round[pick.round] += 1
+            continue
+        runner_up = next((c for c in by_tav if c.get("id") != pick.chosen_player_id), None)
+        if runner_up is None:
+            continue
+        margin = round(chosen["tav"] - runner_up["tav"], 4)
         margins.append(margin)
         if margin <= 0:
             zero_by_round[pick.round] += 1
     return {
         "picks_measured": len(margins),
+        # STATED rather than left to a reader's subtraction. A margin that cannot be computed is
+        # not a zero margin, and folding the two together is how a coverage gap reads as a result.
+        "picks_whose_margin_is_unmeasurable": sum(unmeasurable_by_round.values()),
+        "margin_basis": "chosen candidate's tav minus the best OTHER candidate's tav -- not the "
+                        "top two, because a backstop or opponent_noise can mean the chosen row "
+                        "is not the top row",
         "zero_margin_picks": sum(zero_by_round.values()),
         "zero_margin_share": (sum(zero_by_round.values()) / len(margins)) if margins else None,
         "zero_margin_by_round": dict(sorted(zero_by_round.items())),
@@ -773,6 +796,22 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
     """One trajectory, fully judged and fully described."""
     return {
         "label": trajectory.config.get("label", ""),
+        # THE WHOLE CONFIG, not just the label. `simulate_full_draft` records priced_from,
+        # sleeper_basis, mode, pool_scope, opponent_noise, upside_rule, upside_from_round and
+        # picks_by_mode into DraftTrajectory.config explicitly "so two trajectories are not
+        # mistaken as comparable" -- and this function read one key of it, so no per-arm entry in
+        # any report carried a mode, a noise seed or a pricing path. A carried arm produced under
+        # a different seed was indistinguishable from a fresh one, while the report's header
+        # printed the CURRENT code's constants. Copied rather than referenced so the recorded
+        # entry cannot change under a later mutation of the trajectory.
+        "provenance": {k: v for k, v in sorted(trajectory.config.items()) if k != "label"},
+        # THE AXES THIS ARM WAS ACTUALLY DRAFTED UNDER, carried with the arm. `format_axes` in the
+        # report was computed from the LIVE matrix and matched carried arms by label only, so if a
+        # league definition changed under an unchanged label -- which `12T_ppr_K_DEF` did when K
+        # and DEF were appended to it -- a resumed report advertised axis coverage the carried
+        # numbers were not produced under. Recorded here, the arm can be compared against the
+        # matrix instead of assumed to match it.
+        "format_axes": advertised_format_axes(league),
         "picks": len(trajectory.picks),
         "rosters": len(trajectory.final_rosters()),
         "findings": structural_findings(trajectory, league, players_db,
@@ -794,7 +833,14 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
 #: `seconds` is wall-clock -- including it would make every arm unique and the check vacuous.
 #: Found the hard way: the first version of this comparison included `seconds` and reported 0
 #: duplicates against a matrix that has 8.
-_FINGERPRINT_EXCLUDES = frozenset({"label", "seconds"})
+#: `produced_at_commit` and `carried_forward` are stamped onto every arm by
+#: `run_draft_battery.main` BEFORE `_battery_report` calls `duplicate_arms`, and a carried arm
+#: necessarily differs from a fresh one in both. So on a resumed run -- which is the documented
+#: normal way a ~3-hour battery completes, because the container is reclaimed on inactivity --
+#: two byte-identical arms fingerprinted differently and `independent_formats` was overstated
+#: EXACTLY when resume was used. Excluded for the same reason `seconds` is: they describe the
+#: RUN, not the arm's content.
+_FINGERPRINT_EXCLUDES = frozenset({"label", "seconds", "produced_at_commit", "carried_forward"})
 
 
 def roster_shape_axes(league: dict) -> dict:
@@ -825,7 +871,25 @@ def roster_shape_axes(league: dict) -> dict:
         # an IDP slot either as a flex ("IDP_FLEX") or as a bare position ("LB").
         "has_idp_slot": any(s.startswith("IDP") or s in dm.IDP_POSITIONS for s in slots),
         "has_superflex_slot": "SUPER_FLEX" in slots,
-        "draftable_rounds": len([s for s in slots if s not in ("BN", "IR", "TAXI")]),
+        # THE NAME AND THE VALUE, SEPARATED. This key used to hold the count below -- starting
+        # slots, excluding BN as well as IR and TAXI -- under the name `draftable_rounds`. So the
+        # `format_axes.axes.draftable_rounds` histogram in every report was a histogram of a
+        # different quantity than its name: it said 8 where the arm drafts 14, 10 where F&F drafts
+        # 26, and 11 where the owner league drafts 25. Measured: 35 of the 36 arms disagreed.
+        #
+        # The repair is NOT to swap in `league_config.draftable_slots`, which was the obvious
+        # move and is also wrong: that returns 14 for `12T_ppr_SHORT_DRAFT`, whose whole purpose
+        # is to draft 8. It agrees with the real count on 35 of 36 arms, which is exactly the
+        # kind of near-miss that reads as correct. The arm's round count is a property of the
+        # DRAFT, not of the roster shape, and the league carries it directly.
+        # `league_config` owns both readers (#126). The hand-written exclusion list that used to
+        # sit here is what let this quantity drift from the name above it in the first place --
+        # and my first pass at this repair rewrote it by hand again, against `lc.starting_slots`,
+        # which returns the identical count on all 36 arms. A second implementation that agrees
+        # today is the whole shape of Tier 4.
+        "starting_slots": len(lc.starting_slots(league.get("roster_positions"))),
+        "draftable_rounds": int(league.get("draft_rounds") or 0) or
+                            len(lc.draftable_slots(league.get("roster_positions"))),
     }
 
 
@@ -871,7 +935,7 @@ def advertised_format_axes(league: dict) -> dict:
 UNCOVERED_AXES: dict[str, str] = {}
 
 
-def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
+def format_axes_exercised(matrix: list[dict], labels=None, results=None) -> dict:
     """Which value of each format axis the arms ACTUALLY exercise, and which axes are CONSTANT.
 
     THE SIBLING OF duplicate_arms, AND IT CATCHES WHAT duplicate_arms CANNOT. That detector
@@ -905,11 +969,20 @@ def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
     """
     entries = [e for e in matrix
                if labels is None or e.get("label") in labels]
+    # WHAT THE ARMS RECORDED WINS OVER WHAT THE MATRIX SAYS NOW, and a disagreement is reported
+    # rather than resolved silently. `results` is optional so an older report file, whose arms
+    # carry no `format_axes`, still aggregates from the matrix exactly as before.
+    recorded = {r["label"]: r["format_axes"] for r in (results or [])
+                if isinstance(r.get("format_axes"), dict)}
+    drifted = sorted(
+        e["label"] for e in entries
+        if e.get("label") in recorded
+        and recorded[e["label"]] != advertised_format_axes(e["league"]))
     axes: dict[str, dict[str, int]] = {}
     for entry in entries:
         # Both derived vocabularies, from their one home. An axis that is constant in either
         # sense is a matrix not covering something.
-        axis_values = advertised_format_axes(entry["league"])
+        axis_values = recorded.get(entry.get("label")) or advertised_format_axes(entry["league"])
         for axis, value in axis_values.items():
             # str() because JSON object keys are strings: True would round-trip as "true"
             # anyway, and a dict keyed half by bool and half by str sorts unstably.
@@ -921,6 +994,11 @@ def format_axes_exercised(matrix: list[dict], labels=None) -> dict:
         # An axis with one observed value across >1 arm is advertised but not exercised. With a
         # single arm every axis is trivially constant and saying so would be noise, not news.
         "constant_axes": sorted(a for a, v in axes.items() if len(v) == 1) if len(entries) > 1 else [],
+        # NAMED, not averaged away. An arm whose recorded axes differ from the matrix's current
+        # answer for the same label was drafted under a different league than the one this report
+        # would describe, and quoting its numbers as coverage of today's matrix is the defect.
+        "arms_whose_league_changed_under_the_same_label": drifted,
+        "axes_source": ("arms" if recorded else "matrix"),
     }
 
 
