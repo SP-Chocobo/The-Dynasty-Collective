@@ -1,4 +1,11 @@
-"""`0.7`: eight report fields whose values were not the quantity their names promised.
+"""#222 / #241 / #215 / #170: eight report fields whose values were not the quantity their names
+promised — the v2 audit's `0.7`.
+
+Cited against the register items whose own fields these are: #222 defined `picks_by_mode` and
+`upside_from_round`, #241 defined `format_axes`, #215 defined the resume join and the
+`produced_at_commit` stamp that blinded `duplicate_arms`, and #170 defined the coverage block
+`tav_margin_profile` sits beside. Each of those items shipped a field; none of them shipped a check
+that the field still means its name.
 
 Every one was individually plausible and collectively made the batteries' reports describe
 something other than what a reader thought. They are pinned together because they are one defect

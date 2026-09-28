@@ -104,6 +104,18 @@ DEPENDENT_REASONS = {
     "unpriced_at_decision": "A COVERAGE report, not a verdict: how often absence reached the "
                             "decision surface. Its population depends on the pool the "
                             "configuration admits.",
+    # Both added by `0.7`, and both are configuration-dependent BY CONSTRUCTION rather than
+    # incidentally -- which is the strongest reason to register them here rather than argue they
+    # are invariants. This registry caught them on the first full suite after they shipped.
+    "provenance": "The trajectory's own config: mode, pool_scope, opponent_noise, upside_rule and "
+                  "the pricing path. Every one of them is a property of HOW THIS ARM WAS RUN, so "
+                  "two configurations differing in any of them SHOULD report different values -- "
+                  "that is the entire purpose of recording it. A reader comparing two arms whose "
+                  "provenance differs is comparing two experiments.",
+    "format_axes": "The axes the arm was DRAFTED under, read from its own league. A different "
+                   "league legitimately produces different axis values, and that is what makes "
+                   "the field useful: it is how a carried arm whose league changed under an "
+                   "unchanged label gets caught instead of being assumed to match the matrix.",
 }
 
 
