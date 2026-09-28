@@ -4409,6 +4409,15 @@ def simulate_opponent_picks(
     merger: DataMerger, players_db: dict[str, dict], league: dict, *, pool_scope: str = "all",
     sleeper_projections: Optional[dict[str, dict]] = None,
     sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    #: #30. THE CALL SITE HAS PASSED THIS SINCE THE FLOOR SHIPPED, AND THE PARAMETER DID NOT
+    #: EXIST -- so `app.py`'s Mock Draft raised `TypeError: simulate_opponent_picks() got an
+    #: unexpected keyword argument 'weekly_projections'` on every auto-pick, and the one
+    #: production path that uses mode="auto" could not execute at all. Adding the parameter
+    #: rather than deleting the argument, because the call site's own comment states the intent
+    #: and deleting it would silently price the mock's rivals without the streaming floor while
+    #: the human's board beside them has one -- the same asymmetry two lines of this function's
+    #: own docstring below already call a different ranking rather than a smaller board.
+    weekly_projections: Optional[dict] = None,
 ) -> list[dict]:
     """Auto-draft every pick between the current spot and the user's next turn (or the end of
     the draft) -- each one takes that roster's own top team_acquisition_value board pick, the
@@ -4435,7 +4444,8 @@ def simulate_opponent_picks(
         board = compute_draft_board(merger, players_db, picks, on_clock, league,
                                     pool_scope=pool_scope,
                                     sleeper_projections=sleeper_projections,
-                                    sleeper_basis=sleeper_basis)
+                                    sleeper_basis=sleeper_basis,
+                                    weekly_projections=weekly_projections)
         if not board:
             break
         picks.append({
