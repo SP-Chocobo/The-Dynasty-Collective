@@ -183,7 +183,12 @@ def expected_position_pace(position: str, picks_made: int, roster_positions: lis
 
 def position_pace_probability(position: str, picks_made_now: int, picks: list[dict],
                               players_db: dict[str, dict],
-                              roster_positions: list[str]) -> Optional[float]:
+                              roster_positions: list[str],
+                              #: MANDATE 1.3. How many of this position are expected to have
+                              #: gone ALREADY inside a hypothetical gap the caller is walking.
+                              #: 0.0 for the single-next-pick caller, which is why that one is
+                              #: unchanged: there is no gap to have consumed anything yet.
+                              expected_taken_in_gap: float = 0.0) -> Optional[float]:
     """P(the NEXT pick goes to this position at all), from the documented market convention.
 
     Step 1 of `_pace_based_take_probability`, lifted out because it has a SECOND consumer and
@@ -206,7 +211,31 @@ def position_pace_probability(position: str, picks_made_now: int, picks: list[di
 
     None whenever no convention is documented for this position/format, or once `picks_made_now`
     is past the last documented anchor -- the same domain the rest of this pace machinery keeps,
-    and the reason a caller must treat absence as "no convention here", never as zero."""
+    and the reason a caller must treat absence as "no convention here", never as zero.
+
+    THE DEFICIT CLOSES (mandate 1.3), and `expected_taken_in_gap` is how. A caller walking a gap
+    advances `picks_made_now` one hypothetical pick at a time, so `expected_now` climbs the
+    convention's cumulative curve -- while `actual_now` is counted off a FIXED list of picks that
+    have really been made. Nothing subtracted what the walk itself had already consumed, so the
+    same deficit was charged again at every step of the gap, and the sum of a per-pick hazard was
+    then reported as an expected COUNT. Measured on a real superflex board:
+
+        state   gap   QB expected_taken   the convention's own increment   actually taken
+        1.01     22              15.54                             8.92                5
+        2.12     14              10.28                             5.67                6
+
+    and the all-position totals were 26.15 across 22 picks and 16.76 across 14 -- more players
+    taken than there were picks to take them, which `#206` had already repaired once from the
+    other direction and listed in this module as the arithmetic impossibility it fixed.
+
+    `positional_forfeits`' own comment beside the call said the deficit "closes as picks are
+    made" and that holding it fixed "would charge the whole catch-up to every pick in it". That
+    was the right reasoning about the wrong variable: it recomputed `expected_now` per pick and
+    left `actual_now` frozen, which charges the catch-up exactly as it warned.
+
+    NOT A CAP, which `#56` would forbid. No number is introduced and no bound is chosen: the
+    quantity subtracted is the caller's own running expectation, and the convention supplies its
+    own ceiling -- once the walk has consumed the deficit, this returns 0.0 by arithmetic."""
     expected_now = expected_position_pace(position, picks_made_now, roster_positions)
     if expected_now is None:
         return None
@@ -215,7 +244,8 @@ def position_pace_probability(position: str, picks_made_now: int, picks: list[di
     actual_now = sum(
         1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
     )
-    return min(max(expected_now - actual_now, 0.0) / PACE_CATCH_UP_WINDOW, 1.0)
+    deficit = expected_now - actual_now - expected_taken_in_gap
+    return min(max(deficit, 0.0) / PACE_CATCH_UP_WINDOW, 1.0)
 
 
 def _pace_based_take_probability(
@@ -468,8 +498,14 @@ def positional_forfeits(
             #: whole catch-up to every pick in it.
             pace_p = None
             if None not in (picks, players_db, roster_positions, picks_made_now):
+                #: MANDATE 1.3: `expected_taken` so far is what this walk has already consumed.
+                #: Passing it is what makes the sentence above ("the deficit closes as picks are
+                #: made") true of the code as well as of the comment. It is the running total of
+                #: THIS position's expected takes, which is the same event the convention counts,
+                #: whichever of the two models supplied each step's probability.
                 pace_p = position_pace_probability(
-                    position, picks_made_now + offset, picks, players_db, roster_positions)
+                    position, picks_made_now + offset, picks, players_db, roster_positions,
+                    expected_taken_in_gap=expected_taken)
             board = opponent_boards.get(str(roster_id))
             if not board:
                 continue
