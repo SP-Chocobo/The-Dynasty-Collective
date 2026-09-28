@@ -145,5 +145,71 @@ class TheUIHandsOverTheLiveWorldTests(unittest.TestCase):
         self.assertIn("live_pool_scope=st.session_state.mock_draft_pool_scope", self.app)
 
 
+class AStoredRecordCanBeAskedTheSameQuestionTests(unittest.TestCase):
+    """MANDATE 1.7, the last of this item's stamp work. `evidence_projection`'s docstring says the
+    stamp is "what lets a reader ask snapshot_is_current of a RESTORED record, not just a live one"
+    -- and it carried two of the stamp's four fields, so a restored record could be asked whether
+    picks had been made and whether the merger's date had moved, and could not be asked whether it
+    described the same POPULATION or the same player universe. Two-thirds of a claim.
+
+    `stamp_is_current` already takes those two as optional PAIRS, so a version-2 record on disk asks
+    exactly the question it used to rather than reading as stale for a world it cannot describe."""
+
+    def _projection(self):
+        import draft_history
+        snap = _snap_with_world()
+        return draft_history.evidence_projection(snap, "test-identity")
+
+    def test_all_four_stamp_fields_are_in_the_record(self):
+        projection = self._projection()
+        for field in ("picks_consumed", "data_freshest_date", "pool_scope", "players_db_stamp"):
+            with self.subTest(field=field):
+                self.assertIn(field, projection)
+
+    def test_they_are_copied_rather_than_recomputed(self):
+        """The one thing that function's docstring promises it cannot do is disagree with the board
+        it describes, and a re-derived stamp is how that would happen."""
+        snap = _snap_with_world()
+        import draft_history
+        projection = draft_history.evidence_projection(snap, "test-identity")
+        self.assertEqual(snap.pool_scope, projection["pool_scope"])
+        self.assertEqual(snap.players_db_stamp, projection["players_db_stamp"])
+
+    def test_the_schema_version_moved_rather_than_the_old_records(self):
+        """A version-2 record has no such KEY, which is what lets a reader tell "never captured"
+        from "captured as absent" -- the distinction that constant exists for."""
+        import draft_history
+        self.assertEqual(3, draft_history.EVIDENCE_SCHEMA_VERSION)
+        self.assertEqual(3, self._projection()["evidence_schema_version"])
+
+    def test_a_restored_record_can_now_be_put_to_the_whole_question(self):
+        """End to end, by value: a record written under one world, checked against another."""
+        projection = self._projection()
+        current, reason = ps.stamp_is_current(
+            projection["picks_consumed"], projection["data_freshest_date"], [], _FrozenMerger(),
+            pool_scope=projection["pool_scope"], live_pool_scope="rookies_only",
+            players_db_stamp=projection["players_db_stamp"],
+            live_players_db_stamp=projection["players_db_stamp"])
+        self.assertFalse(current)
+        self.assertIn("player pool", reason)
+
+    def test_a_record_written_before_these_fields_asks_what_it_used_to(self):
+        """NON-VACUITY in the safe direction: an older record must not start reading as stale for a
+        world it never captured."""
+        current, reason = ps.stamp_is_current(
+            0, _FrozenMerger.freshest_date, [], _FrozenMerger(),
+            pool_scope=None, live_pool_scope="rookies_only",
+            players_db_stamp=None, live_players_db_stamp="ANYTHING")
+        self.assertTrue(current, reason)
+
+
+def _snap_with_world():
+    base = _snapshot([_candidate("1", "Brock Purdy")])
+    return ps.PickSnapshot(
+        pick_label="1.01", round=1, my_roster_id=base.my_roster_id, candidates=base.candidates,
+        picks_consumed=0, data_freshest_date=_FrozenMerger.freshest_date,
+        pool_scope="all", players_db_stamp="UNIVERSE-A")
+
+
 if __name__ == "__main__":
     unittest.main()

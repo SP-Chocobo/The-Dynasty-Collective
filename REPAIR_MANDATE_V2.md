@@ -701,7 +701,7 @@ kind; the `recommended=None` path exists so the panel can decline, and the Calle
 a bare name. Pinned as a characterization test that says to invert it when repaired.
 
 
-## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[5 OF 6 LIMBS REPAIRED]**
+## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[5.5 OF 6 LIMBS REPAIRED — the last one is a scope call for the owner]**
 
 Four lenses hit this from four directions, and it is one defect family: **what the person is looking at
 can be older or other than what the label says, and nothing in the apparatus can tell.**
@@ -787,10 +787,29 @@ home in `llm_engine` with a named check (three readers is where a bare literal n
 `append_message` stamps a failed call, and both memory windows skip it — the same distinction `notice`
 messages already draw: visible to a person, absent from the record.
 
-### ONE LIMB REMAINING
-- **`draft_history` cannot reproduce what was shown** — write-only today. This one is a REPLAY FEATURE,
-  not a defect fix: it needs a reader, a renderer and a decision about what "what was shown" means.
-  Named here as the scope call it is rather than folded in quietly.
+**5.5. The stored record can now be asked the same question a live board can.** The last limb split,
+and this is the half that is a defect. `evidence_projection`'s docstring says the stamp it carries is
+"what lets a reader ask snapshot_is_current of a RESTORED record, not just a live one" — and it carried
+two of the stamp's four fields, so a restored record could be asked whether picks had been made and
+whether the merger's date had moved, and could not be asked whether it described the same POPULATION or
+the same player universe. Two-thirds of a claim. All four are now carried, verbatim rather than
+recomputed, and `EVIDENCE_SCHEMA_VERSION` moves 2 → 3 rather than the records already on disk: a
+version-2 record has no such key at all, which is what lets a reader tell "never captured" from
+"captured as absent". A version-2 record asks exactly the question it used to, because
+`stamp_is_current` takes the new comparisons as optional PAIRS.
+
+### THE LAST HALF-LIMB IS A SCOPE CALL FOR THE OWNER
+
+**`draft_history` is write-only in the app.** The module is not: it has `load_snapshot_record`,
+`list_snapshot_records` and `snapshot_ids`, and they work. What does not exist is any surface that
+READS them — `app.py` calls `record_snapshot` and nothing else.
+
+Closing it properly is a REPLAY FEATURE, not a defect fix: it needs a reader, a renderer, and a
+decision about what "reproduce what was shown" means — the candidate table as it stood, or the whole
+panel including the debate that ran on it, and whether a replayed board is allowed to look like a live
+one. Those are product decisions, and building them unilaterally under a repair mandate would be me
+choosing the shape of a feature nobody asked for. **So it goes to the owner rather than into a commit.**
+What is closed is the part that made the stored record less useful than it claimed to be.
 
 ---
 

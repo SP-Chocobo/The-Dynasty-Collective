@@ -746,13 +746,15 @@
       }
     },
     "test_a_held_debate_knows_what_world_it_saw.py": {
-      "test_methods": 12,
+      "test_methods": 17,
       "asserts": {
-        "assertEqual": 1,
-        "assertIn": 14,
+        "assertEqual": 5,
+        "assertFalse": 1,
+        "assertIn": 16,
         "assertIsNone": 4,
         "assertIsNotNone": 3,
-        "assertNotEqual": 1
+        "assertNotEqual": 1,
+        "assertTrue": 1
       },
       "by_method": {
         "test_a_caller_that_supplies_no_live_world_asks_exactly_what_it_used_to": {
@@ -765,6 +767,16 @@
         "test_a_pool_scope_change_is_reported": {
           "assertIn": 2,
           "assertIsNotNone": 1
+        },
+        "test_a_record_written_before_these_fields_asks_what_it_used_to": {
+          "assertTrue": 1
+        },
+        "test_a_restored_record_can_now_be_put_to_the_whole_question": {
+          "assertFalse": 1,
+          "assertIn": 1
+        },
+        "test_all_four_stamp_fields_are_in_the_record": {
+          "assertIn": 1
         },
         "test_an_injury_status_change_alone_is_a_different_universe": {
           "assertIsNotNone": 1,
@@ -792,8 +804,14 @@
         "test_the_same_universe_is_not_reported": {
           "assertIsNone": 1
         },
+        "test_the_schema_version_moved_rather_than_the_old_records": {
+          "assertEqual": 2
+        },
         "test_the_snapshot_declares_both_new_fields": {
           "assertIn": 2
+        },
+        "test_they_are_copied_rather_than_recomputed": {
+          "assertEqual": 2
         }
       },
       "disabled": {

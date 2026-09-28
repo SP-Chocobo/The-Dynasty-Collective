@@ -54,7 +54,11 @@ HISTORY_DIR = Path("data/draft_history")
 # readable and keeps its own number -- a reader can then tell "this field was never captured"
 # from "this field was captured as absent", which §18/#112 named as the distinction the board
 # currently cannot make. Never renumber an existing record.
-EVIDENCE_SCHEMA_VERSION = 2
+#: 2 -> 3 (mandate 1.7): the projection carries the whole input-state stamp, having carried two of
+#: its four fields. A version-2 record has no pool_scope or players_db_stamp KEY at all, which is
+#: what lets a reader tell "never captured" from "captured as absent" -- the distinction this
+#: constant's own comment exists for, and the reason the number moves rather than the old records.
+EVIDENCE_SCHEMA_VERSION = 3
 
 # The candidate fields retained per row. Chosen to answer "why is this one above that one" --
 # the value layer, the two bonuses that separate universal from team-acquisition value, the
@@ -141,8 +145,21 @@ def evidence_projection(snapshot, snapshot_id: str) -> dict:
         "user_selected_player_id": snapshot.user_selected_player_id,
         # The input-state stamp, carried verbatim. This is what lets a reader ask
         # snapshot_is_current of a RESTORED record, not just a live one.
+        #
+        # MANDATE 1.7: ALL FOUR OF IT. This carried two of the stamp's fields while the snapshot
+        # grew two more -- pool_scope and players_db_stamp -- so a restored record could be asked
+        # whether picks had been made and whether the merger's date had moved, and could not be
+        # asked whether it was even the same POPULATION or the same player universe. The sentence
+        # above claims a reader can put a record to the same question a live board answers, and it
+        # was two-thirds true.
+        #
+        # Carried verbatim like the other two, never recomputed: a projection that re-derived a
+        # stamp could disagree with the board it describes, which is the one thing this function's
+        # own docstring promises it cannot do.
         "picks_consumed": snapshot.picks_consumed,
         "data_freshest_date": snapshot.data_freshest_date,
+        "pool_scope": snapshot.pool_scope,
+        "players_db_stamp": snapshot.players_db_stamp,
         "candidate_count": len(snapshot.candidates),
         "candidates": [candidate_evidence(c) for c in snapshot.candidates],
     }
