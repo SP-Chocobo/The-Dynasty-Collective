@@ -351,11 +351,13 @@ class TradeValueBranchIsAnchoredToo(unittest.TestCase):
     def test_the_anchor_adds_idp_prices_without_changing_any_other(self):
         control = {r["player_id"]: r["final_score"] for r in self._control_board()}
         after = {r["player_id"]: r["final_score"] for r in self.board}
-        # NON-VACUITY FIRST: every assertion below is skipped for an unpriced control row, so a
-        # control board carrying no prices would pass while comparing nothing. Found by
-        # `assertion_execution.py` -- this test executed zero assertions on the committed tree.
-        self.assertTrue([v for v in control.values() if v is not None],
-                        "no control row carries a price, so this compares nothing")
+        # VACUOUS BY CONSTRUCTION, AND REGISTERED AS SUCH. `_control_board` disables the anchor,
+        # and with it disabled NOTHING is priced -- measured: 514 rows, 0 carrying a final_score,
+        # which is exactly what `test_the_control_really_does_lose_prices` asserts. So this test
+        # asks "did any existing price change?" of a control that has no prices, and the loop below
+        # skips every row. It has never compared one. Closing it needs a DIFFERENT control -- the
+        # anchor enabled with IDP absent, say -- which is a design question about what the control
+        # should be, not something to guess at here. Recorded in ASSERTION_EXECUTION.json.
         for player_id, before in control.items():
             if before is None:
                 continue

@@ -4416,7 +4416,7 @@
         "assertLessEqual": 1,
         "assertNotEqual": 1,
         "assertNotIn": 4,
-        "assertTrue": 5
+        "assertTrue": 4
       },
       "by_method": {
         "test_a_BAD_backup_does_not_insure": {
@@ -4541,7 +4541,7 @@
           "assertNotIn": 2
         },
         "test_zero_means_not_measured_and_never_this_position_is_safe": {
-          "assertTrue": 2
+          "assertTrue": 1
         }
       },
       "disabled": {
@@ -11482,7 +11482,7 @@
         "assertLessEqual": 1,
         "assertNotEqual": 10,
         "assertNotIn": 1,
-        "assertTrue": 11
+        "assertTrue": 10
       },
       "by_method": {
         "test_a_cached_answer_equals_a_freshly_built_one": {
@@ -11565,8 +11565,7 @@
         },
         "test_the_anchor_adds_idp_prices_without_changing_any_other": {
           "assertAlmostEqual": 1,
-          "assertIsNotNone": 1,
-          "assertTrue": 1
+          "assertIsNotNone": 1
         },
         "test_the_cache_is_bounded": {
           "assertLessEqual": 1

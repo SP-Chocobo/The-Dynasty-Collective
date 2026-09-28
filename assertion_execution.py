@@ -61,7 +61,7 @@ def _instrument() -> None:
         if not (name.startswith("assert") or name.startswith("fail")):
             continue
         original = getattr(unittest.TestCase, name, None)
-        # FUNCTIONS ONLY. `failureException` also starts with "fail" and is a CLASS
+        # FUNCTIONS ONLY. unittest's failureException attribute also starts with "fail" and is a CLASS
         # (AssertionError), and `callable()` is true for a class -- so the first version of this
         # replaced it with a function wrapper and unittest's own error path died on
         # `issubclass() arg 2 must be a class`. The instrument broke the framework it measures,
