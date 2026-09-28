@@ -193,9 +193,32 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
             owner_arm = dict(owner_league)
             owner_rounds = len(lc.draftable_slots(owner_arm["roster_positions"]))
             owner_arm["draft_rounds"] = owner_rounds
+            # THE DYNASTY FLAG IS NOT IN THE CAPTURE, AND IS NOT INVENTED HERE.
+            #
+            # `compute_draft_board` reads `is_dynasty` from `league["settings"]["type"] == 2`, and
+            # this capture's `league_shape` carries exactly three keys -- roster_positions,
+            # scoring_settings, total_rosters. So the arm labelled "THE LEAGUE THIS SYSTEM IS
+            # ACTUALLY USED ON" drafts as REDRAFT: `time_horizon_adj` is never applied and
+            # `risk_adj`'s trajectory scaling is off. Nothing the owner arm says about multi-year
+            # valuation, rookie or age handling, or the health signal's scaling is evidence.
+            #
+            # The sibling F&F arm hardcodes {"type": 2}. Doing the same here would assert a fact
+            # the captured data does not contain, which is the opposite of what a capture is for.
+            # The fix belongs in the CAPTURE WRITER, and re-capturing needs api.sleeper.app, which
+            # this environment's network policy denies -- the same blocker as `#30`'s live sync.
+            #
+            # So: carried through if the capture ever has it, stated if it does not, and
+            # `test_arm_rulebook` fails the moment a capture arrives with the flag while this arm
+            # still ignores it -- so the repair lands by itself rather than waiting to be noticed.
+            if (owner_league.get("settings") or {}).get("type") is not None:
+                owner_arm["settings"] = dict(owner_league["settings"])
             out.append({"label": "CAPTURE_owner_league", "league": owner_arm,
                         "teams": int(owner_arm.get("total_rosters") or 12),
-                        "rounds": owner_rounds})
+                        "rounds": owner_rounds,
+                        # STATED IN THE ARM so a report carries it: this arm's dynasty status is
+                        # UNKNOWN from the capture, not measured as redraft.
+                        "dynasty_flag_present_in_capture":
+                            (owner_league.get("settings") or {}).get("type") is not None})
 
     capture_path = Path("data/league_captures/fourth_and_forever.json")
     if capture_path.exists():
@@ -253,6 +276,34 @@ def league_matrix(base_scoring: dict | None = None) -> list[dict]:
     short["draft_rounds"] = short_rounds
     out.append({"label": "12T_ppr_SHORT_DRAFT", "league": short, "teams": 12,
                 "rounds": short_rounds, "audit_roster_fill": False})
+
+    # A BALANCED SIBLING FOR EVERY ARM WHOSE `auto` REACHES THE UPSIDE SWITCH.
+    #
+    # THE GAP THIS CLOSES. Chairs run `mode="auto"`, which flips to upside scoring at
+    # UPSIDE_MODE_DEFAULT_ROUND; `app.py` passes no `mode=` at any `build_snapshot` call site, so
+    # the human's board is ALWAYS balanced. Measured across the matrix above, 17 of its arms draft
+    # part of themselves under a valuation production cannot reach -- the owner's league 132 of 300
+    # picks (44%), Fourth & Forever 144 of 312 (46%), HEAVY_IDP 22%, two more at 12%, twelve
+    # superflex arms at 7%. The existing `12T_ppr_mode_balanced` arm is 14 rounds, so `auto` never
+    # reaches the switch there and it is byte-identical to its sibling -- the mode axis was
+    # advertised and never crossed. So NO arm exercised the human-turn valuation past round 14.
+    #
+    # DERIVED, NOT HAND-PICKED. The rule is "every arm where auto can reach the switch", read off
+    # each arm's own round count against the engine's own constant. Selecting arms by how much
+    # upside they happened to contain would be a threshold, and `#56` forbids one: a bound is not a
+    # threshold, and "12% matters, 7% does not" is a calibration nobody derived.
+    #
+    # ADDED rather than replacing the auto arms, so every number already recorded keeps meaning
+    # what it meant. The cost is battery runtime, which is the honest price of the coverage.
+    crossing = [e for e in out if e.get("mode", "auto") == "auto"
+                and int(e["rounds"]) >= dr.UPSIDE_MODE_DEFAULT_ROUND]
+    for entry in crossing:
+        sibling = dict(entry)
+        sibling["label"] = f"{entry['label']}_balanced_full"
+        sibling["mode"] = "balanced"
+        # The same league object, deliberately: the ONLY difference between the pair is the
+        # valuation, so a difference in their results is attributable to it and nothing else.
+        out.append(sibling)
     return out
 
 

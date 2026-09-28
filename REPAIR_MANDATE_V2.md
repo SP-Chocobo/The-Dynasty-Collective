@@ -281,7 +281,7 @@ Not forbidden, ratcheted: `skipUnless(CAPTURE.exists(), …)` is honest, and the
 count, raised through `--write` in the diff like any other.
 
 
-## 0.5 The battery's chairs never exercise the valuation a human is shown **[VERIFIED, in part]**
+## 0.5 The battery's chairs never exercise the valuation a human is shown **[REPAIRED — one half blocked on a re-capture]**
 
 Chairs run `mode="auto"`; `app.py` passes no `mode=` at any call site, so the human board is always
 `balanced`. On every arm past 14 rounds, picks from round 15 on use upside scoring — which zeroes
@@ -295,6 +295,39 @@ applied to it.
 
 **Repair:** run the matrix in `balanced` (or add balanced arms at full length) and carry `settings`
 into the capture arms. Until then, no owner-league arm supports a claim about multi-year valuation.
+
+### REPAIRED
+
+**The mandate said five arms. It is seventeen.** Measured on the matrix rather than estimated: 17 of
+36 arms draft part of themselves under a valuation production cannot reach —
+`CAPTURE_fourth_and_forever` 144 of 312 picks (46%), `CAPTURE_owner_league` 132 of 300 (44%),
+`HEAVY_IDP` 48 (22%), `4WR_TE_PREMIUM` and `12T_ppr_K_DEF` 24 each (12%), and twelve `_SF` arms at
+8–14 picks (7%). Correction filed below.
+
+**`draft_battery.league_matrix` now appends a derived balanced sibling per crossing arm.** The rule is
+the arm's own round count against the engine's own constant — `mode == "auto"` and
+`rounds >= dr.UPSIDE_MODE_DEFAULT_ROUND` — so the selection is DERIVED, not calibrated. Selecting by
+how much upside an arm happened to contain would be a threshold, and `#56` forbids one: "12% matters,
+7% does not" is a calibration nobody derived. The sibling shares the same league object and differs
+only in `mode`, so any difference between the pair is attributable to the valuation and nothing else.
+The arms are ADDED, not replaced, so every number already recorded keeps meaning what it meant; the
+cost is battery runtime, which is the honest price of the coverage. Matrix 36 → 53.
+
+**The dynasty half is NAMED, not faked.** The capture's `league_shape` carries only
+`roster_positions`, `scoring_settings` and `total_rosters` — no dynasty flag — so `is_dynasty` cannot
+be derived from it. The sibling F&F arm hardcodes `{"type": 2}`; doing that here would assert a fact
+the captured data does not contain, which is the failure mode this whole document is about. So the arm
+carries `settings` through if a capture ever has it, and reports
+`dynasty_flag_present_in_capture` (currently `False`). **Blocked on a re-capture, which needs
+`api.sleeper.app` — this environment's network policy denies it, the same blocker as `#30`'s live
+sync.** Until then: no owner-league arm supports a claim about multi-year valuation, and that is now
+stated by the arm rather than left to be noticed.
+
+**Ratchet:** `test_arm_rulebook.py` +7 tests — every crossing arm has a `_balanced_full` sibling; the
+pair differs in exactly `{label, mode}`; the crossing population is non-empty (non-vacuity, `0.9`'s
+subject); no duplicate labels; the owner-league arm states the flag's presence, carries it through if
+the capture gains it, and fails if anyone hardcodes it meanwhile. Verified by mutation: dropping one
+sibling turns the ratchet red.
 
 ## 0.6 The battery's universe is outside the hashed input set — *two lenses* **[REPAIRED]**
 
@@ -367,7 +400,7 @@ whose subject is "every module"**, so no per-module selection can contain them. 
 filter, not a substitute — recorded here because I had argued the opposite on instinct and this is the
 instance that settles it.
 
-## 0.8 Prose that asserts properties the code does not have, and the instruments that were supposed to catch it
+## 0.8 Prose that asserts properties the code does not have, and the instruments that were supposed to catch it **[REPAIRED]**
 
 Two lenses arrived here independently. Pass B collected docstrings and comments asserting behaviour the
 code beneath them does not implement; pass C then measured the instrument meant to police exactly that:
@@ -379,7 +412,23 @@ own stated limits (0.4).
 **Repair:** narrow the shield to what it can actually defend, then fix the claims it then surfaces.
 Do it in Tier 0 — every tier below is read through this prose.
 
-## 0.9 Instruments that count instead of check, and graders that price off the production path
+### REPAIRED
+
+**The shield was narrowed.** `prose_names.py` gained `WEAK_MARKERS` and `weak_sole_exemptions`: a
+history exemption resting SOLELY on a weak marker no longer exempts, so the shield defends what it
+can actually defend and the claims it was hiding surface.
+
+**The surfaced claim was fixed at the source.** `compute_draft_board`'s docstring cited "the toggle
+this was built for — see `app.py`'s Draft Room view". There is no such toggle: `app.py` passes no
+`mode=` at any `build_snapshot` call site. The sentence is replaced with an explicit paragraph saying
+so, because deleting it would leave the next reader to re-derive the same absence.
+
+**`doc_index.classify`'s boilerplate collision fixed** (the seventh, filed under 0.9 but repaired
+here since it is the same shape): `_BOILERPLATE_BANNER` / `_without_boilerplate` strip the shared
+long-lived-document banner before classification, so the word `stale` inside the house banner no
+longer classifies six self-declaring documents as SUPERSEDED.
+
+## 0.9 Instruments that count instead of check, and graders that price off the production path **[REPAIRED — two carried, with what would close them]**
 
 Six findings, one shape: an instrument reports a number that is not about the thing its name says.
 
@@ -408,6 +457,46 @@ themselves**, including `DRAFT_ROOM_UI.md` and `CDME_CONTRACTS.md`. The index's 
 class "a judgement about whether a document tells a cold reader what it is" — and for those six it is
 a judgement about whether they carry the house banner. Same shape as the rest of this item: a number
 that is not about what its name says.
+
+### REPAIRED
+
+**The zero-assertion tests: a runtime instrument, not a static count.** `assertion_execution.py` (new)
+wraps every `unittest.TestCase` assert/fail method with a per-test counter and a `_Result` that tracks
+ran / skipped / errored separately, so a test that is skipped is not scored as silent and a test that
+errors before its first assertion is not scored as passing. `--write` / `--check`, with
+`ASSERTION_EXECUTION.json` as a **reasoned allowlist**: 14 silent tests, each carrying a written reason
+it is legitimately silent. A count would have let the number drift; the reason has to be argued.
+(Implementation note, because it cost a cycle: `failureException` begins with "fail" and is a class, so
+`callable()` admits it and wrapping it breaks unittest itself. Selection is `inspect.isfunction`.)
+
+**`test_audit_cadence.py`** now strips comments (`_uncommented`) before matching, so a commented-out CI
+step no longer counts as a step.
+
+**`quantity_readers.py`** gained `_assert_every_listed_module_exists()`, called at import — the
+hand-maintained list can no longer name a file that does not exist. The dead entry
+(`trade_analysis.py`) was corrected to `trade_ledger_ui.py`.
+
+**`draft_counterfactual._full_board`** now takes the pricing-path parameters explicitly and RAISES
+`ValueError` rather than silently pricing vendor-only, so `regret_vs_bpa` can no longer be a difference
+of two pricings. A refusal is the honest output when the inputs for a comparable pricing are absent.
+
+**The battery fixture reader** raises on a capture without season projections, as its docstring already
+said it did.
+
+**Ratchet:** `test_instruments_check_rather_than_count.py` (new, 11 tests) — cited `#141 / #114 /
+#200`.
+
+### CARRIED, with what would close each
+
+- **`suite_taxonomy`'s `gap #1` markers.** Closing this needs a declared item registry to check
+  citations against. I built two candidate oracles for register-item existence; they produced 55 and 56
+  false positives respectively, including `#187`, `#204` and `#213` — all real items. I refused to ship
+  a check whose own accuracy I could not defend. **What closes it:** a single declared registry of item
+  ids with one home (`#126`), which the marker check then reads.
+- **`realized_ruler.DEFAULT_WEEKS` scoring week 18.** This is a definitional ruling about what a
+  fantasy season is, not a defect I can measure my way out of — and both backtest arms share the
+  constant, so no comparison between them is affected by it. **What closes it:** an owner ruling on
+  whether week 18 counts (`#184` — engine-design changes go to the owner).
 
 ---
 
@@ -799,7 +888,10 @@ next drift starts.
    battery inert, and then wrote a measurement-skill lesson telling a future reader to check the
    exercise flags — while leaving the other battery without one.
 3. **`draftable_rounds` mismatches on 35 of 36 arms, not 36.** One arm agrees.
-4. **My commit-subject leak has now cost something concrete.** It contaminated pass A during the
+4. **The upside crossing is seventeen arms, not five.** This document's 0.5 named five arms that
+   draft past the switch. Measured on the matrix: **17 of 36**, from 46% of `CAPTURE_fourth_and_forever`'s
+   picks down to 7% of the superflex arms. The repair is sized to the measurement, not to the claim.
+5. **My commit-subject leak has now cost something concrete.** It contaminated pass A during the
    audit (a protocol failure already recorded), and it has since caused a reader of this document to
    treat my own pre-freeze `sharp_upside` figures as an independent audit finding. A leak does not
    stop being a leak once the pass ends — it keeps being read as corroboration. See Owner Decision 1.
