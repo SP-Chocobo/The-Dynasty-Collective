@@ -1002,11 +1002,28 @@ expression (union of the primary label versus fallback to it). They differ for e
 divergence with no current observable consequence, in a vocabulary `#172` does not rule on. Pinned as a
 characterization test.
 
-### STILL TO DO IN 2.6
+### THE COUNTING HALF IS SIZED, AND IT IS A RULING — see `evidence/multi_eligible_counting/`
 
-**Roster fill is counted by primary label**, so `need_bonus` and league-wide starter demand mis-read
-every multi-eligible player — 178 of them in the capture universe. That is the half with the numbers
-in it, and it is next.
+`team_filled_by_position` counts by primary label and is the single home everything counts through:
+`need_bonus` on one side, and `remaining_starter_demand` → `replacement_levels` → every price on the
+other.
+
+**Where it bites:** 178 multi-eligible players in the universe, **66** reach a board, earliest at row
+199, and every one is an IDP dual (`DL/LB`, `DB/LB`). Zero multi-eligible picks in the first three
+rounds of any arm measured.
+
+**The difference, isolated** on `HEAVY_IDP` with the same formula and only the count changing: LB
+demand **20.0 → 13.0 (−7.0 of 20 slots)** after round 5, −3.0 after round 10, nil by round 15. Every
+other position identical at every round.
+
+**Neither available reading is correct.** By label, LB demand is overstated 35% mid-draft, so LBs are
+priced as if more LB slots need filling than do. By eligibility, a dual reduces demand at BOTH his
+positions, claiming one player fills two slots. By assignment is correct and redefines demand as a
+SOLVED quantity — and `remaining_starter_demand`'s docstring rests on being "EXACT and BOUNDED…
+carries no prior, no estimate", which it says is "what make[s] it usable as the domain test for a
+valuation anchor". Changing it changes every IDP price.
+
+**So it is `#184`, not a repair.** Put to the owner with the measurement rather than chosen here.
 
 ---
 
