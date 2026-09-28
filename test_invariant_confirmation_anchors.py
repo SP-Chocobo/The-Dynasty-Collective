@@ -206,6 +206,26 @@ class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unitte
         self.assertNotIn('"discover"', source,
                          "a discover sweep cannot exclude the self-test module")
 
+    def test_the_harness_runs_a_baseline_arm_before_judging_anything(self):
+        """`caught` means rc != 0 WITH the mutant present. That is not evidence unless the same
+        run is green WITHOUT it.
+
+        The harness had no baseline, and the first run after the anchors exclusion scored all
+        three mutations "caught" on a stale assertion floor -- one test method renamed in the same
+        commit left `assertion_floors.drops()` non-empty on the CLEAN tree, and under --failfast
+        every arm inherited that single unrelated failure. Three verdicts, none about the engine,
+        from the harness built to prevent exactly that. Pinned here so a future edit cannot
+        quietly drop the baseline and restore a harness that always reports success."""
+        import inspect
+        source = inspect.getsource(ic.main)
+        self.assertIn("_run_suite(failfast=True)", source,
+                      "main must run the scored modules on the clean tree before mutating")
+        self.assertIn("ALREADY RED", source,
+                      "main must refuse to judge anything when the clean tree is red")
+        # The refusal must come BEFORE the mutation loop, or it is a postscript.
+        self.assertLess(source.index("ALREADY RED"), source.index("for name, filename, anchor"),
+                        "the baseline check must precede the first mutation")
+
     def test_a_subprocess_failure_is_reported_as_not_built(self):
         """The viability guard's own branch, exercised without breaking the tree."""
         real = ic.subprocess.run

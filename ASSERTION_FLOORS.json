@@ -1596,11 +1596,11 @@
       }
     },
     "test_battery_pricing_path.py": {
-      "test_methods": 13,
+      "test_methods": 17,
       "asserts": {
         "assertEqual": 5,
         "assertGreater": 1,
-        "assertIn": 12,
+        "assertIn": 19,
         "assertIsInstance": 1,
         "assertIsNone": 1,
         "assertLessEqual": 1,
@@ -1624,7 +1624,7 @@
           "assertIn": 2
         },
         "test_run_battery_prices_the_ruler_the_same_way_as_the_draft": {
-          "assertIn": 2
+          "assertIn": 3
         },
         "test_season_projections_come_from_the_same_capture_as_the_universe": {
           "assertEqual": 2
@@ -1639,6 +1639,18 @@
           "assertEqual": 1,
           "assertIn": 2,
           "assertIsInstance": 1
+        },
+        "test_the_format_battery_loader_is_actually_called": {
+          "assertIn": 1
+        },
+        "test_the_format_battery_passes_the_weekly_lines_it_loads": {
+          "assertIn": 2
+        },
+        "test_the_other_two_live_instruments_are_wired_the_same_way": {
+          "assertIn": 2
+        },
+        "test_the_report_can_contradict_the_claim": {
+          "assertIn": 1
         },
         "test_the_two_pricing_paths_produce_different_boards": {
           "assertNotEqual": 1
@@ -1831,6 +1843,27 @@
         "test_the_same_answer_with_the_block_parses_so_the_gap_is_real_not_a_dead_parser": {
           "assertEqual": 2,
           "assertTrue": 1
+        }
+      }
+    },
+    "test_board_order_honours_the_backstops.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreater": 1,
+        "assertTrue": 3,
+        "fail": 1
+      },
+      "by_method": {
+        "test_both_backstops_actually_bind_on_this_fixture": {
+          "assertTrue": 2
+        },
+        "test_the_backstops_outrank_value_rather_than_merely_agreeing_with_it": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "test_the_ceiling_that_makes_the_second_backstop_bind_is_what_we_think": {
+          "assertEqual": 1
         }
       }
     },
@@ -6559,16 +6592,16 @@
       }
     },
     "test_invariant_confirmation_anchors.py": {
-      "test_methods": 15,
+      "test_methods": 18,
       "asserts": {
-        "assertEqual": 8,
+        "assertEqual": 9,
         "assertFalse": 1,
-        "assertGreater": 1,
+        "assertGreater": 2,
         "assertGreaterEqual": 2,
-        "assertIn": 8,
-        "assertLess": 1,
+        "assertIn": 12,
+        "assertLess": 2,
         "assertNotEqual": 1,
-        "assertNotIn": 1,
+        "assertNotIn": 3,
         "assertRegex": 1,
         "assertTrue": 2
       },
@@ -6598,6 +6631,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         },
+        "test_the_anchors_module_is_excluded_from_every_scored_run": {
+          "assertEqual": 1,
+          "assertGreater": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
         "test_the_built_targets_are_the_ones_in_the_table": {
           "assertIn": 2
         },
@@ -6608,13 +6647,21 @@
         "test_the_fingerprint_is_stable_across_calls": {
           "assertEqual": 1
         },
-        "test_the_fixture_actually_exercises_the_invariant": {
+        "test_the_fixture_exercises_BOTH_invariants": {
           "assertGreater": 1,
           "assertLess": 1,
           "assertTrue": 1
         },
+        "test_the_harness_runs_a_baseline_arm_before_judging_anything": {
+          "assertIn": 2,
+          "assertLess": 1
+        },
         "test_the_mutation_table_is_not_empty": {
           "assertGreaterEqual": 1
+        },
+        "test_the_scored_run_is_an_explicit_list_not_a_discover_sweep": {
+          "assertIn": 1,
+          "assertNotIn": 1
         },
         "test_the_two_first_run_failure_modes_are_both_named": {
           "assertIn": 2

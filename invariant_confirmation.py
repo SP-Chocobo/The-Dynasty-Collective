@@ -315,7 +315,24 @@ def main():
         print(f"{ANCHORS_MODULE} FAILS ON THE CLEAN TREE -- the harness is broken, not the "
               f"engine. No mutation is applied.\n{anchors_tail[-1500:]}")
         return 2
-    print(f"{ANCHORS_MODULE}: passes on the clean tree ({anchors_secs}s)\n")
+    print(f"{ANCHORS_MODULE}: passes on the clean tree ({anchors_secs}s)")
+
+    # THE BASELINE ARM. A "caught" verdict means `rc != 0` WITH the mutant in the tree, which says
+    # nothing whatever unless the same run is GREEN WITHOUT it. This harness had no baseline, and
+    # the cost was immediate: the first run after the anchors module was excluded scored all three
+    # mutations "caught" on a stale assertion floor -- a test method renamed in the same commit, so
+    # `assertion_floors.drops()` was non-empty on the CLEAN tree and every arm inherited that one
+    # failure under --failfast. Three verdicts, none about the engine, produced by a harness built
+    # specifically to stop that happening. It happens once per run, not once per arm.
+    print("baseline: running the scored modules on the clean tree "
+          "(a verdict is meaningless unless this is green)...", flush=True)
+    base_rc, base_secs, base_tail = _run_suite(failfast=True)
+    if base_rc != 0:
+        print(f"SUITE IS ALREADY RED ON THE CLEAN TREE ({base_secs}s) -- every mutation would "
+              f"score 'caught' on a failure that has nothing to do with it. Fix the tree first; "
+              f"no mutation is applied.\n{base_tail[-2000:]}")
+        return 2
+    print(f"baseline: green ({base_secs}s)\n")
 
     for name, filename, anchor, replacement, consequence in MUTATIONS:
         path = pathlib.Path(filename)
