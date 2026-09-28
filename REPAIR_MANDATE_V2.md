@@ -313,7 +313,7 @@ their player universe, season projections and scoring rulebook from. Two directo
 about `DataMerger` alone — the manifest is read as the input set for the certification, and the
 certification's universe did not come from `DataMerger`.
 
-## 0.7 Report fields that do not mean their names **[VERIFIED: `draftable_rounds` only]**
+## 0.7 Report fields that do not mean their names **[REPAIRED]**
 
 - `roster_shape_axes["draftable_rounds"]` is the **starting-slot count**. **[VERIFIED]** I measure
   **35 of 36 arms** disagreeing with the arm's own `draft_rounds` (the pass said 36; it is 35). The
@@ -332,6 +332,40 @@ certification's universe did not come from `DataMerger`.
 **Repair:** rename or recompute `draftable_rounds`; fingerprint before stamping; denominate by arms
 actually run and exclude inert arms; copy the trajectory config into the report.
 
+
+### REPAIRED
+
+All eight, each measured before and after. `test_report_fields_mean_their_names.py` pins them (26
+tests), cited against `#222` / `#241` / `#215` / `#170` — the register items whose fields these are.
+**Each of those four shipped a field; none shipped a check that the field still means its name.**
+
+| field | was | now |
+|---|---|---|
+| `draftable_rounds` | the starting-slot count — **35 of 36 arms disagreed** with the rounds they draft | the league's own `draft_rounds`; the old quantity survives as `starting_slots` from `league_config`'s reader |
+| `duplicate_arms` | blind across a resume: `main()` stamps `produced_at_commit` and `carried_forward` **before** the fingerprint | both excluded; two identical arms are flagged across the boundary, a different arm is not |
+| trajectory provenance | `mode`, seed, pricing path and rule recorded, then **only `label` read** | whole config copied per arm as `provenance` |
+| `picks_by_mode` | computed from a round constant **regardless of `upside_rule`** | `None` under the crossing rule, with the reason stated (`#187`) |
+| VDS strategy findings | an inert arm inherited **the control's finding under its own strategy name** | inert arms excluded; denominator is the strategies that *ran* |
+| VDS join disclosure | absent — a resumed run could mix commits while `INERT_ARMS` compared across them | `commit` / `commits_present` / `carried_forward`, same names as the format battery (`#126`) |
+| `format_axes` | from the **live matrix**, matched to carried arms by label only | each arm records its own; disagreement is **named**, not averaged away |
+| `tav_margin_profile` | top two `tav` rows | the chosen candidate versus its best alternative |
+
+**The margin case worth reading.** A backstop taking a 10.0 row over a 100.0 row is a margin of
+**−90**. The old code reported **+10** — a comfortable positive margin for a pick made against the
+ordering, under a field named "how decisively the pick was made".
+
+**Two errors of mine, both the shapes this tier is about.** I nearly repaired `draftable_rounds` by
+substituting `league_config.draftable_slots`, which agrees on **35 of 36 arms** and is wrong on
+`12T_ppr_SHORT_DRAFT` — a near-miss that reads as correct. And I hand-wrote the starting-slot
+exclusion list again before noticing `league_config` already owns that reader: Tier 4's exact shape,
+inside the repair for 0.7.
+
+**What the full suite caught that 159 targeted tests could not.** `config_space.DEPENDENT_REASONS`
+requires every configuration-dependent field to say why a different league may move it, and
+`suite_taxonomy` requires every module to cite what it answers to. Both are **repo-wide meta-checks
+whose subject is "every module"**, so no per-module selection can contain them. Targeted runs are a
+filter, not a substitute — recorded here because I had argued the opposite on instinct and this is the
+instance that settles it.
 
 ## 0.8 Prose that asserts properties the code does not have, and the instruments that were supposed to catch it
 
