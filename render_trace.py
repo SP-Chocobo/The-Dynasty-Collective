@@ -69,7 +69,7 @@ import json
 import re
 import sys
 import types
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from unittest import mock
 
@@ -390,16 +390,23 @@ def _seeded_session() -> _SessionState:
     }]
     state["sleeper_client"] = client
 
-    # PICKS ALREADY FETCHED. The Live Draft Room never fetches them on its own -- that is its own
-    # separate finding -- so an unseeded store leaves the board rendering the pre-draft world and
-    # the trace blind to every roster-aware term. Seeded so the recorded Live pass covers the same
-    # board machinery the Mock pass does, rather than the empty opening state twice.
+    # PICKS ALREADY FETCHED. Seeded rather than fetched, so the recorded Live pass covers the same
+    # board machinery the Mock pass does instead of the empty opening state twice. The view now
+    # pulls them itself on load (mandate 1.4) -- this seeding also keeps that pull from firing,
+    # since the trace's client is a stand-in and a trace should record a board, not a fetch.
     state["draft_room_picks_by_draft"] = {
         "trace_draft": [{"pick_no": i + 1, "round": (i // len(owner_ids)) + 1,
                          "roster_id": str((i % len(owner_ids)) + 1), "player_id": pid,
                          "draft_slot": (i % len(owner_ids)) + 1}
                         for i, pid in enumerate(all_ids[:11])]
     }
+    # WHEN they were pulled (mandate 1.4). A FIXED instant, not datetime.now(): the view renders
+    # this stamp onto the board, so a live clock here would put a changing string into the
+    # recorded trace and schedule a false diff for every run -- the same hazard the freshness blur
+    # above exists for, avoided at the source instead. Seeding it is also what the seeded picks
+    # MEAN: picks in the store with no stamp are picks from nowhere, and the board is now entitled
+    # to refuse to call itself live without one.
+    state["draft_room_picks_fetched_at"] = {"trace_draft": datetime(2026, 1, 1, 12, 0, 0)}
 
     # A MOCK DRAFT ALREADY IN PROGRESS, because a roster alone does not reach the board.
     #

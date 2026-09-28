@@ -4783,6 +4783,14 @@ elif main_view == DRAFT_VIEW:
     # pick_debate actually reasons over).
     st.subheader("Draft Room")
     st.session_state.setdefault("draft_room_picks_by_draft", {})
+    #: MANDATE 1.4. WHEN the picks in that cache were pulled, per draft. Without it the view has
+    #: no way to tell "no picks have been made" from "nobody ever asked Sleeper", and it was
+    #: rendering the second as the first: a live draft in round 4 opened as "ON THE CLOCK — 1.0X"
+    #: with every drafted player still a candidate and "0 pick(s) made" underneath.
+    st.session_state.setdefault("draft_room_picks_fetched_at", {})
+    #: Drafts whose one automatic pull failed, so the retry is the user's Refresh button rather
+    #: than every rerun of the page hammering Sleeper behind their back.
+    st.session_state.setdefault("draft_room_picks_autofetch_failed", set())
     st.session_state.setdefault("draft_room_last_snapshot", None)
     st.session_state.setdefault("draft_room_debate_result", None)
     st.session_state.setdefault("draft_room_pool_scope", "all")
@@ -5394,6 +5402,7 @@ elif main_view == DRAFT_VIEW:
                             try:
                                 fetched_picks = draft_client.get_draft_picks(draft_id)
                                 st.session_state.draft_room_picks_by_draft[draft_id] = fetched_picks
+                                st.session_state.draft_room_picks_fetched_at[draft_id] = datetime.now()
                                 notify("success", f"Pulled {len(fetched_picks)} pick(s) from Sleeper.")
                             except SleeperAPIError as exc:
                                 notify("error", f"Couldn't reach Sleeper: {exc}")
@@ -5414,7 +5423,31 @@ elif main_view == DRAFT_VIEW:
                             "All players": "all", "Rookies only": "rookies_only", "Veterans only": "veterans_only",
                         }[pool_scope_label]
 
+                    # MANDATE 1.4: FETCH ON LOAD, ONCE PER DRAFT PER SESSION.
+                    #
+                    # `get_draft_picks` had exactly one call site in this file -- behind the
+                    # "Refresh Picks" button -- so the Live Draft Room never asked Sleeper for
+                    # the picks on its own. Opening a draft already in round 4 showed round 1,
+                    # with every drafted player still on the board as a candidate. It recurred on
+                    # every league switch, because the cache is correctly cleared and never
+                    # refilled. Nothing said the picks had not been pulled; the board said the
+                    # opposite.
+                    #
+                    # Same call, same exception handling as the button. Attempted once per draft:
+                    # a failure records itself and hands the retry to the button rather than
+                    # letting every Streamlit rerun re-hit a failing endpoint.
+                    if (draft_id not in st.session_state.draft_room_picks_by_draft
+                            and draft_id not in st.session_state.draft_room_picks_autofetch_failed):
+                        try:
+                            auto_picks = draft_client.get_draft_picks(draft_id)
+                            st.session_state.draft_room_picks_by_draft[draft_id] = auto_picks
+                            st.session_state.draft_room_picks_fetched_at[draft_id] = datetime.now()
+                        except SleeperAPIError as exc:
+                            st.session_state.draft_room_picks_autofetch_failed.add(draft_id)
+                            notify("error", f"Couldn't pull this draft's picks from Sleeper: {exc}")
+
                     draft_picks = st.session_state.draft_room_picks_by_draft.get(draft_id, [])
+                    picks_pulled_at = st.session_state.draft_room_picks_fetched_at.get(draft_id)
                     pick_order = draft_strategy.generate_pick_order(round_1_order, total_rounds=total_rounds, draft_type=draft_type)
                     num_teams = len(round_1_order)
                     current_index = len(draft_picks)
@@ -5426,8 +5459,17 @@ elif main_view == DRAFT_VIEW:
                     # board_tags below), next to the "N pick(s) to your next selection" tag it's
                     # actually a caveat about -- available on hover, not permanently occupying
                     # the page.
+                    # MANDATE 1.4: "N pick(s) made" is a claim about the DRAFT, and what this
+                    # view actually knows is a claim about a FETCH. They differ by exactly the
+                    # case that was wrong, so the sentence now says which it is.
                     draft_state_caveat = (
-                        f"{len(draft_picks)} pick(s) made · {num_teams} teams · {total_rounds} rounds. "
+                        (f"{len(draft_picks)} pick(s) pulled from Sleeper at "
+                         f"{picks_pulled_at.strftime('%H:%M:%S')}"
+                         if picks_pulled_at is not None else
+                         "This draft's picks have NOT been pulled from Sleeper in this session -- "
+                         "press ↻ Refresh Picks. Until then the board is showing the draft from "
+                         "its first pick, whatever round it is really in")
+                        + f" · {num_teams} teams · {total_rounds} rounds. "
                         "Pick order assumes no picks have been traded within this draft -- a traded "
                         "future pick may show the original owner's needs instead of the new owner's."
                     )
@@ -5595,7 +5637,15 @@ elif main_view == DRAFT_VIEW:
                                 filtered = draft_board_ui.filter_candidates_by_view(snap.candidates, current_view)
                                 display_snap = dataclasses.replace(snap, candidates=tuple(filtered))
 
-                                board_header = f"ON THE CLOCK — {pick_label}" if is_live else f"YOUR NEXT PICK — {pick_label}"
+                                # MANDATE 1.4: the board does not get to call itself LIVE on
+                                # picks nobody pulled. `is_live` compares the target index with
+                                # len(draft_picks), and an unfetched draft has len 0 -- so every
+                                # draft opened without a pull said ON THE CLOCK at pick 1, and a
+                                # COMPLETED draft rendered as live round 1. The stamp is what
+                                # turns "the numbers line up" into "the numbers are current".
+                                board_header = (f"ON THE CLOCK — {pick_label}"
+                                                if is_live and picks_pulled_at is not None
+                                                else f"YOUR NEXT PICK — {pick_label}")
                                 is_superflex_fmt = "SUPER_FLEX" in (league_for_engine.get("roster_positions") or [])
                                 is_dynasty_fmt = (league_for_engine.get("settings") or {}).get("type") == 2
                                 board_tags = []
@@ -5607,6 +5657,12 @@ elif main_view == DRAFT_VIEW:
                                 if first_intervening is not None:
                                     board_tags.append(f"{first_intervening} pick(s) to your next selection")
                                     board_tags.append({"label": "?", "title": draft_state_caveat})
+                                # MANDATE 1.4: a "picks as of" stamp on the board itself, because
+                                # every other tag here describes the league and none of them
+                                # described how current the picks are.
+                                board_tags.append(
+                                    f"PICKS AS OF {picks_pulled_at.strftime('%H:%M:%S')}"
+                                    if picks_pulled_at is not None else "PICKS NOT PULLED")
                                 board_tags.append(
                                     f"{num_teams}-team · {'Superflex' if is_superflex_fmt else '1QB'} · "
                                     f"{'Dynasty' if is_dynasty_fmt else 'Redraft'}"

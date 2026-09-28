@@ -14628,6 +14628,58 @@
         "early_returns": 0
       }
     },
+    "test_the_live_board_knows_when_its_picks_arrived.py": {
+      "test_methods": 10,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreater": 1,
+        "assertIn": 8,
+        "assertIsNotNone": 1,
+        "assertNotIn": 1,
+        "assertRegex": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "test_a_failed_pull_hands_the_retry_to_the_button_rather_than_looping": {
+          "assertIn": 2
+        },
+        "test_every_write_of_the_picks_is_paired_with_a_write_of_the_stamp": {
+          "assertTrue": 2
+        },
+        "test_get_draft_picks_is_reached_from_more_than_the_button": {
+          "assertGreater": 1
+        },
+        "test_on_the_clock_requires_the_stamp": {
+          "assertIn": 1,
+          "assertIsNotNone": 1
+        },
+        "test_the_board_carries_a_picks_as_of_tag_either_way": {
+          "assertIn": 2
+        },
+        "test_the_failure_is_reported_and_not_swallowed": {
+          "assertRegex": 1
+        },
+        "test_the_hover_caveat_says_pulled_rather_than_made": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_load_time_pull_is_guarded_by_the_cache_miss": {
+          "assertIn": 1
+        },
+        "test_the_unfetched_sentence_tells_the_user_what_to_do": {
+          "assertIn": 1
+        },
+        "test_there_are_exactly_two_ways_picks_enter_the_store": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_threshold_reachability.py": {
       "test_methods": 15,
       "asserts": {
