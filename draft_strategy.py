@@ -487,55 +487,95 @@ def positional_forfeits(
     probabilities against zero picks are not."""
     if not intervening:
         return {}
+
+    # MANDATE 1.3, SECOND HALF (owner-ruled: the convention wins and the others scale down).
+    #
+    # THE LOOP IS INSIDE OUT FROM WHAT IT WAS, and that is the repair rather than a tidy-up. It
+    # used to walk positions on the outside and intervening picks on the inside, so at the moment
+    # the pace convention raised QB above its normalised share, no other position's share was in
+    # scope to take the difference out of. `#206` normalised the rank model so one opponent's take
+    # probabilities sum to <= 1.0 across their whole board; the convention then raised one position
+    # above its share with nothing removing it from the others, and the cross-position total could
+    # exceed the picks in the gap -- 29.02 across 22 on a board where one position saturates its
+    # own mass.
+    #
+    # Now each intervening pick is resolved ONCE, with every position's share visible at the same
+    # time, so the constraint that makes it a probability -- a team makes one pick -- can actually
+    # be applied. Per pick:
+    #
+    #   1. the rank model's share for EVERY position on that board, including positions no curve
+    #      was asked for (their mass is real and has to be counted or the scaling over-allocates);
+    #   2. the documented convention, where it is higher, replacing that position's share;
+    #   3. if the total now exceeds 1.0, the positions the convention did NOT raise are scaled to
+    #      fit in what is left. THE CONVENTION IS WHAT YIELDS LAST, which is the owner's ruling:
+    #      the market convention outranks this board's own valuation where the two disagree, and
+    #      that is a valuation claim rather than an arithmetic one, so it was not mine to make.
+    #
+    # If the raised positions alone exceed 1.0 they are scaled among themselves and everything
+    # else goes to zero -- the same rule applied to the only mass left.
     results: dict[str, dict] = {}
-    for position, curve in position_curves.items():
-        if not curve:
+    curves = {position: curve for position, curve in position_curves.items() if curve}
+    running: dict[str, float] = {position: 0.0 for position in curves}
+
+    for offset, roster_id in enumerate(intervening):
+        board = opponent_boards.get(str(roster_id))
+        if not board:
             continue
-        expected_taken = 0.0
-        for offset, roster_id in enumerate(intervening):
-            #: Recomputed per intervening pick rather than once, because the deficit this reads
-            #: closes as picks are made -- holding it fixed across the gap would charge the
-            #: whole catch-up to every pick in it.
-            pace_p = None
-            if None not in (picks, players_db, roster_positions, picks_made_now):
-                #: MANDATE 1.3: `expected_taken` so far is what this walk has already consumed.
-                #: Passing it is what makes the sentence above ("the deficit closes as picks are
-                #: made") true of the code as well as of the comment. It is the running total of
-                #: THIS position's expected takes, which is the same event the convention counts,
-                #: whichever of the two models supplied each step's probability.
-                pace_p = position_pace_probability(
-                    position, picks_made_now + offset, picks, players_db, roster_positions,
-                    expected_taken_in_gap=expected_taken)
-            board = opponent_boards.get(str(roster_id))
-            if not board:
+        rank_by_id = board["rank_by_id"]
+        by_id = board["by_id"]
+        # The normaliser is a property of the whole board and is cached on it, so this is
+        # the same object estimate_survival reads -- one model, computed once.
+        total_weight = _board_take_mass_cached(board, run_position)["total_weight"]
+        rank_share: dict[str, float] = {}
+        for player_id, rank in rank_by_id.items():
+            row = by_id.get(player_id)
+            if row is None:
                 continue
-            rank_by_id = board["rank_by_id"]
-            by_id = board["by_id"]
-            # The normaliser is a property of the whole board and is cached on it, so this is
-            # the same object estimate_survival reads -- one model, computed once.
-            total_weight = _board_take_mass_cached(board, run_position)["total_weight"]
-            p_position = 0.0
-            for player_id, rank in rank_by_id.items():
-                row = by_id.get(player_id)
-                if row is None or row.get("position") != position:
-                    continue
-                is_run = bool(run_position and position == run_position)
-                p_position += _take_probability(rank, is_run, total_weight)
-            # THE PACE CONVENTION WINS WHERE IT IS HIGHER, exactly as estimate_survival
-            # resolves the same disagreement (`pace_driven = pace_p_take > rank_based_p_take`).
-            # Not an average and not a replacement: the rank model is a real estimate that is
-            # merely BLIND to a position the market takes on convention rather than on this
-            # board's valuation, so the convention can only ever raise it.
-            #
-            # Where no convention is documented -- every position but superflex QB today --
-            # this is None and the rank model stands untouched, which is why wiring it changes
-            # nothing outside the case it was built for.
-            if pace_p is not None and pace_p > p_position:
-                p_position = pace_p
-            # No per-position cap: normalisation already makes the positions of a single pick
-            # mutually exclusive, so their probabilities sum to <= 1.0 by construction. A cap
-            # here would be a second, weaker constraint applied to the wrong axis.
-            expected_taken += p_position
+            position = row.get("position")
+            if not position:
+                continue
+            is_run = bool(run_position and position == run_position)
+            rank_share[position] = rank_share.get(position, 0.0) + _take_probability(
+                rank, is_run, total_weight)
+
+        # THE PACE CONVENTION WINS WHERE IT IS HIGHER, exactly as estimate_survival resolves the
+        # same disagreement (`pace_driven = pace_p_take > rank_based_p_take`). Not an average and
+        # not a replacement: the rank model is a real estimate that is merely BLIND to a position
+        # the market takes on convention rather than on this board's valuation.
+        #
+        # Where no convention is documented -- every position but superflex QB today -- this is
+        # None and the rank model stands untouched, which is why the convention changes nothing
+        # outside the case it was built for.
+        raised: dict[str, float] = {}
+        for position in curves:
+            if None in (picks, players_db, roster_positions, picks_made_now):
+                continue
+            #: The deficit closes as the walk consumes it (mandate 1.3's first half): `running`
+            #: is what this gap is already expected to have taken at this position, which is the
+            #: same event the convention counts, whichever model supplied each step.
+            pace_p = position_pace_probability(
+                position, picks_made_now + offset, picks, players_db, roster_positions,
+                expected_taken_in_gap=running[position])
+            if pace_p is not None and pace_p > rank_share.get(position, 0.0):
+                raised[position] = pace_p
+
+        shares = dict(rank_share)
+        shares.update(raised)
+        raised_mass = sum(raised.values())
+        other_mass = sum(v for k, v in shares.items() if k not in raised)
+        if raised_mass >= 1.0:
+            # Nothing left for anyone else, and the raised set itself is scaled to one pick.
+            scale = 1.0 / raised_mass
+            shares = {k: (v * scale if k in raised else 0.0) for k, v in shares.items()}
+        elif raised_mass + other_mass > 1.0 and other_mass > 0.0:
+            scale = (1.0 - raised_mass) / other_mass
+            shares = {k: (v if k in raised else v * scale) for k, v in shares.items()}
+
+        for position in curves:
+            running[position] += shares.get(position, 0.0)
+
+    for position, curve in curves.items():
+        expected_taken = running[position]
         results[position] = {
             "expected_taken": round(expected_taken, 2),
             "forfeit": round(curve[0] - _curve_at(curve, expected_taken), 2),

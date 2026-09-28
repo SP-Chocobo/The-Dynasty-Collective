@@ -6941,17 +6941,22 @@
       }
     },
     "test_forfeit_reads_the_pace_convention.py": {
-      "test_methods": 13,
+      "test_methods": 15,
       "asserts": {
-        "assertAlmostEqual": 2,
-        "assertEqual": 7,
-        "assertGreater": 5,
+        "assertAlmostEqual": 1,
+        "assertEqual": 8,
+        "assertGreater": 7,
         "assertIn": 2,
         "assertIsNone": 3,
         "assertIsNotNone": 1,
-        "assertLessEqual": 1
+        "assertLess": 1,
+        "assertLessEqual": 3
       },
       "by_method": {
+        "test_a_pick_nobody_contests_is_untouched": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
         "test_a_position_AHEAD_of_pace_carries_none_of_it": {
           "assertEqual": 1
         },
@@ -6975,9 +6980,14 @@
         "test_past_the_last_anchor_there_is_no_convention_to_extrapolate": {
           "assertIsNone": 1
         },
-        "test_the_cross_position_total_can_STILL_exceed_the_gap": {
-          "assertAlmostEqual": 1,
-          "assertGreater": 1
+        "test_the_convention_is_what_yields_LAST": {
+          "assertGreater": 1,
+          "assertLess": 1,
+          "assertLessEqual": 1
+        },
+        "test_the_cross_position_total_CONSERVES": {
+          "assertGreater": 1,
+          "assertLessEqual": 1
         },
         "test_the_default_leaves_the_single_pick_caller_exactly_as_it_was": {
           "assertEqual": 1

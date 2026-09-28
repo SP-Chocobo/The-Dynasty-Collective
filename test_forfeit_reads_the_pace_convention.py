@@ -183,32 +183,16 @@ class TheDeficitClosesAsTheWalkConsumesIt(unittest.TestCase):
                              f"the walk expects {summed} quarterbacks gone across {gap} picks "
                              f"while the convention it reads says {by_the_end}")
 
-    def test_the_cross_position_total_can_STILL_exceed_the_gap(self):
-        """CHARACTERIZATION of what mandate 1.3 does NOT fix. Invert when repaired; do not delete.
+    def test_the_cross_position_total_CONSERVES(self):
+        """INVERTED, as its own earlier form instructed. This test used to record that the total
+        could exceed the gap and to say "invert when repaired"; the owner ruled that the convention
+        wins and the other positions scale down, and it now conserves.
 
-        I wrote this expecting it to pass and it did not, which is the only reason the residual is
-        written down here rather than left as an implied promise.
-
-        The deficit repair bounds the CONVENTION's contribution by the convention's own increment.
-        It does not make the positions of one pick mutually exclusive, because the pace override
-        sits OUTSIDE the per-pick normalisation: `#206` normalised the rank model so that one
-        opponent's take probabilities sum to <= 1.0 across their whole board, and then the
-        convention is allowed to raise one position above its normalised share with nothing
-        removing the difference from the others.
-
-        Measured here on a board deliberately built so one position saturates its own mass -- 22
-        opponents each holding exactly ONE priced WR, so the rank model spends a full 1.0 per pick
-        on WR -- with a superflex QB convention on top: **29.02 expected takes across 22 picks**.
-
-        On the two REAL states measured for this repair the total came in at 17.63 and 11.63
-        against 22, because a real board's rank mass sits well under 1.0 per pick. So this is a
-        structural gap, not an observed production defect, and it is recorded as the first rather
-        than asserted as the second.
-
-        WHAT WOULD CLOSE IT: the pace override has to participate in the per-pick normalisation --
-        when the convention raises one position's share, the others' must be scaled to leave room.
-        Which of the two models yields is a VALUATION decision about how they are reconciled, not
-        an arithmetic one, so it belongs to the owner (`#184`) and not to this repair."""
+        The fixture is the hostile one deliberately: 22 opponents each holding exactly ONE priced
+        WR, so the rank model spends a full 1.0 per pick on WR, with a superflex QB convention on
+        top demanding room it cannot have. That is the board that produced 29.02 expected takes
+        across 22 picks before the ruling. A gap of N picks cannot remove more than N players, and
+        this is the arithmetic `#206` repaired once from the other direction."""
         gap = 22
         curves = {pos: [100.0 - 2.0 * i for i in range(40)] for pos in ("QB", "RB", "WR", "TE")}
         boards = {str(r): {"rank_by_id": {"w": 1}, "by_id": {"w": {"position": "WR"}}}
@@ -217,12 +201,47 @@ class TheDeficitClosesAsTheWalkConsumesIt(unittest.TestCase):
             curves, boards, [str(r) for r in range(2, 2 + gap)], None,
             picks=_picks(0), players_db=PLAYERS, roster_positions=SF, picks_made_now=0)
         total = sum(v["expected_taken"] for v in result.values())
-        self.assertGreater(total, gap,
-                           "the cross-position total now conserves -- if the normalisation was "
-                           "extended to the pace override, invert this test and say so")
-        self.assertAlmostEqual(22.0, result["WR"]["expected_taken"], places=1,
-                               msg="the fixture no longer saturates one position's mass, so it no "
-                                   "longer demonstrates anything")
+        self.assertGreater(total, 0.0, "the fixture measures nothing")
+        self.assertLessEqual(total, gap,
+                             f"{total} players expected gone across {gap} picks")
+
+    def test_the_convention_is_what_yields_LAST(self):
+        """The owner's ruling, as a property rather than a comment: when one pick cannot hold both
+        the convention's demand and the rank model's, the rank model gives way first.
+
+        Built so the two compete for the same pick: the rank model spends its whole mass on WR, and
+        superflex QB is far enough behind its documented pace to want real room. If the scaling ran
+        the other way, QB would be the one squeezed."""
+        gap = 6
+        curves = {pos: [100.0 - 2.0 * i for i in range(40)] for pos in ("QB", "WR")}
+        boards = {str(r): {"rank_by_id": {"w": 1}, "by_id": {"w": {"position": "WR"}}}
+                  for r in range(2, 2 + gap)}
+        result = ds.positional_forfeits(
+            curves, boards, [str(r) for r in range(2, 2 + gap)], None,
+            picks=_picks(0), players_db=PLAYERS, roster_positions=SF, picks_made_now=12)
+        qb, wr = result["QB"]["expected_taken"], result["WR"]["expected_taken"]
+        self.assertGreater(qb, 0.0, "the convention got no room at all -- it is meant to win")
+        self.assertLess(wr, float(gap),
+                        "the rank model kept its whole mass, so nothing yielded and the total "
+                        "cannot have conserved")
+        self.assertLessEqual(qb + wr, gap + 0.01)
+
+    def test_a_pick_nobody_contests_is_untouched(self):
+        """NON-VACUITY for the scaling: when the total already fits in one pick, nothing is scaled
+        and the rank model's own numbers survive exactly. A repair that quietly rescaled every
+        board would be a valuation change wearing a conservation argument."""
+        gap = 3
+        curves = {"WR": [100.0 - 2.0 * i for i in range(40)]}
+        # One priced WR at rank 5 -- real mass, nowhere near saturating the pick.
+        boards = {str(r): {"rank_by_id": {"w": 5}, "by_id": {"w": {"position": "WR"}}}
+                  for r in range(2, 2 + gap)}
+        alone = ds.positional_forfeits(curves, boards, [str(r) for r in range(2, 2 + gap)], None)
+        with_ctx = ds.positional_forfeits(
+            curves, boards, [str(r) for r in range(2, 2 + gap)], None,
+            picks=_picks(0), players_db=PLAYERS, roster_positions=ONE_QB, picks_made_now=0)
+        self.assertGreater(alone["WR"]["expected_taken"], 0.0)
+        self.assertEqual(alone["WR"]["expected_taken"], with_ctx["WR"]["expected_taken"],
+                         "an uncontested pick was rescaled anyway")
 
 
 if __name__ == "__main__":
