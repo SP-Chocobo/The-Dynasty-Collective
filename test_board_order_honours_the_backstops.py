@@ -118,6 +118,12 @@ class BoardOrderHonoursTheBackstops(unittest.TestCase):
         wrong" is not actionable and "row 12 (promoted, score 41.2) sits below row 11 (demoted,
         score 195.2)" names the defect.
         """
+        # NON-VACUITY, ASSERTED IN THIS TEST RATHER THAN A NEIGHBOURING ONE. As first written this
+        # helper only called `self.fail` on a violation, so on a clean tree the test executed no
+        # assertion at all -- and a partition test over an EMPTY list would have passed. Found by
+        # `assertion_execution.py`, the instrument built for `0.9`, on its first run, against my
+        # own test from `0.2`.
+        self.assertTrue(rows, f"{label}: nothing to partition -- this assertion is vacuous")
         seen_other = None
         for i, row in enumerate(rows):
             if bool(row.get(flag)) is not first_value:

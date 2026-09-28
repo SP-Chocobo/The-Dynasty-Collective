@@ -351,6 +351,11 @@ class TradeValueBranchIsAnchoredToo(unittest.TestCase):
     def test_the_anchor_adds_idp_prices_without_changing_any_other(self):
         control = {r["player_id"]: r["final_score"] for r in self._control_board()}
         after = {r["player_id"]: r["final_score"] for r in self.board}
+        # NON-VACUITY FIRST: every assertion below is skipped for an unpriced control row, so a
+        # control board carrying no prices would pass while comparing nothing. Found by
+        # `assertion_execution.py` -- this test executed zero assertions on the committed tree.
+        self.assertTrue([v for v in control.values() if v is not None],
+                        "no control row carries a price, so this compares nothing")
         for player_id, before in control.items():
             if before is None:
                 continue

@@ -114,8 +114,25 @@ class NodeComparison:
     deviation_support_basis: Optional[str]
 
 
-def _full_board(merger: DataMerger, players_db: dict, picks_so_far: list[dict], roster_id: str, league: dict, mode: str, pool_scope: str) -> list[dict]:
-    return dr.compute_draft_board(merger, players_db, picks_so_far, my_roster_id=roster_id, league=league, mode=mode, pool_scope=pool_scope)
+def _full_board(merger: DataMerger, players_db: dict, picks_so_far: list[dict], roster_id: str,
+                league: dict, mode: str, pool_scope: str, *,
+                sleeper_projections=None, sleeper_basis=dr.SLEEPER_BASIS_WEEKLY,
+                weekly_projections=None) -> list[dict]:
+    """The board this comparison is scored against.
+
+    THE PRICING PATH IS A PARAMETER, and it was not. This built a VENDOR-ONLY board -- no
+    `sleeper_projections`, no `sleeper_basis`, no `weekly_projections` -- while `engine_tav` is read
+    off the trajectory's own snapshot. So whenever the trajectory came from a scoring-aware run,
+    `regret_vs_bpa = engine_tav - bpa_tav` subtracted two numbers from two different pricings and
+    reported the difference as regret. The existing consumers happen to be internally consistent
+    only because both of their sides use the vendor reconstruction, which is a universe production
+    never prices.
+    """
+    return dr.compute_draft_board(merger, players_db, picks_so_far, my_roster_id=roster_id,
+                                  league=league, mode=mode, pool_scope=pool_scope,
+                                  sleeper_projections=sleeper_projections,
+                                  sleeper_basis=sleeper_basis,
+                                  weekly_projections=weekly_projections)
 
 
 def bpa_row(board: list[dict]) -> Optional[dict]:
@@ -161,13 +178,33 @@ def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool) -> tupl
 
 def compare_trajectory(
     merger: DataMerger, players_db: dict, league: dict, trajectory: DraftTrajectory,
+    *, sleeper_projections=None, sleeper_basis=None, weekly_projections=None,
 ) -> list[NodeComparison]:
     """One NodeComparison per pick already recorded in `trajectory`. Reconstructs picks-so-far
     from the trajectory's own pick sequence -- never replays or re-simulates a decision, and
-    never mutates `trajectory`, `merger`, `players_db`, or `league`."""
+    never mutates `trajectory`, `merger`, `players_db`, or `league`.
+
+    REFUSES RATHER THAN COMPARING TWO PRICINGS. `mode` and `pool_scope` were already read from the
+    trajectory's config so the reconstruction matched the run; the PRICING PATH was not, and a
+    vendor-only board scored against a scoring-aware `engine_tav` makes every regret number a
+    difference between two rulers. The trajectory records `priced_from` (`#204`, and now carried per
+    arm by `0.7`), so the disagreement is detectable: if the trajectory was priced
+    `vendor+sleeper` and no projections are supplied here, this raises instead of returning a
+    number nobody can interpret.
+    """
     is_superflex = "SUPER_FLEX" in (league.get("roster_positions") or [])
     mode = trajectory.config.get("mode", "auto")
     pool_scope = trajectory.config.get("pool_scope", "all")
+    priced_from = trajectory.config.get("priced_from")
+    if priced_from and priced_from != "vendor_only" and sleeper_projections is None:
+        raise ValueError(
+            f"this trajectory was priced {priced_from!r} but no sleeper_projections were supplied, "
+            f"so every board built here would be vendor-only while engine_tav came from a "
+            f"scoring-aware snapshot -- regret_vs_bpa would be a difference between two pricings. "
+            f"Pass the same projections the trajectory was run with, or compare a vendor-only run.")
+    if sleeper_basis is None:
+        sleeper_basis = (trajectory.config.get("sleeper_basis")
+                        or dr.SLEEPER_BASIS_WEEKLY)
 
     picks_so_far: list[dict] = []
     results: list[NodeComparison] = []
@@ -176,7 +213,10 @@ def compare_trajectory(
         engine_candidates = rec.snapshot["candidates"]
         engine_cand = next(c for c in engine_candidates if c["id"] == rec.chosen_player_id)
 
-        board = _full_board(merger, players_db, picks_so_far, rec.roster_id, league, mode, pool_scope)
+        board = _full_board(merger, players_db, picks_so_far, rec.roster_id, league, mode,
+                            pool_scope, sleeper_projections=sleeper_projections,
+                            sleeper_basis=sleeper_basis,
+                            weekly_projections=weekly_projections)
         if not board:
             picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round, "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
             continue

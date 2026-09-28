@@ -66,8 +66,32 @@ SCORING_MODULES = (
 #: Modules whose reads mean a quantity is shown or reported, never scored.
 OBSERVER_MODULES = (
     "app.py", "draft_board_ui.py", "roster_diagnostics.py", "screen_context.py",
-    "pick_debate.py", "draft_simulation.py", "trade_analysis.py",
+    "pick_debate.py", "draft_simulation.py", "trade_ledger_ui.py",
 )
+
+
+def _assert_every_listed_module_exists() -> None:
+    """Both lists above are HAND-MAINTAINED, and one of them named a file that does not exist.
+
+    `trade_analysis.py` was listed as an observer module. There is no such file in this repository
+    and there is no evidence there ever was -- the trade surface is `trade_ledger_ui.py`. Every
+    scan over OBSERVER_MODULES therefore silently skipped one seventh of its own declared input,
+    and the report said nothing, because a missing path and a path with no matches produce the
+    same empty result.
+
+    Checked at import rather than in a test: this module is the instrument, and an instrument
+    whose declared inputs do not exist should refuse to load rather than produce a number about a
+    smaller set than it claims. `#126` would remove the lists entirely; until something derives
+    them, this is the guard that stops them rotting in silence.
+    """
+    missing = [m for m in SCORING_MODULES + OBSERVER_MODULES if not Path(m).exists()]
+    if missing:
+        raise RuntimeError(
+            f"quantity_readers names modules that do not exist: {missing}. Every scan over them "
+            f"has been silently skipping those files. Fix the list or delete the entries.")
+
+
+_assert_every_listed_module_exists()
 
 
 def _production_modules() -> list[Path]:

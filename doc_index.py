@@ -33,6 +33,38 @@ HEADER_LINES = 12
 #: sorted WITHDRAWAL_18_residual3_detector.md and CORRECTION_wrong_universe.md -- both of which
 #: announce exactly what they are in their own H1 -- into UNDECLARED. A classifier that misses
 #: the plainest cases inflates the bucket it exists to draw attention to.
+#: The shared long-lived-document banner, which is BOILERPLATE and must not classify anything.
+#:
+#: It contains the phrase "a copy goes stale silently" -- and `SUPERSEDED` is tried before
+#: `DECLARED`, so the word `stale` in that banner classified the document as SUPERSEDED no matter
+#: what it said about itself. Six documents matched that way while ALSO declaring themselves,
+#: including `DRAFT_ROOM_UI.md` and `CDME_CONTRACTS.md`. The index's own summary calls the class "a
+#: judgement about whether a document tells a cold reader what it is"; for those six it was a
+#: judgement about whether they carry the house banner.
+#:
+#: Found while filing an unrelated document and checking how it had been classified.
+_BOILERPLATE_BANNER = "WHERE CURRENT STATE LIVES"
+
+
+def _without_boilerplate(head: str) -> str:
+    """`head` with the shared banner's blockquote removed, so it classifies nothing.
+
+    Only the contiguous blockquote containing the signature is dropped -- a document's OWN
+    blockquoted status line is kept, which is the thing `DECLARED` exists to find.
+    """
+    lines = head.splitlines()
+    signature = next((i for i, l in enumerate(lines) if _BOILERPLATE_BANNER in l), None)
+    if signature is None:
+        return head
+    start = signature
+    while start > 0 and lines[start - 1].lstrip().startswith(">"):
+        start -= 1
+    end = signature
+    while end + 1 < len(lines) and lines[end + 1].lstrip().startswith(">"):
+        end += 1
+    return "\n".join(lines[:start] + lines[end + 1:])
+
+
 CLASSES: list[tuple[str, str, str]] = [
     ("WITHDRAWN", r"withdraw|retract|⛔",
      "a published claim taken back. Kept, unedited, beneath its banner."),
@@ -104,7 +136,9 @@ def header(path: Path) -> str:
 
 
 def classify(path: Path) -> str:
-    head = header(path)
+    # The shared banner is stripped BEFORE matching. See _without_boilerplate: the word `stale`
+    # inside it was classifying six self-declaring documents as SUPERSEDED.
+    head = _without_boilerplate(header(path))
     for name, pattern, _ in CLASSES:
         if re.search(pattern, head, re.IGNORECASE | re.MULTILINE):
             return name

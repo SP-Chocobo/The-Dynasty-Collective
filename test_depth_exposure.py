@@ -425,8 +425,13 @@ class WiredIntoTeamAcquisitionValueTests(unittest.TestCase):
         """The distinction the basis exists to carry: a vacant position is the WORST case, not
         a covered one, and it reports 0.0 because nothing was measured."""
         vacant = [r for r in self.board if r["depth_basis"] == lo.EXPOSURE_VACANT]
-        if vacant:
-            self.assertTrue(all(r["depth_exposure"] == 0.0 for r in vacant))
+        # NON-VACUITY FIRST. This whole assertion sat behind `if vacant:`, so on a board with no
+        # vacant position it asserted nothing and passed -- "an assertion moved behind a condition
+        # that never holds", which `assertion_floors` names as a limit it cannot see. Found by
+        # `assertion_execution.py`, which measures what actually executed.
+        self.assertTrue(vacant, "no vacant position on this board, so this proves nothing about "
+                                "what a vacancy reports -- re-derive the fixture")
+        self.assertTrue(all(r["depth_exposure"] == 0.0 for r in vacant))
 
     def test_it_is_bounded_by_its_own_constant(self):
         for row in self.board:

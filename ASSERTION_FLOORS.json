@@ -1328,16 +1328,19 @@
       }
     },
     "test_audit_cadence.py": {
-      "test_methods": 9,
+      "test_methods": 10,
       "asserts": {
-        "assertEqual": 6,
+        "assertEqual": 7,
         "assertIn": 7,
         "assertIsNotNone": 1,
         "assertTrue": 1
       },
       "by_method": {
-        "test_both_tiers_check_the_declared_input_set_and_the_assertion_floors": {
+        "test_a_commented_out_step_does_not_satisfy_the_check": {
           "assertEqual": 2
+        },
+        "test_both_tiers_check_the_declared_input_set_and_the_assertion_floors": {
+          "assertEqual": 1
         },
         "test_the_cron_is_weekly_on_wednesday": {
           "assertEqual": 2,
@@ -2041,7 +2044,7 @@
       "asserts": {
         "assertEqual": 1,
         "assertGreater": 1,
-        "assertTrue": 3,
+        "assertTrue": 4,
         "fail": 1
       },
       "by_method": {
@@ -4413,7 +4416,7 @@
         "assertLessEqual": 1,
         "assertNotEqual": 1,
         "assertNotIn": 4,
-        "assertTrue": 4
+        "assertTrue": 5
       },
       "by_method": {
         "test_a_BAD_backup_does_not_insure": {
@@ -4538,7 +4541,7 @@
           "assertNotIn": 2
         },
         "test_zero_means_not_measured_and_never_this_position_is_safe": {
-          "assertTrue": 1
+          "assertTrue": 2
         }
       },
       "disabled": {
@@ -7126,6 +7129,58 @@
         "skip_decorators": 0,
         "expected_failures": 0,
         "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_instruments_check_rather_than_count.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 4,
+        "assertIn": 8,
+        "assertNotIn": 1,
+        "assertRaises": 2
+      },
+      "by_method": {
+        "test_a_document_that_really_is_superseded_still_reads_that_way": {
+          "assertIn": 1
+        },
+        "test_a_scoring_aware_trajectory_without_projections_raises": {
+          "assertIn": 1,
+          "assertRaises": 1
+        },
+        "test_a_skipped_test_is_not_reported_as_silent": {
+          "assertIn": 2
+        },
+        "test_a_vendor_only_trajectory_is_allowed_through": {
+          "assertEqual": 1
+        },
+        "test_documents_carrying_the_banner_are_classified_on_their_own_words": {
+          "assertEqual": 1
+        },
+        "test_the_board_builder_takes_the_pricing_path": {
+          "assertIn": 1
+        },
+        "test_the_declared_modules_are_all_real": {
+          "assertEqual": 1
+        },
+        "test_the_guard_runs_at_import_and_raises": {
+          "assertRaises": 1
+        },
+        "test_the_instrument_counts_assertions_made_through_a_helper": {
+          "assertIn": 2
+        },
+        "test_the_record_exists_and_every_entry_has_a_reason": {
+          "assertEqual": 1
+        },
+        "test_the_stripper_removes_only_the_banners_blockquote": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
         "early_returns": 0
       }
     },
@@ -11427,7 +11482,7 @@
         "assertLessEqual": 1,
         "assertNotEqual": 10,
         "assertNotIn": 1,
-        "assertTrue": 10
+        "assertTrue": 11
       },
       "by_method": {
         "test_a_cached_answer_equals_a_freshly_built_one": {
@@ -11510,7 +11565,8 @@
         },
         "test_the_anchor_adds_idp_prices_without_changing_any_other": {
           "assertAlmostEqual": 1,
-          "assertIsNotNone": 1
+          "assertIsNotNone": 1,
+          "assertTrue": 1
         },
         "test_the_cache_is_bounded": {
           "assertLessEqual": 1

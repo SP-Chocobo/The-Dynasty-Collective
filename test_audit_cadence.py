@@ -64,9 +64,33 @@ class TheScheduledRunUsesTheSameChecksAsEverythingElseTests(unittest.TestCase):
         self.assertIsNotNone(guard)
         self.assertEqual(guard.group(1).strip(), "github.event_name != 'push'")
 
+    @staticmethod
+    def _uncommented(needle: str) -> int:
+        """Occurrences on lines that are not YAML comments.
+
+        `_WORKFLOW.count(...)` counts the string anywhere, so a step commented out during
+        debugging and left that way still satisfied this check -- the guard would report both
+        tiers gated while neither ran. Latent rather than live when found (no step is currently
+        commented out), which is exactly when it is cheap to close.
+        """
+        return sum(1 for line in _WORKFLOW.splitlines()
+                   if needle in line and not line.strip().startswith("#"))
+
     def test_both_tiers_check_the_declared_input_set_and_the_assertion_floors(self):
-        self.assertEqual(_WORKFLOW.count("baseline_manifest.py --check"), 2)
-        self.assertEqual(_WORKFLOW.count("assertion_floors.py --check"), 2)
+        for needle in ("baseline_manifest.py --check", "assertion_floors.py --check"):
+            with self.subTest(needle):
+                self.assertEqual(2, self._uncommented(needle),
+                                 f"{needle} must run in BOTH tiers, on an uncommented line")
+
+    def test_a_commented_out_step_does_not_satisfy_the_check(self):
+        """The defect itself, exercised: the old `str.count` would return 2 for this input."""
+        needle = "baseline_manifest.py --check"
+        faked = "\n".join(["      - run: python3 baseline_manifest.py --check",
+                            "      # - run: python3 baseline_manifest.py --check"])
+        live = sum(1 for line in faked.splitlines()
+                   if needle in line and not line.strip().startswith("#"))
+        self.assertEqual(2, faked.count(needle), "str.count sees the commented line")
+        self.assertEqual(1, live, "the uncommented count must not")
 
     def test_the_doctrine_names_the_three_things_the_run_does(self):
         for phrase in ("full suite", "baseline_manifest.py --check", "assertion_floors.py --check"):

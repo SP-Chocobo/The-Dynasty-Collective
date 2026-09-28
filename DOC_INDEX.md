@@ -7,8 +7,8 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 29 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 47 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 29 | says what kind of document it is before making claims. |
+| SUPERSEDED | 41 | still valid or partly valid, but something later changed what it means. |
+| DECLARED | 35 | says what kind of document it is before making claims. |
 | UNDECLARED | 113 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
@@ -45,13 +45,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 ## SUPERSEDED
 
-- `ARCHITECTURE_AUDIT.md`
-- `CDME_CONTRACTS.md`
-- `DRAFT_ROOM_UI.md`
-- `ENGINEERING_DOCTRINE.md`
-- `ENGINE_WIRING_PASS.md`
 - `FREEZE_CHECKLIST.md`
-- `GOLD_WYRM_WEBFRONT.md`
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`
 - `evidence/backtest/README.md`
@@ -96,7 +90,13 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 ## DECLARED
 
 - `.claude/skills/engine-measurement/SKILL.md`
+- `ARCHITECTURE_AUDIT.md`
+- `CDME_CONTRACTS.md`
+- `DRAFT_ROOM_UI.md`
+- `ENGINEERING_DOCTRINE.md`
+- `ENGINE_WIRING_PASS.md`
 - `FREEZE_RECORD_V2.md`
+- `GOLD_WYRM_WEBFRONT.md`
 - `POST_AUDIT_PLAN.md`
 - `ROADMAP.md`
 - `evidence/backtest/ANACHRONISM.md`

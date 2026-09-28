@@ -1,0 +1,17 @@
+{
+  "_comment": "Tests that RAN and executed no assertion, each with why that is legitimate. A test whose only failure mode is an exception or an explicit self.fail is real; one that simply cannot fail is not evidence. See assertion_execution.py. A NEW entry needs a reason written by hand -- --write leaves it empty on purpose.",
+  "silent_tests": {
+    "test_241_format_axes.WhatTheMatrixActuallyExercises.test_every_registered_hole_says_what_would_close_it": "Iterates draft_battery.UNCOVERED_AXES, which is EMPTY and whose own comment says empty is the healthy state -- every advertised axis is crossed. Vacuous by design: it asserts over a register that is supposed to be empty, and becomes non-vacuous the moment a hole is filed.",
+    "test_attachments.AttachmentsTests.test_delete_on_a_nonexistent_file_is_a_safe_no_op": "The contract IS 'does not raise'. It fails by raising, which is a real failure mode.",
+    "test_decision_log.DecisionLogTests.test_forget_decisions_on_a_league_with_no_file_is_a_safe_no_op": "The contract IS 'does not raise'. It fails by raising.",
+    "test_dock_absence_contract.NoAbsentQuantityIsEverPrintedAsAWord.test_no_scenario_raises": "The contract IS 'does not raise' -- need_bonus=None once died on a ':+' format, taking the whole explanation with it. Every absence scenario is rendered and any exception fails it.",
+    "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests.test_a_pool_with_no_dispute_passes_through_unchanged": "FALSE POSITIVE of this instrument. It asserts with pd.testing.assert_frame_equal, which is a real assertion that is not a self.assert* call, so the counter cannot see it. Stated in assertion_execution's own limits rather than papered over.",
+    "test_invariant_confirmation_anchors.EveryAnchorStillMatchesTheSource.test_every_mutant_still_parses": "The contract IS 'does not raise': every mutant is fed to ast.parse, and a SyntaxError fails the test. A mutant that does not compile would fail every test for the wrong reason.",
+    "test_parser_integrity.MisalignedPagesFailLoudlyTests.test_the_shifted_record_is_never_emitted": "Its PASS path is an exception: the parser must raise ValueError on a misaligned page, and the early `return` is that success. If no exception comes it calls self.fail explicitly.",
+    "test_pinned_messages.PinnedMessagesTests.test_forget_pins_on_a_league_with_none_is_a_safe_no_op": "The contract IS 'does not raise'. It fails by raising.",
+    "test_rulings_are_not_silently_dropped.NoRulingIsSilentlyDroppedTests.test_every_staged_ruling_is_still_actually_unimplemented": "Iterates the staged-ruling register, which is empty when no ruling is staged. Vacuous exactly when there is nothing to drop, which is the state it wants.",
+    "test_rulings_are_not_silently_dropped.NoRulingIsSilentlyDroppedTests.test_every_staged_ruling_states_why_it_stopped": "Same empty register as above.",
+    "test_rulings_are_not_silently_dropped.NoRulingIsSilentlyDroppedTests.test_every_staged_ruling_still_has_its_staged_work": "Same empty register as above.",
+    "test_todo_log.TodoLogTests.test_forget_todos_on_nonexistent_league_does_not_raise": "The contract IS 'does not raise', as its own name says."
+  }
+}
