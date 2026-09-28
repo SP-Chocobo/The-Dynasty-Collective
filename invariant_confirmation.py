@@ -164,18 +164,32 @@ pool = dr.build_available_pool(merger, players_db, set(), dr.league_usable_posit
                                scoring_settings=league["scoring_settings"],
                                pool_scope="all", sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
 dr._derive_points_and_source(pool)
-# SIX RUNNING BACKS AND ONE PICK LEFT: four slots the solver cannot fill, so the backstop is
-# live and the board reorders around it.
-rbs = [str(x) for x in pool.loc[pool["position"] == "RB", "player_id"].head(6)]
+# THREE QUARTERBACKS AND THREE RUNNING BACKS, six of seven picks spent. Both halves matter and
+# the previous fixture had only one:
+#   feasibility   six picks spent against seven slots leaves fewer picks than unfilled named
+#                 slots, so feasibility_first binds and the board reorders around it.
+#   fieldability  RB IS FLEX-REACHABLE AND THEREFORE EXEMPT FROM ANY CEILING, so the old
+#                 six-RB fixture left `_unfieldable` uniformly 0 -- and the third mutation,
+#                 which substitutes a constant 0 for that column, produced a BYTE-IDENTICAL
+#                 board and could only ever read MUTATION IS INERT. It had no verdict for that
+#                 reason, not because the run was cut short. QB is dedicated here (one slot, no
+#                 SUPER_FLEX), so `fieldable_ceiling` is {'QB': 2} and holding three puts every
+#                 remaining QB over it.
+qbs = [str(x) for x in pool.loc[pool["position"] == "QB", "player_id"].head(3)]
+rbs = [str(x) for x in pool.loc[pool["position"] == "RB", "player_id"].head(3)]
 picks = [{"pick_no": i + 1, "round": i + 1, "roster_id": "1", "player_id": pid}
-         for i, pid in enumerate(rbs)]
+         for i, pid in enumerate(qbs + rbs)]
 left = pool[~pool["player_id"].astype(str).isin({p["player_id"] for p in picks})].copy()
-f = dr.feasibility_first(left, picks, players_db, "1", ROSTER, draft_rounds=len(ROSTER))
 board = dr.compute_draft_board(merger, players_db, picks, my_roster_id="1", league=league,
                                sleeper_projections=season,
                                sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
 digest = hashlib.sha256(json.dumps(board, sort_keys=True, default=str).encode()).hexdigest()
-print(f"{digest} {int((f == 0).sum())} {len(f)}")
+# BOTH CENSUSES, read off the board's own emitted flags rather than recomputed. `main` refuses to
+# judge any mutation unless both are non-uniform: a uniform column makes its mutation inert and a
+# verdict about it meaningless, which is how the third mutation went unjudged.
+feas = sum(1 for row in board if row.get("fills_required_slot"))
+unfield = sum(1 for row in board if row.get("cannot_be_fielded"))
+print(f"{digest} {feas} {len(board)} {unfield}")
 """
 
 
@@ -211,10 +225,44 @@ def _board_fingerprint() -> tuple[bool, str, str]:
     return True, proc.stdout.strip().splitlines()[-1], ""
 
 
+#: The harness's own self-test. Excluded from every scored run, because it reads draft_room.py
+#: from disk and counts the anchor text that a mutation necessarily replaces -- so it fails under
+#: EVERY mutant regardless of the engine, and `rc != 0` then reads as "caught". That is not a
+#: hypothesis: both verdicts in this harness's first committed evidence were this module failing,
+#: one on `assertEqual(0, 2)` over a mutated anchor. It runs on the CLEAN tree in `main` instead,
+#: as a precondition, so nothing is untested -- the coverage moved, it did not disappear.
+ANCHORS_MODULE = "test_invariant_confirmation_anchors"
+EXCLUDED_FROM_MUTANT_RUN = frozenset({ANCHORS_MODULE})
+
+
+def _discovered_modules() -> list[str]:
+    """Every `test_*.py` in the tree as a module name, minus EXCLUDED_FROM_MUTANT_RUN.
+
+    An EXPLICIT LIST rather than a skip inside the module. `unittest discover` has no exclusion
+    flag, and the alternative -- having the anchors module skip itself when a mutant is on disk --
+    would be a test that silently stops running, which is the defect `0.4` is about. Naming the
+    modules on the command line keeps the exclusion visible in this file and in the run's own
+    output, where a reader can see what was and was not scored.
+    """
+    names = sorted(q.stem for q in pathlib.Path(".").glob("test_*.py"))
+    return [n for n in names if n not in EXCLUDED_FROM_MUTANT_RUN]
+
+
+def _run_module(module: str):
+    """One test module, for the clean-tree precondition. Same env discipline as `_run_suite`."""
+    env = {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": ".", "PATH": "/usr/bin:/bin"}
+    subprocess.run(["bash", "-c", "find . -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null"],
+                   check=False)
+    t0 = time.time()
+    proc = subprocess.run([sys.executable, "-m", "unittest", module],
+                          capture_output=True, text=True, env=env)
+    return proc.returncode, round(time.time() - t0, 1), (proc.stdout + proc.stderr)
+
+
 def _run_suite(failfast=True):
     subprocess.run(["bash", "-c", "find . -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null"],
                    check=False)
-    cmd = [sys.executable, "-m", "unittest", "discover", "-p", "test_*.py"]
+    cmd = [sys.executable, "-m", "unittest"] + _discovered_modules()
     if failfast:
         cmd.append("--failfast")
     env = {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": ".", "PATH": "/usr/bin:/bin"}
@@ -238,12 +286,36 @@ def main():
     # feasibility census; if it is uniform, feasibility_first is a no-op on this board and every
     # mutation of it would read INERT forever -- the harness passing itself while testing
     # nothing, one level up from #254. Fail loudly rather than drift back into that.
-    _digest, zeros, total = ref_fp.split()
-    if not 0 < int(zeros) < int(total):
-        print(f"FIXTURE NO LONGER BINDS: _feasible == 0 on {zeros} of {total} rows. "
-              f"feasibility_first is a no-op here, so no mutation of it can be judged.")
+    _digest, feas, total, unfield = ref_fp.split()
+    # BOTH BACKSTOPS, NOT ONE. The old guard checked feasibility alone, so the fieldability
+    # mutation sat behind an unchecked assumption: its column was uniformly 0 on the fixture, the
+    # mutation substituting a constant 0 was therefore a no-op, and the arm could only ever read
+    # MUTATION IS INERT. A guard that covers one of two invariants gives false confidence about
+    # the other -- the same shape as the docstring that once claimed four targets and had two.
+    for label, count in (("feasibility (fills_required_slot)", feas),
+                         ("fieldability (cannot_be_fielded)", unfield)):
+        if not 0 < int(count) < int(total):
+            print(f"FIXTURE NO LONGER BINDS: {label} is uniform at {count} of {total} rows. "
+                  f"That backstop is a no-op here, so no mutation of it can be judged. "
+                  f"Re-derive the roster state; do not relax this check.")
+            return 2
+    print(f"reference board: {_digest[:16]}  feasibility binds on {feas} of {total} rows, "
+          f"fieldability on {unfield}\n")
+
+    # THE HARNESS'S OWN SELF-TEST RUNS HERE, ON THE CLEAN TREE, AND NOWHERE ELSE.
+    # `test_invariant_confirmation_anchors.py` reads draft_room.py FROM DISK and counts anchor
+    # text. A mutation REPLACES that text, so under any mutant the module fails by construction --
+    # `assertEqual(0, 2)` on the anchor count. Both "caught" verdicts in the first committed
+    # evidence were exactly that: the harness's self-test failing on its own missing anchor,
+    # scored as the suite defending the engine. The module is excluded from the scored runs below
+    # (see EXCLUDED_FROM_MUTANT_RUN) and its coverage is not lost but RELOCATED to here, where a
+    # failure means the harness is broken and refuses to report anything.
+    anchors_rc, anchors_secs, anchors_tail = _run_module(ANCHORS_MODULE)
+    if anchors_rc != 0:
+        print(f"{ANCHORS_MODULE} FAILS ON THE CLEAN TREE -- the harness is broken, not the "
+              f"engine. No mutation is applied.\n{anchors_tail[-1500:]}")
         return 2
-    print(f"reference board: {_digest[:16]}  backstop binds on {zeros} of {total} rows\n")
+    print(f"{ANCHORS_MODULE}: passes on the clean tree ({anchors_secs}s)\n")
 
     for name, filename, anchor, replacement, consequence in MUTATIONS:
         path = pathlib.Path(filename)

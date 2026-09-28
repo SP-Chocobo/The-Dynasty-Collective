@@ -138,19 +138,32 @@ class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unitte
         would compare against an empty string and every mutation would read as INERT."""
         ok, fingerprint, err = ic._board_fingerprint()
         self.assertTrue(ok, f"reference board failed to build: {err}")
-        self.assertRegex(fingerprint, r"^[0-9a-f]{64} \d+ \d+$")
+        # FOUR fields now: digest, feasibility census, total, fieldability census. The fourth
+        # exists because the fieldability mutation could not be judged without it.
+        self.assertRegex(fingerprint, r"^[0-9a-f]{64} \d+ \d+ \d+$")
 
-    def test_the_fixture_actually_exercises_the_invariant(self):
-        """The guard that stops the harness passing itself while testing nothing. The fixture
-        starves a roster -- six RBs, one pick left, four slots the solver cannot fill -- so
-        feasibility_first BINDS and a mutation of it has something to change. Before this, the
-        fixture was an opening board where `_feasible` was uniformly 1 and every mutation of it
-        read INERT forever (#254)."""
+    def test_the_fixture_exercises_BOTH_invariants(self):
+        """The guard that stops the harness passing itself while testing nothing -- for both
+        backstops, which is the repair.
+
+        The fixture starves a roster (six of seven picks spent) so feasibility_first BINDS, and
+        holds three QB against a one-QB roster so the fieldable ceiling of 2 is exceeded and
+        unfieldable_last BINDS too. The previous fixture held six RBs, and RB is FLEX-REACHABLE
+        and therefore exempt from any ceiling -- so `cannot_be_fielded` was uniformly False, the
+        third mutation substituted a constant into a column that was already constant, and the
+        arm could only ever read MUTATION IS INERT. That is why it had no verdict.
+
+        Checking one backstop and inferring the other is the shape of every defect this file
+        exists for, so both are asserted separately."""
         ok, fingerprint, _ = ic._board_fingerprint()
         self.assertTrue(ok)
-        _digest, zeros, total = fingerprint.split()
-        self.assertGreater(int(zeros), 0, "the backstop does not bind; no mutation can be judged")
-        self.assertLess(int(zeros), int(total), "every row prioritised is not a reordering")
+        _digest, feas, total, unfield = fingerprint.split()
+        for label, count in (("feasibility", feas), ("fieldability", unfield)):
+            with self.subTest(label):
+                self.assertGreater(int(count), 0,
+                                   f"{label} does not bind; no mutation of it can be judged")
+                self.assertLess(int(count), int(total),
+                                f"every row flagged for {label} is not a reordering")
 
     def test_the_fingerprint_is_stable_across_calls(self):
         """The comparison is only meaningful if an UNCHANGED tree fingerprints identically.
@@ -158,6 +171,40 @@ class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unitte
         first = ic._board_fingerprint()
         second = ic._board_fingerprint()
         self.assertEqual(first[1], second[1])
+
+    def test_the_anchors_module_is_excluded_from_every_scored_run(self):
+        """THE FALSE-POSITIVE MECHANISM, pinned so it cannot come back.
+
+        This module reads draft_room.py from disk and counts anchor text. A mutation REPLACES
+        that text, so under any mutant this module fails by construction -- and `rc != 0` is how
+        the harness spells "caught". Both verdicts in the first committed evidence were exactly
+        that, one of them `assertEqual(0, 2)` over a mutated anchor count. The suite never
+        defended anything; its own self-test failed first, under --failfast, before a single
+        board was built.
+
+        So the module must be absent from the scored run and present in the clean-tree
+        precondition. Re-including it silently restores a harness that always reports success."""
+        self.assertIn(ic.ANCHORS_MODULE, ic.EXCLUDED_FROM_MUTANT_RUN)
+        self.assertEqual(ic.ANCHORS_MODULE, Path(__file__).stem,
+                         "ANCHORS_MODULE must name THIS file, or the exclusion misses it")
+        scored = ic._discovered_modules()
+        self.assertNotIn(ic.ANCHORS_MODULE, scored)
+        # And the exclusion must not have eaten the suite: a scored run of two modules would
+        # "catch" nothing while looking like a clean run.
+        self.assertGreater(len(scored), 100,
+                           f"only {len(scored)} modules would be scored; the exclusion is too broad")
+
+    def test_the_scored_run_is_an_explicit_list_not_a_discover_sweep(self):
+        """`unittest discover` has no exclusion flag, and a skip inside the module would be a test
+        that silently stops running (`0.4`). The module names are passed on the command line so
+        the exclusion is visible in this file and in the run's own output."""
+        import inspect
+        source = inspect.getsource(ic._run_suite)
+        self.assertIn("_discovered_modules()", source)
+        # The CLI ARGUMENT, not the substring: `_discovered_modules` contains "discover" itself,
+        # and the first version of this assertion failed on its own helper's name.
+        self.assertNotIn('"discover"', source,
+                         "a discover sweep cannot exclude the self-test module")
 
     def test_a_subprocess_failure_is_reported_as_not_built(self):
         """The viability guard's own branch, exercised without breaking the tree."""
