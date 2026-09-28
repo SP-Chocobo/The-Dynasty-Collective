@@ -408,6 +408,14 @@ def main(argv: list[str] | None = None) -> int:
     merger = dm.DataMerger()
     players_db, universe = build_players_db_from_capture()
     season_projections = season_projections_from_capture()
+    # #30, and the repair of a hole in #30's own wiring: this loader has existed in THIS FILE
+    # since 04bccb5 and only run_vds_battery called it, so the format battery -- "the final
+    # acceptance gate" -- certified every arm with the streaming floor INERT while production
+    # shipped one that derives it. The K/DEF arm added to close `has_defense` was the arm that
+    # needed it most. {} from a capture predating weekly lines, in which case no floor is derived
+    # and the run is honestly what it was; the universe block below says which happened, because
+    # the reason this went unnoticed for a 36-arm run is that no report field could contradict it.
+    weekly_projections = weekly_projections_from_capture()
     # STATED, not assumed -- the report has to say which pricing path produced it, because the
     # two are not comparable and the difference is otherwise invisible (#204).
     # #212: SUPPLIED IS NOT PRICEABLE, and reporting only the first made a coverage claim the
@@ -419,6 +427,13 @@ def main(argv: list[str] | None = None) -> int:
     universe["season_projections_supplied"] = len(season_projections)
     universe["season_projections_priceable"] = priceable_projection_count(season_projections)
     universe["priced_from"] = "vendor+sleeper" if season_projections else "vendor_only"
+    # STATED FOR THE SAME REASON `priced_from` IS. A reader could not tell an arm drafted with
+    # #30's floor from one drafted without it, so "0 structural findings on 12T_ppr_K_DEF" read as
+    # a statement about the shipped board when it was a statement about a board ranking kickers
+    # ~40 slots higher. The VDS report has carried both keys since it was written; this is the
+    # same pair, under the same names (#126 -- one spelling for one concept).
+    universe["weekly_projection_weeks"] = len(weekly_projections)
+    universe["streaming_floor_exercised"] = bool(weekly_projections)
     universe["sleeper_basis"] = dr.SLEEPER_BASIS_SEASON_SUM if season_projections else None
     # #213. THE RULEBOOK IS DERIVED FROM THE CAPTURE AND THE ARMS ARE REFUSED IF IT CANNOT
     # PRICE THEM. Both halves matter: the first stops the synthetic one-key dict reaching a
@@ -470,7 +485,8 @@ def main(argv: list[str] | None = None) -> int:
         audited = draft_battery.run_battery(
             merger, players_db, [entry],
             sleeper_projections=season_projections or None,
-            sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)[0]
+            sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM,
+            weekly_projections=weekly_projections or None)[0]
         audited["seconds"] = round(time.time() - t0, 1)
         # #215: the commit this arm's numbers were PRODUCED at, carried with the arm itself.
         audited[resume_join.PRODUCED_AT] = commit

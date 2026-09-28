@@ -568,7 +568,14 @@ def qualifier_profile(trajectory) -> dict:
 
 def reference_values(merger, players_db: dict, league: dict,
                      sleeper_projections: Optional[dict[str, dict]] = None,
-                     sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY) -> dict[str, float]:
+                     sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+                     #: #30/#204. The paragraph below has demanded this since it was written; the
+                     #: parameter did not exist, so the ruler was built WITHOUT the streaming floor
+                     #: while the draft ran WITH it. On a K/DEF arm that credited every rostered
+                     #: kicker +23.66 and every defense +15.94 against the board the chairs drafted
+                     #: from -- the exact asymmetry the docstring calls worse than
+                     #: consistent-but-wrong, in the function whose docstring says so.
+                     weekly_projections: Optional[dict] = None) -> dict[str, float]:
     """player_id -> universal_value on the PRE-DRAFT board. ONE RULER for the whole format.
 
     Emphatically NOT each player's value at the moment he was taken. Those numbers are measured
@@ -586,7 +593,8 @@ def reference_values(merger, players_db: dict, league: dict,
     board = dr.compute_draft_board(merger, players_db, [], my_roster_id=None,
                                    league=league, mode="balanced",
                                    sleeper_projections=sleeper_projections,
-                                   sleeper_basis=sleeper_basis)
+                                   sleeper_basis=sleeper_basis,
+                                   weekly_projections=weekly_projections)
     return {str(row["player_id"]): row["universal_value"] for row in board
             if row.get("universal_value") is not None}
 
@@ -1071,7 +1079,8 @@ def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
             weekly_projections=weekly_projections)
         values = reference_values(merger, players_db, entry["league"],
                                   sleeper_projections=sleeper_projections,
-                                  sleeper_basis=sleeper_basis)
+                                  sleeper_basis=sleeper_basis,
+                                  weekly_projections=weekly_projections)
         # Formats whose draft is shorter than their roster opt out of the fill audit only
         # (see structural_findings); every other audit still applies to them.
         audited = audit_trajectory(trajectory, entry["league"], players_db, values,

@@ -41,7 +41,7 @@ and all thirteen caught it themselves.
 
 # TIER 0 — the apparatus, first, because everything below is validated with it
 
-## 0.1 The format battery drafts every arm with `#30`'s streaming floor inert **[VERIFIED]**
+## 0.1 The format battery drafts every arm with `#30`'s streaming floor inert **[REPAIRED]**
 
 `run_draft_battery.py:470-473` calls `run_battery(...)` with `sleeper_projections` and
 `sleeper_basis` only. `weekly_projections_from_capture` appears in that file exactly once — at its
@@ -56,6 +56,42 @@ So every format-battery statement about K/DEF draft position, K/DEF roster count
 `first_round_taken("K")`, or "0 structural findings on `12T_ppr_K_DEF`" describes a board that ranks
 kickers about forty slots higher than the shipped engine does. `run_smoke_seats` and
 `run_roster_proof` omit it too.
+### REPAIRED
+
+**What shipped.** `run_draft_battery.main` now calls the loader that sits beside it and forwards the
+lines to `run_battery`; `reference_values` gained the parameter its own docstring has demanded since
+it was written, so **the ruler is priced like the draft** (that was a separate finding — the harness
+lens's M2 — and it is fixed here because it is the same omission); and both live sister instruments,
+`run_smoke_seats` and `run_roster_proof`, are wired the same way. All three now publish
+`weekly_projection_weeks` and `streaming_floor_exercised` in their `universe` block, under the names
+the VDS report already used.
+
+**Deliberately NOT repaired:** the six `run_roster_proof_*` cut scripts. They call `run_one`, which
+now takes the parameter defaulting to `None`, so they keep the behaviour they were run under. They are
+closed-item evidence for `#216` and `#248`; silently re-pricing them would change what those recorded
+measurements meant, which is not a repair. Stated in `run_one`'s docstring, so the asymmetry is
+deliberate rather than discovered later.
+
+**Verified by me, at full magnitude.** The pass's numbers reproduce exactly on the `12T_ppr_K_DEF`
+opening board, 1053 priced rows both ways:
+
+| position | n | floored − unfloored |
+|---|---|---|
+| QB / RB / WR / TE | 42 / 126 / 198 / 115 | **+0.00, every row** |
+| K | 38 | **−23.66, every row** |
+| DEF | 32 | **−15.94, every row** |
+
+Best kicker: floored rank **114** (−11.1) against unfloored rank **75** (+12.6) — the battery's board
+ranked him **39 slots higher** than the shipped engine. Best defense: 70 against 59, **11 slots**.
+`weekly_projection_weeks` now reads 18 and `streaming_floor_exercised` reads True.
+
+**The ratchet was mutation-tested, because `0.2` is what happens when it is not.**
+`test_battery_pricing_path` grew four checks, and the reason it needed them is instructive: the
+existing test inspected `run_battery` — the callee, which accepted the argument all along — while the
+omission was in `main`, the caller. Reverting both halves of this repair in a scratch tree fails
+exactly those four and no others; the repaired tree passes all 17. A test that names a defect it
+cannot fail against is what this tier exists to fix, so it is not enough that the new tests pass.
+
 
 **Repair:** pass `weekly_projections` from `main` in all three drivers, **and** add
 `streaming_floor_exercised` to the format battery's `universe` block — the VDS battery has that key,
@@ -533,6 +569,16 @@ next drift starts.
    formats, positive on 2 of 87 real picks — and it loses to `sharp_auto` on `proj_3yr`, the horizon
    it targets, in all six formats. The work is a **derived** percentile-to-points conversion; the ±10
    clamp was borrowed from `time_horizon_adj` precisely because `#56` forbids calibrating one. *(task #36)*
+
+   **Read the provenance before you read this as confirmed twice.** Those figures are **mine**, from
+   the pre-freeze `evidence/upside_gap/` investigation — the audit did not reproduce them. And this is
+   the one corner of the audit where independence is actually compromised: pass A's own contamination
+   disclosure records that my commit subject leaked *"the differentiator does not participate -- 2 of
+   87 picks"* into its `git log`. So `sharp_upside` is the **least** independent item in this document,
+   not a two-source result. What pass A found on its own, and what does corroborate: the ±10 clamp
+   operates on a board spanning 556 points (3.3), and production cannot reach `mode="upside"` at all.
+   An outside reader of this document has already made exactly this mistake once, reading the leaked
+   figure back as independent rediscovery.
 2. **The upside board's flat region** and its `player_id` tiebreak. *(task #37)*
 3. **Whether to wire the league-config gate at all**, given it would refuse every real league as
    written. The repair is not "call it" — it is deciding what the gate should demand.
@@ -565,6 +611,10 @@ next drift starts.
    battery inert, and then wrote a measurement-skill lesson telling a future reader to check the
    exercise flags — while leaving the other battery without one.
 3. **`draftable_rounds` mismatches on 35 of 36 arms, not 36.** One arm agrees.
+4. **My commit-subject leak has now cost something concrete.** It contaminated pass A during the
+   audit (a protocol failure already recorded), and it has since caused a reader of this document to
+   treat my own pre-freeze `sharp_upside` figures as an independent audit finding. A leak does not
+   stop being a leak once the pass ends — it keeps being read as corroboration. See Owner Decision 1.
 
 
 ---

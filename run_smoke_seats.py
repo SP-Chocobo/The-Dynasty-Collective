@@ -303,7 +303,7 @@ def pool_composition(per_run) -> dict:
 
 
 def admission_gate(merger, players_db, league, pick_order, points, adp, season, rounds, slots,
-                   seats) -> dict:
+                   seats, weekly_projections=None) -> dict:
     """Can each style field a legal lineup AGAINST ITSELF? The anti-strawman test, mechanical.
 
     Rule 6 of `run_roster_proof` was earned: a projection-only control took 24 consecutive QBs
@@ -324,7 +324,8 @@ def admission_gate(merger, players_db, league, pick_order, points, adp, season, 
     for name in sorted(STYLES):
         assigned = {s: name for s in seats}
         picks = draft(merger, players_db, league, pick_order, points, adp, season,
-                      rounds, slots, assigned, engine_seat=None)
+                      rounds, slots, assigned, engine_seat=None,
+                      weekly_projections=weekly_projections)
         rows = []
         for seat in seats:
             filled, required = starters_filled(picks, seat, players_db, slots)
@@ -374,6 +375,13 @@ def main(argv=None) -> int:
     merger = dm.DataMerger()
     players_db, universe = rdb.build_players_db_from_capture()
     season = rdb.season_projections_from_capture()
+    # #30, third instrument with the same hole: `draft()` has taken weekly_projections since the
+    # backtest needed it, and no caller here ever supplied them -- so every seat control drafted
+    # against a board with the streaming floor inert. Recorded in `universe` for the same reason
+    # the battery's is: a claim a report cannot contradict is not evidence.
+    weekly = rdb.weekly_projections_from_capture()
+    universe["weekly_projection_weeks"] = len(weekly)
+    universe["streaming_floor_exercised"] = bool(weekly)
     adp, adp_excluded = adp_table(season)
     print(f"commit {commit} | universe {universe['players_in_pool']} players "
           f"| adp ranked {len(adp)} | adp sentinel excluded {adp_excluded}", flush=True)
@@ -384,10 +392,12 @@ def main(argv=None) -> int:
                                       scoring=spec["scoring"], te_premium=spec["te_premium"],
                                       dynasty=True, base_scoring=scoring)
         merger.set_league_format(db.league_format_hint(league))          # rule 4
-        points = rp.scoreable_pool(merger, players_db, league, season)   # rule 2
+        points = rp.scoreable_pool(merger, players_db, league, season,  # rule 2
+                                   weekly_projections=weekly or None)
         values = db.reference_values(merger, players_db, league,
                                      sleeper_projections=season,
-                                     sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+                                     sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM,
+                                     weekly_projections=weekly or None)
         seats = [str(i) for i in range(1, spec["teams"] + 1)]
         rounds = args.rounds or len(lc.draftable_slots(league.get("roster_positions")))
         pick_order = ds.generate_pick_order(seats, rounds, "snake")
@@ -396,7 +406,7 @@ def main(argv=None) -> int:
 
         t0 = time.time()
         gate = admission_gate(merger, players_db, league, pick_order, points, adp, season,
-                              rounds, slots, seats)
+                              rounds, slots, seats, weekly_projections=weekly or None)
         admitted = [n for n, v in gate.items() if v["admitted"]]
         print(f"{spec['label']:<16} gate: admitted {sorted(admitted)} "
               f"| excluded {sorted(n for n in gate if n not in admitted)}", flush=True)
@@ -405,7 +415,8 @@ def main(argv=None) -> int:
         for seat in seats:                                               # seat control
             assigned = style_by_seat(seats, seat, admitted)
             picks = draft(merger, players_db, league, pick_order, points, adp, season,
-                          rounds, slots, assigned, engine_seat=seat)
+                          rounds, slots, assigned, engine_seat=seat,
+                          weekly_projections=weekly or None)
             by_seat = {s: rp.score_roster(picks, s, players_db, rulers, slots)
                        for s in seats if s != seat}
             scored = {"engine": rp.score_roster(picks, seat, players_db, rulers, slots),

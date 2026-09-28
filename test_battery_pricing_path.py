@@ -88,6 +88,62 @@ class BatteryPricingWiringTests(unittest.TestCase):
             names = {kw.arg for kw in call.keywords}
             self.assertIn("sleeper_projections", names, f"{target} is priced differently")
             self.assertIn("sleeper_basis", names, f"{target} is priced differently")
+            # #30: THE ARGUMENT THIS TEST DID NOT ENUMERATE, AND SO DID NOT DEFEND. The two
+            # names above were the whole list, and `reference_values` did not even accept
+            # weekly lines -- so the ruler was built without the streaming floor while the
+            # draft ran with it, crediting every rostered kicker +23.66 and every defense
+            # +15.94 against the board the chairs actually drafted from. A list of arguments
+            # that must match is only as good as its own completeness.
+            self.assertIn("weekly_projections", names, f"{target} is priced differently")
+
+
+class BatteryCallerWiringTests(unittest.TestCase):
+    """The hole was one level UP from the function the tests inspected.
+
+    `run_battery` accepted `weekly_projections` for the whole life of the defect. What omitted
+    it was `run_draft_battery.main` -- the caller -- and every test here inspected the callee.
+    An acceptance gate's own entry point is part of the pricing path, so it is pinned here.
+    """
+
+    def _main_call_kwargs(self, module, target):
+        tree = ast.parse(inspect.getsource(module.main).lstrip())
+        call = next(node for node in ast.walk(tree)
+                    if isinstance(node, ast.Call)
+                    and getattr(node.func, "attr", getattr(node.func, "id", None)) == target)
+        return {kw.arg for kw in call.keywords}
+
+    def test_the_format_battery_passes_the_weekly_lines_it_loads(self):
+        names = self._main_call_kwargs(rdb, "run_battery")
+        self.assertIn("weekly_projections", names,
+                      "run_draft_battery.main drafts every arm with #30's streaming floor inert; "
+                      "the loader is in this same file and was never called from main")
+        self.assertIn("sleeper_projections", names)
+
+    def test_the_format_battery_loader_is_actually_called(self):
+        # The defect's exact signature: a loader defined in the file and called by nobody in it.
+        body = inspect.getsource(rdb.main)
+        self.assertIn("weekly_projections_from_capture()", body,
+                      "main never calls the loader that sits beside it")
+
+    def test_the_report_can_contradict_the_claim(self):
+        # A certification whose report has no field for the thing it omits cannot be checked by
+        # a reader. Both keys travel together, spelled as the VDS report already spells them.
+        body = inspect.getsource(rdb.main)
+        for key in ("weekly_projection_weeks", "streaming_floor_exercised"):
+            self.assertIn(key, body, f"the battery report cannot state {key}")
+
+    def test_the_other_two_live_instruments_are_wired_the_same_way(self):
+        # run_smoke_seats and run_roster_proof price seats the same way and had the same hole.
+        # The six run_roster_proof_* cut scripts are deliberately NOT included: they are closed
+        # item evidence, and re-pricing them would change what those measurements meant.
+        import run_roster_proof
+        import run_smoke_seats
+        for module in (run_smoke_seats, run_roster_proof):
+            body = inspect.getsource(module.main)
+            self.assertIn("weekly_projections_from_capture()", body,
+                          f"{module.__name__}.main never loads the weekly lines")
+            self.assertIn("streaming_floor_exercised", body,
+                          f"{module.__name__} cannot report whether the floor was exercised")
 
 
 class BatteryPricingProvenanceTests(unittest.TestCase):

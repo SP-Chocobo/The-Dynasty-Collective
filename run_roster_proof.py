@@ -91,16 +91,22 @@ PROOF_FORMATS = [
 ]
 
 
-def scoreable_pool(merger, players_db, league, season):
+def scoreable_pool(merger, players_db, league, season, weekly_projections=None):
     """The players BOTH arms can price, and nothing else (rule 2).
 
     The engine prices from the board; the control ranks by projected points. A player either
     yardstick cannot see would let one arm draft someone the other could not even consider,
     which is not a comparison. Returns {player_id: projected_points}.
+
+    #30: `weekly_projections` must be whatever the ENGINE SEAT drafts with, because this pool is
+    the shared eligibility filter. Built without the floor while the seat drafts with it, the
+    filter admits and excludes on a different board than the one making picks -- rule 2 violated
+    by the function that exists to enforce it.
     """
     board = dr.compute_draft_board(
         merger, players_db, [], my_roster_id=None, league=league, mode="balanced",
-        sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM,
+        weekly_projections=weekly_projections)
     return {str(r["player_id"]): r["projected_points"] for r in board
             if r.get("universal_value") is not None and r.get("projected_points") is not None}
 
@@ -150,8 +156,15 @@ def control_pick(available, points, my_player_ids, players_db, slots) -> str:
     return min(available, key=lambda pid: (-points[pid], pid))
 
 
-def run_one(merger, players_db, league, pick_order, engine_seat, points, season, rounds, slots):
-    """One draft: the engine holds `engine_seat`, the control holds every other seat."""
+def run_one(merger, players_db, league, pick_order, engine_seat, points, season, rounds, slots,
+            *, weekly_projections=None):
+    """One draft: the engine holds `engine_seat`, the control holds every other seat.
+
+    #30: `weekly_projections` DEFAULTS TO None ON PURPOSE. The six run_roster_proof_* cut scripts
+    call this and are closed-item evidence (#216, #248): re-pricing them retroactively would
+    change what those recorded measurements meant, which is not a repair. They keep the behaviour
+    they were run under; the live proof below passes the capture's lines.
+    """
     picks: list[dict] = []
     taken: set[str] = set()
     mine: dict[str, list[str]] = {}
@@ -163,7 +176,8 @@ def run_one(merger, players_db, league, pick_order, engine_seat, points, season,
             snap = pick_synthesis.build_snapshot(
                 merger, players_db, picks, pick_order, idx, seat, league,
                 pick_label=f"{round_no}.{(idx % num_teams) + 1:02d}",
-                sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+                sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM,
+                weekly_projections=weekly_projections)
             chosen = next((c.player_id for c in snap.candidates
                            if str(c.player_id) in points and str(c.player_id) not in taken), None)
         else:
@@ -405,6 +419,12 @@ def main(argv=None) -> int:
     merger = dm.DataMerger()
     players_db, universe = rdb.build_players_db_from_capture()
     season = rdb.season_projections_from_capture()
+    # #30, same wiring hole as the format battery's: this proof certified the engine seat against
+    # a board with no streaming floor while production ships one. Stated in `universe` so no
+    # reader has to infer it from the absence of a field.
+    weekly = rdb.weekly_projections_from_capture()
+    universe["weekly_projection_weeks"] = len(weekly)
+    universe["streaming_floor_exercised"] = bool(weekly)
     print(f"commit {commit} | universe {universe['players_in_pool']} players "
           f"| captured {universe['captured_at']}", flush=True)
 
@@ -430,10 +450,12 @@ def main(argv=None) -> int:
                                       scoring=spec["scoring"], te_premium=spec["te_premium"],
                                       dynasty=True, base_scoring=scoring)
         merger.set_league_format(db.league_format_hint(league))          # rule 4
-        points = scoreable_pool(merger, players_db, league, season)      # rule 2
+        points = scoreable_pool(merger, players_db, league, season,      # rule 2
+                                weekly_projections=weekly or None)
         values = db.reference_values(merger, players_db, league,
                                      sleeper_projections=season,
-                                     sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+                                     sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM,
+                                     weekly_projections=weekly or None)
         seats = [str(i) for i in range(1, spec["teams"] + 1)]
         rounds = args.rounds or len(lc.draftable_slots(league.get("roster_positions")))
         pick_order = ds.generate_pick_order(seats, rounds, "snake")
@@ -447,7 +469,8 @@ def main(argv=None) -> int:
         t0 = time.time()
         for seat in seats:                                               # seat control
             picks = run_one(merger, players_db, league, pick_order, seat,
-                            points, season, rounds, slots)
+                            points, season, rounds, slots,
+                            weekly_projections=weekly or None)
             engine = score_roster(picks, seat, players_db, rulers, slots)
             controls = [score_roster(picks, s, players_db, rulers, slots)
                         for s in seats if s != seat]
