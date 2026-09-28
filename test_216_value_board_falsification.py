@@ -61,7 +61,7 @@ import lineup_optimizer as lo
 import run_draft_battery as rdb
 import run_roster_proof as rp
 
-CAPTURE = Path("data/fixtures/sleeper_capture.json")
+CAPTURE = rdb.CAPTURE_PATH
 
 _RULEBOOK: dict = {}
 

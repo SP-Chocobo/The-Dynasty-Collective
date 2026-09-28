@@ -33,7 +33,7 @@ import draft_board_ui
 import draft_room as dr
 import run_draft_battery as rdb
 
-CAPTURE = Path("data/fixtures/sleeper_capture.json")
+CAPTURE = rdb.CAPTURE_PATH
 
 
 class TheVocabularyHasOneHomeTests(unittest.TestCase):

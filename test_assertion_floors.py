@@ -254,3 +254,140 @@ class ThePromisedGuaranteeIsActuallyKept(unittest.TestCase):
             "        self.assertEqual(1, 1)\n")
         assertion_floors.write(root=self.temp, path=self.floors)
         self.assertEqual([], assertion_floors.drops(root=self.temp, path=self.floors))
+
+
+class TheSilentDisableVectorsAreCountedAndRatcheted(unittest.TestCase):
+    """`0.4`: a test does not have to lose an assertion to stop running.
+
+    Four edits were applied to a scratch copy of a real test module and the module re-scanned.
+    Each produced a scan byte-identical to baseline -- `@unittest.skip`, `@unittest.expectedFailure`,
+    a leading `self.skipTest()`, and a leading `return`: nineteen test methods before and after,
+    every assert count unchanged. The counts are taken from source text, and none of those four
+    touches a `def test_` or an `assert*` call. `DISABLERS` closes that, and `drops` treats an
+    INCREASE as the loss, which is the one place in this design where growth is the failure.
+    """
+
+    def _scan(self, body: str) -> dict:
+        temp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        path = temp / "test_scratch.py"
+        path.write_text("import unittest\n\n\nclass T(unittest.TestCase):\n" + body)
+        return assertion_floors.scan_module(path)
+
+    BASE = ("    def test_one(self):\n        self.assertEqual(1, 1)\n")
+
+    def test_the_baseline_module_has_no_disablers(self):
+        self.assertEqual(dict.fromkeys(assertion_floors.DISABLERS, 0),
+                         self._scan(self.BASE)["disabled"])
+
+    def test_each_vector_is_seen(self):
+        for body, key in (
+            ("    @unittest.skip('flaky')\n" + self.BASE, "skip_decorators"),
+            ("    @unittest.skipIf(True, 'nope')\n" + self.BASE, "skip_decorators"),
+            ("    @unittest.skipUnless(False, 'needs a thing')\n" + self.BASE, "skip_decorators"),
+            ("    @unittest.expectedFailure\n" + self.BASE, "expected_failures"),
+            ("    def test_one(self):\n        self.skipTest('no')\n        self.assertEqual(1, 1)\n",
+             "skipTest_calls"),
+            ("    def test_one(self):\n        return\n        self.assertEqual(1, 1)\n",
+             "early_returns"),
+        ):
+            with self.subTest(key):
+                self.assertEqual(1, self._scan(body)["disabled"][key],
+                                 f"{key} was not detected; this vector is invisible again")
+
+    def test_a_class_level_skip_counts_once_per_test_it_silences(self):
+        """A skip on the class silences every test in it. Counting the DECORATOR rather than the
+        tests would show a reviewer +1 where the loss is however many tests the class holds."""
+        body = ("    def test_one(self):\n        self.assertEqual(1, 1)\n"
+                "    def test_two(self):\n        self.assertEqual(2, 2)\n"
+                "    def test_three(self):\n        self.assertEqual(3, 3)\n")
+        temp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        path = temp / "test_scratch.py"
+        path.write_text("import unittest\n\n\n@unittest.skip('all of it')\n"
+                        "class T(unittest.TestCase):\n" + body)
+        self.assertEqual(3, assertion_floors.scan_module(path)["disabled"]["skip_decorators"])
+
+    def test_an_ordinary_return_inside_a_branch_is_not_counted(self):
+        """A `return` under an `if` is control flow, not a disabled test. Counting it would flood
+        the floors with false positives, and a check nobody reads defends nothing."""
+        body = ("    def test_one(self):\n"
+                "        if not self.maxDiff:\n            return\n"
+                "        self.assertEqual(1, 1)\n")
+        self.assertEqual(0, self._scan(body)["disabled"]["early_returns"])
+
+    def test_growth_is_reported_as_a_drop(self):
+        temp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temp, ignore_errors=True)
+        floors = temp / "FLOORS.json"
+        path = temp / "test_scratch.py"
+        path.write_text("import unittest\n\n\nclass T(unittest.TestCase):\n" + self.BASE)
+        assertion_floors.write(root=temp, path=floors)
+        self.assertEqual([], assertion_floors.drops(root=temp, path=floors))
+        path.write_text("import unittest\n\n\nclass T(unittest.TestCase):\n"
+                        "    @unittest.skip('quietly')\n" + self.BASE)
+        reported = assertion_floors.drops(root=temp, path=floors)
+        self.assertTrue(any("skip_decorators 0 -> 1" in line for line in reported), reported)
+
+
+class TheFixtureThatSixtySKIPSDependOnIsPresent(unittest.TestCase):
+    """The ratchet above counts SYNTACTIC disablers. It cannot see a CONDITION flipping.
+
+    Measured on the committed tree: 20 of 197 test modules carry a silent-disable vector, and 84
+    test methods sit behind one -- 60 skip decorators and 24 `skipTest` calls -- while the suite
+    reports `skipped=1`. The difference is that the conditions are currently SATISFIED. Twelve of
+    those modules gate on one predicate, `CAPTURE.exists()`, so a single missing file turns roughly
+    57 passing tests into silent skips and the suite still prints OK. The decorator count does not
+    move, so the ratchet says nothing.
+
+    This converts that into ONE LOUD FAILURE. It is deliberately not a `skipUnless` itself: a guard
+    that skips when the thing it guards is missing is the defect it exists to catch.
+
+    Not hypothetical. A module added earlier in this same session hand-wrote this path, got it
+    wrong, and reported OK while skipping all five of its tests.
+    """
+
+    def test_the_real_capture_exists(self):
+        import run_draft_battery as rdb
+        self.assertTrue(
+            rdb.CAPTURE_PATH.exists(),
+            f"{rdb.CAPTURE_PATH} is missing. Roughly 57 tests across 12 modules gate on this file "
+            f"and would SKIP silently, leaving the suite green over a fraction of its coverage. "
+            f"This one failure is standing in for all of them.")
+
+    def test_modules_gate_on_the_harness_constant_rather_than_a_literal_path(self):
+        """A hand-written path is a silent skip waiting to happen -- it was, twice. Any module
+        spelling the capture filename itself can drift from the real location without a word."""
+        import ast
+
+        import run_draft_battery as rdb
+        name = rdb.CAPTURE_PATH.name
+
+        def docstring_constants(tree):
+            """The Constant nodes that are DOCSTRINGS, so prose mentioning the fixture is not
+            flagged as a hand-written path. The first version of this check counted them and
+            reported a module whose only mention was a sentence in its own docstring."""
+            found = set()
+            for node in ast.walk(tree):
+                body = getattr(node, "body", None)
+                if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                     ast.AsyncFunctionDef)) and body:
+                    first = body[0]
+                    if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                            and isinstance(first.value.value, str)):
+                        found.add(id(first.value))
+            return found
+
+        offenders = []
+        for q in sorted(Path(".").glob("test_*.py")):
+            src = q.read_text()
+            if name not in src or "CAPTURE_PATH" in src:
+                continue
+            tree = ast.parse(src)
+            skip = docstring_constants(tree)
+            if any(isinstance(n, ast.Constant) and isinstance(n.value, str)
+                   and name in n.value and id(n) not in skip for n in ast.walk(tree)):
+                offenders.append(q.name)
+        self.assertEqual([], offenders,
+                         f"these modules spell the capture path by hand: {offenders}. Use "
+                         f"rdb.CAPTURE_PATH so a moved fixture is an error, not a mass skip.")

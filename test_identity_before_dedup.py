@@ -30,7 +30,7 @@ def _merger_on_the_owners_format():
     league = rdb.capture_league_shape() if hasattr(rdb, "capture_league_shape") else None
     if league is None:
         import json
-        with open("data/fixtures/sleeper_capture.json") as handle:
+        with open(rdb.CAPTURE_PATH) as handle:
             capture = json.load(handle)
         league = capture.get("league_shape") or capture.get("league")
     merger.set_league_format(db.league_format_hint(league))
@@ -323,7 +323,7 @@ class ProvenanceDecidesBeforeAFilenameDoes(unittest.TestCase):
             os.makedirs(league_dir)
             doubled.to_csv(os.path.join(league_dir, filename), index=False)
             merger = dm.DataMerger(league_dir=dm.Path(league_dir))
-            with open("data/fixtures/sleeper_capture.json") as handle:
+            with open(rdb.CAPTURE_PATH) as handle:
                 capture = json.load(handle)
             merger.set_league_format(db.league_format_hint(
                 capture.get("league_shape") or capture.get("league")))

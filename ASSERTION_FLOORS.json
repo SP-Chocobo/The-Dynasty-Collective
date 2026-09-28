@@ -91,6 +91,12 @@
           "assertEqual": 2,
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 6,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_216_flex_share.py": {
@@ -188,6 +194,12 @@
         "test_without_an_occupancy_the_answer_is_todays_even_split": {
           "assertAlmostEqual": 3
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_216_ordering_verdict.py": {
@@ -226,6 +238,12 @@
         "test_without_a_rulebook_only_the_original_keys_come_back": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_216_room_integrity.py": {
@@ -332,6 +350,12 @@
           "assertAlmostEqual": 1,
           "assertTrue": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 2,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_216_shared_slot.py": {
@@ -395,6 +419,12 @@
           "assertEqual": 1,
           "assertNotEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_216_value_board_falsification.py": {
@@ -473,6 +503,12 @@
         "test_with_the_backstop_on_it_never_has_to_override_the_value_board": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 20,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_222_cancellation_and_the_mode_asymmetry.py": {
@@ -523,6 +559,12 @@
         "test_upside_score_is_bpa_at_full_weight_plus_growth": {
           "assertAlmostEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_224_bench_capacity_vocabulary.py": {
@@ -567,6 +609,12 @@
         "test_the_total_is_never_the_per_team_slot_count": {
           "assertNotAlmostEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_241_format_axes.py": {
@@ -617,6 +665,12 @@
           "assertEqual": 1,
           "assertGreater": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_35_anchor_cap.py": {
@@ -683,6 +737,12 @@
         "test_the_population_is_not_vacuous": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_absence_kind.py": {
@@ -793,6 +853,12 @@
           "assertEqual": 2,
           "assertIsNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_absence_survives_consumers.py": {
@@ -918,6 +984,12 @@
           "assertEqual": 1,
           "assertTrue": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_acting_now_observable.py": {
@@ -993,6 +1065,12 @@
         "test_the_retired_ordering_key_is_gone_rather_than_merely_unused": {
           "assertFalse": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_anchor_cache_key.py": {
@@ -1027,6 +1105,12 @@
         "test_the_same_inputs_key_the_same_way_twice": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_arm_rulebook.py": {
@@ -1081,14 +1165,20 @@
         "test_without_a_base_the_league_is_exactly_what_it_always_was": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_assertion_floors.py": {
-      "test_methods": 16,
+      "test_methods": 23,
       "asserts": {
-        "assertEqual": 12,
+        "assertEqual": 18,
         "assertIn": 8,
-        "assertTrue": 3
+        "assertTrue": 5
       },
       "by_method": {
         "test_a_STRENGTHENING_also_fails_and_that_is_the_honest_cost": {
@@ -1098,6 +1188,9 @@
           "assertEqual": 1
         },
         "test_a_check_holding_no_floors_does_not_report_success": {
+          "assertEqual": 1
+        },
+        "test_a_class_level_skip_counts_once_per_test_it_silences": {
           "assertEqual": 1
         },
         "test_a_deleted_assertion_is_caught": {
@@ -1129,7 +1222,20 @@
         "test_an_intact_check_still_passes": {
           "assertEqual": 1
         },
+        "test_an_ordinary_return_inside_a_branch_is_not_counted": {
+          "assertEqual": 1
+        },
+        "test_each_vector_is_seen": {
+          "assertEqual": 1
+        },
         "test_fail_counts_as_an_assertion": {
+          "assertEqual": 1
+        },
+        "test_growth_is_reported_as_a_drop": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "test_modules_gate_on_the_harness_constant_rather_than_a_literal_path": {
           "assertEqual": 1
         },
         "test_nothing_in_this_repository_has_shrunk": {
@@ -1138,9 +1244,21 @@
         "test_only_self_dotted_assertions_count": {
           "assertEqual": 1
         },
+        "test_the_baseline_module_has_no_disablers": {
+          "assertEqual": 1
+        },
         "test_the_floors_file_covers_this_module_too": {
           "assertIn": 1
+        },
+        "test_the_real_capture_exists": {
+          "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_attachments.py": {
@@ -1201,6 +1319,12 @@
         "test_set_scope_with_empty_list_is_treated_as_global": {
           "assertIsNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_audit_cadence.py": {
@@ -1242,6 +1366,12 @@
         "test_there_is_exactly_one_schedule_so_the_cadence_is_unambiguous": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_availability_haircut.py": {
@@ -1335,6 +1465,12 @@
         "test_the_season_length_is_a_fact_not_a_tunable": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_backtest_anachronism.py": {
@@ -1390,6 +1526,12 @@
           "assertIn": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_baseline_manifest.py": {
@@ -1438,6 +1580,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_baseline_provenance.py": {
@@ -1482,6 +1630,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_basis_semantics.py": {
@@ -1543,6 +1697,12 @@
         "test_the_two_classes_are_disjoint": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_basis_vocabulary_boundary.py": {
@@ -1573,6 +1733,12 @@
         "test_the_scanner_does_not_fire_on_prose_or_on_a_named_constant": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_basis_vocabulary_is_one_word.py": {
@@ -1593,6 +1759,12 @@
           "assertGreaterEqual": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_battery_pricing_path.py": {
@@ -1665,6 +1837,12 @@
           "assertEqual": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 4,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_battery_universe_boundary.py": {
@@ -1722,6 +1900,12 @@
         "test_with_no_capture_present_there_is_nothing_to_prefer": {
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_benchmark_contract_coverage.py": {
@@ -1844,6 +2028,12 @@
           "assertEqual": 2,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_board_order_honours_the_backstops.py": {
@@ -1865,6 +2055,12 @@
         "test_the_ceiling_that_makes_the_second_backstop_bind_is_what_we_think": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 5,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_board_renders_absence.py": {
@@ -1905,6 +2101,12 @@
         "test_the_unpriced_leader_shows_the_absence_marker_on_every_metric": {
           "assertRegex": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 6,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_bot_benchmark.py": {
@@ -1972,6 +2174,12 @@
         "test_weighted_score_reflects_the_rubric_weights": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_bot_config.py": {
@@ -2070,6 +2278,12 @@
         "test_two_keys_deal_across_both_rather_than_stranding_a_chair": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_bot_research.py": {
@@ -2175,6 +2389,12 @@
         "test_the_two_origins_are_distinguishable_which_is_the_entire_point_of_106": {
           "assertNotEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_bpa_unit.py": {
@@ -2223,6 +2443,12 @@
         "test_universal_value_still_decomposes_exactly": {
           "assertAlmostEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_bye_collision.py": {
@@ -2322,6 +2548,12 @@
         "test_the_weeks_are_real_nfl_bye_weeks": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_capture_provenance.py": {
@@ -2366,6 +2598,12 @@
         "test_total_picks_if_startup": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_capture_reproduces_the_live_app.py": {
@@ -2387,6 +2625,12 @@
         "test_the_four_starters_sum_to_what_the_app_showed": {
           "assertAlmostEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_capture_weekly_lines.py": {
@@ -2457,6 +2701,12 @@
         "test_what_comes_back_is_what_went_in": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_certification.py": {
@@ -2520,6 +2770,12 @@
         "test_the_final_narrowed_candidate_set_is_invariant_to_players_db_key_order_not_just_the_full_board": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_denial_semantics_audit.py": {
@@ -2546,6 +2802,12 @@
           "assertAlmostEqual": 1,
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_force_ablation.py": {
@@ -2569,6 +2831,12 @@
         "test_unknown_component_name_raises": {
           "assertRaises": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_ingestion_boundary.py": {
@@ -2603,6 +2871,12 @@
           "assertEqual": 2,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_metamorphic.py": {
@@ -2641,6 +2915,12 @@
         "test_take_probability_never_increases_as_rank_number_increases": {
           "assertGreaterEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_terminology.py": {
@@ -2672,6 +2952,12 @@
         "test_readme_spells_out_the_full_name_before_using_the_acronym": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cdme_threshold_fuzzing.py": {
@@ -2742,6 +3028,12 @@
         "test_thresholds_are_strictly_descending_no_duplicate_or_out_of_order_boundary": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cliff_null_estimator.py": {
@@ -2782,6 +3074,12 @@
           "assertGreater": 1,
           "assertIsNotNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_composite_admission_gate.py": {
@@ -2896,6 +3194,12 @@
         "test_the_second_adjudicator_is_a_person_and_no_automatic_path_exists": {
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_config_space.py": {
@@ -2962,6 +3266,12 @@
           "assertGreater": 2,
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_context_budget_boundary.py": {
@@ -3040,6 +3350,12 @@
         "test_the_summariser_fails_soft_so_that_abort_can_fire": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_corpus_state.py": {
@@ -3101,6 +3417,12 @@
         "test_unknown_says_it_is_unrecorded_rather_than_clean": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_cost_envelope_boundary.py": {
@@ -3167,6 +3489,12 @@
           "assertIsNone": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_data_merger.py": {
@@ -3447,6 +3775,12 @@
           "assertAlmostEqual": 1,
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 2,
+        "early_returns": 0
       }
     },
     "test_data_semantics_boundary.py": {
@@ -3576,6 +3910,12 @@
         "test_two_different_reasons_in_one_state_both_survive": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_debate_chip_wiring.py": {
@@ -3621,6 +3961,12 @@
         "test_two_debate_controls_reference_the_distinct_named_help_constants": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_decision_log.py": {
@@ -3684,6 +4030,12 @@
           "assertIsNotNone": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_decision_qualifiers.py": {
@@ -3727,6 +4079,12 @@
         "test_the_serializer_emits_it": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_demand_decomposition.py": {
@@ -3863,6 +4221,12 @@
         "test_zero_demand_yields_no_replacement_level_at_all": {
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_denial_ablation_experiment.py": {
@@ -3886,6 +4250,12 @@
         "test_zero_rival_premium_makes_all_three_conditions_identical": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_denial_basis.py": {
@@ -3936,6 +4306,12 @@
         "test_three_states_and_no_more": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_dependency_audit.py": {
@@ -3960,6 +4336,12 @@
         "test_known_linear_relationship_is_exactly_one": {
           "assertAlmostEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_depth_basis_boundary.py": {
@@ -4009,6 +4391,12 @@
         "test_the_snapshot_carries_the_basis": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_depth_exposure.py": {
@@ -4152,6 +4540,12 @@
         "test_zero_means_not_measured_and_never_this_position_is_safe": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_depth_ratings.py": {
@@ -4203,6 +4597,12 @@
         "test_zero_count_reads_as_none_rostered": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_design_system.py": {
@@ -4344,6 +4744,12 @@
         "test_unknown_token_name_raises_rather_than_silently_producing_black": {
           "assertRaises": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_display_contract_boundary.py": {
@@ -4438,6 +4844,12 @@
           "assertGreaterEqual": 1,
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_doc_index.py": {
@@ -4485,6 +4897,12 @@
           "assertIn": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_dock_absence_contract.py": {
@@ -4520,6 +4938,12 @@
           "assertIn": 2,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_downstream_contracts.py": {
@@ -4609,6 +5033,12 @@
           "assertAlmostEqual": 1,
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_battery.py": {
@@ -4774,6 +5204,12 @@
         "test_wall_clock_does_not_make_every_arm_look_unique": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_board_ui.py": {
@@ -4954,6 +5390,12 @@
         "test_ticks_are_legible_at_rest": {
           "assertNotIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_counterfactual.py": {
@@ -5061,6 +5503,12 @@
         "test_the_regret_is_absent_rather_than_zero": {
           "assertIsNone": 3
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_history_is_wired.py": {
@@ -5102,6 +5550,12 @@
         "test_the_ui_records_a_snapshot_at_all": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_horizon.py": {
@@ -5217,6 +5671,12 @@
           "assertIsNotNone": 1,
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_room.py": {
@@ -5579,6 +6039,12 @@
         "test_upside_mode_confidence_is_never_added_into_the_score": {
           "assertAlmostEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 7,
+        "early_returns": 0
       }
     },
     "test_draft_simulation.py": {
@@ -5647,6 +6113,12 @@
         "test_twelve_distinct_chairs_all_pick": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_draft_strategy.py": {
@@ -5856,6 +6328,12 @@
         "test_zero_intervening_picks_means_certain_survival": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_failure_mode_boundary.py": {
@@ -5972,6 +6450,12 @@
         "test_there_are_no_retries_and_no_resume": {
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_feasibility_backstop.py": {
@@ -6046,6 +6530,12 @@
         "test_two_holes_and_two_picks_promotes_both": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_forfeit_reads_the_pace_convention.py": {
@@ -6084,6 +6574,12 @@
         "test_without_league_context_the_previous_behaviour_is_exact": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_harness_league_format_hygiene.py": {
@@ -6099,6 +6595,12 @@
           "assertGreaterEqual": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_identity_before_dedup.py": {
@@ -6191,6 +6693,12 @@
           "assertIsNotNone": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_identity_boundary.py": {
@@ -6311,6 +6819,12 @@
         "test_vendor_synonyms_for_one_role_collapse": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_identity_partition_boundary.py": {
@@ -6444,6 +6958,12 @@
         "test_two_unrostered_sides_agree": {
           "assertFalse": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 4,
+        "early_returns": 0
       }
     },
     "test_identity_provenance.py": {
@@ -6505,6 +7025,12 @@
           "assertFalse": 1,
           "assertTrue": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_idp_supply_boundary.py": {
@@ -6550,6 +7076,12 @@
           "assertEqual": 1,
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_injury_status_materiality.py": {
@@ -6589,6 +7121,12 @@
         "test_the_designations_that_survived_are_untouched": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_invariant_confirmation_anchors.py": {
@@ -6670,6 +7208,12 @@
           "assertEqual": 1,
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_invariant_registry.py": {
@@ -6714,6 +7258,12 @@
         "test_there_are_invariants_registered": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_kdst_integration.py": {
@@ -6911,6 +7461,12 @@
         "test_widening_the_gate_adds_nobody_at_an_offensive_position": {
           "assertTrue": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 3,
+        "early_returns": 0
       }
     },
     "test_kdst_priced_too_high.py": {
@@ -6946,6 +7502,12 @@
           "assertGreater": 1,
           "assertIsNotNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_league_config.py": {
@@ -7020,6 +7582,12 @@
         "test_two_literal_QB_slots_without_the_token_is_caught": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_league_format.py": {
@@ -7053,6 +7621,12 @@
         "test_setting_standard_clears_the_override": {
           "assertIsNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_league_prefs.py": {
@@ -7097,6 +7671,12 @@
         "test_users_are_independent": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_league_standings.py": {
@@ -7154,6 +7734,12 @@
         "test_wins_losses_ties_pass_through_unmodified": {
           "assertEqual": 3
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_league_switch_isolation.py": {
@@ -7194,6 +7780,12 @@
         "test_the_three_keys_with_no_reset_path_anywhere_are_gone": {
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_league_view_wiring.py": {
@@ -7277,6 +7869,12 @@
         "test_zero_zero_state_is_named_honestly": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_lineup_marginal_contract.py": {
@@ -7316,6 +7914,12 @@
           "assertAlmostEqual": 1,
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_lineup_optimizer.py": {
@@ -7359,6 +7963,12 @@
         "test_single_position_player_gets_exactly_zero_bonus": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_lineup_readiness.py": {
@@ -7404,6 +8014,12 @@
         "test_unresolved_team_label_produces_no_thin_positions_not_a_crash": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_live_board_pricing.py": {
@@ -7458,6 +8074,12 @@
           "assertEqual": 1,
           "assertGreaterEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_llm_engine.py": {
@@ -7474,6 +8096,12 @@
           "assertEqual": 2,
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_llm_engine_parsing.py": {
@@ -7562,6 +8190,12 @@
         "test_unrecognized_text_fails_soft_to_empty_dict": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_maintenance_view_wiring.py": {
@@ -7625,6 +8259,12 @@
         "test_uncaptioned_count_reuses_list_attachments_not_a_new_reader": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_matchup_view_wiring.py": {
@@ -7674,6 +8314,12 @@
         "test_total_starting_slots_reuses_lineup_optimizer_not_a_reinvented_count": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_measure_projection_accuracy.py": {
@@ -7740,6 +8386,12 @@
         "test_the_row_says_it_rests_on_ONE_pair": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_measurement.py": {
@@ -7783,6 +8435,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_measurement_script_boundary.py": {
@@ -7812,6 +8470,12 @@
         "test_the_scripts_that_needed_the_pin_actually_carry_it": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_mock_draft_reload_cost.py": {
@@ -7843,6 +8507,12 @@
         "test_the_ui_asserts_two_different_formats_per_rerun": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_mock_draft_wiring.py": {
@@ -7895,6 +8565,12 @@
         "test_team_count_defaults_from_the_active_league_format": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_multi_position_eligibility.py": {
@@ -7972,6 +8648,12 @@
         "test_with_no_match_the_bucket_is_his_own_primary": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_no_empty_player_universe.py": {
@@ -8009,6 +8691,12 @@
         "test_the_players_cache_never_passes_through_a_truncating_write": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_one_identity_one_answer.py": {
@@ -8055,6 +8743,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_one_pricing_universe.py": {
@@ -8085,6 +8779,12 @@
         "test_the_opponent_board_builder_forwards_it_to_compute_draft_board": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_option_set_analysis.py": {
@@ -8127,6 +8827,12 @@
         "test_uv_gap_vs_narrowed_floor_measures_the_size_of_an_invisible_miss": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_ordinal_registers.py": {
@@ -8182,6 +8888,12 @@
         "test_zero_and_negative_are_violations_in_every_register": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_outcome_record.py": {
@@ -8254,6 +8966,12 @@
         "test_two_scoring_formats_give_two_different_answers_from_ONE_capture": {
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_override_provenance_boundary.py": {
@@ -8356,6 +9074,12 @@
           "assertEqual": 5,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_panel_independence.py": {
@@ -8431,6 +9155,12 @@
         "test_three_keys_give_at_least_as_many_voices_as_providers": {
           "assertGreaterEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_parser_integrity.py": {
@@ -8487,6 +9217,12 @@
           "assertEqual": 1,
           "assertTrue": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_persistence_discloses.py": {
@@ -8560,6 +9296,12 @@
           "assertEqual": 1,
           "assertIs": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pick_debate.py": {
@@ -8723,6 +9465,12 @@
         "test_the_two_conditions_do_not_produce_the_same_sentence": {
           "assertNotEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pick_resolution_flags.py": {
@@ -8757,6 +9505,12 @@
           "assertNotIn": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pick_synthesis.py": {
@@ -9166,6 +9920,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pinned_messages.py": {
@@ -9220,6 +9980,12 @@
         "test_two_overlapping_words_is_enough": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_placeholder_admission.py": {
@@ -9265,6 +10031,12 @@
         "test_the_sentinel_still_decides_on_a_row_the_status_gate_would_pass": {
           "assertFalse": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_player_universe.py": {
@@ -9294,6 +10066,12 @@
           "assertEqual": 2,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pool_admission_boundary.py": {
@@ -9355,6 +10133,12 @@
         "test_the_ruling_did_not_reach_the_clauses_around_it": {
           "assertTrue": 3
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pool_gauge.py": {
@@ -9412,6 +10196,12 @@
         "test_widths_sum_to_span_exactly_at_every_width": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_positional_depth_coverage.py": {
@@ -9457,6 +10247,12 @@
         "test_the_screen_actually_calls_it": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_prediction_record.py": {
@@ -9530,6 +10326,12 @@
           "assertEqual": 1,
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_prefix_arms.py": {
@@ -9566,6 +10368,12 @@
           "assertNotIn": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_priceable_projection_count.py": {
@@ -9604,6 +10412,12 @@
         "test_the_universe_block_carries_both_numbers": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_pricing_exhaustion_boundary.py": {
@@ -9642,6 +10456,12 @@
         "test_when_nothing_is_priced_the_order_is_player_id_ascending": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_probability_bounds.py": {
@@ -9719,6 +10539,12 @@
           "assertEqual": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_prompt_constant_boundary.py": {
@@ -9766,6 +10592,12 @@
         "test_the_value_scan_fires_when_a_coefficient_is_planted": {
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_prose_names.py": {
@@ -9873,6 +10705,12 @@
         "test_this_checkers_own_module_name_is_in_the_universe": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_provenance_boundary.py": {
@@ -9939,6 +10777,12 @@
         "test_the_prytaneum_result_records_provider_and_model_per_chair": {
           "assertEqual": 3
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_provider_meter_boundary.py": {
@@ -10095,6 +10939,12 @@
         "test_totals_sum_when_everything_is_known": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_providers.py": {
@@ -10166,6 +11016,12 @@
         "test_usage_and_served_model_ride_the_same_extractor_as_completion": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_prytaneum_terminology.py": {
@@ -10224,6 +11080,12 @@
           "assertGreater": 1,
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_qb_pricing_cliff.py": {
@@ -10267,6 +11129,12 @@
           "assertIsNotNone": 1,
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_quantity_readers.py": {
@@ -10315,6 +11183,12 @@
         "test_the_two_real_gaps_gained_readers": {
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_realized_ruler.py": {
@@ -10358,6 +11232,12 @@
           "assertEqual": 1,
           "assertIsNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_reconciliation_boundary.py": {
@@ -10461,6 +11341,12 @@
         "test_vendor_rankings_are_labelled_vendor": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_render_trace.py": {
@@ -10509,6 +11395,12 @@
         "test_the_recorded_trace_matches_the_tree": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_replacement_anchor_boundary.py": {
@@ -10627,6 +11519,12 @@
         "test_the_same_inputs_give_the_same_key": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_replacement_basis_vocabulary.py": {
@@ -10722,6 +11620,12 @@
         "test_the_weakest_claim_is_stamped_last_so_nothing_overwrites_it": {
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 8,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_report_survives_restart.py": {
@@ -10751,6 +11655,12 @@
         "test_the_roster_proof_writes_after_every_format": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_research_authority_boundary.py": {
@@ -10852,6 +11762,12 @@
         "test_the_pick_debate_chairs_are_deliberately_not_fenced": {
           "assertNotIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_research_ingestion_boundary.py": {
@@ -10942,6 +11858,12 @@
           "assertEqual": 1,
           "assertFalse": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_resolution_memo.py": {
@@ -10987,6 +11909,12 @@
         "test_two_calls_hand_back_distinct_objects": {
           "assertIsNot": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_resume_join.py": {
@@ -11096,6 +12024,12 @@
         "test_the_units_key_selects_which_list_is_joined": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_risk_adj_absence.py": {
@@ -11146,6 +12080,12 @@
         "test_universal_value_and_risk_adj_are_absent_together_or_present_together": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 9,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_rookie_draft.py": {
@@ -11207,6 +12147,12 @@
         "test_worse_record_produces_an_earlier_slot": {
           "assertLess": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_roster_diagnostics.py": {
@@ -11313,6 +12259,12 @@
         "test_thin_positions_only_named_from_positions_actually_rostered": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_roster_proof_instrument.py": {
@@ -11417,6 +12369,12 @@
         "test_unmet_slots_is_empty_exactly_when_the_lineup_is_covered": {
           "assertEqual": 3
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_roster_state_ladder.py": {
@@ -11464,6 +12422,12 @@
         "test_the_ladder_is_never_negative": {
           "assertGreaterEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_roster_worth_basis.py": {
@@ -11511,6 +12475,12 @@
         "test_the_roster_worth_basis_names_total_value_not_the_lineup": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_rulings_are_not_silently_dropped.py": {
@@ -11562,6 +12532,12 @@
         "test_the_seven_rulings_are_all_named_in_the_contracts_file": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_run_out_of_sample_validation.py": {
@@ -11598,6 +12574,12 @@
         "test_small_rate_swing_within_tolerance_is_stable": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_scoring_functions_parity.py": {
@@ -11613,6 +12595,12 @@
         "test_score_projection_raises_on_bare_none_scoring_settings": {
           "assertRaises": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_scoring_routing_boundary.py": {
@@ -11655,6 +12643,12 @@
           "assertAlmostEqual": 2,
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_screen_context.py": {
@@ -11861,6 +12855,12 @@
         "test_universal_help_promises_no_auto_submit": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_season_stats_capture.py": {
@@ -11919,6 +12919,12 @@
           "assertEqual": 1,
           "assertIs": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_sleeper_client.py": {
@@ -12118,6 +13124,12 @@
         "test_zero_stat_value_contributes_nothing": {
           "assertAlmostEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_slot_vocabulary.py": {
@@ -12179,6 +13191,12 @@
           "assertEqual": 1,
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_smoke_seats.py": {
@@ -12246,6 +13264,12 @@
         "test_the_sentinel_never_enters_the_ranking": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_snapshot_identity_boundary.py": {
@@ -12370,6 +13394,12 @@
         "test_the_same_snapshot_always_yields_the_same_identity": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
       }
     },
     "test_snapshot_input_key.py": {
@@ -12426,6 +13456,12 @@
         "test_the_same_world_keys_the_same_way_twice": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_source_policy.py": {
@@ -12479,6 +13515,12 @@
         "test_the_paid_vendor_is_not_on_this_list_and_does_not_need_to_be": {
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_source_scan.py": {
@@ -12518,6 +13560,12 @@
         "test_line_and_column_positions_are_preserved": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_store_io.py": {
@@ -12617,6 +13665,12 @@
         "test_the_write_leaves_no_temp_file_behind": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_streaming_replacement.py": {
@@ -12697,6 +13751,12 @@
           "assertLess": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_suite_taxonomy.py": {
@@ -12731,6 +13791,12 @@
         "test_the_unmarked_table_holds_only_modules_that_need_it": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_superseded_proposals.py": {
@@ -12764,6 +13830,12 @@
           "assertNotIn": 1,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_survival_absence_contract.py": {
@@ -12797,6 +13869,12 @@
         "test_the_two_one_point_zero_cases_are_distinguishable": {
           "assertNotEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_survival_calibration_declaration.py": {
@@ -12826,6 +13904,12 @@
           "assertEqual": 1,
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_survival_evidence.py": {
@@ -12904,6 +13988,12 @@
           "assertFalse": 1,
           "assertIsNone": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_take_model_coherence.py": {
@@ -12983,6 +14073,12 @@
           "assertEqual": 2,
           "assertTrue": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_take_model_seam.py": {
@@ -13008,6 +14104,12 @@
           "assertAlmostEqual": 2,
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_tav_identity_is_stated_once.py": {
@@ -13028,6 +14130,12 @@
         "test_the_docs_state_the_identity_somewhere": {
           "assertGreaterEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_temporal_consistency_boundary.py": {
@@ -13102,6 +14210,12 @@
           "assertEqual": 1,
           "assertNotEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_tenant_scope_boundary.py": {
@@ -13162,6 +14276,12 @@
           "assertEqual": 1,
           "assertGreaterEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_term_lifetimes.py": {
@@ -13224,6 +14344,12 @@
           "assertEqual": 1,
           "fail": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_threshold_reachability.py": {
@@ -13295,6 +14421,12 @@
           "assertEqual": 1,
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 1,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_todo_log.py": {
@@ -13419,6 +14551,12 @@
         "test_search_archived_ranks_more_overlap_first": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_trade_ledger_ui.py": {
@@ -13507,6 +14645,12 @@
           "assertIn": 2,
           "assertNotIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_ui_source.py": {
@@ -13620,6 +14764,12 @@
         "test_ui_source_still_catches_it_after_the_extraction": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_unfieldable_backstop.py": {
@@ -13712,6 +14862,12 @@
         "test_two_dedicated_slots_raise_the_ceiling_by_exactly_one_each": {
           "assertEqual": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_unpriced_driver_instrument.py": {
@@ -13751,6 +14907,12 @@
         "test_unpriced_clearly_lower_is_a_small_p": {
           "assertLess": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_untrusted_fence.py": {
@@ -13818,6 +14980,12 @@
         "test_the_label_is_app_authored_and_is_not_stripped": {
           "assertIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_upload_batches.py": {
@@ -14002,6 +15170,12 @@
         "test_uploads_are_listed_by_batch_with_their_own_story": {
           "assertIn": 2
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_valuation_leaf_explains_itself.py": {
@@ -14054,6 +15228,12 @@
           "assertIn": 2,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_vds_battery.py": {
@@ -14114,6 +15294,12 @@
         "test_the_swept_top_k_values_are_all_used": {
           "assertEqual": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_version_boundary.py": {
@@ -14221,6 +15407,12 @@
           "assertIn": 1,
           "assertNotIn": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_which_call_prices_the_board.py": {
@@ -14250,6 +15442,12 @@
         "test_the_bands_are_non_empty": {
           "assertGreater": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     },
     "test_withheld_propagation.py": {
@@ -14306,6 +15504,12 @@
         "test_the_withheld_estimate_never_reaches_the_seed": {
           "assert_honours_the_rule": 1
         }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
       }
     }
   }

@@ -17,6 +17,7 @@ from pathlib import Path
 
 import draft_battery as db
 import league_config as lc
+import run_draft_battery as rdb
 
 CAPTURES = Path("data/league_captures")
 
@@ -83,7 +84,7 @@ class TheCapturesReproduceTheirOwnDraftLength(unittest.TestCase):
 class TheFixtureLeagueIsWhyNobodyNoticed(unittest.TestCase):
     def test_the_fixture_league_has_no_ir_so_the_old_rule_looks_correct(self):
         shape = json.loads(
-            Path("data/fixtures/sleeper_capture.json").read_text(encoding="utf-8")
+            rdb.CAPTURE_PATH.read_text(encoding="utf-8")
         )["league_shape"]
         rp = shape["roster_positions"]
         self.assertNotIn("IR", rp)

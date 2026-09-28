@@ -47,6 +47,7 @@ import data_merger as dm
 import draft_battery as db
 import draft_room as dr
 import player_universe as pu
+import run_draft_battery as rdb
 
 
 class TheFloorComesFromTheRulebookTests(unittest.TestCase):
@@ -146,7 +147,7 @@ class ThroughTheRealBoardTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with open("data/fixtures/sleeper_capture.json", encoding="utf-8") as handle:
+        with open(rdb.CAPTURE_PATH, encoding="utf-8") as handle:
             cap = json.load(handle)
         shape = cap["league_shape"]
         cls.league = {"roster_positions": shape["roster_positions"],

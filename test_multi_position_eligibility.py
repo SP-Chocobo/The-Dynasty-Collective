@@ -26,6 +26,7 @@ import unittest
 
 import data_merger as dm
 import draft_room as dr
+import run_draft_battery as rdb
 
 
 class _StubMerger:
@@ -178,7 +179,7 @@ class AdmissionFollowsEligibilityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import json
-        cls.capture = json.load(open("data/fixtures/sleeper_capture.json"))
+        cls.capture = json.load(open(rdb.CAPTURE_PATH))
         cls.merger = dm.DataMerger()
 
     def _pool(self, usable):

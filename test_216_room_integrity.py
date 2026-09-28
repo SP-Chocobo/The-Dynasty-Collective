@@ -53,7 +53,7 @@ import run_draft_battery as rdb
 import run_roster_proof as rp
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
-CAPTURE = Path("data/fixtures/sleeper_capture.json")
+CAPTURE = rdb.CAPTURE_PATH
 
 
 def _find_chrome():

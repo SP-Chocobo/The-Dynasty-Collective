@@ -25,8 +25,9 @@ import pandas as pd
 
 import draft_room as dr
 import lineup_optimizer as lo
+import run_draft_battery as rdb
 
-CAPTURE = Path("data/fixtures/sleeper_capture.json")
+CAPTURE = rdb.CAPTURE_PATH
 ROSTER = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"] + ["BN"] * 6
 
 #: #52 phase 6 (W1-01). A rulebook with IDP slots, because the sign of this term depends on a
