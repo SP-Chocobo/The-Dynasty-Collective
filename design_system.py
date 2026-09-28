@@ -296,6 +296,22 @@ DISPLAY_CONTRACT: dict[str, dict[str, str]] = {
             "intervening pick from those rosters' own boards."
         ),
     },
+    #: The fact that REPLACES the survival estimate on the card while the family is withheld --
+    #: survival_is_presentable()'s docstring has always named it ("intervening_picks, the count of
+    #: picks before your next selection"), and until mandate 1.2 no Streamlit surface showed it.
+    #: A count, not an estimate: verified against the engine's own value at all 5,567 candidates
+    #: of the REAL arm, on a draft with 135 traded seats, zero mismatches.
+    "intervening_picks": {
+        "label": "Picks Until Your Next Turn",
+        "unit": "picks",
+        "help": (
+            "How many selections other teams make before you pick again. A count of picks, not "
+            "an estimate of anything -- it is what this card shows in place of the survival "
+            "probability while that estimate is withheld. A dash means the count itself could "
+            "not be established; \"no next pick\" means there is no further selection of yours "
+            "for him to last until, which is a different fact from a count of zero."
+        ),
+    },
     "positional_cliff": {
         "label": "Positional Cliff (tier)",
         "unit": "tier",

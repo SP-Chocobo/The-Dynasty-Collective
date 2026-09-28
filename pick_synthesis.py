@@ -662,6 +662,36 @@ SURVIVAL_CALIBRATION_EVIDENCE = {
     "real": "evidence/survival_calibration/calibration_real.json",
 }
 
+#: WHAT A SURFACE PUTS THERE INSTEAD, as data rather than as prose repeated per surface (#126).
+#: Four surfaces have to tell a person that a number is withheld rather than missing -- the
+#: board's focus sentence, the chairs' briefing, their system prompts, and the Draft Room's
+#: metric cards -- and a hand-copied sentence in each is four places to go stale the day
+#: SURVIVAL_IS_CALIBRATED flips.
+WITHHELD_CARD_TEXT = "withheld"
+WITHHELD_REASON = (
+    "Withheld, not missing: this number is computed, and it failed its calibration check "
+    "against real drafts -- it lost to a constant predictor on two independent arms, and it is "
+    "worst exactly where a reader would lean on it hardest. So the claim is not put in front of "
+    "a person. Do not estimate one from the numbers that are shown."
+)
+
+
+def presentable_text(field: str, rendered: str) -> str:
+    """`rendered` for a quantity that may be shown; WITHHELD_CARD_TEXT for one that may not.
+
+    The propagation rule (`withheld_fields`) with a return value a widget can take, for the one
+    surface that cannot be imported to be measured: `app.py` is a Streamlit script, so the Draft
+    Room's cards are checked by reading the source. A source check can prove the call is THERE;
+    only a function can prove what it returns. This is that function, and
+    test_withheld_propagation exercises it on both arms.
+
+    WHY NOT AN EM DASH. The panel already uses "--" for the absence contract: not measured, no
+    value exists. A withheld number is the opposite case -- it exists and is not trusted -- and
+    #187 is about never collapsing the two. A reader told "not measured" about a withheld figure
+    will assume the data was missing and reason around the gap.
+    """
+    return WITHHELD_CARD_TEXT if field in withheld_fields() else rendered
+
 # Checked top-down; the first threshold this score meets or exceeds wins.
 NECESSITY_LABEL_THRESHOLDS = [
     (98.0, "MUST TAKE"),

@@ -785,7 +785,13 @@ function focusSentences(c) {
   const isLeader = ordered[0].id === c.id;
 
   if (PAYLOAD.decisionRegime === "decisive" && isLeader) {
-    s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${num(c.survival) ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
+    // MANDATE 1.2. This branch printed the survival percentage with no `survivalWithheld`
+    // check, while the branch 25 lines below honours it in four states. Unreachable TODAY only
+    // because decision_regime never returns "decisive" while the estimate is uncalibrated --
+    // i.e. the same flag guards it by accident, from a different module, and the day the regime
+    // widens this line leaks the number with no change here to notice. A guard that holds by
+    // coincidence is not a guard.
+    s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${!c.survivalWithheld && num(c.survival) ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
     const support = [];
     if (c.forces.includes("cliff")) support.push(`the position is thinning fast behind him${num(c.forfeit) ? ` (≈${c.forfeit.toFixed(0)} universal-value points if you wait)` : ''}`);
     if (c.forces.includes("block")) support.push(`it also denies ${c.denialTeam || "a rival"} a real need`);

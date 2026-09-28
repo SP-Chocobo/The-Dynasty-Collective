@@ -1540,11 +1540,39 @@ def _render_pick_metrics(rec) -> None:
         _figure(rec.team_acquisition_value),
         help=note("team_acquisition_value"),
     )
-    metric_row1[3].metric(
-        label("survival_probability"),
-        f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
-        help=note("survival_probability"),
-    )
+    # MANDATE 1.2 / #52 phase 7.1: THE PANEL ASKS.
+    #
+    # `withheld_fields()` names the three quantities that must not reach a person while
+    # SURVIVAL_IS_CALIBRATED is False, and this panel rendered all three. It is the surface
+    # furthest from the gate and the closest to a person: a live Draft Room card reading
+    # "81% survival" with no way for the reader to know the estimate lost to a constant
+    # predictor on two independent arms.
+    #
+    # The survival card does not go blank. It shows the fact that IS true -- the count of picks
+    # before your next turn -- under a label naming it, which is what survival_is_presentable()
+    # said the replacement was from the day it was written. `draft_board_ui` does exactly this
+    # in its focus sentence; this is the same decision on the same board, one surface over.
+    if "survival_probability" in pick_synthesis.withheld_fields():
+        if rec.survival_basis == pick_synthesis.SURVIVAL_NO_NEXT_PICK:
+            # FOUR states, not three (draft_board_ui's own comment): "no next pick" outranks the
+            # withholding policy. Telling someone their estimate is withheld, when the fact is
+            # that they have no further pick in the draft, answers a question they are not in a
+            # position to ask.
+            survival_text = "no next pick"
+        else:
+            survival_text = (str(rec.intervening_picks) if rec.intervening_picks is not None
+                             else "—")
+        metric_row1[3].metric(
+            label("intervening_picks"),
+            survival_text,
+            help=note("intervening_picks"),
+        )
+    else:
+        metric_row1[3].metric(
+            label("survival_probability"),
+            f"{round(rec.survival_probability * 100)}%" if rec.survival_probability is not None else "—",
+            help=note("survival_probability"),
+        )
     metric_row1[4].metric(
         label("positional_cliff"),
         rec.positional_cliff["tier"] if rec.positional_cliff else "—",
@@ -1558,14 +1586,21 @@ def _render_pick_metrics(rec) -> None:
     )
 
     metric_row2 = st.columns(4)
+    # The DERIVED half of the family, and the reason withheld_fields() returns a set rather
+    # than a bool: opportunity_cost is acquisition value times (1 - survival) and
+    # expected_value_of_waiting is universal value times survival. They are the same estimate
+    # in other units, so showing them while hiding the headline number would be suppression in
+    # name only -- SURVIVAL_DERIVED_FIELDS' own docstring says so, and this panel is what it
+    # was written about.
     metric_row2[0].metric(
         label("opportunity_cost"),
-        _figure(rec.opportunity_cost, 1),
+        pick_synthesis.presentable_text("opportunity_cost", _figure(rec.opportunity_cost, 1)),
         help=note("opportunity_cost"),
     )
     metric_row2[1].metric(
         label("expected_value_of_waiting"),
-        _figure(rec.expected_value_of_waiting, 1),
+        pick_synthesis.presentable_text("expected_value_of_waiting",
+                                        _figure(rec.expected_value_of_waiting, 1)),
         help=note("expected_value_of_waiting"),
     )
     metric_row2[2].metric(
@@ -5657,8 +5692,19 @@ elif main_view == DRAFT_VIEW:
                                         alt = debate_result.best_alternative
                                         if alt is not None:
                                             st.markdown(_best_alternative_line(alt))
-                                            alt_survival = f"{round(alt.survival_probability * 100)}%" if alt.survival_probability is not None else "—"
-                                            st.caption(f"Survival: {alt_survival}")
+                                            # MANDATE 1.2. The runner-up's survival, printed
+                                            # after a debate with the same number the card above
+                                            # withholds -- the rule is "on any surface, under any
+                                            # name", and a caption is a surface.
+                                            if "survival_probability" in pick_synthesis.withheld_fields():
+                                                alt_count = alt.intervening_picks
+                                                st.caption(
+                                                    f"Picks until your next turn: {alt_count}"
+                                                    if alt_count is not None else
+                                                    "Picks until your next turn: not established")
+                                            else:
+                                                alt_survival = f"{round(alt.survival_probability * 100)}%" if alt.survival_probability is not None else "—"
+                                                st.caption(f"Survival: {alt_survival}")
 
                                     if debate_result.disagreements:
                                         for d in debate_result.disagreements:

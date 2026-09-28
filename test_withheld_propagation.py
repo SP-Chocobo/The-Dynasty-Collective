@@ -23,10 +23,12 @@ import json
 import unittest
 from unittest import mock
 
+import design_system as ds
 import draft_board_ui as ui
 import pick_debate as pd
 import pick_synthesis as ps
 import screen_context as sc
+import ui_source
 from test_pick_debate import _candidate, _snapshot
 
 #: Deliberately ugly, so a match is this value and not a coincidence of the fixture.
@@ -230,6 +232,96 @@ class TheBoardPayloadShipsThePolicyWithTheValueTests(unittest.TestCase):
                                   pick_header="x", state_tags=[]))
         self.assertIn("survivalWithheld", source)
         self.assertIn("!c.survivalWithheld && num(c.survival)", source)
+
+
+class TheFunctionTheDraftRoomCardsAskTests(_Boundary):
+    """MANDATE 1.2. `presentable_text` is the propagation rule with a return value a widget can
+    take, and this is the value-based half of checking the Draft Room panel: what the call
+    RETURNS, on both arms, with the same sentinel every other boundary here uses."""
+
+    def _render(self, presentable):
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", presentable):
+            return " ".join(ps.presentable_text(field, rendered) for field, rendered in (
+                ("survival_probability", f"{round(SURVIVAL * 100)}%"),
+                ("opportunity_cost", f"{SURVIVAL}"),
+                ("expected_value_of_waiting", f"{SURVIVAL:.2f}"),
+            ))
+
+    def test_no_member_of_the_family_survives_the_call(self):
+        self.assert_honours_the_rule()
+
+    def test_a_field_that_is_not_withheld_passes_through_byte_for_byte(self):
+        """Otherwise the function could be redacting everything, and the test above would pass
+        while the panel showed nothing at all."""
+        self.assertEqual("123.4", ps.presentable_text("universal_value", "123.4"))
+        self.assertEqual("—", ps.presentable_text("universal_value", "—"))
+
+    def test_what_replaces_the_number_is_not_the_absence_contracts_dash(self):
+        """#187: "withheld" and "not measured" are different facts, and a reader told the second
+        about the first assumes the data was missing and reasons around the gap."""
+        self.assertNotIn("—", ps.WITHHELD_CARD_TEXT)
+        self.assertEqual(ps.WITHHELD_CARD_TEXT, ps.presentable_text("survival_probability", "81%"))
+
+    def test_the_reason_exists_as_data_and_says_which_way_the_number_failed(self):
+        """Four surfaces have to say this to a person. One home, so the day calibration passes
+        there is one place to change."""
+        self.assertIn("not missing", ps.WITHHELD_REASON)
+        self.assertIn("calibration", ps.WITHHELD_REASON)
+
+
+class TheDraftRoomPanelAsksTests(unittest.TestCase):
+    """MANDATE 1.2, at the surface the propagation rule had never been asked about: the live
+    Draft Room recommendation panel rendered all three withheld quantities to a person, and
+    printed the runner-up's survival as a caption underneath.
+
+    READ, not called, and that is stated rather than hidden: `app.py` is a Streamlit script whose
+    import executes the page, which is why every app-level guard in this repository is a source
+    check. A source check can prove the panel ASKS; what the answer is, the class above proves by
+    value on both arms. That split is the division of labour, not a substitute for half of it."""
+
+    def setUp(self):
+        self.block = ui_source.block("def _render_pick_metrics(rec)", until="\n\n\ndef ")
+
+    def test_the_survival_card_sits_inside_a_withheld_fields_branch(self):
+        self.assertIn('if "survival_probability" in pick_synthesis.withheld_fields():', self.block)
+        self.assertLess(self.block.index("in pick_synthesis.withheld_fields()"),
+                        self.block.index('label("survival_probability")'),
+                        "the survival card is rendered before the panel asks")
+
+    def test_the_replacement_is_the_measured_pick_count_under_its_own_label(self):
+        """The card does not go blank. survival_is_presentable() named the replacement the day it
+        was written -- intervening_picks, a count rather than an estimate -- and until this repair
+        no Streamlit surface showed it."""
+        self.assertIn('label("intervening_picks")', self.block)
+        self.assertIn("rec.intervening_picks", self.block)
+        self.assertIn("intervening_picks", ds.DISPLAY_CONTRACT)
+        self.assertIn("not an estimate", ds.DISPLAY_CONTRACT["intervening_picks"]["help"],
+                      "the card that replaces an estimate must say it is not one")
+
+    def test_no_next_pick_outranks_the_withholding_policy(self):
+        """FOUR states. Telling someone their estimate is withheld, when the fact is that they
+        have no further pick in this draft, answers a question they are not able to ask."""
+        self.assertIn("SURVIVAL_NO_NEXT_PICK", self.block)
+        self.assertIn("no next pick", self.block)
+
+    def test_both_derived_cards_go_through_the_function(self):
+        """opportunity_cost and expected_value_of_waiting are survival in other units, which is
+        why withheld_fields() returns a set and not a bool."""
+        for field in ("opportunity_cost", "expected_value_of_waiting"):
+            with self.subTest(field=field):
+                self.assertIn(f'presentable_text("{field}"', self.block)
+
+    def test_the_runner_up_caption_asks_as_well(self):
+        """"On any surface, under any name" -- and a caption printed after a debate is a surface.
+
+        The gate must sit in the lines immediately above the caption, not merely somewhere
+        earlier in a 7,000-line file: the panel's own gate is 4,000 lines up, so a whole-file
+        containment check would pass on the unrepaired code."""
+        lines = ui_source.text().splitlines()
+        at = next(i for i, line in enumerate(lines) if "alt_survival = " in line)
+        window = "\n".join(lines[max(0, at - 10):at])
+        self.assertIn("pick_synthesis.withheld_fields()", window,
+                      "the runner-up caption renders survival without asking")
 
 
 if __name__ == "__main__":
