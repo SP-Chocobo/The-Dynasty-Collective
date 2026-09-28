@@ -365,6 +365,16 @@ Six findings, one shape: an instrument reports a number that is not about the th
 
 **Repair:** these are the ruler, not the engine. Fix them before reading any number they produce.
 
+**A seventh, found while filing an unrelated document.** `doc_index.classify` decides a document's
+class from a regex over its first twelve lines, and `SUPERSEDED` is tried before `DECLARED`. The
+standard long-lived-document banner contains the phrase *"a copy goes stale silently"* — so the word
+`stale` in shared boilerplate classifies the document as SUPERSEDED no matter what it says about
+itself. **Six documents match SUPERSEDED on that one boilerplate word while ALSO declaring
+themselves**, including `DRAFT_ROOM_UI.md` and `CDME_CONTRACTS.md`. The index's own summary calls the
+class "a judgement about whether a document tells a cold reader what it is" — and for those six it is
+a judgement about whether they carry the house banner. Same shape as the rest of this item: a number
+that is not about what its name says.
+
 ---
 
 # TIER 1 — production defects that crash, or put a false number in front of a person
