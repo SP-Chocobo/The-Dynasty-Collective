@@ -5272,8 +5272,13 @@ elif main_view == DRAFT_VIEW:
                             # different boards routinely share it. Discarding the analysis
                             # would assert the reader is better off with nothing; stating the
                             # condition lets them read it against the board it actually saw.
+                            # MANDATE 1.7: the live world, so a pool-scope change or a player
+                            # sync is reported rather than passed over. The Mock Draft's scope is
+                            # its own control, which is exactly why the two must not be crossed.
                             mock_stale = pick_debate.staleness_note(
-                                mock_current_debate, md["picks"], merger)
+                                mock_current_debate, md["picks"], merger,
+                                live_pool_scope=st.session_state.mock_draft_pool_scope,
+                                live_players_db=players_db)
                             if mock_stale:
                                 st.warning(mock_stale)
                             mock_rec = mock_current_debate.recommended
@@ -5746,8 +5751,13 @@ elif main_view == DRAFT_VIEW:
                                     st.markdown("---")
                                     # #101, same rule as the Mock Draft site above: a debate
                                     # whose board has moved on is annotated, never hidden.
+                                    # MANDATE 1.7: the gate above is pick_label, which two
+                                    # materially different boards share routinely -- so everything
+                                    # else about the world has to arrive here to be compared.
                                     debate_stale = pick_debate.staleness_note(
-                                        debate_result, draft_picks, merger)
+                                        debate_result, draft_picks, merger,
+                                        live_pool_scope=st.session_state.draft_room_pool_scope,
+                                        live_players_db=players_db)
                                     if debate_stale:
                                         st.warning(debate_stale)
                                     rec = debate_result.recommended

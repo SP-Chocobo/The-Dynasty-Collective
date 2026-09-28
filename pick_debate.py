@@ -740,9 +740,20 @@ class PickDebateResult:
     # deliberately not made here; see ARCHITECTURE_AUDIT.md 11.3a.
     snapshot_picks_consumed: Optional[int] = None
     snapshot_data_freshest_date: Optional[str] = None
+    #: MANDATE 1.7. The other two-thirds of the world, copied off the snapshot this debate
+    #: reasoned over -- see PickSnapshot's own comment on why the two fields above could not see
+    #: a pool-scope change or a player-universe change, and staleness_note therefore reported
+    #: "current" across both.
+    snapshot_pool_scope: Optional[str] = None
+    snapshot_players_db_stamp: Optional[str] = None
 
 
-def staleness_note(result, picks: list[dict], merger) -> Optional[str]:
+def staleness_note(result, picks: list[dict], merger, *,
+                   #: MANDATE 1.7. The LIVE world, from the caller that has it. Optional so an
+                   #: existing caller keeps the behaviour it had -- and absent, the two new
+                   #: comparisons simply do not happen rather than guessing an answer.
+                   live_pool_scope: Optional[str] = None,
+                   live_players_db: Optional[dict] = None) -> Optional[str]:
     """What to say beside a debate result whose board has moved on, or None if it has not.
 
     #101 under the standing absence ruling: ANNOTATE, never discard. PickDebateResult has
@@ -776,6 +787,10 @@ def staleness_note(result, picks: list[dict], merger) -> Optional[str]:
     # reporting "not stale" for a result whose staleness can no longer be evaluated at all.
     current, reason = stamp_is_current(
         result.snapshot_picks_consumed, result.snapshot_data_freshest_date, picks, merger,
+        pool_scope=result.snapshot_pool_scope, live_pool_scope=live_pool_scope,
+        players_db_stamp=result.snapshot_players_db_stamp,
+        live_players_db_stamp=(None if live_players_db is None
+                               else ps.players_db_stamp(live_players_db)),
     )
     if current or not reason:
         return None
@@ -890,4 +905,8 @@ def debate_pick(
         errors=errors, role_providers=dict(role_providers), role_models=dict(role_models),
         snapshot_picks_consumed=snapshot.picks_consumed,
         snapshot_data_freshest_date=snapshot.data_freshest_date,
+        # MANDATE 1.7: off the snapshot, like the two above it. A debate cannot be asked to
+        # know its own world better than the board it was handed does.
+        snapshot_pool_scope=snapshot.pool_scope,
+        snapshot_players_db_stamp=snapshot.players_db_stamp,
     )

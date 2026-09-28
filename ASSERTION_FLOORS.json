@@ -745,6 +745,64 @@
         "early_returns": 0
       }
     },
+    "test_a_held_debate_knows_what_world_it_saw.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 1,
+        "assertIn": 14,
+        "assertIsNone": 4,
+        "assertIsNotNone": 3,
+        "assertNotEqual": 1
+      },
+      "by_method": {
+        "test_a_caller_that_supplies_no_live_world_asks_exactly_what_it_used_to": {
+          "assertIsNone": 2
+        },
+        "test_a_player_universe_change_is_reported": {
+          "assertIn": 1,
+          "assertIsNotNone": 1
+        },
+        "test_a_pool_scope_change_is_reported": {
+          "assertIn": 2,
+          "assertIsNotNone": 1
+        },
+        "test_an_injury_status_change_alone_is_a_different_universe": {
+          "assertIsNotNone": 1,
+          "assertNotEqual": 1
+        },
+        "test_both_call_sites_pass_the_live_pool_scope_and_universe": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
+        "test_build_snapshot_writes_them_from_its_own_arguments": {
+          "assertIn": 2
+        },
+        "test_each_site_passes_its_OWN_scope_control": {
+          "assertIn": 2
+        },
+        "test_the_debate_result_copies_them_off_the_snapshot": {
+          "assertIn": 2
+        },
+        "test_the_existing_two_checks_still_fire_and_still_come_first": {
+          "assertIn": 1
+        },
+        "test_the_same_pool_scope_is_not_reported": {
+          "assertIsNone": 1
+        },
+        "test_the_same_universe_is_not_reported": {
+          "assertIsNone": 1
+        },
+        "test_the_snapshot_declares_both_new_fields": {
+          "assertIn": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {

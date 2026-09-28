@@ -1656,6 +1656,19 @@ class PickSnapshot:
     picks_consumed: Optional[int] = None
     data_freshest_date: Optional[str] = None
     decision_regime: str = "contested"
+    #: MANDATE 1.7. THE REST OF THE WORLD, because the two stamp fields above could not see it and
+    #: `staleness_note` reported "current" across changes that rebuild the board entirely.
+    #:
+    #: `pool_scope` decides WHO IS IN THE POOL (all / rookies_only / veterans_only) and nothing
+    #: carried it, so a debate run over rookies-only was presented as current against an
+    #: all-players board. `players_db_stamp` is the player universe's own fingerprint: a sync that
+    #: changes an injury status moves the board by 24 points (measured) while `data_freshest_date`
+    #: -- the MERGER's date -- does not move at all.
+    #:
+    #: Written by build_snapshot from its own arguments, never by a caller: a stamp a caller
+    #: supplies is a stamp that can disagree with the board it is stapled to.
+    pool_scope: str = "all"
+    players_db_stamp: Optional[str] = None
 
 
 def build_snapshot(
@@ -1901,6 +1914,10 @@ def build_snapshot(
         picks_consumed=len(picks),
         data_freshest_date=merger.freshest_date,
         decision_regime=decision_regime(raw_candidates),
+        # MANDATE 1.7: from this call's OWN arguments. Both are what the board was actually built
+        # from, so neither can drift from it.
+        pool_scope=pool_scope,
+        players_db_stamp=dr._players_db_fingerprint(players_db),
     )
 
 
@@ -2067,9 +2084,26 @@ def snapshot_identity(snapshot: PickSnapshot) -> str:
     return fingerprint(*parts)
 
 
+def players_db_stamp(players_db: dict[str, dict]) -> str:
+    """The player universe's fingerprint, under the one name every staleness consumer uses.
+
+    `draft_room` owns the hashing (it owns the pool build, so it owns what a change to the pool
+    means); this is the name the staleness layer reaches for, so a UI or a debate does not have to
+    reach through two modules for a private function (`#126` -- one home for a vocabulary, and the
+    home is named rather than reached into)."""
+    return dr._players_db_fingerprint(players_db)
+
+
 def stamp_is_current(
     picks_consumed: Optional[int], data_freshest_date: Optional[str],
     picks: list[dict], merger: DataMerger,
+    #: MANDATE 1.7. The rest of the world, optional TOGETHER with their live counterparts so a
+    #: caller holding only the old two-field stamp (a draft-history record written before this)
+    #: asks exactly the question it used to, rather than being told a world changed that it has
+    #: no way to describe. A stamp present with no live value to compare it against is not a
+    #: comparison, and this function does not pretend otherwise.
+    pool_scope: Optional[str] = None, live_pool_scope: Optional[str] = None,
+    players_db_stamp: Optional[str] = None, live_players_db_stamp: Optional[str] = None,
 ) -> tuple[bool, Optional[str]]:
     """The staleness check itself, over a bare INPUT-STATE STAMP rather than a live object.
 
@@ -2093,10 +2127,24 @@ def stamp_is_current(
         )
     if merger.freshest_date != data_freshest_date:
         return False, "the underlying player data changed since this snapshot was built"
+    # MANDATE 1.7, in the order a reader would want them: the scope change is the one a person
+    # made deliberately and can therefore act on, the universe change is the one that happened
+    # underneath them.
+    if (pool_scope is not None and live_pool_scope is not None
+            and pool_scope != live_pool_scope):
+        return False, (f"the player pool was {pool_scope.replace('_', ' ')} when this was built "
+                       f"and is {live_pool_scope.replace('_', ' ')} now")
+    if (players_db_stamp is not None and live_players_db_stamp is not None
+            and players_db_stamp != live_players_db_stamp):
+        return False, ("the player universe changed since this was built (an injury status, a "
+                       "roster move or a status change -- the kind the merger's own date does "
+                       "not move)")
     return True, None
 
 
-def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger) -> tuple[bool, Optional[str]]:
+def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger, *,
+                        live_pool_scope: Optional[str] = None,
+                        live_players_db: Optional[dict] = None) -> tuple[bool, Optional[str]]:
     """(is_current, reason) -- whether this frozen snapshot still describes the live state its
     consumer is about to act on, checked purely by INPUT IDENTITY (the stamp build_snapshot
     wrote), never by recomputing anything. False comes with a plain reason string a UI or
@@ -2105,7 +2153,13 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
     provenance" and "known current" are different claims, same don't-fabricate posture as
     everywhere else in this app."""
     return stamp_is_current(
-        snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger)
+        snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger,
+        # MANDATE 1.7: a live snapshot knows its own pool scope and universe, so the caller does
+        # not have to be told to pass them.
+        pool_scope=snapshot.pool_scope, live_pool_scope=live_pool_scope,
+        players_db_stamp=snapshot.players_db_stamp,
+        live_players_db_stamp=(None if live_players_db is None
+                               else players_db_stamp(live_players_db)))
 
 
 #: Every per-candidate quantity a diff can report a delta for. The team-specific terms come from
