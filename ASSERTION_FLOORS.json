@@ -902,21 +902,27 @@
       }
     },
     "test_a_partial_season_is_not_a_season.py": {
-      "test_methods": 17,
+      "test_methods": 27,
       "asserts": {
-        "assertEqual": 6,
+        "assertEqual": 10,
         "assertFalse": 7,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 7,
+        "assertIn": 19,
         "assertIs": 1,
-        "assertIsNone": 4,
-        "assertIsNotNone": 1,
+        "assertIsNone": 10,
+        "assertIsNotNone": 2,
+        "assertLess": 2,
         "assertNotEqual": 1,
-        "assertNotIn": 1,
+        "assertNotIn": 2,
         "assertTrue": 4
       },
       "by_method": {
+        "test_a_complete_season_says_the_board_is_league_scored": {
+          "assertEqual": 1,
+          "assertIn": 2,
+          "assertIsNone": 1
+        },
         "test_a_complete_sum_prices_untouched": {
           "assertIs": 1,
           "assertIsNone": 1
@@ -924,6 +930,13 @@
         "test_a_failed_week_counts_even_when_nothing_says_how_many_were_wanted": {
           "assertFalse": 2,
           "assertTrue": 1
+        },
+        "test_a_lost_week_count_is_recorded_with_where_the_better_sums_are": {
+          "assertEqual": 3,
+          "assertIsNotNone": 1
+        },
+        "test_a_sync_that_lost_nothing_says_nothing_extra": {
+          "assertNotIn": 1
         },
         "test_a_truncated_sum_is_refused_and_the_weeks_are_named": {
           "assertIn": 4,
@@ -943,15 +956,28 @@
         "test_an_absent_record_is_not_complete": {
           "assertFalse": 2
         },
+        "test_an_incomplete_season_says_what_the_board_fell_back_to": {
+          "assertIn": 3
+        },
         "test_an_outright_error_is_not": {
           "assertFalse": 1
+        },
+        "test_an_outright_failure_is_named_as_one": {
+          "assertIn": 2
         },
         "test_completeness_is_relative_to_what_was_REQUESTED": {
           "assertFalse": 1,
           "assertTrue": 1
         },
+        "test_never_fetched_is_a_state_and_not_an_omission": {
+          "assertIn": 1,
+          "assertIsNone": 2
+        },
         "test_no_call_site_reads_the_raw_sums_any_more": {
           "assertNotIn": 1
+        },
+        "test_no_regression_when_there_is_nothing_worse_about_it": {
+          "assertIsNone": 3
         },
         "test_no_sums_is_silence_not_a_refusal": {
           "assertEqual": 2
@@ -968,11 +994,22 @@
           "assertIn": 1,
           "assertIsNone": 1
         },
+        "test_the_manifest_actually_appends_it": {
+          "assertIn": 1,
+          "assertLess": 1
+        },
+        "test_the_manifest_row_names_the_loss_and_the_file_it_is_in": {
+          "assertIn": 2
+        },
         "test_the_question_is_asked_once_at_page_scope": {
           "assertEqual": 1
         },
         "test_the_refusal_is_shown_and_not_swallowed": {
           "assertIn": 2
+        },
+        "test_the_sync_records_it_on_every_snapshot_it_writes": {
+          "assertIn": 1,
+          "assertLess": 1
         },
         "test_the_truncation_empties_the_top_of_a_superflex_board_of_quarterbacks": {
           "assertEqual": 1,

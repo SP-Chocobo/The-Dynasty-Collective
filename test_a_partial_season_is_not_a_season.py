@@ -23,6 +23,7 @@ this same defect.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 import sleeper_client as sc
 import ui_source
@@ -195,6 +196,114 @@ class ThisActuallyChangesTheBoardTests(unittest.TestCase):
         self.assertIsNotNone(reason)
         self.assertEqual([r["player_id"] for r in self._board(None)[:25]],
                          [r["player_id"] for r in self._board(refused)[:25]])
+
+
+class TheManifestSaysWhetherTheSumsAreWholeTests(unittest.TestCase):
+    """MANDATE 2.1(c). The coverage record existed, said exactly what it needed to say, and reached
+    no surface a person looks at. The manifest listed the SYNC as the freshest input on the page
+    while the sums that sync returned could be nine weeks of eighteen -- and a board priced from
+    those is a different board, measured above at 30 of the top 40 rows.
+
+    Four states, and the row names which it is in. Unconditional, like the players row beside it:
+    an input that is silently missing looks exactly like one that is fine."""
+
+    def _row(self, **snapshot):
+        return sc.season_projection_freshness_entry(snapshot or None)
+
+    def test_a_complete_season_says_the_board_is_league_scored(self):
+        label, season, days = self._row(season_projections=SUMS,
+                                       season_projection_coverage=_coverage(range(1, 19)))
+        self.assertIn("complete", label)
+        self.assertIn("your league's own rules", label)
+        self.assertEqual("2026", season)
+        self.assertIsNone(days, "a projection has no per-day staleness to report")
+
+    def test_an_incomplete_season_says_what_the_board_fell_back_to(self):
+        label, _, _ = self._row(season_projections=SUMS,
+                                season_projection_coverage=_coverage(range(1, 10),
+                                                                    failed=range(10, 19)))
+        self.assertIn("INCOMPLETE", label)
+        self.assertIn("9 of 18", label)
+        self.assertIn("refused rather than priced", label)
+
+    def test_an_outright_failure_is_named_as_one(self):
+        label, _, _ = self._row(season_projections=SUMS,
+                                season_projection_coverage=_coverage([], error="ConnectionError: x"))
+        self.assertIn("FETCH FAILED", label)
+        self.assertIn("ConnectionError", label)
+
+    def test_never_fetched_is_a_state_and_not_an_omission(self):
+        label, season, days = sc.season_projection_freshness_entry(None)
+        self.assertIn("never fetched", label)
+        self.assertIsNone(season)
+        self.assertIsNone(days)
+
+    def test_the_manifest_actually_appends_it(self):
+        """A row nothing adds is a row nobody reads."""
+        app = ui_source.text()
+        self.assertIn("sleeper_client.season_projection_freshness_entry(snapshot)", app)
+        rows = app[app.index("entries.append(sleeper_client.players_freshness_entry())"):]
+        self.assertLess(rows.index("season_projection_freshness_entry"), rows.index("entries.sort("),
+                        "the row is added after the manifest has already been sorted")
+
+
+class ASyncThatCameBackWithLessSaysSoTests(unittest.TestCase):
+    """MANDATE 2.1(b). `_write_snapshot` replaces `_latest.json` unconditionally, so an 18-week sync
+    became a 9-week one with the failure buried in a field nothing read.
+
+    NOTHING WAS DESTROYED -- ten timestamped snapshots per league survive pruning, so the better one
+    is still on disk. What was missing is anything saying so, which made a recoverable loss an
+    invisible one. So the regression is RECORDED and named, and the overwrite is not prevented:
+    refusing it would trade projection freshness for ROSTER freshness, since the same sync carries
+    the rosters, and which staleness a person would rather have is not this function's call."""
+
+    def test_a_lost_week_count_is_recorded_with_where_the_better_sums_are(self):
+        previous = {"synced_at": 1758000000.0,
+                    "season_projection_coverage": _coverage(range(1, 19))}
+        incoming = {"season_projection_coverage": _coverage(range(1, 10), failed=range(10, 19))}
+        regression = sc._coverage_regression(previous, incoming)
+        # Checked before it is indexed, so a regression that stopped being detected fails with a
+        # sentence rather than a TypeError -- a crash signature is a detection, but it reads as a
+        # broken test.
+        self.assertIsNotNone(regression, "a sync that lost nine weeks reported no regression")
+        self.assertEqual(18, regression["weeks_before"])
+        self.assertEqual(9, regression["weeks_now"])
+        self.assertEqual(1758000000.0, regression["previous_synced_at"])
+
+    def test_no_regression_when_there_is_nothing_worse_about_it(self):
+        """Three situations, one answer, and none of them is "not checked": no previous snapshot,
+        a previous one that was no better, and an incoming one that is whole."""
+        whole = {"season_projection_coverage": _coverage(range(1, 19))}
+        self.assertIsNone(sc._coverage_regression(None, whole))
+        self.assertIsNone(sc._coverage_regression({"season_projection_coverage": _coverage([1])},
+                                                  whole))
+        self.assertIsNone(sc._coverage_regression(
+            {"season_projection_coverage": _coverage(range(1, 19))}, whole))
+
+    def test_the_manifest_row_names_the_loss_and_the_file_it_is_in(self):
+        label, _, _ = sc.season_projection_freshness_entry({
+            "season_projections": SUMS,
+            "season_projection_coverage": _coverage(range(1, 10), failed=range(10, 19)),
+            "season_projection_regression": {"weeks_before": 18, "weeks_now": 9,
+                                             "previous_synced_at": 1758000000.0},
+        })
+        self.assertIn("FEWER weeks than the one it replaced (18 -> 9)", label)
+        self.assertIn("still on disk", label)
+
+    def test_a_sync_that_lost_nothing_says_nothing_extra(self):
+        """NON-VACUITY: a row that always warned would be worth nothing."""
+        label, _, _ = sc.season_projection_freshness_entry({
+            "season_projections": SUMS, "season_projection_coverage": _coverage(range(1, 19))})
+        self.assertNotIn("FEWER weeks", label)
+
+    def test_the_sync_records_it_on_every_snapshot_it_writes(self):
+        source = Path("sleeper_client.py").read_text()
+        self.assertIn('snapshot["season_projection_regression"] = _coverage_regression(', source)
+        write_at = source.index("self._write_snapshot(league_id, snapshot)")
+        record_at = source.index('snapshot["season_projection_regression"]')
+        self.assertLess(record_at, write_at,
+                        "the regression must be recorded before the snapshot is written, or the "
+                        "stored copy does not carry it")
 
 
 if __name__ == "__main__":

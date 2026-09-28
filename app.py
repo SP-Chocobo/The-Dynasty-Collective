@@ -1797,6 +1797,13 @@ def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[s
     # cache when a live fetch fails, so "the app is running" never implied "the player universe
     # is current". Unconditional, ABSENT included; sleeper_client owns what each state means.
     entries.append(sleeper_client.players_freshness_entry())
+    # MANDATE 2.1(c): the SUMS the board prices from, not just the sync that fetched them. This
+    # manifest listed the sync as the freshest input on the page while the totals that sync
+    # returned could be nine weeks of eighteen -- and a board priced from those is a different
+    # board (measured: 30 of the top 40 rows move 3+ places). Unconditional, for the same reason
+    # the players row above is: an input that is silently missing looks exactly like one that is
+    # fine. sleeper_client owns what each state means.
+    entries.append(sleeper_client.season_projection_freshness_entry(snapshot))
     entries.sort(key=lambda e: (e[2] is None, e[2]))
     return entries
 

@@ -115,6 +115,86 @@ def players_freshness_entry(
     return (label, as_of.isoformat(), (datetime.fromtimestamp(now).date() - as_of).days)
 
 
+def _coverage_regression(previous: Optional[dict], incoming: dict) -> Optional[dict]:
+    """How much season coverage this sync LOST against the one it is about to replace, or None.
+
+    MANDATE 2.1(b). None means no regression, and that covers three different situations a reader
+    never has to tell apart: there was no previous snapshot, the previous one was no better, or
+    this one is whole. What it never means is "not checked" -- this is computed on every sync, at
+    the one point where both records are in hand.
+
+    Weeks ANSWERED is the comparison, rather than completeness, because the interesting case is
+    quantitative: 18 weeks down to 9 is the loss worth naming, and both being incomplete does not
+    make it not a loss."""
+    if not previous:
+        return None
+    before = (previous.get("season_projection_coverage") or {}).get("weeks_answered") or []
+    after = (incoming.get("season_projection_coverage") or {}).get("weeks_answered") or []
+    if len(after) >= len(before):
+        return None
+    return {
+        "weeks_before": len(before),
+        "weeks_now": len(after),
+        # The file the better sums are still in, so a reader is told where rather than that they
+        # are gone. _write_snapshot names every timestamped snapshot this way.
+        "previous_synced_at": previous.get("synced_at"),
+    }
+
+
+def season_projection_freshness_entry(
+    snapshot: Optional[dict],
+) -> tuple[str, Optional[str], Optional[int]]:
+    """One `build_freshness_manifest` row for the season sums the board prices from.
+
+    MANDATE 2.1(c). The coverage record existed, said exactly what it needed to say, and reached
+    no surface a person looks at: the manifest listed the SYNC as the freshest input on the page
+    while the sums that sync returned could be nine weeks of eighteen. The manifest's whole job is
+    to say how current each input is, and this input's own completeness was missing from it.
+
+    Here rather than at the call site for the reason `players_freshness_entry` is here: the module
+    that owns the record is the one that knows what its states mean, and a row assembled inside
+    `app.py` cannot be tested without importing the page.
+
+    THE DATE IS THE SEASON ASKED FOR, not a fetch time. These are PROJECTIONS for a season, so
+    "how old is this" is not the question a reader has -- "is it whole, and for which season" is.
+    The days column is None for the same reason: there is no per-day staleness to report, and a
+    fabricated 0 there would sort this row above inputs that genuinely are current today.
+    """
+    coverage = (snapshot or {}).get("season_projection_coverage") or {}
+    projections = (snapshot or {}).get("season_projections") or {}
+    season = coverage.get("season")
+    if not projections and not coverage:
+        return ("Sleeper season projections (the league-scored board) — never fetched", None, None)
+    if coverage.get("error"):
+        return (f"Sleeper season projections — FETCH FAILED ({coverage['error']}); the board is "
+                f"priced from the vendor's projection instead of your league's own rules",
+                season, None)
+    answered = coverage.get("weeks_answered") or []
+    requested = coverage.get("weeks_requested")
+    # MANDATE 2.1(b): a sync that came back with LESS than the one it replaced says so here, and
+    # says where the better sums still are. A recoverable loss nobody is told about is an
+    # invisible one.
+    regression = (snapshot or {}).get("season_projection_regression") or {}
+    lost = ""
+    if regression:
+        when = regression.get("previous_synced_at")
+        stamp = (datetime.fromtimestamp(when).strftime("%Y-%m-%d %H:%M")
+                 if isinstance(when, (int, float)) else "an earlier sync")
+        lost = (f" This sync returned FEWER weeks than the one it replaced "
+                f"({regression.get('weeks_before')} -> {regression.get('weeks_now')}); the fuller "
+                f"totals are still on disk in the snapshot from {stamp}.")
+    if season_sum_is_complete(coverage):
+        return (f"Sleeper season projections — {len(answered)} of {requested} weeks, "
+                f"complete; the board is scored under your league's own rules{lost}", season, None)
+    failed = coverage.get("weeks_failed") or []
+    detail = (f"week(s) {', '.join(str(w) for w in failed)} did not answer" if failed
+              else "no coverage record, so nothing establishes that the totals are whole")
+    return (f"Sleeper season projections — INCOMPLETE: {len(answered)} of "
+            f"{requested if requested is not None else '?'} weeks, {detail}. A partial sum is "
+            f"refused rather than priced, so the board falls back to the vendor's "
+            f"projection.{lost}", season, None)
+
+
 class SleeperAPIError(RuntimeError):
     """Raised when the Sleeper API returns an unexpected response."""
 
@@ -636,6 +716,22 @@ class SleeperClient:
             "matchups": matchups,
         }
 
+        # MANDATE 2.1(b): DID THIS SYNC COME BACK WITH LESS THAN THE ONE IT REPLACES?
+        #
+        # `_write_snapshot` replaces `_latest.json` unconditionally, so an 18-week sync became a
+        # 9-week one with the failure buried in a JSON field nothing read -- and the freshness
+        # manifest went on reporting that sync as the freshest input on the page. Nothing was
+        # DESTROYED: ten timestamped snapshots per league survive pruning, so the better one is
+        # still on disk. What was missing is anything saying so, which made a recoverable loss an
+        # invisible one.
+        #
+        # Recorded, not prevented. Refusing the overwrite would trade projection freshness for
+        # ROSTER freshness -- the same sync carries the rosters, and keeping the older snapshot
+        # keeps an older roster too. Which staleness a person would rather have is a product
+        # decision, not one this function should make silently, so it is stated for a reader and
+        # left open.
+        snapshot["season_projection_regression"] = _coverage_regression(
+            self.load_latest_snapshot(league_id), snapshot)
         self._write_snapshot(league_id, snapshot)
         return snapshot
 

@@ -822,7 +822,7 @@ The pattern one pass named, and it is the right frame for this whole tier:
 > their completeness, and the one companion that does exist is written to disk and read by nothing
 > that prices.
 
-## 2.1 A partial projection sum is priced as complete — *three lenses* **[(a) REPAIRED; (b) and (c) next]**
+## 2.1 A partial projection sum is priced as complete — *three lenses* **[REPAIRED — (b) recorded rather than prevented, with the reason]**
 
 `season_projection_coverage` is written by `sleeper_client` and read by **no module that prices**.
 The only consumers are in `sleeper_import_report.py`, a CLI; `grep -c season_projection_coverage
@@ -869,6 +869,32 @@ refusing gives back exactly the vendor board, so what the refusal costs and does
 Completeness is read off the coverage record and is **relative to what was REQUESTED**, deliberately:
 whether a season is 17 weeks or 18 is a separate open question about `REGULAR_SEASON_WEEKS`, and this
 does not need it settled to say whether the fetch it is looking at finished.
+
+### (c) REPAIRED — the manifest names the state the sums are in
+
+The coverage record existed, said exactly what it needed to say, and reached no surface a person looks
+at: the manifest listed the SYNC as the freshest input on the page while the totals that sync returned
+could be nine weeks of eighteen. Four states now have a row — complete, incomplete, fetch failed, never
+fetched — unconditional for the same reason the players row beside it is: an input that is silently
+missing looks exactly like one that is fine. The row's date is the SEASON asked for and its days column
+is `None`, because a projection has no per-day staleness and a fabricated `0` would sort it above
+inputs that genuinely are current today.
+
+### (b) RECORDED, NOT PREVENTED — and this is the part worth reading
+
+`_write_snapshot` replaces `_latest.json` unconditionally, so an 18-week sync became a 9-week one with
+the failure buried in a field nothing read. **Nothing was destroyed:** `SNAPSHOT_HISTORY_KEEP = 10`, so
+the better snapshot is still on disk. What was missing is anything saying so, which made a recoverable
+loss an invisible one.
+
+So the regression is computed on every sync, at the one point where both records are in hand, and the
+manifest row names it: *"This sync returned FEWER weeks than the one it replaced (18 → 9); the fuller
+totals are still on disk in the snapshot from …"*.
+
+**The overwrite itself is not prevented, deliberately.** Refusing it would trade projection freshness
+for ROSTER freshness — the same sync carries the rosters, so keeping the older snapshot keeps an older
+roster too. Which staleness a person would rather live with is a product decision, not one a cache
+writer should make silently. Stated for a reader and left to the owner.
 
 ## 2.2 The league-config gate is unwired — *four lenses* **[VERIFIED]**
 
