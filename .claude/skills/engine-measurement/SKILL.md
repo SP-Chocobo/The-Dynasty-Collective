@@ -228,6 +228,21 @@ couple of minutes and read the file.
   `^python3` excludes it by construction rather than by luck. Confirmed live: the anchored form
   returned exactly one PID where the unanchored form returned three (the job, its launcher, and
   the shell running the check).
+- **A THIRD variant, worse than both, because the match has nothing to do with any job: the
+  pattern can appear as DATA in an unrelated process's arguments.** Anchoring on `^python3` does
+  not help, and neither does the character class. A shell running a heredoc that WRITES a
+  docstring mentioning `invariant_confirmation.py` carries that text in its own command line, so
+  `pgrep -f "invariant_confirmatio[n].py"` matched the editor shell and reported a harness that
+  had already finished as still running. The same shape bit a check on the suite: `ps -eo cmd |
+  grep -q "python3 -m unittest discover"` matches the grep's own line in the `ps` output.
+  Measured cost this session: **three false liveness readings, one of them reported to the owner
+  before it was caught.** The habit that works is to stop pattern-matching command lines for a
+  yes/no answer:
+  - read the PID from the launch (`$!`) and check that one PID, or
+  - match the FULL argv with `ps -eo pid,etime,cmd` and LOOK at the rows, or
+  - decide from the job's own artifact — the output file's summary line and its mtime.
+  A liveness check is a measurement. It gets the same scepticism as any other number here, and
+  the failure mode is the usual one: not a crash, a plausible answer about something else.
 - **Backticks inside `git commit -m "..."` are COMMAND SUBSTITUTION.** A double-quoted message
   quoting a docstring (`` `adjustment` ``, `` `0.0` ``) silently loses everything from the first
   backtick onward, and the commit still succeeds — so the log carries a truncated record while
