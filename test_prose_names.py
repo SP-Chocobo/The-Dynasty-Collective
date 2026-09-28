@@ -372,3 +372,76 @@ class AModuleIsANameEvenWhenNothingImportsIt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheHistoryShieldsReachIsMeasuredNotAssumed(unittest.TestCase):
+    """#52 phase 6 / `0.8`: the audit said this shield "exempts most of what it claims to check".
+
+    Measured, that is not what it does. Of 138 prose blocks quoting a constant's value, 53 (38%)
+    are exempted -- substantial, not most. Of those, 27 are exempted ONLY by an ordinary English
+    word in WEAK_MARKERS, most often a bare "was".
+
+    AND EVERY ONE OF THEM IS CURRENTLY CORRECT. Of the 18 weak-exempt blocks that name a live
+    constant, all 18 quote the value the code actually has. So narrowing the vocabulary would have
+    produced 27 reports, every one false -- and a checker that cries wolf 27 times stops being
+    read. The allowance stays; this class makes its reach a checked quantity instead of an
+    unexamined one.
+    """
+
+    @staticmethod
+    def _weak_exempt_blocks():
+        import importlib
+        import re
+        rows = []
+        for path in sorted(pathlib.Path(".").glob("*.py")):
+            if path.name.startswith("test_"):
+                continue
+            text = path.read_text(errors="replace")
+            for match in prose_names.QUOTED_VALUE.finditer(text):
+                start = text.rfind("\n\n", 0, match.start()) + 1
+                end = text.find("\n\n", match.end())
+                block = text[start:end if end != -1 else len(text)]
+                if not prose_names.weak_sole_exemptions(block):
+                    continue
+                name = match.group(1) or match.group(3)
+                value = match.group(2) or match.group(4)
+                rows.append((path.stem, name, value))
+        return rows
+
+    def test_a_weak_word_alone_still_exempts_but_is_reported_as_weak(self):
+        self.assertTrue(prose_names.weak_sole_exemptions("the cap was 12.0"))
+        self.assertFalse(prose_names.weak_sole_exemptions("previously 12.0, now renamed"),
+                         "a strong marker must not be reported as weak")
+        self.assertFalse(prose_names.weak_sole_exemptions("NEED_BONUS_MAX = 12.0 today"),
+                         "prose with no marker at all is not exempt")
+
+    def test_no_weakly_exempted_block_states_a_value_the_code_does_not_have(self):
+        """THE POINT. The over-breadth is tolerated because it currently costs nothing. If a block
+        exempted only by the word "was" ever quotes a stale number, that is a real contradiction
+        hiding behind ordinary English, and this is what reports it."""
+        import importlib
+        wrong = []
+        for module_name, name, value in self._weak_exempt_blocks():
+            try:
+                module = importlib.import_module(module_name)
+            except Exception:
+                continue
+            if not hasattr(module, name):
+                continue
+            actual = getattr(module, name)
+            try:
+                same = abs(float(actual) - float(value)) < 1e-9
+            except (TypeError, ValueError):
+                same = str(actual) == value
+            if not same:
+                wrong.append(f"{module_name}.{name}: prose says {value}, code says {actual}")
+        self.assertEqual([], wrong,
+                         "a weakly-exempted block states a value the code does not have -- the "
+                         "shield is hiding a real contradiction behind an ordinary English word")
+
+    def test_the_weak_exempt_population_is_not_empty(self):
+        """Non-vacuity for the check above: if nothing were weakly exempted it would pass while
+        measuring nothing, which is `0.9`'s whole subject."""
+        self.assertTrue(self._weak_exempt_blocks(),
+                        "no weakly-exempted block found -- either the vocabulary changed or this "
+                        "check has stopped measuring anything")

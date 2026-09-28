@@ -10656,14 +10656,14 @@
       }
     },
     "test_prose_names.py": {
-      "test_methods": 26,
+      "test_methods": 29,
       "asserts": {
-        "assertEqual": 5,
-        "assertFalse": 5,
+        "assertEqual": 6,
+        "assertFalse": 7,
         "assertGreater": 11,
         "assertIn": 8,
         "assertNotIn": 3,
-        "assertTrue": 17
+        "assertTrue": 19
       },
       "by_method": {
         "test_a_heading_does_not_shield_the_paragraph_beneath_it": {
@@ -10702,6 +10702,10 @@
         "test_a_stem_that_is_not_tracked_is_not_forgiven": {
           "assertNotIn": 1
         },
+        "test_a_weak_word_alone_still_exempts_but_is_reported_as_weak": {
+          "assertFalse": 2,
+          "assertTrue": 1
+        },
         "test_a_wrong_value_is_actually_detected": {
           "assertEqual": 1,
           "assertGreater": 1
@@ -10722,6 +10726,9 @@
         "test_it_reads_a_real_and_substantial_amount_of_prose": {
           "assertGreater": 1,
           "assertTrue": 1
+        },
+        "test_no_weakly_exempted_block_states_a_value_the_code_does_not_have": {
+          "assertEqual": 1
         },
         "test_scientific_notation_is_read_as_one_number": {
           "assertEqual": 1
@@ -10748,6 +10755,9 @@
           "assertTrue": 1
         },
         "test_the_probe_allowance_is_load_bearing_right_now": {
+          "assertTrue": 1
+        },
+        "test_the_weak_exempt_population_is_not_empty": {
           "assertTrue": 1
         },
         "test_the_word_start_rule_is_what_is_actually_running": {

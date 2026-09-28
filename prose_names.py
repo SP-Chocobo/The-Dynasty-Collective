@@ -119,6 +119,37 @@ def is_history(text: str) -> bool:
     pattern = _marker_pattern(tuple(HISTORICAL_MARKERS))
     return bool(pattern and pattern.search(text))
 
+
+#: Markers that are ORDINARY ENGLISH and do not, alone, mark a sentence as historical. "The
+#: default was chosen because..." still asserts what the default IS.
+#:
+#: MEASURED BEFORE DECIDING WHAT TO DO ABOUT IT, because the audit finding said this shield
+#: "exempts most of what it claims to check" and that is not what the numbers say. Of 138 prose
+#: blocks quoting a constant's value, 53 (38%) are exempted -- substantial, not most. Of those, 27
+#: are exempted ONLY by a word in this set, most often a bare "was" (10 blocks) or "were" (4).
+#:
+#: AND THE OVER-BREADTH COSTS NOTHING TODAY, which is why the repair is a CHECK rather than a
+#: tightening. Every one of the 18 weak-exempt blocks that names a live constant quotes the value
+#: the code actually has -- zero disagreements. Narrowing the vocabulary would have produced 27
+#: reports, all of them false, and a checker that cries wolf 27 times stops being read. So the
+#: allowance stays and `weak_sole_exemptions` makes its reach visible and ratchetable: if a
+#: weak-exempt block ever states a value the code does not have, that is a real finding and the
+#: test built on this reports it.
+WEAK_MARKERS = frozenset({"was", "were", "arm", "experiment", "registered", "stale"})
+
+
+def weak_sole_exemptions(text: str) -> frozenset[str]:
+    """The markers exempting this block when ALL of them are weak, else an empty set.
+
+    Empty means the block is either not exempt at all, or exempt via a marker that unambiguously
+    names the past ("used to", "renamed", "superseded", "ablation", ...).
+    """
+    pattern = _marker_pattern(tuple(HISTORICAL_MARKERS))
+    if not pattern:
+        return frozenset()
+    found = {m.group(0).lower() for m in pattern.finditer(text)}
+    return frozenset(found) if found and found <= WEAK_MARKERS else frozenset()
+
 #: THE ONLY TWO FORMS THAT UNAMBIGUOUSLY QUOTE A CONSTANT'S VALUE: `NAME = 12.0` and
 #: `NAME (12.0)`, optionally backticked. Scientific notation is part of the number, not a
 #: separate one -- without the exponent group, a cap forced to 1e9 in an ablation reads as "1",

@@ -3645,8 +3645,17 @@ def compute_draft_board(
     only ever be visible after replacement-level math has already been applied to it. None
     when no real points source exists for that player (the trade_value-fallback case) -- never
     fabricated. mode: "auto" switches to upside scoring once the current round reaches
-    upside_round, "balanced" or "upside" force one or the other regardless of round (the
-    toggle this was built for -- see app.py's Draft Room view). pool_scope: "all" (default),
+    upside_round, "balanced" or "upside" force one or the other regardless of round.
+
+    THERE IS NO SUCH TOGGLE. This read "the toggle this was built for -- see app.py's Draft Room
+    view", and app.py contains no mode toggle at all: it passes no `mode=` to any `build_snapshot`
+    call, so the human's board is ALWAYS balanced and the forcing parameters are reachable only
+    from the battery and from `simulate_opponent_picks`. A docstring pointing a reader at a control
+    that does not exist is worse than silence -- it is the reason `0.5` reads as a surprise rather
+    than as a known gap. Whether the toggle SHOULD exist is an owner question (`#184`); that it
+    does not is a fact, and this is where a reader of this function finds it out.
+
+    pool_scope: "all" (default),
     "rookies_only" (the annual rookie draft), or "veterans_only" -- see
     build_available_pool's docstring; who counts as a rookie is detected from KeepTradeCut's
 
