@@ -1114,27 +1114,38 @@
       }
     },
     "test_arm_rulebook.py": {
-      "test_methods": 12,
+      "test_methods": 19,
       "asserts": {
-        "assertEqual": 7,
+        "assertEqual": 16,
         "assertGreater": 2,
         "assertGreaterEqual": 1,
-        "assertIn": 10,
+        "assertIn": 11,
+        "assertIsNotNone": 1,
         "assertNotIn": 1,
         "assertRaises": 1,
-        "assertTrue": 1
+        "assertTrue": 2
       },
       "by_method": {
+        "test_each_one_has_a_balanced_sibling": {
+          "assertEqual": 1,
+          "assertIsNotNone": 1
+        },
         "test_every_battery_arm_carries_the_real_rulebook": {
           "assertGreater": 1,
           "assertGreaterEqual": 1,
           "assertIn": 1
+        },
+        "test_no_arm_label_is_duplicated": {
+          "assertEqual": 1
         },
         "test_te_premium_still_overlays_without_a_base": {
           "assertEqual": 1
         },
         "test_the_accessor_raises_rather_than_defaulting_to_an_empty_rulebook": {
           "assertRaises": 1
+        },
+        "test_the_arm_states_whether_the_capture_carried_the_flag": {
+          "assertIn": 1
         },
         "test_the_base_never_overrides_the_arms_own_axis": {
           "assertEqual": 1
@@ -1146,8 +1157,14 @@
           "assertIn": 2,
           "assertNotIn": 1
         },
+        "test_the_crossing_population_is_not_empty": {
+          "assertTrue": 1
+        },
         "test_the_driver_refuses_rather_than_warning": {
           "assertIn": 4
+        },
+        "test_the_flag_is_carried_through_when_the_capture_has_it": {
+          "assertEqual": 2
         },
         "test_the_hand_built_idp_arms_get_it_too": {
           "assertGreater": 1
@@ -1158,9 +1175,15 @@
         "test_the_real_rulebook_prices_every_position_that_has_stat_lines": {
           "assertEqual": 1
         },
+        "test_the_sibling_differs_ONLY_in_the_valuation": {
+          "assertEqual": 4
+        },
         "test_the_standard_stub_prices_literally_nobody": {
           "assertIn": 2,
           "assertTrue": 1
+        },
+        "test_what_the_arm_states_and_what_it_hands_the_engine_agree": {
+          "assertEqual": 1
         },
         "test_without_a_base_the_league_is_exactly_what_it_always_was": {
           "assertEqual": 1
@@ -1252,6 +1275,63 @@
         },
         "test_the_real_capture_exists": {
           "assertTrue": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_attached_context_reaches_the_panel.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertFalse": 1,
+        "assertIn": 10,
+        "assertIsNone": 1,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_draft_room_screen_carries_the_pick_and_its_candidates": {
+          "assertIn": 3
+        },
+        "test_an_empty_screen_adds_nothing": {
+          "assertIn": 1
+        },
+        "test_build_context_takes_the_attached_screen": {
+          "assertIn": 1
+        },
+        "test_it_defaults_to_absent_so_every_existing_caller_is_unchanged": {
+          "assertIsNone": 1,
+          "assertTrue": 1
+        },
+        "test_the_body_is_fenced": {
+          "assertIn": 1
+        },
+        "test_the_condense_path_is_the_one_that_does_not": {
+          "assertNotIn": 1
+        },
+        "test_the_instruction_comes_before_the_fence_rather_than_inside_it": {
+          "assertLess": 1
+        },
+        "test_the_instruction_says_to_answer_about_it": {
+          "assertIn": 1
+        },
+        "test_the_seed_is_what_reaches_the_context_not_a_second_rendering": {
+          "assertIn": 1
+        },
+        "test_the_seed_still_honours_the_withheld_family": {
+          "assertFalse": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_trigger_call_site_passes_the_attached_screen": {
+          "assertIn": 1,
+          "assertIsNotNone": 1
         }
       },
       "disabled": {
@@ -9360,13 +9440,13 @@
       }
     },
     "test_pick_debate.py": {
-      "test_methods": 43,
+      "test_methods": 51,
       "asserts": {
-        "assertEqual": 28,
+        "assertEqual": 34,
         "assertGreaterEqual": 1,
         "assertIn": 29,
         "assertIsInstance": 4,
-        "assertIsNone": 6,
+        "assertIsNone": 13,
         "assertIsNotNone": 4,
         "assertNotEqual": 1,
         "assertNotIn": 12,
@@ -9387,6 +9467,9 @@
           "assertIn": 2,
           "assertIsNotNone": 1
         },
+        "test_a_fragment_that_is_not_a_word_of_a_name_resolves_to_nothing": {
+          "assertIsNone": 3
+        },
         "test_a_hallucinated_player_resolves_to_nothing_rather_than_a_guess": {
           "assertIsNone": 1
         },
@@ -9401,10 +9484,20 @@
           "assertEqual": 2,
           "assertIsNotNone": 1
         },
+        "test_a_rejected_name_still_matches_which_is_the_documented_limit": {
+          "assertEqual": 1
+        },
+        "test_a_surname_still_resolves_which_is_what_the_fallback_is_for": {
+          "assertEqual": 2
+        },
         "test_a_survival_only_change_reaches_the_chairs_as_NOTHING": {
           "assertEqual": 1,
           "assertNotIn": 2,
           "assertTrue": 1
+        },
+        "test_a_word_two_candidates_share_refers_to_neither": {
+          "assertEqual": 1,
+          "assertIsNone": 1
         },
         "test_an_unmeasured_comparison_is_named_rather_than_left_silent": {
           "assertIn": 3,
@@ -9456,6 +9549,9 @@
           "assertIn": 1,
           "assertNotIn": 1
         },
+        "test_half_of_a_hyphenated_name_still_resolves": {
+          "assertEqual": 1
+        },
         "test_includes_a_positional_cliff_line_when_present": {
           "assertIn": 1
         },
@@ -9482,6 +9578,9 @@
         "test_omits_the_run_line_when_not_flagged": {
           "assertNotIn": 1
         },
+        "test_one_named_in_full_and_one_by_surname_is_still_two": {
+          "assertIsNone": 1
+        },
         "test_only_the_chair_that_was_cut_off_is_named": {
           "assertNotIn": 2
         },
@@ -9496,6 +9595,9 @@
         },
         "test_skeptic_sees_the_strategists_report_and_caller_sees_both": {
           "assertEqual": 3
+        },
+        "test_the_answer_does_not_depend_on_which_one_the_board_ranks_first": {
+          "assertEqual": 1
         },
         "test_the_parser_did_find_the_fields_so_this_is_not_vacuous": {
           "assertEqual": 1,
@@ -9519,6 +9621,9 @@
         },
         "test_the_two_conditions_do_not_produce_the_same_sentence": {
           "assertNotEqual": 1
+        },
+        "test_two_candidates_named_in_one_line_resolve_to_nothing": {
+          "assertIsNone": 2
         }
       },
       "disabled": {
@@ -15622,21 +15727,34 @@
       }
     },
     "test_withheld_propagation.py": {
-      "test_methods": 14,
+      "test_methods": 23,
       "asserts": {
-        "assertEqual": 3,
+        "assertEqual": 6,
         "assertFalse": 2,
-        "assertIn": 9,
-        "assertNotIn": 4,
+        "assertIn": 20,
+        "assertLess": 1,
+        "assertNotIn": 5,
         "assertTrue": 3,
-        "assert_honours_the_rule": 2
+        "assert_honours_the_rule": 3
       },
       "by_method": {
+        "test_a_field_that_is_not_withheld_passes_through_byte_for_byte": {
+          "assertEqual": 2
+        },
         "test_a_presentable_field_still_diffs_while_the_family_is_withheld": {
           "assertEqual": 1
         },
         "test_a_survival_only_change_produces_no_reportable_delta": {
           "assertEqual": 1
+        },
+        "test_both_derived_cards_go_through_the_function": {
+          "assertIn": 1
+        },
+        "test_no_member_of_the_family_survives_the_call": {
+          "assert_honours_the_rule": 1
+        },
+        "test_no_next_pick_outranks_the_withholding_policy": {
+          "assertIn": 2
         },
         "test_no_placeholder_survived_substitution": {
           "assertNotIn": 1
@@ -15656,11 +15774,20 @@
         "test_the_prompts_name_the_measured_substitute_instead": {
           "assertIn": 1
         },
+        "test_the_reason_exists_as_data_and_says_which_way_the_number_failed": {
+          "assertIn": 2
+        },
         "test_the_refusal_ITSELF_still_reaches_the_chair": {
           "assertIn": 3
         },
         "test_the_renderer_gates_on_the_flag_and_not_on_the_value": {
           "assertIn": 2
+        },
+        "test_the_replacement_is_the_measured_pick_count_under_its_own_label": {
+          "assertIn": 4
+        },
+        "test_the_runner_up_caption_asks_as_well": {
+          "assertIn": 1
         },
         "test_the_same_change_IS_reported_when_the_family_is_presentable": {
           "assertIn": 1
@@ -15669,11 +15796,19 @@
           "assertIn": 1,
           "assertNotIn": 1
         },
+        "test_the_survival_card_sits_inside_a_withheld_fields_branch": {
+          "assertIn": 1,
+          "assertLess": 1
+        },
         "test_the_withheld_estimate_never_reaches_a_chair": {
           "assert_honours_the_rule": 1
         },
         "test_the_withheld_estimate_never_reaches_the_seed": {
           "assert_honours_the_rule": 1
+        },
+        "test_what_replaces_the_number_is_not_the_absence_contracts_dash": {
+          "assertEqual": 1,
+          "assertNotIn": 1
         }
       },
       "disabled": {

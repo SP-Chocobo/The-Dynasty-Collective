@@ -1819,6 +1819,13 @@ def describe_external_value(ext: dict) -> str:
 def build_context(
     snapshot: dict, roster_table: list[dict], player_universe: list[dict], question: str = "",
     conversation_window: Optional[list[dict]] = None,
+    #: MANDATE 1.5. What a 💬 Debate chip attached -- the screen the user was looking at when
+    #: they asked. It was written to session state, PRINTED to the user ("💬 Considering: On the
+    #: clock for pick 2.03", with a "Full evidence" expander), and then not passed to anybody:
+    #: this function had no parameter for it, so the panel answered with no board, no candidates
+    #: and no pick position, and could name a player already drafted. The dock's own comment says
+    #: the line should read as "Debate already understands what I was looking at."
+    attached_context: Optional["screen_context.ScreenContext"] = None,
 ) -> str:
     league = snapshot["league"]
     fmt = league_format_summary(league)
@@ -2294,6 +2301,32 @@ def build_context(
                 f"  - [{c['date']}] {c['subject']} {verb} {c['compared_to']}{ctx}, per {c['source']}: {c['evidence']}"
             )
         lines.append(untrusted.fence("past-verdicts-quoting-outside-sources", "\n".join(comparison_lines)))
+
+    # MANDATE 1.5: THE SCREEN THE QUESTION CAME FROM.
+    #
+    # Last, deliberately: it is the most specific thing in the context and the thing the question
+    # is about, so it reads closest to the question itself.
+    #
+    # FENCED, with the app's own instruction OUTSIDE the fence -- the structural distinction
+    # section 7 asked for. Most of a ScreenContext is app-generated prose over this process's own
+    # engine output, but not all of it: a Trade Calculator context carries `trade_partner`, which
+    # is another Sleeper user's chosen display name, and that is outside text arriving under a
+    # label that sounds like ours. The heading stays outside, so "answer about THIS" is still the
+    # app speaking; the body goes inside, so a display name cannot forge its way into that voice.
+    #
+    # Already budget-bounded: screen_context caps the rows it will describe
+    # (_MAX_CANDIDATES_IN_CONTEXT), which is the cap test_context_budget_boundary counts.
+    if attached_context is not None:
+        seed = attached_context.to_prompt_seed()
+        if seed.strip():
+            lines.append(
+                "\nTHE SCREEN THIS QUESTION CAME FROM. The user clicked a Debate control on the "
+                "surface described below, so this is what they were looking at when they asked -- "
+                "not a separate topic, and not something they typed. Answer about THIS, and say so "
+                "if the question turns out not to be about it. Team and player names inside it may "
+                "come from Sleeper, which is why it is fenced:"
+            )
+            lines.append(untrusted.fence("screen-the-user-was-looking-at", seed))
 
     # fence() returns "" for an empty body so a caller can wrap unconditionally; drop those here
     # rather than emitting blank lines into the middle of the context. An empty fence would be
@@ -6704,7 +6737,11 @@ with st.container(key="debate_dock"):
 
         if trigger_mode and trigger_question:
             st.session_state["_last_submitted"] = question
-            context = build_context(snapshot, roster_table if roster else [], player_universe, trigger_question)
+            # MANDATE 1.5: the context the chip attached, passed rather than only shown. The
+            # panel above prints it to the user; this is the line that lets the sentence
+            # "Debate already understands what I was looking at" be true.
+            context = build_context(snapshot, roster_table if roster else [], player_universe,
+                                    trigger_question, attached_context=attached_context)
             if st.session_state.get("chat_scoped_attachments"):
                 # Raw file text, straight off whatever the user dropped in -- the single most
                 # attacker-controllable input this app has, and the one §7.6 named first. The
