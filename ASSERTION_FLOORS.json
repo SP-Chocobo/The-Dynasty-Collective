@@ -901,6 +901,91 @@
         "early_returns": 0
       }
     },
+    "test_a_partial_season_is_not_a_season.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 6,
+        "assertFalse": 7,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 7,
+        "assertIs": 1,
+        "assertIsNone": 4,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 4
+      },
+      "by_method": {
+        "test_a_complete_sum_prices_untouched": {
+          "assertIs": 1,
+          "assertIsNone": 1
+        },
+        "test_a_failed_week_counts_even_when_nothing_says_how_many_were_wanted": {
+          "assertFalse": 2,
+          "assertTrue": 1
+        },
+        "test_a_truncated_sum_is_refused_and_the_weeks_are_named": {
+          "assertIn": 4,
+          "assertIsNone": 1
+        },
+        "test_a_truncated_sum_prices_a_materially_different_board": {
+          "assertGreaterEqual": 1,
+          "assertNotEqual": 1,
+          "assertTrue": 1
+        },
+        "test_a_whole_season_of_answers_is_complete": {
+          "assertTrue": 1
+        },
+        "test_all_four_price_from_the_guarded_value": {
+          "assertEqual": 1
+        },
+        "test_an_absent_record_is_not_complete": {
+          "assertFalse": 2
+        },
+        "test_an_outright_error_is_not": {
+          "assertFalse": 1
+        },
+        "test_completeness_is_relative_to_what_was_REQUESTED": {
+          "assertFalse": 1,
+          "assertTrue": 1
+        },
+        "test_no_call_site_reads_the_raw_sums_any_more": {
+          "assertNotIn": 1
+        },
+        "test_no_sums_is_silence_not_a_refusal": {
+          "assertEqual": 2
+        },
+        "test_one_failed_week_is_not": {
+          "assertFalse": 1
+        },
+        "test_refusing_gives_back_exactly_the_vendor_board": {
+          "assertEqual": 1,
+          "assertIsNone": 1,
+          "assertIsNotNone": 1
+        },
+        "test_sums_with_no_coverage_record_at_all_are_refused": {
+          "assertIn": 1,
+          "assertIsNone": 1
+        },
+        "test_the_question_is_asked_once_at_page_scope": {
+          "assertEqual": 1
+        },
+        "test_the_refusal_is_shown_and_not_swallowed": {
+          "assertIn": 2
+        },
+        "test_the_truncation_empties_the_top_of_a_superflex_board_of_quarterbacks": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {

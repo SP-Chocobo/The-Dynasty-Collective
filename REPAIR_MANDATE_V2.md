@@ -822,7 +822,7 @@ The pattern one pass named, and it is the right frame for this whole tier:
 > their completeness, and the one companion that does exist is written to disk and read by nothing
 > that prices.
 
-## 2.1 A partial projection sum is priced as complete — *three lenses* **[VERIFIED: root cause only]**
+## 2.1 A partial projection sum is priced as complete — *three lenses* **[(a) REPAIRED; (b) and (c) next]**
 
 `season_projection_coverage` is written by `sleeper_client` and read by **no module that prices**.
 The only consumers are in `sleeper_import_report.py`, a CLI; `grep -c season_projection_coverage
@@ -843,6 +843,32 @@ freshness manifest reports that sync as the freshest input on the page.
 **Repair, in this order:** (a) make the board refuse to price from an incomplete sum, or mark every
 row that rests on one; (b) do not let a failed fetch replace a good snapshot; (c) surface coverage in
 the freshness manifest. (a) is the one that stops a wrong board.
+
+### (a) REPAIRED — the board refuses
+
+`_sum_weeks`' own docstring had already framed it: "a caller that wants to reject thin coverage can;
+one that drops the second element has made that choice visibly rather than by accident." Every caller
+that PRICED dropped it, at four call sites.
+
+`sleeper_client.priceable_season_projections` is now the one home for "what may price a board", asked
+once for the page, and the refusal and its reason come back together — a board that quietly stops being
+league-scored is the other half of this same defect, so the Draft Room states the condition rather than
+toasting it.
+
+**REFUSE, not re-rank.** Placing a partial sum in the confidence order would need a number for what a
+truncated season is worth, and nobody has derived one (`#56`). Refusing returns the board to what it
+was before `#180` — the vendor's complete season projection, a defensible number — while pricing from
+the truncation cannot be defended at all.
+
+**Measured on the committed capture** rather than quoted from the finding: summing only weeks 1–9 and
+pricing a superflex board from it moves **30 of the top 40 rows 3+ places**, changes the leader
+(Jahmyr Gibbs 241.66 → Bijan Robinson 113.93), and takes quarterbacks in the top ten from **3 to 0** —
+with `bpa_source`, `replacement_basis` and `absence_kind` unchanged on every row. A test also pins that
+refusing gives back exactly the vendor board, so what the refusal costs and does not cost is recorded.
+
+Completeness is read off the coverage record and is **relative to what was REQUESTED**, deliberately:
+whether a season is 17 weeks or 18 is a separate open question about `REGULAR_SEASON_WEEKS`, and this
+does not need it settled to say whether the fetch it is looking at finished.
 
 ## 2.2 The league-config gate is unwired — *four lenses* **[VERIFIED]**
 

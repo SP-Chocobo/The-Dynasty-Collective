@@ -3662,6 +3662,17 @@ if st.session_state.leagues:
                         notify("error", f"Couldn't reach Sleeper: {exc}")
 
 snapshot = st.session_state.league_snapshot
+
+#: MANDATE 2.1(a). WHAT MAY PRICE A BOARD, asked once for the whole page rather than at each of the
+#: four call sites that pass season sums into an engine. A truncated sum outranks the vendor's
+#: complete season projection everywhere (`_derive_points_and_source` gives the season basis
+#: precedence), and with weeks 10-18 missing that moved 39 of the top 40 rows by 3+ places with no
+#: field on any row saying anything had changed.
+#:
+#: The refusal and its reason come back together, and `_season_sum_refusal` is rendered by the views
+#: that price -- a silent fallback to vendor-only is the other half of this same defect.
+_priceable_season_sums, _season_sum_refusal = sleeper_client.priceable_season_projections(snapshot)
+
 if not snapshot:
     st.title("Fantasy Football Command Center")
     st.info("Sync a Sleeper username and select a league in the sidebar to get started.")
@@ -4838,6 +4849,11 @@ elif main_view == DRAFT_VIEW:
     # snapshot's candidates -- it never changes what pick_synthesis narrowed to or what
     # pick_debate actually reasons over).
     st.subheader("Draft Room")
+    # MANDATE 2.1(a): said here, because this is the view whose numbers change. Not a toast --
+    # a board priced off the vendor instead of the league's own rules is a standing condition of
+    # this page until the next sync, not an event.
+    if _season_sum_refusal:
+        st.warning(_season_sum_refusal)
     st.session_state.setdefault("draft_room_picks_by_draft", {})
     #: MANDATE 1.4. WHEN the picks in that cache were pulled, per draft. Without it the view has
     #: no way to tell "no picks have been made" from "nobody ever asked Sleeper", and it was
@@ -5056,7 +5072,7 @@ elif main_view == DRAFT_VIEW:
                         # #253: the mock's rivals price the way the live Draft Room does.
                         # season_projections is per-player and carries no league, so the synced
                         # dict is valid against the mock's own scoring_settings unchanged.
-                        sleeper_projections=(snapshot.get("season_projections") or None),
+                        sleeper_projections=_priceable_season_sums,
                         sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                         # #30. The per-week lines behind that sum, from the same fetch. The
                         # board derives K/DEF's streaming replacement floor from them; absent,
@@ -5139,7 +5155,7 @@ elif main_view == DRAFT_VIEW:
                         # #253: rebuilding an earlier board must price it the same way the board
                         # being corrected was priced, or the correction is against a different
                         # ranking than the pick it is revisiting.
-                        sleeper_projections=(snapshot.get("season_projections") or None),
+                        sleeper_projections=_priceable_season_sums,
                         sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                         # #30. The per-week lines behind that sum, from the same fetch. The
                         # board derives K/DEF's streaming replacement floor from them; absent,
@@ -5203,7 +5219,7 @@ elif main_view == DRAFT_VIEW:
                             # not an offline caller. Without this it built a 256-priced board
                             # where the Draft Room builds 481 on the same league, and the
                             # draft-horizon layer went dark from round 10 of 15 as a result.
-                            sleeper_projections=(snapshot.get("season_projections") or None),
+                            sleeper_projections=_priceable_season_sums,
                             sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                             # #30, same fetch as the season sum above.
                             weekly_projections=(snapshot.get("weekly_projections") or None),
@@ -5609,7 +5625,7 @@ elif main_view == DRAFT_VIEW:
                                 league=league_for_engine,
                                 pick_label=pick_label,
                                 pool_scope=st.session_state.draft_room_pool_scope,
-                                sleeper_projections=(snapshot.get("season_projections") or None),
+                                sleeper_projections=_priceable_season_sums,
                                 sleeper_basis=draft_room.SLEEPER_BASIS_SEASON_SUM,
                                 # #30, same fetch as the season sum above.
                                 weekly_projections=(snapshot.get("weekly_projections") or None),

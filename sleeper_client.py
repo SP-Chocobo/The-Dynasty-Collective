@@ -825,6 +825,79 @@ def write_baseline_projection_csv(rows: list[dict], path: Path) -> Path:
     return path
 
 
+def season_sum_is_complete(coverage: Optional[dict]) -> bool:
+    """Whether a season-sum coverage record describes a WHOLE season of answers.
+
+    MANDATE 2.1. `_sum_weeks`' own docstring says "a caller that wants to reject thin coverage
+    can; one that drops the second element has made that choice visibly rather than by accident"
+    -- and every caller that PRICES dropped it. `season_projection_coverage` was written by this
+    module and read by no module that prices: `grep -c season_projection_coverage app.py` returned
+    0, and its only consumers were in a CLI.
+
+    Complete means every week that was REQUESTED answered, and at least one was. Relative to the
+    request, deliberately: what a season is (whether week 18 counts) is a separate, open question
+    about `REGULAR_SEASON_WEEKS`, and this function does not need it settled to say whether the
+    fetch it is looking at finished.
+
+    ABSENT IS NOT COMPLETE. A missing or empty record means nothing established that the sum is
+    whole, and #187's rule applies to a completeness claim exactly as it does to a number."""
+    if not coverage:
+        return False
+    if coverage.get("error"):
+        return False
+    answered = coverage.get("weeks_answered") or []
+    requested = coverage.get("weeks_requested")
+    if not answered:
+        return False
+    if coverage.get("weeks_failed"):
+        return False
+    return requested is None or len(answered) == int(requested)
+
+
+def priceable_season_projections(snapshot: Optional[dict]) -> tuple[Optional[dict], Optional[str]]:
+    """The season sums a board MAY price from, and the reason when it may not.
+
+    MANDATE 2.1(a). `_derive_points_and_source` gives a season-summed total precedence over the
+    vendor's complete season projection EVERYWHERE, because a league-scored season number is the
+    better answer -- when it is a season. With weeks 10-18 failing it is not, and the measured
+    result was 39 of the top 40 rows moving 3+ places, Jayden Daniels 31 -> 321 with
+    universal_value 107.34 -> -38.42, quarterbacks clearing the startable floor falling 31/355 to
+    10/355, and the top ten of a SUPERFLEX board containing no quarterbacks at all -- with
+    `bpa_source`, `replacement_basis` and `absence_kind` unchanged on every row.
+
+    REFUSE, rather than price it with a lower confidence. A partial sum understates every player
+    by the weeks it is missing, and placing it in the confidence order would need a number for how
+    much a truncated season is worth, which nobody has derived (`#56`). Refusing costs the
+    league-scoring benefit for this sync and returns the board to exactly what it was before
+    `#180` -- a defensible number -- while pricing from the truncation cannot be defended at all.
+
+    THE REASON TRAVELS WITH THE REFUSAL, because a silent fallback is the other half of this same
+    defect: the board would quietly stop being league-scored and nothing would say so. A caller
+    shows the string."""
+    coverage = (snapshot or {}).get("season_projection_coverage")
+    projections = (snapshot or {}).get("season_projections") or None
+    if projections is None:
+        return None, None
+    if season_sum_is_complete(coverage):
+        return projections, None
+    failed = (coverage or {}).get("weeks_failed") or []
+    error = (coverage or {}).get("error")
+    if error:
+        detail = f"the projection fetch failed outright ({error})"
+    elif failed:
+        weeks = ", ".join(str(w) for w in failed)
+        detail = (f"week(s) {weeks} did not answer, so the season totals are a sum of "
+                  f"{len(((coverage or {}).get('weeks_answered') or []))} weeks, not a season")
+    else:
+        detail = "no coverage record accompanies them, so nothing establishes that they are whole"
+    return None, (
+        f"This board is NOT scored under your league's own rules: {detail}. A partial sum "
+        f"understates every player by the weeks it is missing, so it is refused rather than "
+        f"priced, and the board falls back to the vendor's complete season projection. Re-sync "
+        f"this league to restore league scoring."
+    )
+
+
 def find_roster_for_user(rosters: list[dict], user_id: str) -> Optional[dict]:
     for roster in rosters:
         if roster.get("owner_id") == user_id:
