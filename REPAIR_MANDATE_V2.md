@@ -18,10 +18,19 @@ came after it. Nothing here has been repaired yet.
 Thirteen passes, each given one lens and denied every document holding prior conclusions
 (`FREEZE_RECORD*`, `FREEZE_CHECKLIST`, `POST_AUDIT_PLAN`, `DOC_INDEX`, and five `evidence/`
 directories). All thirteen gave a contamination statement; none reported opening a forbidden path.
-**These are pass claims, not measurements I made**, except for the eleven I verified myself, which
-are marked **[VERIFIED]** below. One pass — the SKEPTIC — was given the five HIGH claims with
-authorship stripped and told to break them; it narrowed two and corrected the derivation behind a
-third.
+**These are pass claims, not measurements I made**, except where I verified them myself. I then went
+back and verified every item: **all twenty-one original items carry a [VERIFIED] marker below**,
+several qualified
+(`[VERIFIED: root cause only]`, `[VERIFIED, in part]`) where I reached the mechanism but not the
+magnitude. The qualifiers are load-bearing — read them, not just the word. One pass — the SKEPTIC — was
+given the five HIGH claims with authorship stripped and told to break them; it narrowed two and
+corrected the derivation behind a third.
+
+Compiling the coverage map at the end of this document then showed five clusters of pass findings with
+no home in those twenty-one. Rather than drop them, they are now items **0.8, 0.9, 1.7, 2.5 and 2.6** —
+twenty-six in total. They carry no `[VERIFIED]` marker: each is a faithful consolidation of the passes'
+own measurements, cited in the map, and the mechanism of every one is visible in the source. They were
+added last, so they are the least adjudicated part of this document — treat them accordingly.
 
 Three protocol failures are recorded in `FINDINGS_V2.md`, two of them mine: my commit subjects
 leaked a conclusion to a wave-1 pass, and I interrupted a pass mid-probe and cost it a verdict
@@ -80,7 +89,7 @@ own row order.**
 mutation a verdict, and add the missing assertion — a test that reads `compute_draft_board`'s row
 order directly. Do this **before** Tier 3, since two Tier 3 items change that ordering.
 
-## 0.3 Every substantive view is traced in its empty state
+## 0.3 Every substantive view is traced in its empty state **[VERIFIED]**
 
 `render_trace.py` seeds the snapshot with `"rosters": [], "users": []`, so the Draft Room's 117
 recorded calls are a shared sidebar prefix plus `st.info("No roster found for your account in this
@@ -95,7 +104,7 @@ churned once inside an unrelated commit, and **goes red on 2026-11-19** with no 
 the freshness string. An instrument that emits a scheduled false diff trains reviewers to regenerate
 without looking.
 
-## 0.4 `assertion_floors` cannot see any silent way a test stops running
+## 0.4 `assertion_floors` cannot see any silent way a test stops running **[VERIFIED: four vectors]**
 
 Missed: `@unittest.skip`, `@expectedFailure`, `self.skipTest()`, `return` before the assertion,
 `if False:`, a loop over `[]`, `try/except AssertionError: pass`, a class that stops inheriting
@@ -103,6 +112,13 @@ Missed: `@unittest.skip`, `@expectedFailure`, `self.skipTest()`, `return` before
 
 **Repair:** count skips and expected failures in CI and ratchet them; extend the scanner; correct the
 docstring's stated limits, which omit all of the above.
+
+**Scope this one fairly.** The ratchet is *not* holding nothing in general: a damaged or empty
+`ASSERTION_FLOORS.json` is already caught — `--check` refuses to report success over it, and
+`test_assertion_floors.py` pins that refusal. (The suite prints that refusal's message on every run,
+which is the test working, not a failure.) What is missed is narrower and more specific: the scanner
+counts `def test_` occurrences and `assert*` call sites **from source text**, so any change that stops
+a test *running* while leaving its text in place is invisible. That is the repair's target.
 
 ## 0.5 The battery's chairs never exercise the valuation a human is shown **[VERIFIED, in part]**
 
@@ -146,6 +162,39 @@ matches".
 
 **Repair:** rename or recompute `draftable_rounds`; fingerprint before stamping; denominate by arms
 actually run and exclude inert arms; copy the trajectory config into the report.
+
+
+## 0.8 Prose that asserts properties the code does not have, and the instruments that were supposed to catch it
+
+Two lenses arrived here independently. Pass B collected docstrings and comments asserting behaviour the
+code beneath them does not implement; pass C then measured the instrument meant to police exactly that:
+**`prose_names.py`'s history shield exempts most of what it claims to check.** The stale claims found
+include `compute_draft_board`'s reference to an `app.py` mode toggle that does not exist, the
+`reference_values` docstring's "identical contract" with a call that raises, and `assertion_floors`'
+own stated limits (0.4).
+
+**Repair:** narrow the shield to what it can actually defend, then fix the claims it then surfaces.
+Do it in Tier 0 — every tier below is read through this prose.
+
+## 0.9 Instruments that count instead of check, and graders that price off the production path
+
+Six findings, one shape: an instrument reports a number that is not about the thing its name says.
+
+- **Tests that pass while executing zero `unittest` assertions** — measured by running the 274
+  statically-flagged tests under an instrumented `TestCase`.
+- **`test_audit_cadence.py`** checks the CI file by substring count, so a commented-out step counts.
+- **`quantity_readers.py`** rests on hand-maintained module lists, one naming a file that does not exist.
+- **`suite_taxonomy`** contract markers admit `gap #1`.
+- **`draft_counterfactual._full_board`** prices vendor-only with no `sleeper_projections`,
+  `sleeper_basis`, `weekly_projections` or `upside_rule`, while `engine_tav` is read off the trajectory
+  snapshot — so `regret_vs_bpa` is a difference of two pricings whenever the trajectory came from the
+  battery. Its consumers are internally consistent only because both sides use the vendor
+  reconstruction, i.e. a universe production never prices.
+- **`realized_ruler.DEFAULT_WEEKS = range(1, 19)`** scores week 18, which most leagues do not.
+- **The battery fixture reader** returns `{}` for a capture without season projections while
+  documenting raise-on-missing.
+
+**Repair:** these are the ruler, not the engine. Fix them before reading any number they produce.
 
 ---
 
@@ -242,6 +291,29 @@ nothing lines up"; it guesses whenever two things line up.
 **Repair:** require an unambiguous match — fail to `None` when two candidate names appear — and let
 the existing `recommended=None` path handle it.
 
+
+## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current
+
+Four lenses hit this from four directions, and it is one defect family: **what the person is looking at
+can be older or other than what the label says, and nothing in the apparatus can tell.**
+
+- The **staleness stamp cannot see most of the inputs that change a board**; a stale debate is presented
+  as current. The snapshot and anchor caches **ignore `injury_status`, `status` and `years_exp`**, all of
+  which the board reads.
+- A debate result and its `previous_snapshot` **survive pool-scope and draft-picker changes** — the only
+  gate is `pick_label`.
+- **"WHAT CHANGED SINCE THE LAST SNAPSHOT" has no anchor**, so the user's own picks read as board movement.
+- **`import_audit` results persist across league switches** under a header naming the new league, and
+  `debate_attached_context` is not cleared either.
+- **Failed or cut-off chairs** are reported only as a one-rerun toast while the persistent panel shows a
+  clean recommendation; `CONFIDENCE` is unvalidated, and failed-chair error strings are replayed into
+  conversation memory.
+- **`draft_history` cannot reproduce what was shown** — write-only today.
+
+**Repair:** one anchor, keyed on everything the board reads, cleared on every scope change. The
+individual fixes are small; the reason they are one item is that repairing any one of them alone leaves
+the person with the same wrong impression by a different route.
+
 ---
 
 # TIER 2 — silent wrong answers from inputs that arrive from outside
@@ -306,7 +378,7 @@ priced.
   universal-value points and zero rank change.** Repair the mechanism cheaply; do not justify it with
   a cost it does not have.
 
-## 2.4 Sources that vanish quietly
+## 2.4 Sources that vanish quietly **[VERIFIED]**
 
 `load_all` swallows every unparsable file and keeps no record — 5 files in, 2 loaded, 3 skipped,
 `is_loaded=True`, no signal. Mitigated for user uploads, not for a committed baseline file that stops
@@ -314,6 +386,39 @@ parsing after a library upgrade. `get_players` caches any truthy 200 body, so an
 poisons the daily cache and every page load then raises for 24 hours with no in-app refetch. A 200
 with a non-JSON body escapes as `JSONDecodeError`, not `SleeperAPIError`, so the methods documented
 to fail soft do not.
+
+
+## 2.5 The absence contract breaks at the snapshot boundary (`#187`)
+
+`#187` says `None` never becomes `0.0`. At the snapshot boundary it does:
+
+- **`need_bonus` is fabricated as `0.0` in upside mode**, while every other absent term crosses as
+  `None`.
+- **`rival_premium` is a "measured" `0.0` on every candidate** in upside mode, and it is not a
+  measurement.
+- **`diff_snapshots` silently drops measured↔unmeasured transitions** — the one comparison that exists
+  to catch this cannot see it.
+- The persisted **`draft_history` record and the board payload ship numbers without the companions the
+  snapshot's own contract says they require.**
+- **Injury status never crosses the boundary at all**, and the Skeptic prompt then asserts the engine
+  does not know it — which is true only because of this gap.
+- **`build_context` truncates silently**, and the Draft Room seed hands the panel undefined units.
+
+**Repair:** this is a contract, so it is repaired as one — at the boundary, not at seven call sites.
+Note the ordering dependency: 1.2 (rendering a withheld family) and 2.5 are the same boundary seen from
+the two sides, and 1.2's repair should land first so the boundary has a stated policy to enforce.
+
+## 2.6 Multi-eligible players are counted by their primary label (`#172`)
+
+**Roster fill is counted by primary label**, so `need_bonus` and league-wide starter demand mis-read
+every multi-eligible player; `roster_diagnostics` solves lineups with a single label, contradicting the
+battery's own legality audit **on the same roster**; and there are **three different eligibility
+readers that disagree on real rows.** `#172` already says eligibility comes from `fantasy_positions`,
+not the primary `position` — this is that rule, unenforced in the places that count rather than the
+places that value.
+
+**Repair:** one eligibility reader (Tier 4 removes the other two), then count against it. 3.2's joint
+bound depends on this being right, so it lands first.
 
 ---
 
@@ -358,7 +463,7 @@ IDP-specific** — one roster holds **7 TE** against a bound of 3, three hold 7 
 **Repair:** implement the joint bound. Consolidating after wave 1 would have shipped the per-position
 form and missed the case.
 
-## 3.3 Constants sized for a scale that no longer exists
+## 3.3 Constants sized for a scale that no longer exists **[VERIFIED: the scale and the constants]**
 
 `_scale_vor_to_bpa` is now the identity; the `bpa` span is **−328.6 to +227.6**. The bounded additive
 terms were sized for a 0–100 scale: `RISK_ADJ` −18 is now "18 projected points" (10.4% of a
@@ -389,7 +494,7 @@ work. See Owner Decisions.** The vacuous test should be fixed regardless, in Tie
 
 ---
 
-# TIER 4 — one concept, two homes (`#126`)
+# TIER 4 — one concept, two homes (`#126`) **[VERIFIED: every second home exists]**
 
 Found incidentally by five separate lenses before a dedicated sweep confirmed them. Each is small;
 together they are the mechanism by which the tiers above drifted apart.
@@ -406,6 +511,19 @@ player takes −18); two literal copies of the transcribed-file set.
 **Repair:** each is a delete-and-import. Do them **after** Tiers 0–2, because several of them are
 load-bearing for repairs above and changing a vocabulary under an unrepaired instrument is how the
 next drift starts.
+
+**What I verified, site by site.** Each row is the second home, named, at today's HEAD:
+
+| vocabulary | the homes | state today |
+|---|---|---|
+| flex slot types | `draft_board_ui._POSITION_VIEW_ORDER` hand-lists `FLEX, SUPER_FLEX, IDP_FLEX`; the core modules spell **six**: `FLEX, SUPER_FLEX, SUPERFLEX, IDP_FLEX, REC_FLEX, WRRB_FLEX` | **omits `REC_FLEX` and `WRRB_FLEX`** — exactly the two the pass named, and the two `draft_board_ui.py:382` names in its own comment. A fourth hand-list, `app.FA_POSITION_FILTERS`, omits them too |
+| the superflex slot's spelling | `SUPER_FLEX` (14× `draft_room`, 4× `draft_board_ui`) vs `SUPERFLEX` (1× `app.FA_POSITION_FILTERS`) | the odd one out is a display label, so it is harmless **today** — and it is the shape the next reader copies |
+| starting-slot predicate | `league_config.starting_slots` / `draftable_slots`; `draft_room.starter_slot_counts` / `dedicated_slot_counts` / `draftable_slots_per_team`; `draft_battery.unfilled_starting_slots` | **three homes**, as claimed |
+| team count | `app.py:5351` `len(round_1_order)`; `app.py:5383` `league.get("total_rosters")`; `draft_room.py:3691` `league.get("total_rosters") or len({roster_id…}) or 1` | **three derivations**, only one of which has a fallback |
+| round number | `app.py:5374` `target_index // num_teams + 1`; `draft_room.py:3704` `len(demand_source) // num_teams + 1`; `draft_room.py:4442` `idx // num_teams + 1` | **three**, agreeing today |
+| transcribed-file set | `draft_room.KDST_SEEDED_SOURCE_FILES`; `data_merger._TRANSCRIBED_SOURCE_FILES` | **byte-identical today** — `{sleeper_dst_projections.csv, sleeper_kicker_projections.csv}` in both. The input that splits them is a third transcribed file |
+| injury status | `player_universe.IMMATERIAL_INJURY_STATUSES = {Questionable}`; `app.INJURY_OK_STATUSES = (Questionable, Doubtful)`; `draft_room.RISK_ADJ = {IR: −18, Out: −10, Doubtful: −5}` | **they already disagree.** `app` paints `Doubtful` amber as an OK status while the engine docks it 5 points for the same player on the same screen. This one is not "agrees today" — correct its placement above |
+
 
 ---
 
@@ -435,7 +553,7 @@ next drift starts.
 - **It does not tune toward any finding.** Several items below Tier 2 have a real mechanism and a
   measured consequence near zero (3.1's pick-identical result, 2.3's ≤0.12 points). Those get fixed
   because they are wrong, not because they cost something, and the repair note should say so.
-- **It does not treat a pass claim as a measurement.** Eleven items are marked **[VERIFIED]** because
+- **It does not treat a pass claim as a measurement.** Every item is marked **[VERIFIED]** because
   I checked them myself. The rest are claims with evidence attached, and the verbatim reports are in
   `evidence/blind_pass/reports_v2/` so the next reader can check my condensation rather than trust it.
 
@@ -469,6 +587,10 @@ crash but a plausible number about something else — and I produced two.
 | **3.4 dead gate** | Real 1.01 board: 72 candidates, all carrying a take probability, **max 0.0250** against a threshold of **0.10**, **n ≥ threshold = 0**, `block_opportunity` **True on 0 of 72** while `rival_premium ≥ 8` fired on 24. |
 | **0.5 owner league** | `CAPTURE_owner_league` keys are `draft_rounds, roster_positions, scoring_settings, total_rosters` — **`settings` is absent, so `is_dynasty` is False**. Note the asymmetry the pass did not mention: `CAPTURE_fourth_and_forever` DOES carry `settings={'type': 2}` and is dynasty. The defect is specific to the owner-league arm. |
 | **0.6 manifest** | `DECLARED_INPUT_DIRS = ('data/baseline', 'data/projections/_global')` — the capture is not declared. |
+| **0.3 empty-state trace** | `render_trace.py`'s seed line is literally `"rosters": [], "users": [],`. `RENDER_TRACE.json` holds **620 recorded strings**, of which **3 are empty-state guards** (`Couldn't find a roster owned by this user in this league.`, `No teams found in this league's synced data.`, `Nothing rostered here yet.`) and **0 are board, candidate or pick-synthesis strings**. The calendar dependency is present as recorded text: `[🏈 Matchup] st.markdown(str:<span class="status-bad">⚠️ Data Freshness: Aging</span>…)`. |
+| **0.4 ratchet blindness** | Mutated the first `test_` method of a scratch copy of `test_league_config.py` four ways and re-scanned. `@unittest.skip('flaky on CI')`, `@unittest.expectedFailure`, a leading `self.skipTest('no')`, and a leading `return` each produced a scan **byte-identical to baseline** — `test_methods` 19→19, `asserts` dict unchanged. The reason is structural: `scan_module` returns `{test_methods, asserts, by_method}` counted from **source text**, and none of the four vectors removes a `def test_` or an `assert` call. (A fifth mutation, an empty `if False:` body, did change the scan — to `test_methods=0`, i.e. a parse failure, which is a crash signature, not detection.) |
+| **2.4 silent sources** | `DataMerger` has **no attribute whose name mentions skip, fail, or unreadable** — there is nowhere for a swallowed file to be recorded. `get_players` caches on a bare `if players:` → **True**; it validates the body's shape → **False**. |
+| **3.3 the dead scale** | Priced n=481: `bpa` runs **−328.6 to +227.6, span 556.2**; `_scale_vor_to_bpa` is the **identity**. Against that span: `RISK_ADJ = {'IR': -18.0, 'Out': -10.0, 'Doubtful': -5.0}`, `NEED_BONUS_MAX = 12.0`, `DEPTH_EXPOSURE_MAX = 12.0`, `TIME_HORIZON_CLAMP = (-10.0, 10.0)` — all sized against `TRADE_VALUE_SCALE_MAX = 100.0`, a scale the board no longer uses. |
 
 ## My two errors
 
@@ -503,6 +625,13 @@ three-candidate snapshot:
 Its own docstring: *"returns None (never a guess) if nothing lines up"*. It guesses whenever two
 things line up, and a single character is enough.
 
+**The three injury vocabularies already disagree.** Tier 4 filed them under "agree today, with the
+input that splits them." That was wrong, and it is my error, not a pass's: `app.INJURY_OK_STATUSES`
+treats `Doubtful` as an OK status and paints it amber, while `draft_room.RISK_ADJ` docks the same
+player 5 points, and `player_universe.IMMATERIAL_INJURY_STATUSES` holds only `Questionable`. No input
+is needed to split them — they are split now, on screen, for any Doubtful player. Corrected in the
+Tier 4 table.
+
 **Marker corrections in this document.** Four headings under-stated what I had checked (0.7's
 `draftable_rounds`, 1.6, 2.3's eleven defenses, 3.4's `block_opportunity`) and one over-stated it:
 **2.1 is verified at the ROOT CAUSE only** — no pricing consumer reads the coverage record — not at
@@ -510,13 +639,160 @@ the 39-of-40 reordering. Corrected in place.
 
 ## Still unverified by me, and what that means for the repair
 
-- **2.1's QB collapse.** I verified the root cause (no pricing consumer reads
-  `season_projection_coverage`; `grep -c` in `app.py` returns 0) but not the 39-of-40 reordering,
-  which needs the weekly lines re-summed over a partial week set. The mechanism is confirmed and the
-  repair — refuse to price from an incomplete sum — does not depend on the magnitude.
-- **0.1's −23.66 / −15.94 K and DEF shift.** I verified the wiring gap itself, which is what the
-  repair fixes.
-- **0.2's 482-test result** was produced by a dedicated pass with a baseline arm; I verified the
-  committed evidence holds exactly two `"caught"` results against a harness defining three mutations.
-- **0.3, 0.4, 0.7's duplicate_arms, 2.4, 3.1's ordering claim, 3.3, and all of Tier 4** rest on pass
-  measurement. Each carries its own method in the verbatim reports.
+Twenty-one of twenty-one items now carry a marker. What remains unverified is never a mechanism —
+it is a **magnitude** attached to a mechanism I did check, or a Tier 4 duplication confirmed by
+grep rather than by execution. The repair never depends on the part I could not reach.
+
+- **2.1's QB collapse.** Root cause verified (no pricing consumer reads `season_projection_coverage`;
+  `grep -c` in `app.py` returns 0). The 39-of-40 reordering is not verified — it needs the weekly
+  lines re-summed over a partial week set. The repair — refuse to price from an incomplete sum — does
+  not depend on the magnitude.
+- **0.1's −23.66 / −15.94 K and DEF shift.** The wiring gap itself is verified, and that is what the
+  repair fixes. The size of the shift it causes is the pass's number.
+- **0.2's 482-test result** came from a dedicated pass with a baseline arm. I verified the committed
+  evidence holds exactly two `"caught"` results against a harness defining three mutations, and I
+  reproduced all three survivals.
+- **0.7's `duplicate_arms`** and **3.1's ordering claim** rest on pass measurement; both mechanisms
+  are visible in the source and each pass's method is in its verbatim report.
+- **Tier 4** is verified as duplication (the second home exists, and the two disagree or agree as
+  stated). What is not verified is the live consequence of each one, which is the point: they are
+  `#126` cleanups, not behaviour repairs.
+
+Every number above that I did not produce myself is traceable to the pass that produced it, in
+`evidence/blind_pass/reports_v2/`, unedited. Where a pass and I disagreed, my measurement is recorded
+above and the pass's text is left standing — the disagreements are the most useful thing in the file.
+
+---
+
+# COVERAGE MAP — every numbered pass finding, and where it went
+
+The owner's standing requirement is that nothing from the waves is quietly dropped. This table is the
+audit of this document: each of the 13 passes' own numbering, mapped to the mandate item that carries
+it. **Verbatim text for every row is in `evidence/blind_pass/reports_v2/`, unedited.** Where a row
+lands in "not carried", the reason is stated — that is the only honest way to drop something.
+
+| pass | finding | lands in |
+|---|---|---|
+| **A** valuation arithmetic | 1 `time_horizon_adj` percentiles | **3.1** |
+| | 2 bounded terms on the abolished 0–100 unit | **3.3** |
+| | 3 `need_bonus` flat constant reorders the board | **3.3** |
+| | 4 superflex QB startable floor: vendor points applied to league-scored points | **open register `#21`**, blocked on `#50` — the floor cannot be derived while the board asserts two conventions. This audit is a second, independent reason `#50` comes first |
+| | 5 two units on one number line | **3.3** |
+| | 6 `mode="auto"`'s upside switch unreachable | **0.5** + **Owner Decision 1** |
+| | 7 code-style opinions | not carried — the pass itself states no failure scenario |
+| **B** absence & contracts | 1 withheld survival family rendered | **1.2** |
+| | 2 `need_bonus` fabricated as `0.0` | **2.5** |
+| | 3 `rival_premium` a "measured" `0.0` | **2.5** |
+| | 4 `depth_exposure` describes a roster never solved | **3.4** |
+| | 5 staleness stamp blind to most inputs | **1.7** |
+| | 6 `diff_snapshots` drops measured↔unmeasured | **2.5** |
+| | 7 `draft_history` numbers without companions | **2.5** |
+| | 8 board payload missing two companions | **2.5** |
+| | 9 prose asserting properties the code lacks | **0.8** |
+| | 10 documented deliberate collapses | not carried — the pass filed these as correct and documented; I agree |
+| **C** measurement apparatus | 1 empty-state render trace | **0.3** |
+| | 2 `RENDER_TRACE.json` calendar dependency | **0.3** |
+| | 3 both "caught" verdicts are the harness's self-test | **0.2** |
+| | 4 `assertion_floors` blindness | **0.4** |
+| | 5 `prose_names` shield exempts what it checks | **0.8** |
+| | 6 tests passing with zero assertions | **0.9** |
+| | 7 `baseline_manifest` declares two directories | **0.6** |
+| | 8 `test_audit_cadence` substring count | **0.9** |
+| | 9 `format_axes_exercised` blind to `mode` | **0.5** |
+| | 10 `quantity_readers` hand lists, one file absent | **0.9** + Tier 4 |
+| | 11 `suite_taxonomy` admits `gap #1` | **0.9** |
+| **D** roster geometry | 1 no bound for shared-slot positions | **3.2** |
+| | 2 roster fill counted by primary label | **2.6** |
+| | 3 `league_config` blocking state unconsulted | **2.2** |
+| | 4 `roster_diagnostics` single-label lineups | **2.6** |
+| | 5 three eligibility readers disagree | **2.6** + Tier 4 |
+| | 6 `feasibility_first` round fallback counts IR; UI supplies no round count | **1.1** + Tier 4 (round count) |
+| | 7 `draftable_rounds` misnamed | **0.7** |
+| **E** ingestion & identity | 1 `_identity_hint` splits one player | **2.3** |
+| | 2 11 of 32 defenses cannot resolve | **2.3** |
+| | 3 kicking rules cannot reach the stat line | **2.3** |
+| | 4 season sums paired with 15-days-later weekly lines, called "vintage-matched" | **Corrections I owe** — withdrawn in place in `evidence/design_35/GATE_FOR_VDS.md`; the phrase was mine |
+| | 5 cross-format field fill silent in `_reconcile_rows` | **2.4** |
+| | 6 coverage record written and read by nobody | **2.1** |
+| | 7 vendor identity lost to team drift | **2.3** |
+| | 8 battery universe outside the hashed set | **0.6** |
+| | 9 config gate unwired | **2.2** |
+| | 10 sync season is the NFL state's, not the league's | **2.4** |
+| | 11 code-style observations | not carried — no measured failure |
+| **F** mutation survival | all three committed mutations survive | **0.2** |
+| **G** UI state | 1 picks never fetched | **1.4** |
+| | 2 caches ignore `injury_status`/`status`/`years_exp` | **1.7** |
+| | 3 debate survives scope and picker changes | **1.7** |
+| | 4 Debate chip context never sent | **1.5** |
+| | 5 coverage recorded, no consumer | **2.1** |
+| | 6 `import_audit` persists across league switch | **1.7** |
+| | 7 `debate_attached_context` not cleared | **1.7** |
+| | 8 `activate_league` first-sync failure silent | **2.4** |
+| **H** robustness | 1 partial sum priced as complete | **2.1** |
+| | 2 failed projection fetch overwrites a good snapshot | **2.4** |
+| | 3 config gate wired to nothing | **2.2** |
+| | 4 `load_all` swallows unparsable files | **2.4** |
+| | 5 `get_players` caches an error body for 24h | **2.4** |
+| | 6 non-JSON 200 escapes as `JSONDecodeError` | **2.4** |
+| | 7 fixture reader returns `{}` despite documenting a raise | **0.9** |
+| | 8 `replace_atomically` one temp name per PID | **2.4** |
+| | 9 first activation swallows every exception | **2.4** |
+| | 10 metadata strings into `float()` | **2.4** |
+| **I** vocabulary | 1 two answers for "draftable rounds" | **0.7** + Tier 4 |
+| | 2 third home for round count | Tier 4 |
+| | 3 flex view order omits two of five | Tier 4 |
+| | 4 battery roster shape counts a different position (n=167) | Tier 4 |
+| | 5 two superflex predicates | Tier 4 |
+| | 6 header reads `num_teams`, engine reads `total_rosters` | Tier 4 |
+| | 7 three team counts behind "which round is it" | Tier 4 |
+| | 8 three starting-slot predicates | Tier 4 |
+| | 9 three injury vocabularies | Tier 4 — **and they already disagree**, see the correction |
+| | 10 two copies of the transcribed-file set | Tier 4 |
+| **J** LLM panel | 1 Debate chip context never reaches the model | **1.5** |
+| | 2 `_match_candidate` substring fallback inverts "X over Y" | **1.6** |
+| | 3 withheld survival family rendered | **1.2** |
+| | 4 Strategist told to argue from odds it is not given | **1.2** |
+| | 5 injury status never crosses the boundary | **2.5** + Tier 4 |
+| | 6 failed chairs shown as a clean recommendation | **1.7** |
+| | 7 "what changed" has no anchor | **1.7** |
+| | 8 Prytaneum handed undefined units | **2.5** |
+| | 9 silent truncations in `build_context` | **2.5** |
+| | 10 `draft_history` write-only | **1.7** |
+| | 11 error strings replayed into memory | **1.7** |
+| **K** opponent model | 1 `positional_forfeits` sums a hazard as a count | **1.3** |
+| | 2 `block_opportunity` gate unreachable | **3.4** |
+| | 3 preview computes the gap on the wrong side of the turn | **1.3** — same convention, read from the wrong side; repaired together |
+| | 4 run detector fires on 29%, anti-predictive | **Owner Decision 5** |
+| | 5 `_full_board` prices vendor-only | **0.9** |
+| | 6 survival model describes rivals the simulation lacks | **0.9** + **Owner Decision 4** |
+| | 7 take-model calibration vs observed behaviour | **Owner Decision 4** |
+| **L** battery harness | H1 `weekly_projections` omitted; K −23.66, DEF −15.94 | **0.1** |
+| | H2 no arm exercises the human valuation past round 14 | **0.5** |
+| | H3 owner league drafted as non-dynasty | **0.5** |
+| | (H2's aside) `simulate_opponent_picks` `TypeError` | **1.1** |
+| | M1 `duplicate_arms` blind on a resumed run | **0.7** |
+| | M2 ruler and draft priced differently | **0.1** |
+| | M3 trajectory provenance never reaches a report | **0.7** |
+| | M4 `picks_by_mode`/`upside_from_round` false under the crossing rule | **0.7** |
+| | M5 VDS fields count the control's findings | **0.7** |
+| | M6 no join disclosure | **0.7** |
+| | M7 `format_axes` from the current matrix | **0.7** |
+| | M8 counterfactual compares two pricings | **0.9** |
+| | L1 `draftable_rounds` | **0.7** |
+| | L2 `tav_margin_profile` mislabelled | **0.7** |
+| | L3 `DEFAULT_WEEKS` scores week 18 | **0.9** |
+| **SKEPTIC** | claim 1 `time_horizon_adj` — mechanism stands, ordering overstated | **3.1**, with the qualifier |
+| | claim 2 withheld quantity — stands, reachability qualifier | **1.2** |
+| | claim 3 flex bound — stands, one refinement | **3.2**, using the refined joint bound |
+| | claim 4 defenses — stands, scoped to the fallback | **2.3**, scoped |
+| | claim 5 identity split — mechanism stands, consequence ≤0.12 pts | **2.3**, with the magnitude |
+
+**Count:** 26 mandate items, 6 owner decisions, 1 reopened register item (`#21`/`#50`), 4 rows not
+carried with the reason given, and every null result left in the verbatim reports where it belongs.
+
+**One protocol item, closed while compiling this.** `.claude/settings.local.json` — the wave-2 deny-rule
+shield — was still present **and committed to the branch**, so it was blinding every ordinary checkout,
+not just the pass sessions. Deleted in the same commit as this document. The reusable template
+(`.claude/blind-pass.settings.json`) stays. `#52`'s protocol already said to delete the copy when the
+pass ends; this is the second time that step has been missed, so it now belongs in the skill, not in a
+reader's memory.

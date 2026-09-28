@@ -64,6 +64,23 @@ Read(./DOC_INDEX.md)                Read(./evidence/upside_gap/**)
 **DELETE `.claude/settings.local.json` when the pass is over.** Committing those rules as the project
 default would blind every ordinary session, including the ones that need the register constantly.
 
+**This step has now been missed twice, and the second time it was worse than a stale local file: the
+shield had been committed to the branch**, so every checkout of `claude/fantasy-football-control-center-ff6qlu`
+was blinded until it was deleted while compiling the coverage map — days after the last pass reported.
+A warning was already written here, in bold, and it did not work. So the protocol now has a check
+instead of a reminder:
+
+```
+git ls-files .claude/settings.local.json     # must print NOTHING, ever
+ls .claude/settings.local.json               # must fail once the last pass has reported
+```
+
+Run both **before** reading any pass report and **again** before the consolidation commit. The failure
+is silent and self-concealing in the worst way: the denials look like ordinary permission prompts, so
+the natural reaction is to route around them rather than to ask why they are there. Add
+`.claude/settings.local.json` to `.gitignore` if it is ever created again — an ephemeral shield should
+not be committable in the first place.
+
 ## The mandate, as sent to all five
 
 ```text
