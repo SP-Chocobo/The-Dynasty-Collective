@@ -5,18 +5,27 @@
       "file": "draft_room.py",
       "verdict": "caught",
       "sites_mutated": 2,
-      "seconds": 550.1,
+      "seconds": 322.4,
       "consequence": "a chair could finish unable to field a legal lineup and nothing would say so",
-      "evidence": "---------------------------\nTraceback (most recent call last):\n  File \"/home/user/The-Dynasty-Collective/test_invariant_confirmation_anchors.py\", line 141, in test_the_fingerprint_builds_a_board_on_the_clean_tree\n    self.assertRegex(fingerprint, r\"^[0-9a-f]{64} \\d+ \\d+$\")\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Regex didn't match: '^[0-9a-f]{64}$' not found in 'c035f298b19e8d17fa53dfea2753fdaadb15c1f1b67251d64e59a2e2d65f3f48 863 1113'\n\n----------------------------------------------------------------------\nRan 1414 tests in 540.648s\n\nFAILED (failures=1, skipped=5)\n"
+      "evidence": "easibility_partitions_the_whole_board\n    self._assert_partitioned(board, \"fills_required_slot\", True, f\"{mode} board\")\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 127, in _assert_partitioned\n    self.fail(\nAssertionError: balanced board: row 3 has fills_required_slot=True but sits BELOW row 0, which does not. The backstop is no longer reaching the order. row 3: 'Jaxon Smith-Njigba' score 173.1; row 0: 'Jahmyr Gibbs' score 195.24\n\n----------------------------------------------------------------------\nRan 435 tests in 319.574s\n\nFAILED (failures=1)\n"
     },
     {
       "invariant": "board order ignores feasibility",
       "file": "draft_room.py",
       "verdict": "caught",
       "sites_mutated": 2,
-      "seconds": 571.5,
+      "seconds": 322.7,
       "consequence": "feasibility becomes advisory -- the #154 backstop stops reaching the pick",
-      "evidence": "----------------------\nTraceback (most recent call last):\n  File \"/home/user/The-Dynasty-Collective/test_invariant_confirmation_anchors.py\", line 57, in test_both_branches_of_compute_draft_board_are_covered\n    self.assertEqual(source.count(anchor), 2,\nAssertionError: 0 != 2 : board order ignores feasibility: expected the upside-mode and balanced branches. If compute_draft_board was refactored, re-derive this number from the source rather than editing it to match.\n\n----------------------------------------------------------------------\nRan 1418 tests in 568.836s\n\nFAILED (failures=1, skipped=5)\n"
+      "evidence": "easibility_partitions_the_whole_board\n    self._assert_partitioned(board, \"fills_required_slot\", True, f\"{mode} board\")\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 127, in _assert_partitioned\n    self.fail(\nAssertionError: balanced board: row 3 has fills_required_slot=True but sits BELOW row 0, which does not. The backstop is no longer reaching the order. row 3: 'Jaxon Smith-Njigba' score 173.1; row 0: 'Jahmyr Gibbs' score 195.24\n\n----------------------------------------------------------------------\nRan 435 tests in 320.012s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "invariant": "board order ignores fieldability",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 2,
+      "seconds": 320.8,
+      "consequence": "the #30 fieldability backstop becomes advisory -- a roster resumes hoarding a position it cannot field, which is the nine-defense roster",
+      "evidence": "itions_within_each_feasibility_group\n    self._assert_partitioned(group, \"cannot_be_fielded\", False,\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 127, in _assert_partitioned\n    self.fail(\nAssertionError: balanced board, fills_required_slot=False: row 14 has cannot_be_fielded=False but sits BELOW row 13, which does not. The backstop is no longer reaching the order. row 14: 'Breece Hall' score 43.26; row 13: 'Josh Allen' score 43.7\n\n----------------------------------------------------------------------\nRan 436 tests in 318.060s\n\nFAILED (failures=1)\n"
     }
   ],
   "sources_dirty_after": ""

@@ -739,3 +739,21 @@ anything: the actual process table (`ps aux --sort=-%cpu | head -3`), the log's 
 against the run's per-arm cadence (a ~20-minute-old log is normal when arms take 18 minutes), and
 `uptime` — a container restart resets it, and a steady load average near 1.0 means something is
 still burning a core.
+
+## The mutation harness holds a broken tree, and automation will commit it
+
+`invariant_confirmation.py` writes a deliberately broken `draft_room.py` to disk and keeps it
+there for the length of a suite run -- minutes per arm, three arms. While it runs, `git status`
+reports draft_room.py modified and the diff shows a backstop disabled.
+
+**Never `git add -A` or `git commit -a` while it runs.** A commit-everything step fired mid-arm
+once and would have pushed a board with the fieldability backstop replaced by a constant, under a
+commit message about something else entirely. Stage explicit paths, and check
+`git diff --cached --name-only` does not contain draft_room.py before committing.
+
+The same caution applies to reading its verdicts: **`caught` is not a result, it is an exit code.**
+Open `evidence/invariant_confirmation.json` and find which TEST failed. Three separate times in
+this repo a "caught" verdict was the harness's own self-test, a stale assertion floor, or a
+pandas arity error -- never the suite defending the engine. The harness now runs a green baseline
+before judging anything, which is the structural fix, but the habit of checking which test failed
+is what caught all three.

@@ -59,6 +59,14 @@ HOW IT RUNS, and the two hazards it is built around:
 Restores the source in a finally-block, and verifies `git diff` is clean before reporting, so
 a crashed arm cannot leave a mutant in the tree.
 
+DO NOT RUN THIS WITH ANY AUTOMATION THAT COMMITS WHATEVER IS ON DISK. For minutes at a time this
+harness deliberately holds a BROKEN ENGINE in the working tree -- `git status` shows draft_room.py
+modified and `git diff` shows the backstop disabled. A hook or agent that stages everything and
+commits will eventually capture one, and the result is a plausible-looking commit that ships a
+board with no fieldability backstop: the nine-defense roster, pushed. This happened in the session
+that added the baseline arm below -- an auto-commit prompt fired mid-arm with the
+`_nofield=0` mutant on disk. Commit with explicit paths while this runs, or do not commit at all.
+
 Run:  PYTHONPATH=. python3 invariant_confirmation.py
 """
 import ast

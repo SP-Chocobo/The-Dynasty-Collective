@@ -98,7 +98,7 @@ cannot fail against is what this tier exists to fix, so it is not enough that th
 and it is the field whose `false` value caught this exact defect there. A test that pins only the two
 sleeper keywords is why this survived; pin the third.
 
-## 0.2 The suite does not defend the two backstops, and the committed evidence says it does **[VERIFIED]**
+## 0.2 The suite does not defend the two backstops, and the committed evidence says it does **[REPAIRED]**
 
 `evidence/invariant_confirmation.json` holds exactly two results, both `"caught"`. The harness
 defines **three** mutations; the third has no verdict. A dedicated pass applied each mutation with
@@ -124,6 +124,68 @@ own row order.**
 **Repair:** exclude the anchors module from the scored run (or score it separately), give the third
 mutation a verdict, and add the missing assertion — a test that reads `compute_draft_board`'s row
 order directly. Do this **before** Tier 3, since two Tier 3 items change that ordering.
+### REPAIRED
+
+**Three defects, not one — and the third was mine.**
+
+**(a) The false positive is closed at its mechanism.** `test_invariant_confirmation_anchors.py` does
+`Path("draft_room.py").read_text()` and counts anchor text that every mutation necessarily replaces,
+so under any mutant it fails by construction and `rc != 0` is how the harness spells `caught`. It is
+now absent from the scored run through an explicit 196-module list, and runs on the **clean tree** as
+a precondition that refuses to proceed. An explicit list rather than a skip inside the module:
+`unittest discover` has no exclusion flag, and a self-disabling test is `0.4`'s defect.
+
+**(b) The third mutation was UNJUDGEABLE, not merely unrun — correcting this item's own text above.**
+The harness fixture held six RBs, and **RB is flex-reachable and therefore exempt from any fieldable
+ceiling** (that is `3.2`), so `cannot_be_fielded` was uniformly False. The fieldability mutation
+substitutes a constant `0` into a column that was *already* constant: a byte-identical board, so that
+arm could only ever read `MUTATION IS INERT`. The harness's binding guard covered feasibility alone
+and so could not say so. The fixture now holds 3 QB + 3 RB — QB is dedicated here, ceiling 2 — giving
+**feasibility 619 of 964 rows and fieldability 131**, and the guard covers both.
+
+**(c) The harness had no BASELINE ARM, which is the general case of the finding.** `caught` means
+`rc != 0` with the mutant present; that is not evidence unless the same run is green without it. I
+learned this by producing three fresh false positives: I renamed a test method while strengthening
+it, `assertion_floors.drops()` correctly reported the method gone, and under `--failfast` every arm
+inherited that one clean-tree failure before reaching a board. Any pre-existing red — a stale floor,
+an unrelated failure, a bad merge — silently converted every arm into a confirmation. `main` now runs
+the anchors self-test, then the full scored set on the clean tree, refusing with `SUITE IS ALREADY
+RED`, and only then mutates.
+
+**The assertion nothing made.** `test_board_order_honours_the_backstops.py` asserts
+`compute_draft_board`'s own row order against the flags it emits. `fills_required_slot` and
+`cannot_be_fielded` are assigned from the true backstop values **above** the sort, so all three
+mutations corrupt only the sort keys and leave the oracle truthful — the module needs no knowledge of
+any individual mutation. Both branches are covered, because a mutation that leaves one intact has not
+broken the invariant.
+
+**The verdicts, with the baseline that makes them mean something:**
+
+| arm | result | seconds |
+|---|---|---|
+| baseline, clean tree | **green** | 1332.4 |
+| `feasibility_first never binds` | **caught** | 322.4 |
+| `board order ignores feasibility` | **caught** | 322.7 |
+| `board order ignores fieldability` | **caught** | 320.8 |
+
+`sources_dirty_after: ''`. **Every arm was caught by `test_board_order_honours_the_backstops` and by
+no other module** — checked in the evidence JSON rather than inferred from the exit code, which is the
+discipline this whole item is about. The fieldability arm's failure reads:
+
+> `balanced board, fills_required_slot=False: row 14 has cannot_be_fielded=False but sits BELOW row
+> 13, which does not. row 14: 'Breece Hall' score 43.26; row 13: 'Josh Allen' score 43.7`
+
+Josh Allen is unfieldable on that roster — three QB held against a ceiling of 2 — and the mutant
+leaves him above a fieldable back he outscores by 0.44. Named rows, named scores, actionable.
+
+**Two errors of mine inside this repair, recorded because they are the item's own subject matter.**
+The first version of the new test module hand-wrote the capture filename, got it wrong, and **skipped
+all five tests while reporting `OK`** — `0.4` reproduced inside the repair for `0.2`; it now takes the
+path from `rdb.CAPTURE_PATH`. And an auto-commit prompt fired while the harness held the `_nofield=0`
+mutant on disk; committing it would have pushed a board with the fieldability backstop disabled under
+a commit message about something else. That hazard is now in the harness docstring and the
+`engine-measurement` skill, because the next person to hit it will not have the diff in front of them.
+
 
 ## 0.3 Every substantive view is traced in its empty state **[VERIFIED]**
 
