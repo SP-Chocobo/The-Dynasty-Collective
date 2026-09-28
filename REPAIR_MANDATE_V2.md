@@ -701,7 +701,7 @@ kind; the `recommended=None` path exists so the panel can decline, and the Calle
 a bare name. Pinned as a characterization test that says to invert it when repaired.
 
 
-## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[4 OF 6 LIMBS REPAIRED]**
+## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[5 OF 6 LIMBS REPAIRED]**
 
 Four lenses hit this from four directions, and it is one defect family: **what the person is looking at
 can be older or other than what the label says, and nothing in the apparatus can tell.**
@@ -723,7 +723,7 @@ can be older or other than what the label says, and nothing in the apparatus can
 individual fixes are small; the reason they are one item is that repairing any one of them alone leaves
 the person with the same wrong impression by a different route.
 
-### FOUR OF SIX LIMBS REPAIRED
+### FIVE OF SIX LIMBS REPAIRED
 
 **1. The cache fingerprint claimed every field the board reads and hashed four.**
 `_players_db_fingerprint` covered id, position, team and eligibility, under a docstring saying "every
@@ -762,10 +762,32 @@ consecutive picks of a 12-team snake, and again under 3RR: the label moves at ex
 were the reader's and at no others. One sentence, two renderers, so the chairs and the drawer cannot
 drift.
 
-### TWO LIMBS REMAINING
-- **Failed or cut-off chairs** are reported only as a one-rerun toast while the persistent panel shows
-  a clean recommendation; `CONFIDENCE` is unvalidated, and failed-chair error strings are replayed into
-  conversation memory.
+**5. A half-failed debate read as a whole one.** Three findings, one shape — a claim shown to a
+person with nothing qualifying it.
+
+`result.errors` reached a reader only through `notify()`, a one-rerun toast, while the recommendation
+panel persists: a debate whose Skeptic never answered showed a clean recommendation on every rerun
+after the first. It is now rendered beside the recommendation, through ONE function shared by the live
+Draft Room and its Mock twin, because `#116` found those two as separate code carrying identical copy.
+The toast stays — the two say different things ("this just happened" versus "this is what you are
+looking at").
+
+`CONFIDENCE` was unvalidated. The Caller's contract admits three values and its prompt says in so many
+words that "percentages from an LLM are fake precision"; a model answering "85%" was printed as
+`Confidence: 85%`. The vocabulary now has one home and the prompt line is BUILT from it, the same way
+`_survival_clause` is built from `withheld_fields()`. An out-of-contract value is kept and labelled,
+not dropped — it is the Caller's own words, just not a grade this app can interpret.
+
+**The third surface, which I found by writing the test.** I asserted two toast sites; there are three.
+The Prytaneum's chat debate reports its failed roles the same way, and its shape is the opposite —
+those error strings are APPENDED TO THE CHAT under the role that failed, and CONVERSATION MEMORY
+replayed them to every later debate as `[quant] (warning) Claude request failed: …`. A model reading
+that has been handed a provider outage as prior reasoning about its own league. The marker now has one
+home in `llm_engine` with a named check (three readers is where a bare literal needed a name),
+`append_message` stamps a failed call, and both memory windows skip it — the same distinction `notice`
+messages already draw: visible to a person, absent from the record.
+
+### ONE LIMB REMAINING
 - **`draft_history` cannot reproduce what was shown** — write-only today. This one is a REPLAY FEATURE,
   not a defect fix: it needs a reader, a renderer and a decision about what "what was shown" means.
   Named here as the scope call it is rather than folded in quietly.
