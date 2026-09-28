@@ -29,32 +29,79 @@ class TheTraceReachesEveryViewTests(unittest.TestCase):
     def setUpClass(cls):
         cls.recorded = json.loads((_HERE / "RENDER_TRACE.json").read_text())["calls"]
 
-    def test_every_view_appears_in_the_recorded_trace(self):
-        for view in render_trace.VIEWS:
-            with self.subTest(view=view):
-                self.assertTrue([c for c in self.recorded if c.startswith(f"[{view}]")], view)
+    #: Iterated over PASSES rather than VIEWS, because a view whose branches are chosen by a
+    #: widget contributes one labelled pass per branch. Checking VIEWS would pass while an entire
+    #: branch went untraced -- which is how the Mock Draft stayed uncovered.
+    def _calls(self, label):
+        return [c for c in self.recorded if c.startswith(f"[{label}]")]
 
-    def test_no_view_stops_at_the_no_league_guard(self):
-        """st.stop() halting early is a real state, but if a VIEW's trace ends there the trace
+    def test_every_pass_appears_in_the_recorded_trace(self):
+        for label, _, _ in render_trace.TRACE_PASSES:
+            with self.subTest(label=label):
+                self.assertTrue(self._calls(label), label)
+
+    def test_no_pass_stops_at_the_no_league_guard(self):
+        """st.stop() halting early is a real state, but if a PASS's trace ends there the trace
         is covering the empty screen rather than the view."""
-        for view in render_trace.VIEWS:
-            with self.subTest(view=view):
-                calls = [c for c in self.recorded if c.startswith(f"[{view}]")]
-                self.assertNotIn("<st.stop>", calls[-1])
+        for label, _, _ in render_trace.TRACE_PASSES:
+            with self.subTest(label=label):
+                self.assertNotIn("<st.stop>", self._calls(label)[-1])
 
-    def test_each_view_renders_a_substantial_number_of_calls(self):
+    def test_each_pass_renders_a_substantial_number_of_calls(self):
         """A floor, not an exact count -- this is a smoke check that a view actually rendered,
         not a pin on how much UI it happens to draw."""
-        for view in render_trace.VIEWS:
-            with self.subTest(view=view):
-                calls = [c for c in self.recorded if c.startswith(f"[{view}]")]
-                self.assertGreater(len(calls), 50, f"{view} barely rendered")
+        for label, _, _ in render_trace.TRACE_PASSES:
+            with self.subTest(label=label):
+                self.assertGreater(len(self._calls(label)), 50, f"{label} barely rendered")
 
     def test_the_draft_room_trace_contains_its_own_furniture(self):
         """Non-vacuity: the Draft Room's trace must contain Draft-Room things, or the nav
         steering silently failed and every view traced the same default screen."""
-        draft = " ".join(c for c in self.recorded if c.startswith("[📋 Draft Room]"))
-        self.assertIn("Draft Room mode", draft)
+        for label, _, _ in render_trace.TRACE_PASSES:
+            if not label.startswith("📋 Draft Room"):
+                continue
+            with self.subTest(label=label):
+                self.assertIn("Draft Room mode", " ".join(self._calls(label)))
+
+    def test_both_draft_room_modes_are_traced_and_they_differ(self):
+        """The recorded fixture once covered only the Live branch, because the mode radio lists it
+        first and every stand-in widget returns options[0]. The Mock branch was not reported as
+        uncovered -- it was simply absent, and it is the branch that shipped a TypeError."""
+        live = self._calls("📋 Draft Room · Live")
+        mock = self._calls("📋 Draft Room · Mock")
+        self.assertTrue(live and mock, "one of the two Draft Room branches is missing")
+        self.assertNotEqual(live, mock,
+                            "both Draft Room passes recorded the same calls -- the mode steering "
+                            "is not working and one branch is untraced")
+
+    def test_each_draft_room_pass_reaches_THE_BOARD(self):
+        """THE DEFECT THIS FIXTURE EXISTED WITHOUT NOTICING. Every view was traced in its EMPTY
+        state: the seed carried `"rosters": [], "users": []`, so app.py found no roster and each
+        view fell to its guard. Measured on the old fixture: 619 calls, 3 empty-state guard
+        strings, and ZERO board, candidate or pick-synthesis calls. Breaking the live board left
+        the trace BYTE-IDENTICAL, while the instrument reported five views and 619 calls.
+
+        Verified by monkeypatching `compute_draft_board` to return nothing: the Live pass then
+        loses 9 calls and the Mock pass 11, where both previously lost none. This pins the
+        board's own furniture so the fixture cannot quietly return to covering empty screens."""
+        for label in ("📋 Draft Room · Live", "📋 Draft Room · Mock"):
+            joined = " ".join(self._calls(label))
+            with self.subTest(label=label):
+                self.assertIn("board_title_row", joined,
+                              f"{label} never reaches the board container")
+
+    def test_the_trace_carries_no_calendar_dependent_value(self):
+        """The freshness grade is `recency_grade(now - oldest_source_date)`, so it turns over on a
+        date with no UI change behind it -- this fixture was scheduled to go red on 2026-11-19 and
+        had already churned once inside an unrelated commit. An instrument that emits a false diff
+        on a timer teaches its readers to regenerate without looking."""
+        for call in self.recorded:
+            if "Data Freshness" in call:
+                self.assertIn("&lt;grade&gt;", call,
+                              "the freshness grade is recorded verbatim and will turn over with "
+                              "the calendar")
+                self.assertNotIn('class="status-ok"', call)
+                self.assertNotIn('class="status-bad"', call)
 
 
 class TheTraceIsCurrentTests(unittest.TestCase):

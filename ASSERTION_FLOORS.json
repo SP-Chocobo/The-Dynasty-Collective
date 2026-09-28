@@ -11350,13 +11350,14 @@
       }
     },
     "test_render_trace.py": {
-      "test_methods": 12,
+      "test_methods": 15,
       "asserts": {
         "assertEqual": 8,
         "assertGreater": 1,
-        "assertIn": 6,
-        "assertNotIn": 1,
-        "assertTrue": 1
+        "assertIn": 8,
+        "assertNotEqual": 1,
+        "assertNotIn": 3,
+        "assertTrue": 2
       },
       "by_method": {
         "test_a_long_strings_own_length_is_not_recorded": {
@@ -11368,13 +11369,20 @@
         "test_argument_values_are_blurred_so_the_trace_is_about_structure": {
           "assertEqual": 2
         },
-        "test_each_view_renders_a_substantial_number_of_calls": {
-          "assertGreater": 1
-        },
-        "test_every_view_appears_in_the_recorded_trace": {
+        "test_both_draft_room_modes_are_traced_and_they_differ": {
+          "assertNotEqual": 1,
           "assertTrue": 1
         },
-        "test_no_view_stops_at_the_no_league_guard": {
+        "test_each_draft_room_pass_reaches_THE_BOARD": {
+          "assertIn": 1
+        },
+        "test_each_pass_renders_a_substantial_number_of_calls": {
+          "assertGreater": 1
+        },
+        "test_every_pass_appears_in_the_recorded_trace": {
+          "assertTrue": 1
+        },
+        "test_no_pass_stops_at_the_no_league_guard": {
           "assertNotIn": 1
         },
         "test_st_stop_halts_the_run_as_it_really_does": {
@@ -11394,6 +11402,10 @@
         },
         "test_the_recorded_trace_matches_the_tree": {
           "assertEqual": 1
+        },
+        "test_the_trace_carries_no_calendar_dependent_value": {
+          "assertIn": 1,
+          "assertNotIn": 2
         }
       },
       "disabled": {

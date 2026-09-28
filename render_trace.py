@@ -66,6 +66,7 @@ from __future__ import annotations
 import argparse
 import builtins
 import json
+import re
 import sys
 import types
 from datetime import date
@@ -102,10 +103,29 @@ class _Recorder:
     def __init__(self):
         self.calls: list[str] = []
 
+    #: A recorded value that CHANGES WITH THE CALENDAR, not with the code. The freshness grade is
+    #: `recency_grade(now - oldest_source_date)`, so as real time passes it crosses Fresh ->
+    #: Recent -> Aging -> Stale against a fixed set of committed baseline dates. The recorded
+    #: fixture carried the grade verbatim, which means this instrument was scheduled to go red on
+    #: a date with no UI change behind it -- and it had already churned once inside an unrelated
+    #: commit. An instrument that emits a false diff on a timer trains its readers to regenerate
+    #: without looking, which costs more than the check is worth.
+    #: THE WHOLE SPAN, not just the grade word. The first version of this blurred
+    #: "Data Freshness: Aging" -> "Data Freshness: <grade>" and left `class="status-bad"` and the
+    #: ⚠️ icon in place -- both derived from the same grade, so both still turn over on the same
+    #: calendar date. A half-blur would have moved the scheduled false diff without removing it.
+    _CALENDAR_DEPENDENT = re.compile(
+        r'<span class="status-\w+">\S+ Data Freshness: \w+</span>')
+    _CALENDAR_BLURRED = '<span class="status-<grade>">&lt;icon&gt; Data Freshness: &lt;grade&gt;</span>'
+
     def record(self, path: str, args, kwargs):
         shown = [_shape(a) for a in args]
         shown += [f"{k}={_shape(v)}" for k, v in sorted(kwargs.items())]
-        self.calls.append(f"{path}({', '.join(shown)})")
+        line = f"{path}({', '.join(shown)})"
+        # BLURRED, NOT DROPPED. The call still has to happen, and its shape is still compared --
+        # only the grade WORD is replaced, so removing the freshness strip is still a diff while
+        # the passage of time is not.
+        self.calls.append(self._CALENDAR_DEPENDENT.sub(self._CALENDAR_BLURRED, line))
 
 
 class _Selection:
@@ -156,15 +176,22 @@ class _Stub:
     extracted while looking like it covered all of it.
     """
 
-    def __init__(self, recorder: _Recorder, path: str = "st", view: str | None = None):
+    def __init__(self, recorder: _Recorder, path: str = "st", view: str | None = None,
+                 choices: dict[str, str] | None = None):
         object.__setattr__(self, "_recorder", recorder)
         object.__setattr__(self, "_path", path)
         object.__setattr__(self, "_view", view)
+        #: {widget key: the option to return}. The nav is steered by `view`; this steers any OTHER
+        #: widget whose value selects a BRANCH rather than a display detail. Needed because
+        #: `radio` returns options[0], and the Draft Room's mode radio lists
+        #: "Live Draft (Sleeper)" first -- so the Mock Draft branch had never been traced at all,
+        #: in any recording, including the view that ships a TypeError.
+        object.__setattr__(self, "_choices", choices or {})
 
     def __getattr__(self, name):
         if name.startswith("__"):
             raise AttributeError(name)
-        return _Stub(self._recorder, f"{self._path}.{name}", self._view)
+        return _Stub(self._recorder, f"{self._path}.{name}", self._view, self._choices)
 
     def __call__(self, *args, **kwargs):
         self._recorder.record(self._path, args, kwargs)
@@ -196,7 +223,15 @@ class _Stub:
             return False
         if leaf in ("selectbox", "radio"):
             options = kwargs.get("options") or (args[1] if len(args) > 1 else None)
-            return list(options)[0] if options else None
+            options = list(options) if options else []
+            # STEERED BY KEY when asked, defaulted otherwise. A branch-selecting widget left at
+            # options[0] silently decides which half of a view is traced, and the untraced half is
+            # invisible rather than reported: the Draft Room recorded 117 calls for years while its
+            # Mock Draft branch was never entered once.
+            wanted = self._choices.get(kwargs.get("key"))
+            if wanted is not None and wanted in options:
+                return wanted
+            return options[0] if options else None
         if leaf == "multiselect":
             return list(kwargs.get("default") or [])
         if leaf in ("text_input", "text_area"):
@@ -228,9 +263,10 @@ class _Stub:
         return iter(())
 
 
-def _streamlit_module(recorder: _Recorder, view: str | None = None):
+def _streamlit_module(recorder: _Recorder, view: str | None = None,
+                      choices: dict[str, str] | None = None):
     module = types.ModuleType("streamlit")
-    stub = _Stub(recorder, "st", view)
+    stub = _Stub(recorder, "st", view, choices)
     module.__getattr__ = lambda name: getattr(stub, name)  # type: ignore[attr-defined]
     module.session_state = _SessionState()
     module.secrets = {}
@@ -263,13 +299,52 @@ def _seeded_session() -> _SessionState:
     league = dict(league)
     league.setdefault("league_id", "trace")
     league.setdefault("name", "Trace League")
+    # Built here rather than further down: the roster seed below needs real player ids from it.
+    players_db, _ = rdb.build_players_db_from_capture()
     state = _SessionState()
+
+    # THE SECOND HALF OF THE SAME INCOMPLETENESS, AND IT COST MORE THAN THE FIRST.
+    #
+    # `rosters` and `users` were `[]`, and app.py resolves the viewer's team with
+    # `find_roster_for_user(snapshot["rosters"], st.session_state.user_id)` -- which returns None
+    # over an empty list, so every view fell to its EMPTY STATE. Measured on the recorded
+    # fixture: 620 strings, of which exactly 3 were empty-state guards
+    # ("Couldn't find a roster owned by this user in this league.", "No teams found in this
+    # league's synced data.", "Nothing rostered here yet.") and ZERO were board, candidate or
+    # pick-synthesis strings. The Draft Room's recorded calls were a shared sidebar prefix plus
+    # one st.warning. Break the live board and the trace was byte-identical -- an instrument
+    # reporting "5 views, 619 calls" while covering the parts of them that render when there is
+    # nothing to render.
+    #
+    # Twelve rosters because the league has twelve; the viewer owns the first. Players come from
+    # the same committed capture as the universe above (#126: one home for that fact), taken from
+    # the front of the pool so the roster is populated rather than plausible-looking-but-empty.
+    owner_ids = [f"trace_user_{i}" for i in range(1, (league.get("total_rosters") or 12) + 1)]
+    all_ids = [str(pid) for pid in list(players_db)[:len(owner_ids) * 14]]
+    rosters = [
+        {"roster_id": i + 1, "owner_id": owner, "league_id": "trace",
+         # A real roster carries its players as `players`, its starters as `starters`. Both, or
+         # the lineup views read as an empty team on a roster that exists -- a third empty state
+         # rather than the coverage this seed is for.
+         "players": all_ids[i * 14:(i + 1) * 14],
+         "starters": all_ids[i * 14:(i * 14) + 9],
+         "settings": {"wins": 1, "losses": 1, "ties": 0, "fpts": 100, "fpts_decimal": 0},
+         }
+        for i, owner in enumerate(owner_ids)
+    ]
+    users = [{"user_id": owner, "display_name": f"Trace Manager {i + 1}",
+              "metadata": {"team_name": f"Trace Team {i + 1}"}}
+             for i, owner in enumerate(owner_ids)]
+
     state["league_snapshot"] = {
-        "synced_at": 0.0, "league": league, "rosters": [], "users": [],
+        "synced_at": 0.0, "league": league, "rosters": rosters, "users": users,
         "traded_picks": [], "nfl_state": {}, "projection_request": {},
         "projection_attempts": [], "projections": {}, "matchups": [],
     }
     state["selected_league_id"] = "trace"
+    # app.py guards the roster lookup on this being set, so an unset user_id reproduces the empty
+    # state exactly as an empty roster list did.
+    state["user_id"] = owner_ids[0]
 
     # THE SEED WAS INCOMPLETE, AND THAT MADE THIS INSTRUMENT NETWORK-DEPENDENT.
     #
@@ -297,10 +372,72 @@ def _seeded_session() -> _SessionState:
     # Only `get_players` is overridden. Everything else on the client stays real, because
     # app.py also reads `cache_dir` off it and a hand-rolled double would have to keep pace
     # with every such use.
-    players_db, _ = rdb.build_players_db_from_capture()
     client = sc.SleeperClient()
     client.get_players = lambda: players_db
+    # A LIVE NETWORK CALL, inside the render this instrument exists to record. The Live Draft Room
+    # calls `draft_client.get_drafts(league_id)` unconditionally (app.py ~5267), so tracing that
+    # view reached out to api.sleeper.app -- refused here, which meant the branch fell to
+    # "No draft found for this league on Sleeper yet." and the recorded fixture depended on whether
+    # the recording environment had network. That is the SAME defect the get_players override above
+    # was added to fix, in a second place, and it had the same consequence: the trace described
+    # whichever environment happened to record it.
+    client.get_drafts = lambda league_id: [{
+        "draft_id": "trace_draft", "league_id": "trace", "status": "in_progress",
+        "type": "snake", "start_time": 0,
+        "settings": {"teams": league.get("total_rosters") or 12, "rounds": 14,
+                     "slots_qb": 1, "slots_rb": 2, "slots_wr": 2, "slots_te": 1, "slots_flex": 1},
+        "draft_order": {owner: i + 1 for i, owner in enumerate(owner_ids)},
+    }]
     state["sleeper_client"] = client
+
+    # PICKS ALREADY FETCHED. The Live Draft Room never fetches them on its own -- that is its own
+    # separate finding -- so an unseeded store leaves the board rendering the pre-draft world and
+    # the trace blind to every roster-aware term. Seeded so the recorded Live pass covers the same
+    # board machinery the Mock pass does, rather than the empty opening state twice.
+    state["draft_room_picks_by_draft"] = {
+        "trace_draft": [{"pick_no": i + 1, "round": (i // len(owner_ids)) + 1,
+                         "roster_id": str((i % len(owner_ids)) + 1), "player_id": pid,
+                         "draft_slot": (i % len(owner_ids)) + 1}
+                        for i, pid in enumerate(all_ids[:11])]
+    }
+
+    # A MOCK DRAFT ALREADY IN PROGRESS, because a roster alone does not reach the board.
+    #
+    # With rosters seeded, Matchup, Roster Maintenance and League all render substantively -- but
+    # the Draft Room gained ONE call. Both of its modes need more than a synced league: Live needs
+    # fetched picks (which nothing fetches automatically), and Mock needs `mock_draft`, which is
+    # only ever set behind `st.form_submit_button`. Every widget stand-in returns falsy, so the
+    # form never submits and the view records its configuration form and stops. That is why the
+    # trace covered zero board, candidate or pick-synthesis calls while reporting 117 for this
+    # view: the calls were real, they were just all upstream of the thing worth protecting.
+    #
+    # Built through THE APP'S OWN CONSTRUCTORS (`build_mock_league`, `generate_pick_order`) rather
+    # than a hand-written dict, so a change to either reaches this fixture instead of leaving it
+    # quietly describing a draft the app can no longer produce (#126).
+    #
+    # Mid-draft, not at 1.01: eleven picks in means the roster has state, the pool has been
+    # reduced, and the backstops have something to say. An opening board exercises the same code
+    # with every roster-aware term at its identity.
+    import draft_strategy
+    teams, rounds, my_slot = 12, 14, 1
+    mock_league = draft_room.build_mock_league(teams=teams, superflex=False, scoring="ppr",
+                                              te_premium=False, dynasty=True)
+    mock_order = draft_strategy.generate_pick_order(
+        [str(i) for i in range(1, teams + 1)], total_rounds=rounds, draft_type="snake")
+    mock_taken = [str(pid) for pid in list(players_db)[:11]]
+    state["mock_draft"] = {
+        "settings": {"teams": teams, "my_slot": my_slot, "superflex": False,
+                     "scoring_key": "ppr", "scoring_label": "Full PPR", "te_premium": False,
+                     "dynasty": True, "rounds": rounds, "draft_type": "snake"},
+        "league": mock_league,
+        "my_roster_id": str(my_slot),
+        "pick_order": mock_order,
+        "picks": [{"pick_no": i + 1, "round": (i // teams) + 1,
+                   "roster_id": str(mock_order[i]), "player_id": pid}
+                  for i, pid in enumerate(mock_taken)],
+        "owner_names": {str(i): ("You" if i == my_slot else f"Team {i}")
+                        for i in range(1, teams + 1)},
+    }
     return state
 
 
@@ -309,11 +446,34 @@ def _seeded_session() -> _SessionState:
 #: as a trace that stops covering it, not as a list that quietly shrank to match.
 VIEWS = ("🏈 Matchup", "🔧 Roster Maintenance", "📋 Draft Room", "👥 League", "🔌 Import Audit")
 
+#: (label, view, steered widgets). One pass per BRANCH worth protecting, not one per view.
+#:
+#: The Draft Room appears twice because it is two applications behind one radio, and the radio
+#: lists "Live Draft (Sleeper)" first -- so every recording ever made traced Live and NONE traced
+#: Mock. Measured: entering the Mock branch adds 22 calls that had never appeared in this fixture,
+#: among them the board container, the candidate selectbox, and the Debate chip. It also raised
+#: `TypeError: simulate_opponent_picks() got an unexpected keyword argument 'weekly_projections'`
+#: on the first attempt -- a crash on a shipped path, sitting behind a default this instrument
+#: never varied.
+#:
+#: A view whose branches are selected by a widget needs one pass per branch, or the untraced
+#: branch is not reported as uncovered; it is simply absent.
+TRACE_PASSES = (
+    ("🏈 Matchup", "🏈 Matchup", None),
+    ("🔧 Roster Maintenance", "🔧 Roster Maintenance", None),
+    ("📋 Draft Room · Live", "📋 Draft Room",
+     {"draft_room_mode_radio": "Live Draft (Sleeper)"}),
+    ("📋 Draft Room · Mock", "📋 Draft Room", {"draft_room_mode_radio": "🧪 Mock Draft"}),
+    ("👥 League", "👥 League", None),
+    ("🔌 Import Audit", "🔌 Import Audit", None),
+)
 
-def capture(seeded: bool = True, view: str | None = None) -> list[str]:
+
+def capture(seeded: bool = True, view: str | None = None,
+            choices: dict[str, str] | None = None) -> list[str]:
     """Import app.py under the stand-in and return the calls it made, in order."""
     recorder = _Recorder()
-    st_module, components, v1 = _streamlit_module(recorder, view)
+    st_module, components, v1 = _streamlit_module(recorder, view, choices)
     if seeded:
         st_module.session_state = _seeded_session()
     injected = {
@@ -346,8 +506,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="diff against the recorded trace")
     args = parser.parse_args(argv)
 
-    traces = {view: capture(view=view) for view in VIEWS}
-    calls = [f"[{view}] {call}" for view in VIEWS for call in traces[view]]
+    traces = {label: capture(view=view, choices=choices)
+              for label, view, choices in TRACE_PASSES}
+    calls = [f"[{label}] {call}" for label, _, _ in TRACE_PASSES for call in traces[label]]
     if args.write:
         # store_io.write for its atomic replace (#102), the same reason baseline_manifest and
         # assertion_floors use it: an interrupted --write would otherwise leave a truncated
@@ -365,9 +526,10 @@ def main(argv: list[str] | None = None) -> int:
             ),
             "calls": calls,
         })
-        print(f"wrote {TRACE_PATH} -- {len(calls)} calls across {len(VIEWS)} views")
-        for view in VIEWS:
-            print(f"  {len(traces[view]):5} {view}")
+        print(f"wrote {TRACE_PATH} -- {len(calls)} calls across "
+              f"{len(TRACE_PASSES)} passes")
+        for label, _, _ in TRACE_PASSES:
+            print(f"  {len(traces[label]):5} {label}")
         return 0
 
     if not TRACE_PATH.exists():
