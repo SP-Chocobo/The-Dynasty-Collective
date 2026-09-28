@@ -558,7 +558,11 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     return "\n".join(lines)
 
 
-def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] = None) -> str:
+def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] = None,
+                            #: MANDATE 1.7. Optional, so a caller with no previous board is
+                            #: unchanged -- and when there IS a diff there is an anchor, because
+                            #: both come from the same pair of snapshots at one call site.
+                            anchor: Optional[dict] = None) -> str:
     """The structured evidence block every role sees -- labeled real numbers, never prose
     summarizing them, so a model has no reason to paraphrase a figure into something slightly
     different from what pick_synthesis actually computed."""
@@ -573,6 +577,11 @@ def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] 
     )
     if diffs:
         parts.append("WHAT CHANGED SINCE THE LAST SNAPSHOT:")
+        # MANDATE 1.7: WHICH two boards, and what happened between them. Without it the reader's
+        # own pick -- which removes a player from every list and re-prices every roster-aware term
+        # -- reads to the chairs exactly like the market moving.
+        if anchor is not None:
+            parts.append(f"  {ps.diff_anchor_sentence(anchor)}")
         for d in diffs:
             if d.get("entered") is True:
                 parts.append(f"  {d['name']}: newly entered the candidate pool at rank {d['rank']}")
@@ -720,6 +729,9 @@ class PickDebateResult:
     key_factor: str = ""
     disagreements: list = field(default_factory=list)
     diff: list = field(default_factory=list)
+    #: MANDATE 1.7. WHAT the diff above is a diff of -- see pick_synthesis.diff_anchor. None when
+    #: there was no previous board to diff against, which is not the same as an empty diff.
+    diff_anchor: Optional[dict] = None
     strategist_report: str = ""
     skeptic_report: str = ""
     caller_report: str = ""
@@ -843,7 +855,11 @@ def debate_pick(
     debate_meter_at = provider_meter.mark()
 
     diffs = diff_snapshots(previous_snapshot, snapshot) if previous_snapshot is not None else []
-    evidence = format_snapshot_for_llm(snapshot, diffs)
+    # MANDATE 1.7: computed beside the diff, from the same two snapshots, so a consumer cannot hold
+    # one without the other.
+    anchor = (ps.diff_anchor(previous_snapshot, snapshot) if previous_snapshot is not None
+              else None)
+    evidence = format_snapshot_for_llm(snapshot, diffs, anchor)
 
     def _call(role: str, system_prompt: str, user_prompt: str) -> str:
         provider = role_providers.get(role, DEFAULT_ROLE_PROVIDERS[role])
@@ -901,6 +917,9 @@ def debate_pick(
         key_factor=verdict.get("key_factor", ""),
         disagreements=verdict.get("disagreements", []),
         diff=diffs,
+        # MANDATE 1.7: carried on the result, so the UI drawer renders the same anchor the chairs
+        # were given rather than deriving a second one.
+        diff_anchor=anchor,
         strategist_report=strategist_report, skeptic_report=skeptic_report, caller_report=caller_report,
         errors=errors, role_providers=dict(role_providers), role_models=dict(role_models),
         snapshot_picks_consumed=snapshot.picks_consumed,

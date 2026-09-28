@@ -5826,6 +5826,14 @@ elif main_view == DRAFT_VIEW:
 
                                     if debate_result.diff:
                                         with st.expander("📊 What changed since your last debate?"):
+                                            # MANDATE 1.7: the anchor first, from the same helper
+                                            # the chairs' block uses -- two surfaces, one sentence.
+                                            # Without it the reader's own pick reads as the market
+                                            # moving, and it is the largest single mover on the
+                                            # list.
+                                            if debate_result.diff_anchor:
+                                                st.caption(pick_synthesis.diff_anchor_sentence(
+                                                    debate_result.diff_anchor))
                                             for d in debate_result.diff:
                                                 if d.get("entered") is True:
                                                     st.markdown(f"🆕 **{d['name']}** entered the candidate pool at rank {d['rank']}")

@@ -2180,6 +2180,75 @@ _DIFF_FIELDS = (
 )
 
 
+def diff_anchor(previous: PickSnapshot, current: PickSnapshot) -> dict:
+    """WHAT the diff below is a diff OF -- the two boards' own relationship, as data.
+
+    MANDATE 1.7. `diff_snapshots` reports per-candidate deltas under a heading that says "WHAT
+    CHANGED SINCE THE LAST SNAPSHOT", and neither the heading nor the rows said WHICH two boards, or
+    what happened between them. So the single largest cause of movement on the list -- the reader's
+    own pick, which removes a player from every candidate list and re-prices every roster-aware term
+    against a roster that now has one more player on it -- arrived looking exactly like the market
+    moving around them.
+
+    Every field is DERIVED from the two snapshots and nothing is passed in:
+
+      * `picks_between` from the two stamps. None when either is unstamped, never 0 -- a count of
+        zero and a count nobody took are different facts (`#187`).
+      * `your_own_turn_passed` from the two pick labels. A snapshot's `pick_label` is the READER'S
+        own next selection, so the label moves when and only when their own pick was made: picks by
+        other rosters advance the board without advancing it. Recorded rather than inferred at each
+        surface, because two surfaces render this and a second derivation is a second answer.
+      * `pool_scope_changed` and `player_universe_changed` from the world stamps added earlier in
+        this same item. A diff across a pool-scope change is not a diff of the same population, and
+        saying "entered the candidate pool" of a player who was simply never eligible before would
+        be a false claim about the market.
+
+    A DICT, not a sentence, because `draft_history` stores it and two surfaces render it. The
+    sentence is `diff_anchor_sentence` below, and both surfaces use that one so they cannot drift."""
+    picks_between = (None if previous.picks_consumed is None or current.picks_consumed is None
+                     else current.picks_consumed - previous.picks_consumed)
+    return {
+        "from_pick_label": previous.pick_label,
+        "to_pick_label": current.pick_label,
+        "picks_between": picks_between,
+        "your_own_turn_passed": previous.pick_label != current.pick_label,
+        "pool_scope_changed": previous.pool_scope != current.pool_scope,
+        "from_pool_scope": previous.pool_scope,
+        "to_pool_scope": current.pool_scope,
+        "player_universe_changed": bool(
+            previous.players_db_stamp is not None and current.players_db_stamp is not None
+            and previous.players_db_stamp != current.players_db_stamp),
+    }
+
+
+def diff_anchor_sentence(anchor: dict) -> str:
+    """The anchor as one line, in the one place both surfaces read it from (`#126`).
+
+    Written so every clause is either a measured fact or absent. "1 pick" rather than "1 picks";
+    an unstamped pair says the count could not be established rather than implying zero."""
+    span = f"Since your board at {anchor['from_pick_label']}"
+    if anchor["to_pick_label"] != anchor["from_pick_label"]:
+        span += f", now at {anchor['to_pick_label']}"
+    count = anchor["picks_between"]
+    if count is None:
+        parts = ["how many picks were made in between could not be established"]
+    elif count == 1:
+        parts = ["1 pick has been made"]
+    else:
+        parts = [f"{count} picks have been made"]
+    parts.append("YOUR OWN PICK IS AMONG THEM" if anchor["your_own_turn_passed"]
+                 else "none of them yours")
+    if anchor["pool_scope_changed"]:
+        parts.append(f"and the player pool changed from "
+                     f"{anchor['from_pool_scope'].replace('_', ' ')} to "
+                     f"{anchor['to_pool_scope'].replace('_', ' ')}, so the two lists are not the "
+                     f"same population")
+    if anchor["player_universe_changed"]:
+        parts.append("and the player data itself changed underneath (an injury status, a roster "
+                     "move) -- movement below may be that rather than the market")
+    return f"{span}: " + ", ".join(parts) + "."
+
+
 def diff_snapshots(previous: PickSnapshot, current: PickSnapshot) -> list[dict]:
     """The literal audit trail: for every candidate present in BOTH snapshots, the real,
     structured per-component delta -- not a prose description of what changed. rank_delta is

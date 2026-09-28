@@ -701,7 +701,7 @@ kind; the `recommended=None` path exists so the panel can decline, and the Calle
 a bare name. Pinned as a characterization test that says to invert it when repaired.
 
 
-## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[3 OF 6 LIMBS REPAIRED]**
+## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[4 OF 6 LIMBS REPAIRED]**
 
 Four lenses hit this from four directions, and it is one defect family: **what the person is looking at
 can be older or other than what the label says, and nothing in the apparatus can tell.**
@@ -723,7 +723,7 @@ can be older or other than what the label says, and nothing in the apparatus can
 individual fixes are small; the reason they are one item is that repairing any one of them alone leaves
 the person with the same wrong impression by a different route.
 
-### THREE OF SIX LIMBS REPAIRED
+### FOUR OF SIX LIMBS REPAIRED
 
 **1. The cache fingerprint claimed every field the board reads and hashed four.**
 `_players_db_fingerprint` covered id, position, team and eligibility, under a docstring saying "every
@@ -751,10 +751,18 @@ the reason this item is one item. Both now cleared by prefix, and the audit pane
 the league its stored report was run for, because a label that is only right when a clearing path ran
 is a label that is wrong when it did not.
 
-### THREE LIMBS REMAINING
+**4. The diff said WHAT changed and never WHICH two boards.** Neither the heading "WHAT CHANGED
+SINCE THE LAST SNAPSHOT" nor its rows named the span, so the single largest mover on the list — the
+reader's own pick, which removes a player from every candidate list and re-prices every roster-aware
+term against a roster one player larger — arrived looking exactly like the market moving around them.
+`diff_anchor` derives the span from the two snapshots: the picks between them, whether the reader's
+own turn passed, and whether the pool or the universe changed underneath. The turn derivation is
+MEASURED, not argued — driven through `generate_pick_order` and `find_next_pick_index` over 29
+consecutive picks of a 12-team snake, and again under 3RR: the label moves at exactly the picks that
+were the reader's and at no others. One sentence, two renderers, so the chairs and the drawer cannot
+drift.
 
-- **"WHAT CHANGED SINCE THE LAST SNAPSHOT" has no anchor**, so the user's own picks read as board
-  movement.
+### TWO LIMBS REMAINING
 - **Failed or cut-off chairs** are reported only as a one-rerun toast while the persistent panel shows
   a clean recommendation; `CONFIDENCE` is unvalidated, and failed-chair error strings are replayed into
   conversation memory.

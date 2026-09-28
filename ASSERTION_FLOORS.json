@@ -14745,6 +14745,78 @@
         "early_returns": 0
       }
     },
+    "test_the_diff_says_which_two_boards.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 3,
+        "assertFalse": 1,
+        "assertIn": 16,
+        "assertIsNone": 1,
+        "assertLess": 2,
+        "assertNotIn": 4,
+        "assertTrue": 3
+      },
+      "by_method": {
+        "test_a_caller_with_no_previous_board_is_unchanged": {
+          "assertNotIn": 1
+        },
+        "test_a_pool_scope_change_says_the_two_lists_are_not_one_population": {
+          "assertIn": 2,
+          "assertTrue": 1
+        },
+        "test_a_universe_change_says_the_movement_may_not_be_the_market": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "test_an_unstamped_pair_says_so_rather_than_implying_zero": {
+          "assertIn": 1,
+          "assertIsNone": 1
+        },
+        "test_an_unstamped_universe_is_not_reported_as_changed": {
+          "assertFalse": 1
+        },
+        "test_and_is_explicitly_denied_when_it_did_not": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_it_counts_the_picks_between_the_two_boards": {
+          "assertEqual": 1
+        },
+        "test_it_holds_under_third_round_reversal_too": {
+          "assertEqual": 1
+        },
+        "test_one_pick_is_singular": {
+          "assertIn": 1
+        },
+        "test_over_a_whole_snake_the_label_moves_exactly_at_your_own_picks": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "test_the_chairs_block_carries_the_anchor_above_the_rows": {
+          "assertIn": 2,
+          "assertLess": 1
+        },
+        "test_the_debate_computes_the_anchor_wherever_it_computes_the_diff": {
+          "assertIn": 2
+        },
+        "test_the_quiet_case_says_nothing_extra": {
+          "assertNotIn": 2
+        },
+        "test_the_result_carries_the_anchor_for_the_ui_to_render": {
+          "assertIn": 3,
+          "assertLess": 1
+        },
+        "test_your_own_pick_is_called_out_in_capitals_when_it_happened": {
+          "assertIn": 3
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_the_live_board_knows_when_its_picks_arrived.py": {
       "test_methods": 10,
       "asserts": {
