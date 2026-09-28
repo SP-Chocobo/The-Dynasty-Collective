@@ -46,6 +46,12 @@ def _state_from_a_finished_draft() -> dict:
         "draft_room_pool_scope": "rookies",
         "draft_room_position_view": "RB",
         "mock_draft_pool_scope": "rookies",
+        # MANDATE 1.7: league-scoped state OUTSIDE the Draft Room, which the original sweep's two
+        # prefixes could not reach.
+        "debate_attached_context": "A's board, attached by a chip",
+        "import_audit": {"probes": {"league": {"ok": True}}},
+        "import_audit_league": "A",
+        "debate_dock_level": "expanded",
         "selected_league_id": "A",
         "chat_history": ["A's chat"],
     }
@@ -115,6 +121,50 @@ class NothingComputedFromOneLeagueSurvivesTheSwitchTests(unittest.TestCase):
         self.assertEqual(state, {"selected_league_id": "A"})
 
 
+class LeagueScopedStateOutsideTheDraftRoomGoesTooTests(unittest.TestCase):
+    """MANDATE 1.7. Two keys held a league's own data under no swept prefix at all.
+
+    `debate_attached_context` is the screen a Debate chip attached -- a board, a trade, a matchup,
+    from the league being left. While it was only ever RENDERED its staleness was cosmetic; mandate
+    1.5 made it reach the panel as context, which turns it into league A's board being described to
+    a model answering about league B. The reach is what made this urgent rather than untidy.
+
+    `import_audit` is a report about ONE league's Sleeper connection, rendered under a header that
+    prints the league selected NOW."""
+
+    def _cleared(self) -> dict:
+        state = _state_from_a_finished_draft()
+        draft_state.clear_league_derived(state)
+        return state
+
+    def test_the_attached_screen_does_not_follow_the_user_into_another_league(self):
+        self.assertNotIn("debate_attached_context", self._cleared())
+
+    def test_the_import_audit_and_the_league_it_was_run_for_both_go(self):
+        state = self._cleared()
+        self.assertNotIn("import_audit", state)
+        self.assertNotIn("import_audit_league", state,
+                         "the sibling key must be caught by the same prefix -- it was added in "
+                         "this very repair, which is the argument for prefixes over exact keys")
+
+    def test_the_dock_level_is_a_preference_and_stays(self):
+        """NON-VACUITY, and the reason the new prefix is the whole of
+        `debate_attached_context` rather than just the first word of it: how a person likes the
+        dock sized is not one league's data, and a shorter prefix would sweep it."""
+        # .get, so a widened prefix fails with a sentence rather than a KeyError: a crash
+        # signature is a detection, but it reads as a broken test rather than a swept preference.
+        self.assertEqual("expanded", self._cleared().get("debate_dock_level"),
+                         "the dock level was swept -- the prefix is too wide")
+
+    def test_the_panel_names_the_league_its_stored_report_was_run_for(self):
+        """Belt and braces, deliberately. The clearing above closes the switch path; this closes
+        the label itself, because a label that is only right when a clearing path has run is a
+        label that is wrong when it has not."""
+        self.assertIn("st.session_state.import_audit_league = _audit_league", UI_SOURCE)
+        self.assertIn("_audit_ran_for != _audit_league", UI_SOURCE)
+        self.assertIn("was run against league", UI_SOURCE)
+
+
 class TheResetIsActuallyWiredTests(unittest.TestCase):
     """A reset function nothing calls is the same defect with a nicer name."""
 
@@ -130,7 +180,8 @@ class TheResetIsActuallyWiredTests(unittest.TestCase):
         """An allowlist entry that no prefix would have caught is dead text -- it exempts
         nothing, and reading it would misdescribe what this function does."""
         stray = [k for k in draft_state.DRAFT_STATE_PREFERENCES
-                 if not k.startswith(draft_state.DRAFT_STATE_PREFIXES)]
+                 if not k.startswith(draft_state.DRAFT_STATE_PREFIXES
+                                     + draft_state.LEAGUE_SCOPED_PREFIXES)]
         self.assertEqual(stray, [])
 
     def test_every_preference_on_the_allowlist_is_a_real_key_in_app(self):

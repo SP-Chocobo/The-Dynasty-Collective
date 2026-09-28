@@ -1,4 +1,4 @@
-"""Which Draft Room session values belong to ONE league, and what a league switch must drop.
+"""Which session values belong to ONE league, and what a league switch must drop.
 
 #52 phase 7.4d / L-06. `activate_league` reset chat history, the league snapshot and the
 merger, and left every `draft_room_*` key in place -- and nothing else in the app ever set
@@ -27,6 +27,23 @@ from typing import MutableMapping
 #: on a league switch except the allowlist below.
 DRAFT_STATE_PREFIXES = ("draft_room_", "mock_draft")
 
+#: MANDATE 1.7. State OUTSIDE the Draft Room that is still about one league, and survived a switch.
+#:
+#: `debate_attached_context` is the screen a 💬 Debate chip attached -- a board, a trade, a
+#: matchup, from the league being left. It was only ever rendered, so its staleness was cosmetic;
+#: since mandate 1.5 it also reaches the panel as context, which turns it into league A's board
+#: being described to a model answering about league B. The reach is what made this urgent.
+#:
+#: `import_audit` is a report about ONE league's Sleeper connection, rendered under a header that
+#: prints the league selected NOW. The panel also names the league the stored report was actually
+#: run for (`import_audit_league`, caught by this same prefix), so the label cannot be wrong even
+#: if some future path reaches the render without passing through a switch.
+#:
+#: PREFIXES, not exact keys, for the reason the sweep above is a sweep: a sibling key added
+#: tomorrow (`import_audit_league` was, in this very repair) is covered without anyone
+#: remembering this file.
+LEAGUE_SCOPED_PREFIXES = ("debate_attached_context", "import_audit")
+
 #: The exceptions: display preferences, which describe how a person likes to LOOK at a board
 #: rather than anything computed from one league's data. Nothing here holds a snapshot, a
 #: debate, a pick list or a cached board, and that is the test for belonging on this list.
@@ -54,7 +71,8 @@ def league_derived_keys(state) -> list[str]:
     tested is worth less than one whose limits are written down.
     """
     return [key for key in list(state)
-            if key.startswith(DRAFT_STATE_PREFIXES) and key not in DRAFT_STATE_PREFERENCES]
+            if key.startswith(DRAFT_STATE_PREFIXES + LEAGUE_SCOPED_PREFIXES)
+            and key not in DRAFT_STATE_PREFERENCES]
 
 
 def clear_league_derived(state: MutableMapping) -> list[str]:

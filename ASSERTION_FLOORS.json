@@ -7956,11 +7956,11 @@
       }
     },
     "test_league_switch_isolation.py": {
-      "test_methods": 10,
+      "test_methods": 14,
       "asserts": {
-        "assertEqual": 9,
-        "assertIn": 1,
-        "assertNotIn": 5
+        "assertEqual": 10,
+        "assertIn": 4,
+        "assertNotIn": 8
       },
       "by_method": {
         "test_a_key_nobody_classified_is_cleared_rather_than_kept": {
@@ -7984,8 +7984,20 @@
         "test_state_outside_the_draft_room_is_not_touched": {
           "assertEqual": 2
         },
+        "test_the_attached_screen_does_not_follow_the_user_into_another_league": {
+          "assertNotIn": 1
+        },
+        "test_the_dock_level_is_a_preference_and_stays": {
+          "assertEqual": 1
+        },
+        "test_the_import_audit_and_the_league_it_was_run_for_both_go": {
+          "assertNotIn": 2
+        },
         "test_the_mock_draft_goes_with_it": {
           "assertNotIn": 1
+        },
+        "test_the_panel_names_the_league_its_stored_report_was_run_for": {
+          "assertIn": 3
         },
         "test_the_picks_and_the_screen_context_go_too": {
           "assertNotIn": 2

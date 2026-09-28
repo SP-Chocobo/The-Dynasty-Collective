@@ -6163,7 +6163,22 @@ elif main_view == IMPORT_VIEW:
                     )
                 except Exception as exc:  # noqa: BLE001 -- a diagnostic must report its own failure
                     st.session_state.import_audit = {"fatal": f"{type(exc).__name__}: {exc}"}
+                # MANDATE 1.7: WHICH league this report is about, recorded beside it. The header
+                # above prints the league selected NOW, and a stored report outlives the selection
+                # -- so without this the panel states the wrong league's name over the right
+                # league's numbers. Cleared on a league switch by draft_state's sweep, which
+                # catches this key under the same prefix; recorded anyway, because a label that
+                # depends on a clearing path having run is a label that is wrong when it does not.
+                st.session_state.import_audit_league = _audit_league
         _audit = st.session_state.get("import_audit")
+        _audit_ran_for = st.session_state.get("import_audit_league")
+        if _audit and _audit_ran_for != _audit_league:
+            st.warning(
+                f"The report below was run against league `{_audit_ran_for or 'none selected'}`, "
+                f"not `{_audit_league or 'none selected'}`. Run the audit again to describe this "
+                f"league's connection. Kept rather than hidden -- it is a real report, of another "
+                f"league."
+            )
         if _audit and _audit.get("fatal"):
             st.error(f"Audit could not run: {_audit['fatal']}")
         elif _audit:
