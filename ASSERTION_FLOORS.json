@@ -13699,11 +13699,13 @@
       }
     },
     "test_snapshot_input_key.py": {
-      "test_methods": 13,
+      "test_methods": 20,
       "asserts": {
-        "assertEqual": 10,
-        "assertIn": 4,
-        "assertNotEqual": 6,
+        "assertEqual": 13,
+        "assertGreaterEqual": 1,
+        "assertIn": 6,
+        "assertLess": 1,
+        "assertNotEqual": 11,
         "assertRaises": 3
       },
       "by_method": {
@@ -13736,6 +13738,17 @@
           "assertEqual": 1,
           "assertNotEqual": 1
         },
+        "test_dict_insertion_order_is_NOT_part_of_the_key": {
+          "assertEqual": 1
+        },
+        "test_every_field_of_a_real_row_moves_the_key": {
+          "assertGreaterEqual": 1,
+          "assertNotEqual": 1
+        },
+        "test_injury_status_alone_reorders_the_top_of_the_board": {
+          "assertLess": 1,
+          "assertNotEqual": 2
+        },
         "test_no_two_inputs_are_interchangeable": {
           "assertEqual": 1
         },
@@ -13745,12 +13758,26 @@
         "test_the_alternates_table_covers_the_signature_exactly": {
           "assertEqual": 1
         },
+        "test_the_order_of_a_list_field_is_part_of_the_key": {
+          "assertNotEqual": 1
+        },
         "test_the_refusal_reaches_inside_a_container": {
           "assertIn": 2,
           "assertRaises": 1
         },
+        "test_the_same_universe_keys_the_same_way_twice": {
+          "assertEqual": 1
+        },
         "test_the_same_world_keys_the_same_way_twice": {
           "assertEqual": 1
+        },
+        "test_the_three_fields_the_old_version_missed_are_named_explicitly": {
+          "assertIn": 1,
+          "assertNotEqual": 1
+        },
+        "test_years_exp_and_status_together_admit_a_player_the_pool_had_excluded": {
+          "assertEqual": 1,
+          "assertIn": 1
         }
       },
       "disabled": {

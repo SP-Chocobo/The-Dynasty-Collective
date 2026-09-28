@@ -296,5 +296,128 @@ class TwoWorldsTheOldKeyCouldNotTellApartTests(unittest.TestCase):
                             ps.snapshot_input_key(**repicked))
 
 
+class TheFieldsTheFingerprintCouldNotSeeTests(unittest.TestCase):
+    """MANDATE 1.7: `_players_db_fingerprint` hashed four fields under a docstring claiming "every
+    player field the pool build reads", and the pool build and the board read three more.
+
+    Both consumers of that fingerprint are caches -- this key and `anchor_cache_key` -- so a change
+    the key could not see was served the old answer with the staleness stamp beside it saying
+    current. That is 1.7's whole shape: what the person is looking at can be older than the label,
+    and nothing in the apparatus can tell.
+
+    Unit arms below, board-level demonstration in the class after this one. The unit arms are what
+    make the repair a property rather than three additions: they walk the row's own fields, so a
+    field added to a players_db row tomorrow is covered without editing this test."""
+
+    @classmethod
+    def setUpClass(cls):
+        import run_draft_battery as rdb
+        cls.db, _ = rdb.build_players_db_from_capture()
+        cls.base = dr._players_db_fingerprint(cls.db)
+        cls.pid = sorted(cls.db)[0]
+
+    def _with(self, field, value):
+        mutated = dict(self.db)
+        row = dict(mutated[self.pid])
+        row[field] = value
+        mutated[self.pid] = row
+        return dr._players_db_fingerprint(mutated)
+
+    def test_every_field_of_a_real_row_moves_the_key(self):
+        """Walked from the row itself, not from a list here -- a list in this test would be the
+        same second source of truth the repair removed from the fingerprint."""
+        fields = sorted(self.db[self.pid])
+        self.assertGreaterEqual(len(fields), 8, "the fixture row is too thin to prove anything")
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertNotEqual(self.base, self._with(field, "CHANGED-BY-THIS-TEST"),
+                                    f"{field} can change while the cache key does not")
+
+    def test_the_three_fields_the_old_version_missed_are_named_explicitly(self):
+        """Redundant with the sweep above, and kept anyway: these three are the finding, and a
+        future thinning of the fixture row must not quietly stop covering them."""
+        for field in ("injury_status", "status", "years_exp"):
+            with self.subTest(field=field):
+                self.assertIn(field, self.db[self.pid])
+                self.assertNotEqual(self.base, self._with(field, "CHANGED-BY-THIS-TEST"))
+
+    def test_the_order_of_a_list_field_is_part_of_the_key(self):
+        """`fantasy_positions` order is Sleeper's own, so a reordering is a change in what the
+        vendor said."""
+        multi = next(p for p in self.db if len(self.db[p].get("fantasy_positions") or []) > 1)
+        mutated = dict(self.db)
+        row = dict(mutated[multi])
+        row["fantasy_positions"] = list(reversed(row["fantasy_positions"]))
+        mutated[multi] = row
+        self.assertNotEqual(self.base, dr._players_db_fingerprint(mutated))
+
+    def test_dict_insertion_order_is_NOT_part_of_the_key(self):
+        """The other half: a key that moved when nothing changed would miss every cache and read
+        as a performance bug rather than a correctness one."""
+        reordered = {k: self.db[k] for k in sorted(self.db, reverse=True)}
+        self.assertEqual(self.base, dr._players_db_fingerprint(reordered))
+
+    def test_the_same_universe_keys_the_same_way_twice(self):
+        self.assertEqual(self.base, dr._players_db_fingerprint(self.db))
+
+
+class TheBoardMovesUnderTheFieldsTheKeyCouldNotSeeTests(unittest.TestCase):
+    """NON-VACUITY for the class above, at board level: if these fields could not change a board,
+    leaving them out of the key would have cost nothing. Slow -- real board builds -- and kept
+    separate for the same reason the two-worlds class above is.
+
+    Measured on the capture universe with season sums, 12-team PPR dynasty."""
+
+    @classmethod
+    def setUpClass(cls):
+        import data_merger as dm, draft_battery as dbat, run_draft_battery as rdb
+        cls.merger = dm.DataMerger()
+        cls.db, _ = rdb.build_players_db_from_capture()
+        cls.season = rdb.season_projections_from_capture()
+        cls.league = dr.build_mock_league(
+            teams=12, superflex=False, scoring="ppr", te_premium=False, dynasty=True,
+            base_scoring=rdb.scoring_settings_from_capture())
+        cls.merger.set_league_format(dbat.league_format_hint(cls.league))
+
+    def _board(self, players):
+        return dr.compute_draft_board(
+            self.merger, players, [], my_roster_id=None, league=self.league, mode="balanced",
+            sleeper_projections=self.season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+
+    def _mutate(self, pid, **fields):
+        mutated = dict(self.db)
+        mutated[pid] = {**mutated[pid], **fields}
+        return mutated
+
+    def test_injury_status_alone_reorders_the_top_of_the_board(self):
+        """The clean case: one field, nothing else touched. The leader falls to third and loses
+        24.11 points through health_penalty, under a key that was identical."""
+        base = self._board(self.db)
+        leader = base[0]["player_id"]
+        hurt = self._board(self._mutate(leader, injury_status="Out"))
+        self.assertNotEqual(base[0]["player_id"], hurt[0]["player_id"],
+                            "injury_status no longer moves the board -- re-derive this finding")
+        before = next(r for r in base if r["player_id"] == leader)["final_score"]
+        after = next(r for r in hurt if r["player_id"] == leader)["final_score"]
+        self.assertLess(after, before)
+        self.assertNotEqual(dr._players_db_fingerprint(self.db),
+                            dr._players_db_fingerprint(self._mutate(leader, injury_status="Out")))
+
+    def test_years_exp_and_status_together_admit_a_player_the_pool_had_excluded(self):
+        """Narrower than injury_status and stated as such: the clauses reading these two sit
+        behind `if info.get("team")`, and team was already in the old key. So the pair is the
+        demonstrable case, and it is a real one -- a teamless rookie's status flip is exactly the
+        sync a dynasty drafter opens the app for."""
+        base = {r["player_id"] for r in self._board(self.db)}
+        excluded = next(p for p in self.db
+                        if p not in base and not self.db[p].get("team")
+                        and (self.db[p].get("years_exp") or 0) > 0
+                        and self.db[p].get("status") in dr.NOT_CURRENTLY_PLAYING)
+        admitted = {r["player_id"] for r in
+                    self._board(self._mutate(excluded, years_exp=0, status="Active"))}
+        self.assertIn(excluded, admitted, "the rookie admission clause no longer reads these")
+        self.assertEqual(len(base) + 1, len(admitted))
+
+
 if __name__ == "__main__":
     unittest.main()

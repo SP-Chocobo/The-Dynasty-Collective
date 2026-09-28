@@ -2813,13 +2813,72 @@ def _merger_content_fingerprint(merger) -> str:
 
 
 def _players_db_fingerprint(players_db: dict[str, dict]) -> str:
-    """Every player field the pool build reads -- id, position, eligibility and team."""
+    """EVERY field of every player row, whether or not this module reads it today.
+
+    THE DEFECT THIS REPLACES (mandate 1.7). The docstring said "every player field the pool build
+    reads" and named four: id, position, eligibility, team. The pool build and the board also read
+    `status`, `years_exp` and `injury_status`, at four sites in this file:
+
+        build_available_pool  rookie admission   `years_exp == ROOKIE_YEARS_EXP`
+        build_available_pool  exclusion          `status in NOT_CURRENTLY_PLAYING`
+        the availability term                    `injury_status`, with games played
+        risk_adj                                 `health_penalty(injury_status, ...)`
+
+    MEASURED, on the capture universe with season sums, and stated at the strength the measurement
+    actually supports rather than the strength the finding was filed at:
+
+      * `injury_status` ALONE changes the board. Setting the leader's to "Out" with nothing else
+        touched moves him from first to third and his final score from 232.88 to 208.77 -- a
+        24.11-point swing, through `health_penalty`, under a key that could not see it.
+      * `years_exp` and `status` change the POOL, but only together: flipping one teamless player to
+        `years_exp=0` AND `status="Active"` admits him through the rookie clause, 970 rows to 971.
+        Neither alone did so in the capture, because the clauses reading them sit behind
+        `if info.get("team")` -- and `team` was already in the key. So their hole is narrower than
+        the docstring's claim was, and it is real: a rookie's status flip is exactly the sync a
+        dynasty drafter cares about, and it keyed identically.
+
+    Both consumers of this function are caches. `anchor_cache_key` would serve the old replacement
+    level and `snapshot_input_key` the old board, with the staleness stamp beside them saying
+    current -- which is the whole of 1.7: what the person is looking at can be older than what the
+    label says, and nothing in the apparatus can tell.
+
+    A HASH OF EVERYTHING RATHER THAN A LONGER LIST, and that is the point. A maintained list of
+    "fields the board reads" is a second source of truth about this module's own behaviour, and this
+    one had already drifted from it -- the four-field version was written when four were read, and
+    three more arrived without it being told. Adding those three would leave the same mechanism in
+    place for the fourth. Hashing the whole row makes the docstring's claim true by construction:
+    the next field the board learns to read is in the key the day it is read, with no second place
+    to remember. `#126`, applied to a cache key.
+
+    THE COST, measured on the capture universe (6,595 players, 10 fields per row): a median 30.5 ms
+    over five runs (24.3 to 36.1) against 2.7 ms for the four-field version, on a snapshot key that
+    cost 60 ms in total, against a board build of 870 ms warm and 9.8 s cold. ~3% of the warm case,
+    and the figure is the measured spread rather than the best run. The other side of the trade is a
+    cache that misses when an unread field churns -- which costs one rebuild and cannot produce a
+    wrong answer, while the version it replaces could only ever produce one.
+
+    Sorted at both levels so the key is a function of content and not of dict insertion order.
+    """
     return content_hash.fingerprint(*(
-        f"{pid}|{(players_db[pid] or {}).get('position')}"
-        f"|{(players_db[pid] or {}).get('team')}"
-        f"|{','.join((players_db[pid] or {}).get('fantasy_positions') or ())}"
+        f"{pid}|" + ",".join(
+            f"{field}={_canonical_player_value((players_db[pid] or {})[field])}"
+            for field in sorted(players_db[pid] or {}))
         for pid in sorted(players_db)
     ))
+
+
+def _canonical_player_value(value) -> str:
+    """One players_db field as text a hash can take.
+
+    A list renders by its ORDER, deliberately: `fantasy_positions` is a list and its order is
+    Sleeper's own, so a reordering is a change in what the vendor said. Everything in a
+    players_db row is a scalar, a string or a list of strings -- a nested dict would render
+    through repr and that is stated here rather than discovered, since repr on an arbitrary
+    object is a memory address that stays stable while the contents change (the same trap
+    `snapshot_input_key._refuse_uncanonicalizable` exists for)."""
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(str(v) for v in value) + "]"
+    return repr(value)
 
 
 def anchor_cache_key(
