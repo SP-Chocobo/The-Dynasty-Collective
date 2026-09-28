@@ -146,6 +146,66 @@ class MatchCandidateTests(unittest.TestCase):
         self.assertIsNone(pd._match_candidate(self.snap, None))
         self.assertIsNone(pd._match_candidate(self.snap, ""))
 
+    # ---- MANDATE 1.6: the only candidate REFERENCED, not the first one mentioned -----------
+    #
+    # The fallback used to return the first candidate in ITERATION order whose name appeared
+    # anywhere in the text, and the candidates are in board order, which is value order. So
+    # "Nico Collins over CeeDee Lamb" resolved to Lamb, and the panel printed Lamb's numbers
+    # under an argument written about Collins.
+
+    def test_two_candidates_named_in_one_line_resolve_to_nothing(self):
+        self.assertIsNone(pd._match_candidate(self.snap, "Brock Purdy over Justin Fields"))
+        self.assertIsNone(pd._match_candidate(self.snap, "Justin Fields over Brock Purdy"))
+
+    def test_one_named_in_full_and_one_by_surname_is_still_two(self):
+        """The mixed case, which a full-name-first rule would resolve to the one written out.
+        A reader of "purdy vs Justin Fields" cannot say which is the pick either."""
+        self.assertIsNone(pd._match_candidate(self.snap, "purdy vs Justin Fields"))
+
+    def test_the_answer_does_not_depend_on_which_one_the_board_ranks_first(self):
+        """The whole defect was an answer that came from the ordering rather than from the text.
+        Both orderings of the same two candidates must give the same verdict."""
+        reversed_board = _snapshot([_candidate("2", "Justin Fields"), _candidate("1", "Brock Purdy")])
+        line = "Brock Purdy over Justin Fields"
+        self.assertEqual(pd._match_candidate(self.snap, line),
+                         pd._match_candidate(reversed_board, line))
+
+    def test_a_fragment_that_is_not_a_word_of_a_name_resolves_to_nothing(self):
+        """"D" used to resolve to whoever sat at the top of the board. Note that uniqueness alone
+        would NOT have fixed this: "r" appears in "Brock Purdy" and in no other candidate here,
+        so a unique-substring rule still resolves one letter to a player."""
+        self.assertIsNone(pd._match_candidate(self.snap, "D"))
+        self.assertIsNone(pd._match_candidate(self.snap, "r"))
+        self.assertIsNone(pd._match_candidate(self.snap, "urd"))
+
+    def test_a_surname_still_resolves_which_is_what_the_fallback_is_for(self):
+        """NON-VACUITY. The rule must not have turned the matcher off."""
+        self.assertEqual("1", pd._match_candidate(self.snap, "Purdy").player_id)
+        self.assertEqual("1", pd._match_candidate(
+            self.snap, "RECOMMENDATION: Brock Purdy, and it is not close").player_id)
+
+    def test_a_word_two_candidates_share_refers_to_neither(self):
+        """Why the words are filtered before they are counted. Both candidates are called
+        Michael, so "michael" names nobody -- but the full name in the same line does, and a
+        rule that counted the shared word would decline a question it can answer."""
+        shared = _snapshot([_candidate("1", "Michael Thomas"), _candidate("2", "Michael Pittman")])
+        self.assertEqual("1", pd._match_candidate(shared, "Michael Thomas is the pick").player_id)
+        self.assertIsNone(pd._match_candidate(shared, "Michael is the pick"))
+
+    def test_half_of_a_hyphenated_name_still_resolves(self):
+        """A model writing the back half of "Smith-Njigba" is paraphrasing, not naming somebody
+        else -- which is why the split is on non-alphanumerics rather than on whitespace."""
+        board = _snapshot([_candidate("1", "Jaxon Smith-Njigba"), _candidate("2", "Justin Fields")])
+        self.assertEqual("1", pd._match_candidate(board, "Njigba").player_id)
+
+    def test_a_rejected_name_still_matches_which_is_the_documented_limit(self):
+        """CHARACTERIZATION, not an endorsement. Invert when repaired; do not delete.
+
+        One name, negated, still resolves to that name -- reading negation out of free prose is a
+        guess of a different kind. The docstring says so, and the Caller's contract asks for a
+        bare name, so a line arguing against a player is already outside it."""
+        self.assertEqual("1", pd._match_candidate(self.snap, "Not Brock Purdy").player_id)
+
 
 class BestAlternativeTests(unittest.TestCase):
     def test_picks_the_highest_acquisition_value_candidate_other_than_the_recommended_one(self):

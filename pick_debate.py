@@ -53,6 +53,7 @@ something that runs on every board refresh (a live draft's per-pick LLM budget i
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -611,23 +612,81 @@ def parse_caller_verdict(text: str) -> dict:
     return verdict
 
 
+def _words(text: str) -> list[str]:
+    """A name or a line of prose as its alphanumeric words, lowercased.
+
+    Split on everything else, so "Smith-Njigba" yields both halves and "St. Brown" yields
+    "st" and "brown" -- a model writing the surname of a hyphenated name is paraphrasing, not
+    naming a different player."""
+    return [w for w in re.split(r"[^a-z0-9]+", text.lower()) if w]
+
+
+def _discriminating_words(snapshot: PickSnapshot) -> dict[str, CandidateSnapshot]:
+    """Each name-word that belongs to exactly ONE candidate on this board, mapped to that
+    candidate. Words shared by two or more -- a first name two candidates happen to share --
+    are not in here at all, because such a word refers to no one in particular.
+
+    DERIVED FROM THE BOARD, not from a list: a different board makes different words
+    discriminating, and none of them is chosen by hand (`#56`)."""
+    owners: dict[str, list[CandidateSnapshot]] = {}
+    for c in snapshot.candidates:
+        for word in set(_words(c.name)):
+            owners.setdefault(word, []).append(c)
+    return {word: holders[0] for word, holders in owners.items() if len(holders) == 1}
+
+
 def _match_candidate(snapshot: PickSnapshot, recommendation_text: Optional[str]) -> Optional[CandidateSnapshot]:
     """Look up the Caller's named recommendation against the snapshot's REAL candidates --
-    never trust a number out of the LLM's own prose. Exact case-insensitive match first, falling
-    back to substring containment (a model paraphrasing "Brock Purdy" as "Purdy" shouldn't lose
-    the match) -- returns None (never a guess) if nothing lines up, so a caller can tell the
-    debate didn't cleanly resolve rather than silently displaying the wrong player's numbers."""
+    never trust a number out of the LLM's own prose. None when nothing lines up AND when more
+    than one candidate does, so a caller can tell the debate did not cleanly resolve rather than
+    silently displaying another player's numbers.
+
+    THE DEFECT THIS REPLACES (mandate 1.6). The fallback returned the FIRST candidate in
+    iteration order whose name appeared ANYWHERE in the text, and the snapshot's candidates are
+    in board order, which is value order. Measured against a real board:
+
+        "RECOMMENDATION: Nico Collins over CeeDee Lamb"  ->  CeeDee Lamb
+        "Not CeeDee Lamb"                                ->  CeeDee Lamb
+        "D"                                              ->  CeeDee Lamb
+
+    In the first case the panel printed Lamb's numbers under an argument written about Collins,
+    with Collins offered underneath as the "best alternative". The docstring claimed it "returns
+    None (never a guess) if nothing lines up" -- and it did; it guessed whenever TWO things
+    lined up, which is the case that sentence never covered.
+
+    ONE RULE: a candidate is REFERENCED when its full name appears in the text, or when a word
+    of its name that belongs to no other candidate appears as a word in the text. A match is the
+    only candidate referenced; anything else is None.
+
+    Both halves are load-bearing, and each one alone is not enough.
+      * UNIQUENESS alone does not dispose of the fragment case. "r" is a unique substring of
+        "Brock Purdy" on a board whose other candidate is "Justin Fields", so a uniqueness rule
+        over substrings still resolves a single letter to a player. Requiring a WORD does.
+      * WORDS alone would decline far too much. Two candidates sharing a first name would make
+        "Michael Thomas is the pick" ambiguous on the word "michael" while the full name sits
+        right there, so a word shared across candidates refers to nobody and is dropped before
+        the count.
+
+    WHAT THIS STILL CANNOT DO, said plainly rather than left to be found later: a single name the
+    text REJECTS still matches it. "Not Brock Purdy", with Purdy the only candidate named,
+    resolves to Purdy. Reading negation out of free prose is a guess of a different kind, the
+    `recommended=None` path exists precisely so the panel can decline, and the Caller's contract
+    asks for a bare name -- a line arguing against a player is already outside it."""
     if not recommendation_text:
         return None
     target = recommendation_text.strip().lower()
     for c in snapshot.candidates:
         if c.name.strip().lower() == target:
             return c
+    discriminating = _discriminating_words(snapshot)
+    referenced: list[CandidateSnapshot] = []
+    target_words = set(_words(target))
     for c in snapshot.candidates:
-        name = c.name.strip().lower()
-        if name in target or target in name:
-            return c
-    return None
+        by_full_name = c.name.strip().lower() in target
+        by_own_word = any(discriminating.get(word) is c for word in target_words)
+        if by_full_name or by_own_word:
+            referenced.append(c)
+    return referenced[0] if len(referenced) == 1 else None
 
 
 def _best_alternative(snapshot: PickSnapshot, recommended: Optional[CandidateSnapshot]) -> Optional[CandidateSnapshot]:
