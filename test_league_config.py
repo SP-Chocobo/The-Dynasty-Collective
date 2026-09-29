@@ -166,18 +166,42 @@ class AmbiguityIsDerivedNotRememberedTests(unittest.TestCase):
         A claim about defaults that describe a different league is a claim about the VALUATION
         path, so this reads that path instead: draft_room must take the count from TEAM_COUNT_KEY,
         and must not read `num_teams` at all."""
-        tree = ast.parse((_HERE / "draft_room.py").read_text())
-        got = {node.args[0].value for node in ast.walk(tree)
-               if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-               and node.func.attr == "get" and node.args
-               and isinstance(node.args[0], ast.Constant)
-               and isinstance(node.args[0].value, str)}
-        self.assertIn(lc.TEAM_COUNT_KEY, got,
-                      f"the gate names {lc.TEAM_COUNT_KEY!r} as the team count but draft_room "
-                      f"never reads it")
-        self.assertNotIn("num_teams", got,
-                         "draft_room reads `num_teams` after all -- if the valuation path really "
-                         "consults it, it belongs back in the gate under that name")
+        # MANDATE 4 MADE THE READ INDIRECT, WHICH IS THE POINT OF IT. This asserted that
+        # draft_room.py reads TEAM_COUNT_KEY itself, and after Tier 4 it does not: the three
+        # derivations of the team count became one, `lc.team_count`, and draft_room calls that. A
+        # test that requires the consumer to read the key directly forbids exactly the
+        # consolidation #126 asks for -- so it now follows the indirection instead of the literal.
+        def keys_read(module):
+            tree = ast.parse((_HERE / module).read_text())
+            return {node.args[0].value for node in ast.walk(tree)
+                    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "get" and node.args
+                    and isinstance(node.args[0], ast.Constant)
+                    and isinstance(node.args[0].value, str)}
+
+        # ASKED FOR THE NAME, NOT THE LITERAL, and that is the stronger assertion: this module
+        # reads `.get(TEAM_COUNT_KEY)`, so the key appears as a Name rather than a string constant.
+        # A literal here would itself be the second home this whole item is about.
+        module_tree = ast.parse((_HERE / "league_config.py").read_text())
+        reader = next(node for node in ast.walk(module_tree)
+                      if isinstance(node, ast.FunctionDef) and node.name == "team_count")
+        names = {node.id for node in ast.walk(reader) if isinstance(node, ast.Name)}
+        self.assertIn("TEAM_COUNT_KEY", names,
+                      "team_count does not read TEAM_COUNT_KEY, so the name the gate declares and "
+                      "the key the count comes from can drift apart")
+        self.assertNotIn(lc.TEAM_COUNT_KEY, keys_read("league_config.py"),
+                         f"{lc.TEAM_COUNT_KEY!r} is spelled as a literal somewhere in this module, "
+                         f"which is a second home for the very key TEAM_COUNT_KEY exists to name")
+        calls = {node.func.attr for node in
+                 ast.walk(ast.parse((_HERE / "draft_room.py").read_text()))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)}
+        self.assertIn("team_count", calls,
+                      "draft_room derives the team count itself again instead of asking the one "
+                      "function that states the order of authority")
+        for module in ("draft_room.py", "league_config.py"):
+            self.assertNotIn("num_teams", keys_read(module),
+                             f"{module} reads `num_teams` off a league -- if the valuation path "
+                             f"really consults it, it belongs back in the gate under that name")
 
     def test_an_empty_roster_positions_reports_that_and_stops(self):
         """No slots means every later check would be a claim about nothing. One honest finding

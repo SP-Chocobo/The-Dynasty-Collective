@@ -1452,7 +1452,13 @@ def load_all(
 # same defense is a 111-point season under the settings below and a 276-point season under
 # CBS's assumptions -- and it is the SPREAD, not the level, that VOR reads as positional
 # separation."
-_TRANSCRIBED_SOURCE_FILES = {
+#: MANDATE 4 / `#126`: PUBLIC, AND THE ONLY DEFINITION. `draft_room.KDST_SEEDED_SOURCE_FILES`
+#: spelled the same two filenames for the same reason -- a season total transcribed from some other
+#: league's display, which cannot adapt to the league being drafted. Byte-identical today, so the
+#: input that splits them is a THIRD transcribed file: added here it would change provenance and
+#: leave the board's confidence tier behind, or the reverse. This module reads the files and decides
+#: what a source IS, so the set lives here and draft_room binds its own name to this object.
+TRANSCRIBED_SOURCE_FILES = {
     "sleeper_kicker_projections.csv",
     "sleeper_dst_projections.csv",
 }
@@ -1485,7 +1491,7 @@ def measurement_basis(source_file) -> Optional[str]:
     name = str(source_file).strip()
     if not name:
         return None
-    if name in _TRANSCRIBED_SOURCE_FILES:
+    if name in TRANSCRIBED_SOURCE_FILES:
         return "sleeper_transcribed"
     return "draftsharks_vendor"
 

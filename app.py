@@ -5575,7 +5575,11 @@ elif main_view == DRAFT_VIEW:
                     draft_picks = st.session_state.draft_room_picks_by_draft.get(draft_id, [])
                     picks_pulled_at = st.session_state.draft_room_picks_fetched_at.get(draft_id)
                     pick_order = draft_strategy.generate_pick_order(round_1_order, total_rounds=total_rounds, draft_type=draft_type)
-                    num_teams = len(round_1_order)
+                    # MANDATE 4 / `#126`: the draft's own seats still win -- that is the first
+                    # rule in team_count's stated order -- but the derivation is no longer this
+                    # screen's own. The engine reads the same function, so a draft with fewer seats
+                    # than the league has rosters can no longer give the two different counts.
+                    num_teams = league_config.team_count(league_for_engine, pick_order=round_1_order)
                     current_index = len(draft_picks)
 
                     # This used to run on as a permanent inline caption between the toolbar and
@@ -5607,7 +5611,7 @@ elif main_view == DRAFT_VIEW:
                         if target_index is None:
                             st.info("You have no more picks remaining in this draft.")
                         else:
-                            target_round = target_index // num_teams + 1
+                            target_round = league_config.round_of(target_index, num_teams)
                             target_slot = target_index % num_teams + 1
                             pick_label = f"{target_round}.{target_slot:02d}"
                             is_live = target_index == current_index

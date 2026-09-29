@@ -168,6 +168,64 @@ AMBIGUOUS = "ambiguous"
 CONFIRMED_KEY = "_config_confirmed"
 
 
+def team_count(league: Optional[dict] = None, *, pick_order=None,
+               picks: Optional[list] = None) -> int:
+    """How many teams are drafting -- ONE derivation, in a stated order of authority (`#126`).
+
+    This was spelled three times and only one of them had a fallback: `len(round_1_order)` in the
+    Draft Room, `league.get("total_rosters")` beside it, and
+    `league.get("total_rosters") or len({roster_id}) or 1` in the engine. They agree on every league
+    in hand, and the input that splits them is a draft with fewer seats than the league has rosters
+    -- at which point the screen and the engine would price the same board against different team
+    counts, and every replacement level with it.
+
+    THE ORDER IS THE ARGUMENT, not a preference:
+
+      1. `pick_order` -- the draft's OWN seats. A draft in progress has a definite number of chairs
+         and that is the number every per-turn quantity is about, whatever the league record says.
+      2. `total_rosters` -- the league's own count, under the name the engine reads
+         (TEAM_COUNT_KEY, MANDATE 2.2). Authoritative when no draft is in hand.
+      3. the distinct roster ids among `picks` -- a floor, not a count: a roster that has not picked
+         yet is invisible here. Kept because the engine's own reading had it, and dropping a fallback
+         is a behaviour change dressed as a cleanup.
+      4. `1`, which is not a team count but is what the arithmetic needs to not divide by zero. The
+         engine's reading ended this way too; it is preserved rather than improved, because a
+         one-team league puts every replacement level at its position's best player and that is a
+         consequence worth leaving visible instead of papering over.
+    """
+    if pick_order:
+        seats = {str(seat) for seat in pick_order if seat is not None}
+        if seats:
+            return len(seats)
+    declared = (league or {}).get(TEAM_COUNT_KEY)
+    if declared:
+        return int(declared)
+    if picks:
+        drafting = {p.get("roster_id") for p in picks if p.get("roster_id") is not None}
+        if drafting:
+            return len(drafting)
+    return 1
+
+
+def round_of(picks_completed: int, num_teams: Optional[int]) -> Optional[int]:
+    """Which round the NEXT pick belongs to -- one home for `n // teams + 1` (`#126`).
+
+    Spelled three times: once in the Draft Room's own round label, twice in the engine (the round
+    that decides `use_upside`, and the round stamped on a simulated pick). They agreed, and the
+    arithmetic is the sort that is easy to get subtly wrong in one copy -- `#52` phase 6 records a
+    version that lagged by one at every round boundary, which switched `mode="auto"` to upside
+    scoring a pick late and made a battery report a split the trajectory did not produce.
+
+    `None` when there is no team count, rather than a guess: a caller with another way to answer
+    (a pick's own recorded round, say) should use it, and one without should not be handed a number
+    derived from nothing. The one caller that HAS such a fallback keeps it at its own site, because
+    reading a recorded round is a different source and not this function's business.
+    """
+    if not num_teams:
+        return None
+    return int(picks_completed) // int(num_teams) + 1
+
+
 def config_age_seconds(snapshot: Optional[dict], now: Optional[float] = None) -> Optional[float]:
     """How old the config in use actually is, in seconds -- or None if nothing was ever synced.
 

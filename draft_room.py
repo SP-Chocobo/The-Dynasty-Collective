@@ -191,8 +191,10 @@ from typing import Optional
 import pandas as pd
 
 import content_hash
+import league_config as lc
 import lineup_optimizer as lo
-from data_merger import NO_NFL_TEAM, DataMerger, identity_namespace, name_key, normalize_name
+from data_merger import (NO_NFL_TEAM, TRANSCRIBED_SOURCE_FILES, DataMerger, identity_namespace,
+                         name_key, normalize_name)
 import player_universe as pu
 from player_universe import (FLEX_SLOT_POSITIONS, FANTASY_POSITIONS, league_usable_positions,
                              player_eligible_positions, player_name, player_position,
@@ -726,7 +728,13 @@ ABSENCE_KIND_LABELS = {
 # at least scores against the ACTUAL league being drafted) -- these are real season
 # projections, but fixed to whichever unrelated league's scoring happened to produce them,
 # and cannot adapt to the league actually being drafted the way either of those two can.
-KDST_SEEDED_SOURCE_FILES = {"sleeper_kicker_projections.csv", "sleeper_dst_projections.csv"}
+#
+# MANDATE 4 / `#126`: THE SET IS data_merger's, THE NAME IS THIS MODULE'S. These two filenames were
+# spelled here and again as data_merger._TRANSCRIBED_SOURCE_FILES, for the same reason in both
+# places. One definition now, bound to the local name because that name says what the set means to
+# THIS reader -- "the rows whose bpa_source is sleeper_seeded" -- and because the measurement scripts
+# in evidence/ cite it by that name. An alias is not a second home; a second literal was.
+KDST_SEEDED_SOURCE_FILES = TRANSCRIBED_SOURCE_FILES
 
 
 #: WHERE A FLEX SLOT'S CAPACITY WENT -- the vocabulary, with ONE home, same discipline as
@@ -2210,7 +2218,15 @@ def drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) -
 # Nothing below knows what a kicker is. Every position goes through the identical arithmetic;
 # the split above falls out of each position's own value decay, which is the point.
 
-HORIZON_UNDRAFTED_SLOTS = ("IR",)  # slots a draft doesn't fill, so they aren't draft demand
+# HORIZON_UNDRAFTED_SLOTS WAS HERE AND IS DELETED (MANDATE 4 / `#126`). It held ("IR",) -- the
+# slots a draft does not fill -- and `league_config.UNDRAFTED_SLOTS` holds the same one for the same
+# reason. Measured before removing it: the two sets were equal and
+# `draftable_slots_per_team(rp) == len(league_config.draftable_slots(rp))` on the same roster, so
+# this was a reimplementation of that function around a second copy of its slot set.
+#
+# league_config had already done this once for the neighbouring pair -- its own comment records two
+# names ("NON_STARTING_SLOTS" and "NON_PLAYING_SLOTS") holding identical sets, now one object with
+# an alias. Same treatment, one module along.
 # Ranks either side of the horizon to read the floor's error bar across. Sized to the scale
 # of miss a real draft produces: a positional run moves consumption by roughly this much, so
 # it asks "if this room drafts this position a little harder or softer than expected, how far
@@ -2221,8 +2237,14 @@ HORIZON_SENSITIVITY_WINDOW = 6
 
 def draftable_slots_per_team(roster_positions: list[str]) -> int:
     """How many roster slots a draft actually fills per team. TAXI counts (rookie picks land
-    there); IR does not (nobody drafts onto injured reserve)."""
-    return sum(1 for slot in roster_positions or [] if slot not in HORIZON_UNDRAFTED_SLOTS)
+    there); IR does not (nobody drafts onto injured reserve).
+
+    MANDATE 4 / `#126`: this is `len(league_config.draftable_slots(...))` and now says so, rather
+    than re-deriving it from a second copy of the slot set. The NAME stays because it says what the
+    number is to this module's readers -- draft demand per team -- and because that is the question
+    `#52` phase 0.7 found two answers to.
+    """
+    return len(lc.draftable_slots(roster_positions))
 
 
 def _bench_appetite_rates(
@@ -4022,7 +4044,10 @@ def compute_draft_board(
     if pool.empty:
         return []
 
-    num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
+    # MANDATE 4 / `#126`: one derivation, and the order of authority is stated where it lives.
+    # This spelled `total_rosters or len({roster_id}) or 1` while the Draft Room spelled
+    # `len(round_1_order)` a few lines from a `total_rosters` read of its own.
+    num_teams = lc.team_count(league, picks=picks)
     demand_source = picks if demand_picks is None else demand_picks
     # THE ROUND BEING DRAFTED, not the one already finished (#52 phase 6). This was
     # `max(round of completed picks)`, which lags by one at every round boundary: with 168 picks
@@ -4034,9 +4059,12 @@ def compute_draft_board(
     #
     # `n` completed picks means the next is n // teams + 1. num_teams is derived just above from
     # the league itself, and falls back to the old reading if it cannot be determined at all.
+    # MANDATE 4 / `#126`: the arithmetic is league_config.round_of's. The FALLBACK stays here,
+    # because reading a pick's own recorded round is a different source and belongs to the caller
+    # that has one -- round_of returns None rather than guessing.
     current_round = (
-        (len(demand_source) // num_teams + 1) if (demand_source and num_teams)
-        else (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
+        (lc.round_of(len(demand_source), num_teams) if (demand_source and num_teams) else None)
+        or (max((p.get("round") or 1) for p in demand_source) if demand_source else 1)
     )
     use_upside = mode == "upside" or (mode == "auto" and current_round >= upside_round)
     # NOTE: a `drafted_counts = _drafted_counts_by_position(demand_source, players_db)` line
@@ -4826,7 +4854,8 @@ def simulate_opponent_picks(
         if not board:
             break
         picks.append({
-            "pick_no": idx + 1, "round": idx // num_teams + 1, "roster_id": on_clock,
+            # MANDATE 4 / `#126`: same rule, same home.
+            "pick_no": idx + 1, "round": lc.round_of(idx, num_teams), "roster_id": on_clock,
             "player_id": board[0]["player_id"],
         })
     return picks
