@@ -180,6 +180,63 @@ now for flex-reachable groups.
 
 ---
 
+## D8 — 3.3: the bounded additive terms were sized for a 0–100 scale that no longer exists
+
+**Status: the vacuous test 3.3 named is repaired and certified (it was a tautology — see the
+answered list). The constants themselves are `#56` territory: a re-derivation, not a re-tuning, and
+the mandate routes it here.**
+
+**The question.** `_scale_vor_to_bpa` used to be `clip(vor / max(vor) * 100, 0, 100)` and is now the
+identity, so `bpa` is real projected points above replacement. Every bounded additive term beside it
+was sized against the old 0–100 scale and none was resized. Measured on a 12T_ppr opening board
+(259 priced rows):
+
+| quantity | value | against a `bpa` span of −324.0 to +194.0 |
+|---|---|---|
+| `NEED_BONUS_MAX` | 12.0 | 2.3% of the range |
+| `DEPTH_EXPOSURE_MAX` | 12.0 | 2.3% |
+| `TIME_HORIZON_CLAMP` | ±10.0 | 1.9% |
+| `RISK_ADJ` IR / Out / Doubtful | −18 / −10 / −5 | −18 is now *18 projected points* |
+
+(3.3 reports the span as −328.6 to +227.6; measured on this tree it is −324.0 to +194.0. Same order,
+same conclusion.)
+
+**What it actually does to the board, measured rather than argued.** In the opening top 60 there are
+1149 cross-position pairs, and in **16** of them the higher-ranked row carries the *lower*
+`universal_value` — the team terms outvoting the value anchor. 3.3 says 21; on this tree it is 16.
+Small, real, and concentrated exactly where picks come from.
+
+**`need_bonus` on an empty roster is not flat across positions**, which is worth correcting: QB 4.00,
+TE 4.67, RB 8.67, WR 8.67. It is flat *within* a position, which on an empty roster is correct — there
+is no per-player roster information to carry yet. So the sharp version of 3.3's complaint is the 16
+inversions, not the flatness.
+
+**Options.**
+  * **(a) Re-derive each cap as a fraction of the live `bpa` spread.** Principled and `#56`-shaped:
+    the cap becomes a stated share of the real scale rather than a number inherited from a dead one.
+    Needs a decision about *which* spread (whole pool, priced rows, or the candidate window), and
+    that choice moves every cap.
+  * **(b) Re-derive only `RISK_ADJ`, and leave the caps.** `RISK_ADJ` is the one whose meaning
+    changed outright — "−18" went from 18% of a bounded scale to 18 projected points, which is 10.4%
+    of a 173-point player and 4.5% of a 400-point one, so the same designation penalises unequally.
+    The caps at least still bound the terms they were written to bound.
+  * **(c) Leave all of it and pin the 16 inversions as the thing to watch.** Defensible: the terms
+    are *supposed* to be able to reorder a board, that is what a team-specific term is for, and 16
+    of 1149 is not obviously too many. Costs nothing and closes nothing.
+
+**My recommendation: (b) now, (a) when there is a reason to open the caps.** `RISK_ADJ` is the one
+place where a number's *meaning* silently changed rather than its size being merely inherited — a
+flat points penalty for a health designation charges a 173-point player more than twice what it
+charges a 400-point one, for the same injury. (a) is the right end state but its "which spread"
+question is exactly the kind of choice that wants a measurement campaign, not a decision in a
+picker. (c) is honest but leaves a known unit mismatch in the sum.
+
+**What it costs to be wrong.** Re-deriving the caps without settling the spread question replaces
+one arbitrary number with another and makes the next audit harder, not easier. Leaving `RISK_ADJ` as
+a flat points penalty means the health discount keeps being regressive in the player's own value.
+
+---
+
 # Answered by measurement instead of by you
 
 These were heading for this file and did not need to. Recorded so you can object.
