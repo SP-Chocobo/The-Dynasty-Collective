@@ -625,6 +625,22 @@ def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] 
         "value, probability, or projection not shown here.",
         "",
     ]
+    # MANDATE 2.2: THE CHAIRS ARE TOLD THE CONFIG MIGHT BE WRONG. Every number below is computed
+    # from the league dict, so a league the app could not read cleanly makes all of them suspect at
+    # once -- and a debate that argues a pick without knowing that is confidently reasoning about a
+    # league nobody is playing. Placed directly after the "only real numbers" instruction, because
+    # this is a qualification OF that instruction, not a separate topic.
+    #
+    # Silent when the tuple is empty (checked, clean) AND when it is None (never checked), for
+    # opposite reasons: there is nothing to say in the first case and no standing to reassure in
+    # the second.
+    if snapshot.config_ambiguities:
+        parts.append(
+            "THE LEAGUE CONFIGURATION THESE NUMBERS WERE PRICED ON DID NOT PARSE CLEANLY. They "
+            "were computed anyway, from defaults wherever the config was silent, so each one may "
+            "describe a different league than the one being played:")
+        parts.extend(f"  - {detail}" for _kind, detail in snapshot.config_ambiguities)
+        parts.append("")
     parts.extend(
         _format_candidate(c, snapshot.user_selected_player_id) + "\n" for c in snapshot.candidates
     )

@@ -96,6 +96,11 @@ def record_summary(
         "current": bool(current),
         "reason": reason,
         "unanswerable": unanswerable,
+        # MANDATE 2.2. Three states preserved verbatim (`#187`): `None` for a record written before
+        # schema 5, when nothing asked; `[]` for a record whose config was checked and clean; a
+        # populated list for one priced on a config that did not parse. A reader that rendered
+        # `None` and `[]` the same way would tell someone a board was fine when nobody had looked.
+        "config_ambiguities": evidence.get("config_ambiguities"),
     }
 
 

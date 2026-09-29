@@ -5682,6 +5682,33 @@ elif main_view == DRAFT_VIEW:
                             if snap is not None and not snap.candidates:
                                 st.info("No candidates available in the current player pool/scope.")
                             elif snap is not None:
+                                # MANDATE 2.2: THE CONFIG VERDICT, ABOVE THE PRICES IT QUALIFIES.
+                                # league_config's gate had zero production callers, so a board
+                                # priced on a league this app could not read cleanly looked exactly
+                                # like one priced on a league it could. The mandate rules that half
+                                # out as a design question: such a board must not be SILENTLY
+                                # priced. Rendered before the board and its controls, because a
+                                # caveat below a table is one most readers never reach.
+                                #
+                                # A WARNING, NOT A REFUSAL -- and that is the owner's open call, D2
+                                # in OWNER_DECISIONS_PENDING.md. `decision_config` already raises
+                                # for a caller that wants the hard line, and nothing calls it,
+                                # because refusing here would blank the Draft Room on the owner's
+                                # own league for as long as its capture carries no dynasty flag.
+                                #
+                                # Reads the tuple's TRUTHINESS, so an empty tuple (checked, clean)
+                                # and None (never checked) both stay silent -- the second is a gap
+                                # this surface cannot honestly describe, since every board it
+                                # renders comes from build_snapshot and is therefore checked.
+                                if snap.config_ambiguities:
+                                    st.warning(
+                                        "This league's configuration did not parse cleanly. The "
+                                        "board below was priced anyway, from defaults wherever the "
+                                        "config was silent, so it may describe a different league "
+                                        "than the one you are playing:\n\n"
+                                        + "\n".join(f"- {detail}"
+                                                    for _kind, detail in snap.config_ambiguities)
+                                    )
                                 if not is_live:
                                     on_clock_id = str(pick_order[current_index])
                                     on_clock_name = owner_names_by_id.get(on_clock_id, f"Roster {on_clock_id}")

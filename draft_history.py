@@ -58,7 +58,11 @@ HISTORY_DIR = Path("data/draft_history")
 #: its four fields. A version-2 record has no pool_scope or players_db_stamp KEY at all, which is
 #: what lets a reader tell "never captured" from "captured as absent" -- the distinction this
 #: constant's own comment exists for, and the reason the number moves rather than the old records.
-EVIDENCE_SCHEMA_VERSION = 4
+#: 4 -> 5 (mandate 2.2): the projection carries `config_ambiguities` -- whether the league this
+#: board was priced on could be read at all. A version-4 record has no such KEY, which is what lets
+#: a reader tell "this board was never asked" from "this board was asked and the config was clean".
+#: Those are opposite statements about whether the prices can be trusted, so the number moves.
+EVIDENCE_SCHEMA_VERSION = 5
 
 # The candidate fields retained per row. Chosen to answer "why is this one above that one" --
 # the value layer, the two bonuses that separate universal from team-acquisition value, the
@@ -165,6 +169,21 @@ def evidence_projection(snapshot, snapshot_id: str) -> dict:
         "data_freshest_date": snapshot.data_freshest_date,
         "pool_scope": snapshot.pool_scope,
         "players_db_stamp": snapshot.players_db_stamp,
+        # MANDATE 2.2. NOT part of the stamp above, and stored beside it rather than inside it: the
+        # stamp answers whether this board is still current, and this answers whether it was ever
+        # trustworthy. A stored board is a board someone reads prices from, so the verdict has to
+        # survive the write or the replay silently loses the one caveat that qualifies every number
+        # in the record.
+        #
+        # RESHAPED, NOT RECOMPUTED. The snapshot holds `(kind, detail)` pairs, which JSON cannot
+        # distinguish from a two-element list on the way back, so each pair is written as its own
+        # named object. That is a change of shape for the medium, not a second derivation -- the
+        # values are copied, so this still cannot disagree with the board it describes. `None`
+        # survives as `None`, because "nobody asked" is a state and not an empty answer.
+        "config_ambiguities": (
+            None if snapshot.config_ambiguities is None
+            else [{"kind": kind, "detail": detail}
+                  for kind, detail in snapshot.config_ambiguities]),
         "candidate_count": len(snapshot.candidates),
         "candidates": [candidate_evidence(c) for c in snapshot.candidates],
     }

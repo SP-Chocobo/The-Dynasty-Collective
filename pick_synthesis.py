@@ -160,6 +160,7 @@ import inspect
 
 import draft_room as dr
 import draft_strategy as ds
+import league_config as lc
 import lineup_optimizer as lo
 from content_hash import fingerprint
 from data_merger import DataMerger, name_key, normalize_name
@@ -1696,6 +1697,31 @@ class PickSnapshot:
     #: supplies is a stamp that can disagree with the board it is stapled to.
     pool_scope: str = "all"
     players_db_stamp: Optional[str] = None
+    #: MANDATE 2.2. WHETHER THE LEAGUE THIS BOARD WAS PRICED ON COULD BE READ AT ALL.
+    #:
+    #: `league_config.ambiguities` derives everything about a league this app could not read
+    #: cleanly, and it had ZERO production callers. So a board built on a config the gate would
+    #: refuse was priced exactly like one built on a config it accepts, and no consumer -- a
+    #: surface, a stored record, a debate -- could tell the two apart. That is the half of 2.2 the
+    #: mandate explicitly rules out as a design question.
+    #:
+    #: NOT A STALENESS STAMP, and deliberately absent from `stamp_is_current`. The four fields
+    #: above answer "is this board still CURRENT". This answers "may this board be TRUSTED AT
+    #: ALL" -- a different question with a different remedy, since a stale board is rebuilt and a
+    #: board on an unreadable config needs the CONFIG fixed. Folded into the staleness check it
+    #: would report a board as stale because its league had become readable, which is backwards.
+    #:
+    #: THREE STATES, NOT TWO (`#187`). `None` means NOBODY ASKED -- a hand-built snapshot, or one
+    #: from before this field existed. An EMPTY TUPLE means the gate was asked and found nothing
+    #: wrong. A non-empty tuple carries `(kind, detail)` pairs. "Nothing was found" and "nothing
+    #: was checked" are opposite statements about a board's trustworthiness, and a reader that
+    #: collapses them presents the second as the first -- which is the exact failure the absence
+    #: contract exists to forbid.
+    #:
+    #: Written by build_snapshot from its own `league` argument, never by a caller, for the same
+    #: reason as the two fields above it: a verdict a caller supplies is a verdict that can
+    #: disagree with the league the board was actually priced on.
+    config_ambiguities: Optional[tuple] = None
 
 
 def build_snapshot(
@@ -1959,6 +1985,12 @@ def build_snapshot(
         # from, so neither can drift from it.
         pool_scope=pool_scope,
         players_db_stamp=dr._players_db_fingerprint(players_db),
+        # MANDATE 2.2: from this call's OWN `league`, for the same reason -- this is the config the
+        # board above was priced on, so the verdict cannot be about a different one. Always a
+        # tuple here, empty when the gate found nothing: only a snapshot nobody built through this
+        # function is entitled to say the check never ran.
+        config_ambiguities=tuple(
+            (item["kind"], item["detail"]) for item in lc.ambiguities(league)),
     )
 
 
