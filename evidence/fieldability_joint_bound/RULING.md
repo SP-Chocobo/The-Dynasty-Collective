@@ -57,6 +57,25 @@ Roster 12 holds 8 players across the merged `{{DB, DL, LB}}` group against 6 slo
 it is over by exactly one. That is a real single-player overflow, reported in the shape of the
 bound the engine now enforces, and it is what remains after the counting defect is gone.
 
+## Verified a second time, on the other IDP arm
+
+`HEAVY_IDP_balanced_full` is the only other arm in the battery that produced findings, and it
+produced them for the same reason — 11 of them, all `unfieldable_depth`, at `360f6ba`. Re-drafted at
+`d30a2e9`, 216 picks, 1756.6s:
+
+**11 findings → 1**, and the survivor has the shape the repaired bound reports:
+
+```json
+{"audit": "unfieldable_depth", "roster_id": "5", "positions": ["DB", "DL", "LB"],
+ "held": 9, "startable_per_week": 6, "ceiling": 7, "unfieldable": 2}
+```
+
+Roster 5 holds nine players across the merged `{DB, DL, LB}` group against six slots and one bye. A
+genuine overflow of two, reported per group rather than per position.
+
+**Across the whole battery, then: 21 findings → 2.** Those 21 were the only structural findings in
+50 arms — every offence-only arm returned zero — and they were confined to these two IDP arms.
+
 ## What is NOT repaired, and why it is a decision
 
 3.2 also asks for this bound on flex-reachable groups, where one `IDP_FLEX` admitting DL/LB/DB
