@@ -1,4 +1,27 @@
-# Owner decisions pending — accumulated during the repair run
+# Owner decisions — accumulated during the repair run, ANSWERED 2026-09-29
+
+**All seven open items are answered.** Each ruling is recorded under its own item as
+`**RULED:**`, immediately after the heading, so the answer sits with the reasoning that produced
+it rather than only in a transcript. The owner took the recommendation in all seven; that is
+recorded because unanimous agreement is itself a thing to be suspicious of, and each ruling below
+names what it LICENSES and what is still open inside it.
+
+| item | subject | ruling |
+|---|---|---|
+| D1 | `rival_premium_basis` borrows `denial_basis` | keep the borrow, **pin it** with a same-scan test |
+| D2 | what the config gate's refusal DOES | **price and carry** the refusal on every surface |
+| D4 | the upside growth term at 5 of 672 picks | **keep as an observable, priced at zero** |
+| D5 | the upside branch's flat-region tie | **fall back to the balanced ordering** |
+| D6 | `#21` blocked on `#50` | **write `#50` up** with both conventions measured |
+| D7 | 3.2's bound on flex-reachable groups | **per-group depth allowance** (magnitude still owed) |
+| D8 | 3.3's constants on a dead 0–100 scale | **re-derive `RISK_ADJ` only** |
+
+**One thing the picker did not settle, and it is named here rather than assumed:** D7(b) is an
+allowance the owner sets, and no magnitude was given with the answer. I will measure what each
+candidate allowance does to the battery's own rosters and bring back grounded options rather than
+choose the number myself — see D7's ruling.
+
+---
 
 Everything here is a call I should not make alone. It is written to be read in one sitting and
 answered in a picker, so each item states **the question**, **the options**, **what I recommend**,
@@ -13,6 +36,11 @@ instead**, so you can see what was decided without you and object if you disagre
 ---
 
 ## D1 — `rival_premium_basis`: should it borrow `denial_basis`? (from 2.5, the sixth of six)
+**RULED: (a) — keep the borrow, and pin it.** Licenses one test and no production change: an
+assertion that `rival_premium` and `denial_basis` are computed from the same rival scan, so the day
+they diverge it fails loudly instead of lying quietly. The four-state vocabulary (option (b)) stays
+recorded as the shape to build when the term is next opened, NOT as a silent debt — the pinning test
+is what makes the deferral safe.
 
 **Correction to how I first wrote this up.** I described the borrow as the *proposed* fix. It is
 the CURRENT STATE: `draft_strategy.py` already emits `"rival_premium_basis": denial_basis`, and the
@@ -46,6 +74,13 @@ divergence that has not happened. (a) costs one test and converts the silent ris
 ---
 
 ## D2 — 2.2: what should the app DO when the config gate refuses? (policy, not mechanism)
+**RULED: (b) — price, and carry the refusal on the board.** This is mostly already shipped:
+`PickSnapshot.config_ambiguities` carries `(kind, detail)` pairs, `draft_history` persists them at
+schema 5, and the Draft Room renders the warning before the board. What the ruling LICENSES is the
+remaining half of (b)'s promise — *every* surface that renders a number from a doubtful config must
+carry the reason, not just the one screen — so the open work is an audit of the render surfaces
+against that, and a test per surface. Per-term refusal (option (c)) remains the eventual shape and
+is Tier 3-sized.
 
 **Status: the mechanism half is repaired and measured; only the policy is yours.** The gate used to
 refuse **53 of 53** production-shaped leagues, for two wrong reasons, and both are fixed — see the
@@ -111,6 +146,12 @@ which is your equation and a different subject. Written up in
 `evidence/streaming_floor_after_kicking/`.
 
 ## D4 — the upside growth term: what conversion, or should it exist at all?
+**RULED: (c) — keep it as an observable, priced at zero.** Licenses removing `growth_signal` from
+`final_score` while keeping the figure and its basis on the board, exactly as `#22` did for
+`acting_now_value`. Two conditions travel with the ruling, because (c)'s own stated cost is that it
+leaves a dead term on the board: the number must carry a basis saying it is an observable, and the
+0.74% measurement must be recorded where the next reader finds it, so option (b) — derive the
+conversion — is still available to anyone who thinks it is worth the work.
 
 **Re-armed with the completed battery, which measures it over 9336 picks instead of 87.**
 
@@ -160,6 +201,12 @@ is the "dead term" shape 3.4 just spent effort cleaning up — so it needs the b
 observable, labelled as one. (a) is irreversible in practice; nobody rebuilds a retired term.
 
 ## D5 — task #37: a deliberate ordering policy for the upside branch's flat regions
+**RULED: fall back to the balanced ordering.** Where the upside branch cannot distinguish two
+candidates, it defers to the ordering the balanced branch would have produced. This makes the upside
+switch a strict REFINEMENT of an ordering the engine can already justify, rather than a second board
+with its own arbitrary residue — and it is the only one of the three candidates that spends no new
+convention. Licenses the implementation plus a test that the fallback actually binds (a flat region
+must exist in the fixture, or the test is vacuous).
 
 `mode="auto"`'s upside switch has regions where several candidates tie exactly. Today the residual
 tie is broken by whatever order the frame arrived in. 1.3's repair established the precedent — a
@@ -167,6 +214,11 @@ stated CONVENTION for a residual tie is acceptable where it is *stated* — so t
 convention, not a discovered one.
 
 ## D6 — task #21: blocked on `#50`
+**RULED: write `#50` up for the owner, with both conventions measured.** Licenses work I can do
+alone and that commits nobody: measure both readings against real boards, record side by side what
+each does to the streaming floor, and add `#50` to this file as its own item. Answering it unblocks
+`#21` and D7's derived half at the same time. The block stays real until then and is tracked, not
+implied.
 
 The floor cannot be derived while the board asserts two conventions. Unchanged since `27c54ee`;
 recorded so the block is visible rather than implicit.
@@ -174,6 +226,17 @@ recorded so the block is visible rather than implicit.
 ---
 
 ## D7 — 3.2: should the fieldability bound extend to flex-reachable groups? (needs a depth allowance)
+**RULED: (b) — extend it with a per-group depth allowance, recorded as a stated convention.**
+The bound becomes `slots + 1 + allowance(group)`, and a test already pins that the backstop does not
+fire on an ordinary offence roster, so an allowance set too low fails loudly rather than quietly
+demoting legitimate bench depth.
+
+**STILL OWED: the magnitude.** The ruling says the allowance is the owner's number and no number came
+with it, so I am not choosing one. What I will do instead is measurable and mine: sweep candidate
+allowances over the battery's own final rosters — all 53 arms, 9336 picks — and report, per candidate,
+how many seats the bound would flag and which of them are the IDP over-accumulation 3.2 is aiming at
+versus ordinary depth. That turns "pick a number" into "pick between three measured behaviours".
+Option (a), the derived version, remains the end state and is blocked behind `#50` (see D6).
 
 **Status: the derivable half is repaired and certified; this half needs a number you choose.**
 
@@ -229,6 +292,13 @@ now for flex-reachable groups.
 ---
 
 ## D8 — 3.3: the bounded additive terms were sized for a 0–100 scale that no longer exists
+**RULED: (b) — re-derive `RISK_ADJ` only; leave the caps.** `RISK_ADJ` is the one constant whose
+MEANING changed rather than its size being merely inherited: a flat points penalty charges a
+173-point player 10.4% and a 400-point player 4.5% for the same designation, so the health discount
+is regressive in the player's own value. Licenses re-deriving it as a proportional discount, under
+`#56` — a derivation, not a re-tuning, and `#126`'s one-vocabulary rule applies, since
+`GAMES_MISSED_FLOOR` and `RISK_ADJ` must keep agreeing designation for designation. The caps stay,
+and their "which spread" question stays open for a measurement campaign rather than a picker.
 
 **Status: the vacuous test 3.3 named is repaired and certified (it was a tautology — see the
 answered list). The constants themselves are `#56` territory: a re-derivation, not a re-tuning, and

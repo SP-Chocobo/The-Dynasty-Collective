@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 224 markdown documents.
+`python3 doc_index.py` regenerates this. 225 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -9,7 +9,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 41 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 37 | says what kind of document it is before making claims. |
-| UNDECLARED | 116 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 117 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -98,11 +98,11 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ENGINE_WIRING_PASS.md`
 - `FREEZE_RECORD_V2.md`
 - `GOLD_WYRM_WEBFRONT.md`
-- `OWNER_DECISIONS_PENDING.md`
 - `POST_AUDIT_PLAN.md`
 - `ROADMAP.md`
 - `evidence/backtest/ANACHRONISM.md`
 - `evidence/backtest/PREREGISTRATION_GUARDED_2024.md`
+- `evidence/batteries/V2_REPAIRS_BATTERY.md`
 - `evidence/batteries/VDS_PREREGISTRATION.md`
 - `evidence/blind_pass/MANDATE.md`
 - `evidence/blind_pass/wave4/MY_VERIFICATION.md`
@@ -132,6 +132,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 
 - `.claude/skills/close-register-item/SKILL.md`
 - `FREEZE_RECORD.md`
+- `OWNER_DECISIONS_PENDING.md`
 - `README.md`
 - `REPAIR_HANDOFF.md`
 - `REPAIR_MANDATE_V2.md`
