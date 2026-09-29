@@ -9,16 +9,39 @@ in advance the things that will NOT reopen it. Its whole purpose is to be closab
 
 ---
 
-## The finish line already exists, and it is one tag
+## The finish line already exists, and it is one tag: `v3-freeze`
 
-Task `#35` cut a `v2-freeze` tag, then deleted it, and recorded why: **v2 is a CANDIDATE, pending
-the battery.** The battery is now complete — 53 arms, 9336 picks, no repair following from it — so
-the one condition that was holding the freeze open is satisfied.
+**Corrected 2026-09-29 at the owner's challenge, and the correction matters.** This file first said
+the finish line was "cut `v2-freeze` for real", on the strength of task `#35`'s summary line —
+*"freeze NOT cut; premature tag deleted; v2 is a CANDIDATE pending the battery."* That was a
+stale status flag describing a moment that had already been superseded.
 
-So "done" is not a judgement call. It is: **cut `v2-freeze` for real, on a green suite, with the
-seven owner rulings shipped.** Everything below is the shortest honest path to that tag.
+What actually happened, from the record rather than the flag:
 
----
+| | |
+|---|---|
+| `v1-freeze` | `6599b1e` |
+| premature v2 tag at `43c8188` | cut, then **deleted** — the varied-field battery had not run |
+| **`v2-freeze` at `a8d1627`** | **cut for real and published to the remote**, full suite 3512 OK |
+| `#52` — the Fable blind adversarial pass | unbriefed, after the freeze; nine pass reports recorded verbatim |
+| `REPAIR_MANDATE_V2.md`, 26 items | the four tiers, all certified |
+| the 53-arm battery | complete, 9336 picks, no repair follows |
+| **HEAD** | **91 commits past `a8d1627`** |
+
+So the upcoming tag is **`v3-freeze`**, and it needs its own `FREEZE_RECORD_V3.md` the way v2 got
+one. `FREEZE_RECORD_V2.md` records the premature-tag episode itself, which is why the correction was
+one `git tag -l` away — I did not look.
+
+**The mistake is worth keeping, because the repo has a rule against exactly it.** `#292`:
+*"POST_AUDIT_PLAN.md remains the numbered record and wins over any status flag anywhere."* I read a
+task summary instead of the record. The task list is a convenience; the freeze records and
+`POST_AUDIT_PLAN.md` are the record.
+
+**And the v2 precedent sets this freeze's own gate**, in the owner's words quoted in
+`FREEZE_RECORD_V2.md`: *"freeze is the last item before audit. if we find more tinkering to do, that
+happens before freeze."* Under that ordering a battery finding sends work back *before* the freeze
+rather than after it — which is precisely the cycle just completed: the blind pass found things, the
+mandate repaired them, the battery re-ran clean. That is what earns v3.
 
 ## What is actually left: the seven rulings, and nothing else
 
@@ -45,7 +68,10 @@ The four mandate tiers are complete and certified. The battery is clean. The onl
 | **D7** | sweep candidate depth allowances over the battery's own final rosters, bring back three measured behaviours, then implement the chosen one | **one number from the owner**, which is the only thing in this file that can stall |
 
 ### Phase B — the freeze
-One full suite, all Tier 0 instruments green, `assertion_floors --write`, then cut `v2-freeze`.
+One full suite, all Tier 0 instruments green, `assertion_floors --write`, `FREEZE_RECORD_V3.md`
+written to be read cold, then cut and publish **`v3-freeze`**. The record must state what the
+freeze rests on, what it does NOT claim, and what was left open — the three headings v2's record
+used, because they are what made this correction possible at all.
 
 ---
 
@@ -56,7 +82,7 @@ One full suite, all Tier 0 instruments green, `assertion_floors --write`, then c
 | A1 | ~2h, then one full suite |
 | A2 | ~2h, then one full suite |
 | A3 | ~2h, gated on D7's number, then one full suite |
-| B | ~30min on top of A3's suite |
+| B | ~30min on top of A3's suite, plus the v3 freeze record |
 | **total** | **~7h of working time, of which ~1.5h is suite waiting** |
 
 That is one session of the kind we have been running, not another thirteen-hour grind. The suite is
@@ -87,7 +113,7 @@ reasoning written down in `OWNER_DECISIONS_PENDING.md`; none is a silent debt, a
 
 ## The stopping rule
 
-After `v2-freeze` is cut, the engine and its test layers change for exactly two reasons:
+After `v3-freeze` is cut, the engine and its test layers change for exactly two reasons:
 
 1. **New or changed inputs** — a new vendor file, a scoring format the vocabulary does not cover, a
    season roll. This is the case the owner named, and it is the expected one.

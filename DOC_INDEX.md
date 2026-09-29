@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 225 markdown documents.
+`python3 doc_index.py` regenerates this. 226 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -9,7 +9,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 41 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 37 | says what kind of document it is before making claims. |
-| UNDECLARED | 117 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 118 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -136,6 +136,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `README.md`
 - `REPAIR_HANDOFF.md`
 - `REPAIR_MANDATE_V2.md`
+- `ROADMAP_TO_FREEZE.md`
 - `WARPATH.md`
 - `data/baseline/external/dynastyprocess/ATTRIBUTION.md`
 - `data/baseline/external/espn/ATTRIBUTION.md`
