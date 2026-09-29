@@ -59,9 +59,11 @@ already measured, or a next step with its ordering dependency stated.
 | `e20ae8c` | 2.6 first half — eight eligibility readers unified |
 | `d7a21fc` | 2.6 counting sized as evidence |
 | `f47a773` | 2.5 first of six — `need_bonus` fabrication |
+| `9dec716` | 1.3 second half (ruled) — the convention wins, others scale down |
+| `43d3c21` | **2.6 second half (ruled)** — demand is solved, not subtracted. **Pushed RED** |
+| `7aeb913` | the five failures that push exposed — **full suite 3760 OK** |
 
-**Uncommitted at time of writing:** 1.3's second half (the ruling) — restructured
-`positional_forfeits`, ratchet inverted, 263 targeted tests green. Commit it first.
+**Tree clean and certified at `7aeb913`.**
 
 ---
 
@@ -102,15 +104,34 @@ first to third. `years_exp`+`status` together admit one player, 970 → 971. **2
 
 ---
 
+## 2.6 IS BUILT, AND IT IS BIGGER THAN THE RULING WAS SIZED ON — read this before re-pricing
+
+Full measurement in `evidence/multi_eligible_counting/RULING.md`. Two things, both from the ruling's own
+mechanism, only one of which was visible when it was put to the owner:
+
+1. **The multi-eligibility half is SMALLER than the mandate said.** The mandate's −7.0 LB figure was the
+   BY-ELIGIBILITY reading, which the ruling rejected. Assignment-based: LB 10.0 → 9.0 at round 10, and
+   **DB 12.0 → 13.0 — the other way**, because a DB/LB dual had been paying down a DB slot he does not
+   occupy. Every top-40 LB −1.00 `final_score`, every DB +1.15, through the anchor. Top pick never moved
+   on `HEAVY_IDP`.
+2. **A second defect with nothing to do with eligibility, and it is the larger one.** The subtraction
+   counted a position's share of every flex appearance as capacity *including flex slots already occupied
+   by someone else*. After nine rounds of `12T_ppr_SF` — every slot coverable, zero duals held — it
+   declared **7.17 RB and 8.60 TE slots open league-wide**. Assignment says zero. At round 5: RB −8.66,
+   TE −10.04, WR −1.20 across the top 40, and **the top pick flips** (Breece Hall → Rashee Rice).
+
+So the blast radius is every board, not every IDP board. **The battery has not run over this** — the
+suite says nothing contradicts itself, not that the new board drafts better. A revert is one commit.
+
+Also weakened deliberately: `remaining_starter_demand`'s per-position monotonicity is no longer a proof
+(the total still is). An exhaustive 2,860-configuration search found no counterexample; that is committed
+as evidence in `test_demand_is_assignment_based.py`, not promoted to a claim.
+
 ## NEXT, IN THIS ORDER
 
-1. **Commit 1.3's second half** (uncommitted, tested).
-2. **2.6 assignment-based demand** — the big one. `team_filled_by_position` in `draft_room.py` is the
-   single home everything counts through: `_team_starters_filled` → `my_filled` → `need_bonus`, and
-   `remaining_starter_demand` → `replacement_levels` → every price. Reprices IDP boards, so measure the
-   battery before and after and re-run the full suite. **3.2's joint bound waits on this** (mandate
-   ordering).
-3. **1.7 minimal reader** for `draft_history`.
+1. **Run the battery** (`python3 run_draft_battery.py`, ~2.9h, has `--resume` written for exactly the
+   reclamation problem). It is the instrument 2.6 is missing. Record the commit it ran at.
+2. **1.7 minimal reader** for `draft_history`.
 4. **2.5's remaining four:** `diff_snapshots` dropping measured↔unmeasured transitions; board payload
    companions; injury status never crossing the boundary; `build_context` truncating silently.
 5. **2.3** (11 defenses' `name_key`, kicker `fgm_50p`, `_identity_hint` split — the last measured at
@@ -123,8 +144,22 @@ first to third. `years_exp`+`status` together admit one player, 970 → 971. **2
 
 ## STANDING CONSTRAINTS — these have already cost real cycles
 
-- **A FULL SUITE LICENSES A PUSH, never a subset.** I bent this for seven commits and the next full run
-  found six failures. ~3650 tests, ~21 min. Clear `__pycache__` first.
+- **A FULL SUITE LICENSES A PUSH, never a subset.** Bent for seven commits once: next full run, six
+  failures. Bent again for three (`e20ae8c`, `f47a773`, `43d3c21`): next full run, **five failures, two of
+  them already red on the tree from the earlier two commits**. ~3760 tests, ~22 min. Clear `__pycache__`
+  first. When a stop-hook or a reclamation risk forces a push before the suite lands, PUSH AND SAY IT IS
+  UNCERTIFIED — the sin is claiming certification, not the push.
+- **NEVER EDIT THE TREE WHILE A TEST RUN IS IN FLIGHT.** Imported modules keep the old code in memory but
+  the source-reading instruments (`prose_names`, `assertion_floors`, `render_trace`, `suite_taxonomy`,
+  `ui_source`) read the new text, so the verdict is neither the old tree's nor the new one's. Cost a
+  whole 20-minute batch here.
+- **`pkill -f <pattern>` matches the shell that runs it, and `pgrep -f` matches every waiter shell
+  holding that pattern.** Three separate self-kills this session. Match on the full command
+  (`ps -eo cmd= | grep "python3 -m unittest discover"`), never on a bare substring.
+- **`render_trace --check` fails at midnight UTC** whenever a wall-clock-derived value reaches the
+  recorded trace verbatim. Twice now: the freshness grade, then `trade_ledger_ui`'s "Values 34d stale".
+  The blur is a LIST in `_Recorder._CALENDAR_DEPENDENT`, and the test states the rule (no elapsed-time
+  quantity in any unit) rather than naming the strings it knows about.
 - **Poll every ~90s while a suite runs** — the container is reclaimed on idleness and CPU does not
   count. Five background runs have already died this way.
 - **Never `git checkout <file>` to undo a mutation test** — it takes HEAD and silently drops
