@@ -2194,6 +2194,22 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
 #: withheld_fields(). The distinction matters: this names what a diff CAN report, which does not
 #: change when a calibration verdict does, and the filter is read once per diff so the day
 #: SURVIVAL_IS_CALIBRATED flips the deltas come back with no edit here.
+#: What a `transitions` entry can say, as the two words a consumer renders. A transition is the
+#: OPPOSITE of a delta: no magnitude, no unit, and no arithmetic relating the two sides. Named
+#: constants rather than bare strings so a renderer cannot invent a third state, and so the one
+#: place that decides the vocabulary is this one (`#126`).
+TRANSITION_BECAME_MEASURED = "became_measured"
+TRANSITION_STOPPED_BEING_MEASURED = "stopped_being_measured"
+
+#: Reader-facing wording for each, kept beside the constants so a surface never composes its own.
+#: A transition explains itself in a clause, because "Survival probability: now measured" without
+#: the "was not before" half reads as a statement about the value rather than about the change.
+TRANSITION_PHRASES = {
+    TRANSITION_BECAME_MEASURED: "now measured (was not measurable before)",
+    TRANSITION_STOPPED_BEING_MEASURED: "no longer measurable (it was before)",
+}
+
+
 _DIFF_FIELDS = (
     ("universal_value",) + tuple(dr.TEAM_SPECIFIC_TERMS) + (
         "team_acquisition_value",
@@ -2305,18 +2321,33 @@ def diff_snapshots(previous: PickSnapshot, current: PickSnapshot) -> list[dict]:
         # Measured before this line: a 1.01 -> 1.02 diff emitted survival_probability -0.08 and
         # opportunity_cost +17.22 into the chairs' WHAT CHANGED section and the Draft Room's own
         # diff drawer, which labels them "Survival probability" and "Opportunity cost".
+        # MANDATE 2.5: A TERM CROSSING INTO OR OUT OF MEASURABILITY IS A CHANGE, and this was the
+        # one comparison that could not see it. `if prev_val is None or curr_val is None: continue`
+        # skipped exactly the transitions `#187` exists to keep visible -- a forfeit that went from
+        # unmeasurable to 14.2, a survival estimate that stopped being computable -- so the audit
+        # trail whose job is to answer "why did this move" was silent about the largest kind of
+        # move a term can make. It is NOT a delta: there is no magnitude and no unit to give it
+        # (`#116`), and subtracting from None to produce one would be the fabrication the same
+        # mandate item is about. So it is its own field, in its own vocabulary.
+        transitions = {}
         reportable = [attr for attr in _DIFF_FIELDS if attr not in withheld_fields()]
         for attr in reportable:
             prev_val, curr_val = getattr(prev_c, attr), getattr(curr_c, attr)
-            if prev_val is None or curr_val is None:
+            if prev_val is None and curr_val is None:
+                continue  # absent on both sides: still absent, and that is not a change
+            if prev_val is None:
+                transitions[attr] = TRANSITION_BECAME_MEASURED
+                continue
+            if curr_val is None:
+                transitions[attr] = TRANSITION_STOPPED_BEING_MEASURED
                 continue
             delta = round(curr_val - prev_val, 2)
             if delta != 0:
                 deltas[attr] = delta
         rank_delta = curr_rank[player_id] - prev_rank[player_id]
-        if deltas or rank_delta:
+        if deltas or transitions or rank_delta:
             diffs.append({
                 "player_id": player_id, "name": curr_c.name, "entered": None,
-                "rank_delta": rank_delta, "deltas": deltas,
+                "rank_delta": rank_delta, "deltas": deltas, "transitions": transitions,
             })
     return diffs

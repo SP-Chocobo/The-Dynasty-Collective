@@ -1132,6 +1132,72 @@
         "early_returns": 0
       }
     },
+    "test_a_term_crossing_into_measurability_is_a_change.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 13,
+        "assertFalse": 1,
+        "assertIn": 9,
+        "assertIsInstance": 1,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_candidate_whose_ONLY_change_is_a_transition_still_gets_a_line": {
+          "assertEqual": 2,
+          "assertIn": 1
+        },
+        "test_a_numeric_move_is_still_a_delta_and_not_a_transition": {
+          "assertEqual": 2
+        },
+        "test_a_term_that_became_measurable_is_reported": {
+          "assertEqual": 2
+        },
+        "test_a_term_that_stopped_being_measurable_is_reported": {
+          "assertEqual": 2
+        },
+        "test_a_transition_is_NOT_placed_among_the_deltas": {
+          "assertEqual": 1,
+          "assertIsInstance": 1
+        },
+        "test_a_withheld_term_is_excluded_from_transitions_as_it_is_from_deltas": {
+          "assertEqual": 1
+        },
+        "test_absent_on_both_sides_is_not_a_change": {
+          "assertEqual": 1
+        },
+        "test_and_reported_when_it_is_not_withheld": {
+          "assertEqual": 1
+        },
+        "test_deltas_and_transitions_can_both_appear_on_one_candidate": {
+          "assertIn": 2
+        },
+        "test_each_phrase_says_what_the_OTHER_side_was": {
+          "assertIn": 2
+        },
+        "test_neither_phrase_reads_as_a_number_or_a_unit": {
+          "assertFalse": 1,
+          "assertNotIn": 1
+        },
+        "test_the_chairs_are_told_in_words_and_never_in_a_fabricated_number": {
+          "assertIn": 2,
+          "assertNotIn": 1
+        },
+        "test_the_draft_room_drawer_renders_transitions_with_no_unit": {
+          "assertIn": 2
+        },
+        "test_there_are_exactly_two_states_and_both_have_reader_facing_wording": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {

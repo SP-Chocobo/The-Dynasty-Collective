@@ -5919,16 +5919,26 @@ elif main_view == DRAFT_VIEW:
                                                     st.markdown(f"🆕 **{d['name']}** entered the candidate pool at rank {d['rank']}")
                                                 elif d.get("entered") is False:
                                                     st.markdown(f"❌ **{d['name']}** is no longer a live candidate (was rank {d['rank']})")
-                                                elif d.get("deltas"):
+                                                elif d.get("deltas") or d.get("transitions"):
                                                     # Each delta carries its unit (#116): the terms on this one
                                                     # line are universal-value points, a probability and a
                                                     # /100 score, and a bare "+3.2, -0.1" reads as one scale.
-                                                    delta_str = ", ".join(
+                                                    delta_parts = [
                                                         f"{_DRAFT_ROOM_DIFF_LABELS.get(k, k)}: {v:+} "
                                                         f"{design_system.DIFF_UNITS.get(k, '')}".rstrip()
                                                         for k, v in d["deltas"].items()
-                                                    )
-                                                    st.markdown(f"**{d['name']}**: rank moved {d['rank_delta']:+d} ({delta_str})")
+                                                    ]
+                                                    # MANDATE 2.5. A TRANSITION CARRIES NO UNIT, because it has
+                                                    # no magnitude -- which is exactly why it cannot be printed
+                                                    # in the same shape as a delta. The wording comes from
+                                                    # pick_synthesis, so the drawer and the chairs say the same
+                                                    # thing about the same event.
+                                                    delta_parts += [
+                                                        f"{_DRAFT_ROOM_DIFF_LABELS.get(k, k)}: "
+                                                        f"{pick_synthesis.TRANSITION_PHRASES[v]}"
+                                                        for k, v in (d.get("transitions") or {}).items()
+                                                    ]
+                                                    st.markdown(f"**{d['name']}**: rank moved {d['rank_delta']:+d} ({', '.join(delta_parts)})")
                                 elif debate_result is not None:
                                     st.caption("A prior debate result is available for a different pick -- click Debate This Pick to refresh for this one.")
 

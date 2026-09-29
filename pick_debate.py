@@ -620,9 +620,17 @@ def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] 
                 parts.append(f"  {d['name']}: newly entered the candidate pool at rank {d['rank']}")
             elif d.get("entered") is False:
                 parts.append(f"  {d['name']}: no longer a live candidate (was rank {d['rank']})")
-            elif d.get("deltas"):
-                delta_str = ", ".join(f"{k}: {v:+}" for k, v in d["deltas"].items())
-                parts.append(f"  {d['name']}: rank moved by {d['rank_delta']:+} ({delta_str})")
+            elif d.get("deltas") or d.get("transitions"):
+                # MANDATE 2.5: A TRANSITION IS NOT A DELTA and must not be phrased as one. A term
+                # that became measurable has no magnitude to report, so it is named in words beside
+                # the numeric moves rather than folded in with a fabricated `+0.0`. Gated on either,
+                # because a candidate whose ONLY change is a term crossing into measurability used
+                # to produce no line at all -- the diff computed nothing to say and said nothing.
+                moved = [f"{k}: {v:+}" for k, v in d["deltas"].items()]
+                moved += [f"{k}: {ps.TRANSITION_PHRASES[v]}"
+                          for k, v in (d.get("transitions") or {}).items()]
+                parts.append(f"  {d['name']}: rank moved by {d['rank_delta']:+} "
+                             f"({', '.join(moved)})")
     return "\n".join(parts)
 
 
