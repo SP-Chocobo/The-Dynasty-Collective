@@ -748,8 +748,9 @@
     "test_a_held_debate_knows_what_world_it_saw.py": {
       "test_methods": 17,
       "asserts": {
-        "assertEqual": 5,
+        "assertEqual": 4,
         "assertFalse": 1,
+        "assertGreaterEqual": 1,
         "assertIn": 16,
         "assertIsNone": 4,
         "assertIsNotNone": 3,
@@ -805,7 +806,8 @@
           "assertIsNone": 1
         },
         "test_the_schema_version_moved_rather_than_the_old_records": {
-          "assertEqual": 2
+          "assertEqual": 1,
+          "assertGreaterEqual": 1
         },
         "test_the_snapshot_declares_both_new_fields": {
           "assertIn": 2

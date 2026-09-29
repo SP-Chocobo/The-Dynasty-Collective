@@ -177,10 +177,22 @@ class AStoredRecordCanBeAskedTheSameQuestionTests(unittest.TestCase):
 
     def test_the_schema_version_moved_rather_than_the_old_records(self):
         """A version-2 record has no such KEY, which is what lets a reader tell "never captured"
-        from "captured as absent" -- the distinction that constant exists for."""
+        from "captured as absent" -- the distinction that constant exists for.
+
+        PINNED AS A FLOOR, NOT AN EQUALITY, and the difference matters. This asserted `== 3`, which
+        made every LATER shape change fail here -- mandate 2.5 added injury_status and
+        availability_basis and went 3 -> 4, and this test read as "the stamp repair broke" when
+        nothing about the stamp had moved. What this class is entitled to require is that the four
+        stamp fields are in the projection and that the version is at least the one that introduced
+        them; a test that also owns every future increment owns a number it has no stake in.
+
+        The two assertions below are the real claim: a projection written NOW carries the version
+        the module declares, and that version is not behind the one this repair established."""
         import draft_history
-        self.assertEqual(3, draft_history.EVIDENCE_SCHEMA_VERSION)
-        self.assertEqual(3, self._projection()["evidence_schema_version"])
+        self.assertGreaterEqual(draft_history.EVIDENCE_SCHEMA_VERSION, 3)
+        self.assertEqual(draft_history.EVIDENCE_SCHEMA_VERSION,
+                         self._projection()["evidence_schema_version"],
+                         "a record is being written under a version the module does not declare")
 
     def test_a_restored_record_can_now_be_put_to_the_whole_question(self):
         """End to end, by value: a record written under one world, checked against another."""
