@@ -36,6 +36,7 @@ import depth_ratings
 import design_system
 import draft_board_ui
 import draft_history
+import draft_history_ui
 import draft_room
 import draft_state
 import draft_strategy
@@ -5930,6 +5931,81 @@ elif main_view == DRAFT_VIEW:
                                                     st.markdown(f"**{d['name']}**: rank moved {d['rank_delta']:+d} ({delta_str})")
                                 elif debate_result is not None:
                                     st.caption("A prior debate result is available for a different pick -- click Debate This Pick to refresh for this one.")
+
+                                # MANDATE 1.7, LAST LIMB, ruled: draft_history was write-only IN
+                                # THE APP. record_snapshot is called above; load_snapshot_record,
+                                # list_snapshot_records and snapshot_ids had no caller anywhere, so
+                                # a store the Prytaneum is told gives it "explicit visibility of
+                                # which Draft PickSnapshots exist" was visible to nobody.
+                                #
+                                # A READER, NOT A REPLAY. The mandate called full replay a feature
+                                # call because it needed a product decision -- may a replayed board
+                                # look live? The answer built here is no, unconditionally: every
+                                # stored board carries STORED_BOARD_NOTICE and its own staleness
+                                # reason whether or not the world has moved, no debate re-runs, and
+                                # nothing is recomputed. See draft_history_ui.
+                                #
+                                # HERE because this is where the live values the verdict needs are
+                                # in scope -- draft_picks, the merger, the pool scope and the player
+                                # universe. A verdict computed against picks this surface cannot see
+                                # would be a comparison against the wrong world, which is worse than
+                                # no verdict at all.
+                                with st.expander("🗂 Boards stored for this league", expanded=False):
+                                    history = draft_history_ui.league_history(
+                                        st.session_state.selected_league_id, draft_picks, merger,
+                                        live_pool_scope=st.session_state.draft_room_pool_scope,
+                                        live_players_db_stamp=pick_synthesis.players_db_stamp(
+                                            players_db),
+                                    )
+                                    if not history["rows"]:
+                                        st.caption(
+                                            "No boards stored for this league yet. One is recorded "
+                                            "each time a debate runs on a board."
+                                        )
+                                    else:
+                                        st.caption(draft_history_ui.STORED_BOARD_NOTICE)
+                                        if history["unreadable_count"]:
+                                            # Counted, not dropped: list_snapshot_records skips a
+                                            # damaged file silently and correctly, and silence here
+                                            # would read as a shorter history rather than a problem.
+                                            st.warning(
+                                                f"{history['unreadable_count']} of "
+                                                f"{history['stored_count']} stored record(s) could "
+                                                f"not be read and are not listed below."
+                                            )
+                                        _history_labels = {}
+                                        for _row in history["rows"]:
+                                            _state = ("still current" if _row["current"]
+                                                      else (_row["reason"] or "stale"))
+                                            _history_labels[
+                                                f"{_row['pick_label']} · {_row['date']} · "
+                                                f"{_row['candidate_count']} candidates · {_state}"
+                                            ] = _row
+                                        _chosen_label = st.selectbox(
+                                            "Stored board", list(_history_labels),
+                                            key="draft_history_record_picker",
+                                        )
+                                        _chosen = _history_labels[_chosen_label]
+                                        if _chosen["unanswerable"]:
+                                            # A record that CANNOT be asked a stamp question must
+                                            # not answer it by omission -- #187 applied to a record
+                                            # rather than to a candidate.
+                                            st.caption(
+                                                "This record predates part of the staleness stamp, "
+                                                "so it cannot be asked "
+                                                + ", ".join(_chosen["unanswerable"]) + "."
+                                            )
+                                        _stored_rows = draft_history_ui.stored_candidate_rows(
+                                            draft_history.load_snapshot_record(
+                                                st.session_state.selected_league_id,
+                                                _chosen["snapshot_id"]))
+                                        if _stored_rows:
+                                            st.dataframe(pd.DataFrame(_stored_rows),
+                                                         hide_index=True, width="stretch")
+                                        else:
+                                            st.caption(
+                                                "This record stored no candidate rows."
+                                            )
 
     st.markdown("---")
 

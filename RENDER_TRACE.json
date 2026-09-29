@@ -451,6 +451,8 @@
     "[\ud83d\udccb Draft Room \u00b7 Live] st.button(str:\ud83c\udf99\ufe0f Debate This Pick, help=str[long], key=str:draft_room_debate_btn, type=str:primary, use_container_width=bool:True)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.container(key=str:debate_chip_draft_room)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.button(str:\ud83d\udcac Debate, help=str[long], key=str:debate_chip_btn_draft_room)",
+    "[\ud83d\udccb Draft Room \u00b7 Live] st.expander(str:\ud83d\uddc2 Boards stored for this league, expanded=bool:False)",
+    "[\ud83d\udccb Draft Room \u00b7 Live] st.caption(str[long])",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.markdown(str:---)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.expander(str:\ud83c\udfaf Active Objectives (0), expanded=bool:False)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.caption(str[long])",

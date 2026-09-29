@@ -1023,6 +1023,115 @@
         "early_returns": 0
       }
     },
+    "test_a_stored_board_can_be_read_back.py": {
+      "test_methods": 28,
+      "asserts": {
+        "assertEqual": 22,
+        "assertFalse": 3,
+        "assertIn": 12,
+        "assertIsNone": 1,
+        "assertNotIn": 2,
+        "assertTrue": 7
+      },
+      "by_method": {
+        "test_a_complete_record_has_nothing_it_cannot_be_asked": {
+          "assertEqual": 1
+        },
+        "test_a_damaged_file_is_reported_rather_than_vanishing": {
+          "assertEqual": 3
+        },
+        "test_a_league_with_no_history_is_empty_not_missing": {
+          "assertEqual": 3
+        },
+        "test_a_limit_shortens_the_display_without_changing_the_count": {
+          "assertEqual": 2
+        },
+        "test_a_measured_zero_is_still_shown_as_a_zero": {
+          "assertEqual": 1
+        },
+        "test_a_moved_player_universe_is_caught_for_a_schema_3_record": {
+          "assertFalse": 1
+        },
+        "test_a_new_pick_makes_it_stale_with_the_reason_the_engine_gives": {
+          "assertEqual": 1,
+          "assertFalse": 1
+        },
+        "test_a_record_from_before_the_stamp_was_completed_names_both_gaps": {
+          "assertEqual": 1
+        },
+        "test_a_record_matching_the_world_reads_as_current": {
+          "assertIsNone": 1,
+          "assertTrue": 1
+        },
+        "test_a_record_with_no_candidates_yields_no_rows_rather_than_raising": {
+          "assertEqual": 2
+        },
+        "test_a_withheld_quantity_is_withheld_coming_off_disk_too": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "test_an_absent_quantity_keeps_the_absence_mark_and_never_becomes_a_zero": {
+          "assertEqual": 2,
+          "assertNotIn": 1
+        },
+        "test_and_it_does_not_read_as_stale_for_lacking_them": {
+          "assertTrue": 2
+        },
+        "test_and_shown_when_it_is_not_withheld": {
+          "assertEqual": 1
+        },
+        "test_every_displayed_column_is_a_field_the_store_actually_keeps": {
+          "assertIn": 1
+        },
+        "test_every_stamp_field_has_a_question_a_reader_can_read": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "test_it_names_what_an_older_record_cannot_be_asked": {
+          "assertIn": 1
+        },
+        "test_it_passes_the_LIVE_pool_scope_and_player_universe": {
+          "assertIn": 2
+        },
+        "test_it_really_delegates": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "test_it_renders_the_stored_rows_through_the_module": {
+          "assertIn": 1
+        },
+        "test_it_reports_the_records_it_could_not_read": {
+          "assertIn": 1
+        },
+        "test_it_shows_the_stored_board_notice_rather_than_composing_its_own": {
+          "assertIn": 1
+        },
+        "test_the_draft_room_asks_for_this_leagues_stored_boards": {
+          "assertIn": 1
+        },
+        "test_the_draft_room_really_renders_the_stored_boards_expander": {
+          "assertTrue": 2
+        },
+        "test_the_notice_says_it_is_stored_and_that_nothing_was_recomputed": {
+          "assertIn": 3
+        },
+        "test_the_rows_keep_the_order_they_were_recorded_in": {
+          "assertEqual": 1
+        },
+        "test_the_traced_pass_is_the_EMPTY_one_and_that_is_recorded_here": {
+          "assertFalse": 1
+        },
+        "test_two_good_records_come_back_newest_first": {
+          "assertEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {

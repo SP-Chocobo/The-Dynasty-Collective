@@ -701,7 +701,7 @@ kind; the `recommended=None` path exists so the panel can decline, and the Calle
 a bare name. Pinned as a characterization test that says to invert it when repaired.
 
 
-## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[5.5 OF 6 LIMBS REPAIRED — the last one is a scope call for the owner]**
+## 1.7 Context that is stale, unanchored, or unrecoverable, presented as current **[REPAIRED — the last limb ruled to a reader, built as one]**
 
 Four lenses hit this from four directions, and it is one defect family: **what the person is looking at
 can be older or other than what the label says, and nothing in the apparatus can tell.**
@@ -810,6 +810,36 @@ panel including the debate that ran on it, and whether a replayed board is allow
 one. Those are product decisions, and building them unilaterally under a repair mandate would be me
 choosing the shape of a feature nobody asked for. **So it goes to the owner rather than into a commit.**
 What is closed is the part that made the stored record less useful than it claimed to be.
+
+### RULED — A READER, NOT A REPLAY, AND THE OPEN QUESTION IS ANSWERED NO
+
+The owner delegated the call. Built: `draft_history_ui` plus an expander in the Draft Room's Live
+branch, where the live values a verdict needs are actually in scope.
+
+**"May a replayed board look like a live one?" — NO, unconditionally.** Every stored board carries
+`STORED_BOARD_NOTICE` whether or not the world has moved, no debate is replayed, nothing is
+recomputed, and the candidate table keeps the order it was recorded in (re-sorting it would make it a
+new board rather than a stored one).
+
+**Three ways a reader could have lied about a record, each closed:**
+
+- **By reimplementing the staleness rule.** It calls `pick_synthesis.stamp_is_current`, which exists
+  for exactly this, and a test mocks that function to prove the verdict comes FROM it rather than
+  merely agreeing with it today.
+- **By letting a record answer a question it cannot be asked.** Schema 1 and 2 records carry two of
+  the stamp's four fields, and `stamp_is_current` correctly SKIPS a comparison with no live
+  counterpart — which is silence, and silence reads as "nothing changed". Every summary carries
+  `unanswerable`, naming the questions that record's schema cannot be put to. It is not reported as
+  stale either: a gap is a gap, not a change.
+- **By dropping an unreadable file.** `list_snapshot_records` skips a damaged record silently (right —
+  a corrupt history must not take down a live draft) and invisibly. `unreadable_count` is
+  `snapshot_ids` against what actually loaded, and the surface warns with both numbers.
+
+**What the render trace can and cannot see, stated rather than assumed.** History lives on disk, not
+in session state, so the trace fixture's league has no stored boards and the instrument covers the
+EMPTY branch — that the expander exists and opens. Seeding a record would mean committing a history
+file to make an instrument look better. The populated table is covered by unit tests and by source
+checks instead, and a test fails if the trace's boundary ever moves.
 
 ---
 
