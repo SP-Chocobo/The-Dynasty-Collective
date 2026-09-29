@@ -1177,6 +1177,13 @@ def load_all(
     projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings",
     format_hint: Optional[dict] = None,
     conflicts: Optional[list] = None,
+    #: MANDATE 2.4. Every file this call could not parse, appended as
+    #: {"file", "error", "detail"} -- the same out-parameter shape `conflicts` uses, for the same
+    #: reason stated there: a merge that silently discards a VALUE has not succeeded, and neither
+    #: has a load that silently discards a FILE. Optional so existing callers are unchanged; a
+    #: caller that passes nothing gets exactly the old behaviour and learns nothing, which is why
+    #: DataMerger._load passes one.
+    skipped: Optional[list] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df).
 
@@ -1209,8 +1216,22 @@ def load_all(
     for f in files:
         try:
             df, kind = load_projection_file(f, default_kind=default_kind)
-        except Exception:
-            continue  # skip unparsable/misformatted files rather than crashing the app
+        except Exception as exc:  # noqa: BLE001 -- recorded, then skipped; see below
+            # MANDATE 2.4: SKIPPING IS RIGHT AND SILENCE IS NOT. Continuing past an unparsable
+            # file is correct -- one bad upload must not take the app down -- and this recorded
+            # nothing, so five files in, two loaded, three skipped read as a successful load with
+            # `is_loaded` True. Mitigated for a user upload, which the person just chose and can
+            # see is missing; NOT mitigated for a committed baseline file that stops parsing after
+            # a library upgrade, where nothing in the app ever says the pool got smaller.
+            #
+            # The exception TYPE is kept as well as the message: "this CSV has a bad header row"
+            # and "pandas raised on a dtype it used to accept" are different problems with
+            # different fixes, and the message alone frequently does not separate them.
+            if skipped is not None:
+                skipped.append({
+                    "file": f.name, "error": type(exc).__name__, "detail": str(exc)[:300],
+                })
+            continue
 
         # Suffix-stripping (Jr./Sr./III/...) can collapse two *different* real
         # players onto the same norm_name within one file (e.g. a Draft Sharks
@@ -1435,6 +1456,15 @@ PROVENANCE_BASELINE = 0   # committed to the repository, shared by every league
 PROVENANCE_GLOBAL = 1     # uploaded, but not to any particular league
 PROVENANCE_LEAGUE = 2     # uploaded FOR this league -- the strongest statement available today
 PROVENANCE_TIER_COLUMN = "_provenance_tier"
+#: MANDATE 2.4: the tiers above are ORDERING, not wording -- PROVENANCE_BASELINE is literally 0, and
+#: a report that told a person "provenance: 0" about a file that would not parse has told them
+#: nothing. These are the reader-facing names for the same three tiers, in one place so a surface
+#: cannot invent a fourth spelling.
+PROVENANCE_LABELS = {
+    PROVENANCE_BASELINE: "committed baseline",
+    PROVENANCE_GLOBAL: "your uploads (all leagues)",
+    PROVENANCE_LEAGUE: "your uploads (this league)",
+}
 
 
 def _stamped(frame: "pd.DataFrame", tier: int) -> "pd.DataFrame":
@@ -1952,15 +1982,38 @@ class DataMerger:
         # no record of any of them.
         self.reconciliation_conflicts: list[dict] = []
         conflicts = self.reconciliation_conflicts
-        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings",
+        # MANDATE 2.4: EVERY FILE THAT WOULD NOT PARSE, and WHICH DIRECTORY it was in. load_all
+        # cannot know whether it was handed the committed baseline or a user's own upload folder,
+        # and the difference is the whole point: a baseline file that stops parsing after a library
+        # upgrade shrinks the pool for every league with nobody having changed anything, while a bad
+        # upload is something the person just did and can see. Stamped here for the same reason the
+        # provenance labels below are -- this is the only place all three directories are named.
+        self.unparsable_files: list[dict] = []
+
+        def _load_dir(directory, *, provenance: str, **kwargs):
+            found: list[dict] = []
+            frames = load_all(directory, skipped=found, **kwargs)
+            for entry in found:
+                self.unparsable_files.append({
+                    **entry, "provenance": provenance,
+                    "provenance_label": PROVENANCE_LABELS.get(provenance, "unknown source"),
+                    "directory": str(directory),
+                })
+            return frames
+
+        baseline_rankings, _, _ = _load_dir(self.baseline_dir / "rankings",
+                                            provenance=PROVENANCE_BASELINE,
                                             format_hint=self.league_format, conflicts=conflicts)
-        _, _, baseline_tvc = load_all(self.baseline_dir / "trade_value", default_kind="trade_value_chart")
-        global_rankings, _, global_tvc = load_all(self.global_dir,
-                                                   format_hint=self.league_format, conflicts=conflicts)
+        _, _, baseline_tvc = _load_dir(self.baseline_dir / "trade_value",
+                                       provenance=PROVENANCE_BASELINE,
+                                       default_kind="trade_value_chart")
+        global_rankings, _, global_tvc = _load_dir(self.global_dir, provenance=PROVENANCE_GLOBAL,
+                                                   format_hint=self.league_format,
+                                                   conflicts=conflicts)
         if self.league_dir:
-            league_rankings, league_fa, league_tvc = load_all(self.league_dir,
-                                                               format_hint=self.league_format,
-                                                               conflicts=conflicts)
+            league_rankings, league_fa, league_tvc = _load_dir(
+                self.league_dir, provenance=PROVENANCE_LEAGUE,
+                format_hint=self.league_format, conflicts=conflicts)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
         # Stamped here rather than inside load_all, because load_all does not know which of the

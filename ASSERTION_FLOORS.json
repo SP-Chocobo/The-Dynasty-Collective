@@ -1090,6 +1090,97 @@
         "early_returns": 0
       }
     },
+    "test_a_source_that_vanishes_says_so.py": {
+      "test_methods": 21,
+      "asserts": {
+        "assertEqual": 10,
+        "assertFalse": 4,
+        "assertIn": 6,
+        "assertIsInstance": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertRaises": 1,
+        "assertTrue": 7,
+        "fail": 1
+      },
+      "by_method": {
+        "test_a_broken_baseline_file_is_attributed_to_the_BASELINE": {
+          "assertEqual": 2,
+          "assertIn": 1
+        },
+        "test_a_caller_that_passes_nothing_is_unchanged": {
+          "assertFalse": 1
+        },
+        "test_a_clean_directory_records_nothing": {
+          "assertEqual": 1
+        },
+        "test_a_good_body_IS_written": {
+          "assertEqual": 1
+        },
+        "test_a_list_a_string_and_an_empty_dict_are_refused": {
+          "assertFalse": 1
+        },
+        "test_a_poisoned_body_is_never_written_to_the_cache": {
+          "assertNotIn": 1
+        },
+        "test_a_real_baseline_load_records_nothing_today": {
+          "assertEqual": 1
+        },
+        "test_a_real_player_map_is_accepted": {
+          "assertTrue": 1
+        },
+        "test_a_soft_failing_caller_now_actually_degrades": {
+          "assertEqual": 1
+        },
+        "test_an_error_shaped_object_is_refused": {
+          "assertFalse": 1
+        },
+        "test_an_unparsable_file_is_recorded_with_its_name_and_error_TYPE": {
+          "assertEqual": 2,
+          "assertTrue": 2
+        },
+        "test_every_skip_is_recorded_not_just_the_first": {
+          "assertEqual": 1
+        },
+        "test_is_loaded_is_still_TRUE_which_is_exactly_why_the_record_is_needed": {
+          "assertTrue": 2
+        },
+        "test_it_names_the_source_rather_than_the_tier_number": {
+          "assertIn": 1
+        },
+        "test_it_raises_SleeperAPIError_and_not_a_decode_error": {
+          "assertRaises": 1
+        },
+        "test_it_samples_rather_than_walking_ten_megabytes": {
+          "assertTrue": 1
+        },
+        "test_it_says_the_pool_is_smaller_than_the_files_suggest": {
+          "assertIn": 1
+        },
+        "test_the_audit_view_reads_the_merger_s_record": {
+          "assertIn": 1
+        },
+        "test_the_good_files_still_load": {
+          "assertFalse": 1
+        },
+        "test_the_label_is_words_and_not_the_ordering_number": {
+          "assertEqual": 1,
+          "assertIsInstance": 1,
+          "assertNotEqual": 1,
+          "assertTrue": 1
+        },
+        "test_the_message_carries_the_start_of_the_body": {
+          "assertIn": 2,
+          "fail": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_a_stored_board_can_be_read_back.py": {
       "test_methods": 28,
       "asserts": {

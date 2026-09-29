@@ -199,6 +199,28 @@ class SleeperAPIError(RuntimeError):
     """Raised when the Sleeper API returns an unexpected response."""
 
 
+def _looks_like_a_player_map(body) -> bool:
+    """Whether `body` can be what /players/nfl claims to be: player_id -> player record.
+
+    MANDATE 2.4. SHAPE ONLY, and a sample rather than a full scan -- the real body is ~10MB and
+    ~11,000 entries, and a predicate that walked all of it on every fetch would cost more than the
+    defect. A body whose first entries are mappings and whose keys are strings is one this client
+    will persist; anything else (an error object, a list, a bare string) is refused and handled as a
+    failed fetch. This makes NO claim about which players are present or how many: that is the
+    caller's business, and a client that started ruling on it would be a second opinion about the
+    pool."""
+    if not isinstance(body, dict) or not body:
+        return False
+    sampled = 0
+    for key, value in body.items():
+        if not isinstance(key, str) or not isinstance(value, dict):
+            return False
+        sampled += 1
+        if sampled >= 20:
+            break
+    return True
+
+
 class SleeperClient:
     def __init__(self, cache_dir: str = DEFAULT_CACHE_DIR):
         self.cache_dir = Path(cache_dir)
@@ -219,7 +241,22 @@ class SleeperClient:
             raise SleeperAPIError(f"Sleeper API {url} returned {resp.status_code}: {resp.text[:200]}")
         if not resp.text:
             return None
-        return resp.json()
+        # MANDATE 2.4: A 200 WITH A NON-JSON BODY ESCAPED AS JSONDecodeError. Every method on this
+        # client is documented to fail soft -- callers catch SleeperAPIError and carry on with less
+        # data -- and a decode failure walked straight past all of them, so an HTML error page or a
+        # truncated response served with a 200 crashed the caller instead of degrading it. A gateway
+        # or captive portal returning 200 + HTML is the ordinary case, not an exotic one.
+        #
+        # Raised, not swallowed: this IS a failure, and the one thing worse than the wrong exception
+        # type is no exception at all. The body's first 200 characters go in the message, because
+        # "invalid JSON" and "invalid JSON that begins <!DOCTYPE html>" point at different causes.
+        try:
+            return resp.json()
+        except ValueError as exc:  # json.JSONDecodeError subclasses ValueError
+            raise SleeperAPIError(
+                f"Sleeper API {url} returned {resp.status_code} with a body that is not JSON: "
+                f"{resp.text[:200]}"
+            ) from exc
 
     # -- user / league discovery --------------------------------------------
 
@@ -294,6 +331,20 @@ class SleeperClient:
         try:
             players = self._get("/players/nfl")
         except SleeperAPIError:
+            players = None
+
+        # MANDATE 2.4: `if players:` ACCEPTED ANY TRUTHY BODY AND CACHED IT FOR 24 HOURS. Sleeper's
+        # /players/nfl answers with a mapping of player_id -> player record; an error-shaped JSON
+        # object ({"error": "..."}), or a list, or a bare string, is all truthy, and writing one here
+        # poisons the cache for a day -- every page load then reads it back, hands it to callers
+        # expecting a mapping, and raises, with no in-app path to refetch before the age expires.
+        #
+        # The check is deliberately SHAPE, not content: a mapping whose values are mappings. It says
+        # nothing about which players are in it or how many, because this client has no business
+        # ruling on that -- it only refuses to persist something that cannot be what it claims.
+        if players is not None and not _looks_like_a_player_map(players):
+            # Treated exactly as a failed fetch, which is what it is, so the fall-through below
+            # serves the previous cache (even a stale one) rather than a body we cannot read.
             players = None
 
         if players:

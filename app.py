@@ -6336,6 +6336,28 @@ elif main_view == IMPORT_VIEW:
         "What the Sleeper connection actually brings in, and in what form. Read-only: this view "
         "fetches and counts, it never writes or changes a valuation."
     )
+    # MANDATE 2.4: THE FILES THAT WOULD NOT PARSE, in the view whose whole subject is what got
+    # imported. load_all skips an unparsable file and keeps going, which is right -- one bad file
+    # must not take the app down -- and recorded nothing, so five files in, two loaded and three
+    # skipped read as a successful load with is_loaded True. A user upload is at least something
+    # the person just did; a COMMITTED BASELINE file that stops parsing after a library upgrade
+    # shrinks the pool for every league with nobody having changed anything, and that is the case
+    # this exists for. Shown above the Sleeper section on purpose: it concerns data already on
+    # disk, so it is true whether or not a connection exists.
+    _unparsable = getattr(st.session_state.get("data_merger"), "unparsable_files", []) or []
+    if _unparsable:
+        st.error(
+            f"{len(_unparsable)} projection file(s) could not be parsed and were skipped. The pool "
+            "is smaller than the files on disk suggest."
+        )
+        st.dataframe(
+            pd.DataFrame([
+                {"File": entry["file"], "Source": entry.get("provenance_label", "unknown source"),
+                 "Error": entry["error"], "Detail": entry["detail"]}
+                for entry in _unparsable
+            ]),
+            hide_index=True, width="stretch",
+        )
     if not st.session_state.get("sleeper_client"):
         st.info("Connect to Sleeper first — this view reads the same connection the rest of the app uses.")
     else:

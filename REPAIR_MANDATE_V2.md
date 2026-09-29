@@ -957,7 +957,7 @@ priced.
   universal-value points and zero rank change.** Repair the mechanism cheaply; do not justify it with
   a cost it does not have.
 
-## 2.4 Sources that vanish quietly **[VERIFIED]**
+## 2.4 Sources that vanish quietly **[REPAIRED]**
 
 `load_all` swallows every unparsable file and keeps no record — 5 files in, 2 loaded, 3 skipped,
 `is_loaded=True`, no signal. Mitigated for user uploads, not for a committed baseline file that stops
@@ -965,6 +965,39 @@ parsing after a library upgrade. `get_players` caches any truthy 200 body, so an
 poisons the daily cache and every page load then raises for 24 hours with no in-app refetch. A 200
 with a non-JSON body escapes as `JSONDecodeError`, not `SleeperAPIError`, so the methods documented
 to fail soft do not.
+
+### REPAIRED — three things, and the argument for the first was already written down
+
+**`load_all` records what it skipped.** The skip itself is correct and stays: one bad file must not
+take the app down. The silence was the defect, and `#187`'s shape — `{"file", "error", "detail"}` on an
+optional out-parameter, the same shape `conflicts` already uses, because that channel exists for the
+sentence *"a merge that silently discards a value has not succeeded"* and this is the same argument one
+level up. The exception TYPE is kept as well as the message: "bad header row" and "pandas raised on a
+dtype it used to accept" are different problems with different fixes.
+
+**`DataMerger` stamps WHICH directory**, because `load_all` cannot know and the caller can — and that
+distinction is the whole item. A user upload is something the person just did and can see is missing; a
+committed baseline file that stops parsing after a library upgrade shrinks every league's pool with
+nobody having changed anything. Surfaced in the Import Audit view, because recorded-and-rendered-nowhere
+is exactly what happened to `reconciliation_conflicts`, which tests read and no surface does.
+
+Found on the way: `PROVENANCE_BASELINE` is literally `0`, so a report saying "provenance: 0" told a
+reader nothing. `PROVENANCE_LABELS` is now the one home for the three tiers' reader-facing names.
+
+**`get_players` refuses a body it cannot be.** `if players:` accepted any truthy 200 and cached it for
+24 hours, so an error-shaped JSON poisoned the daily cache and every later page load read it back and
+raised, with no in-app refetch before the age expired. The check is SHAPE only — a mapping of string to
+mapping, sampled at 20 rather than walking ~11,000 entries — and says nothing about which players are
+present, because a client that started ruling on that would be a second opinion about the pool.
+
+**A 200 with a non-JSON body now fails soft.** It escaped as `JSONDecodeError`, past every caller that
+catches `SleeperAPIError`, so a gateway or captive portal answering 200 with HTML crashed the caller
+instead of degrading it. Raised as `SleeperAPIError` with the body's opening in the message, and the
+end-to-end degradation to the cache is driven in a test rather than argued.
+
+**My own fixture bug, recorded in the test:** the first broken-file header was `no,name,column` — which
+contains a column literally called `name`, so it parsed cleanly and four tests failed against working
+code. A fixture that does not actually break measures nothing.
 
 
 ## 2.5 The absence contract breaks at the snapshot boundary (`#187`) **[REPAIRED — 5 of 6; the sixth contested with the reason and put to the owner]**
