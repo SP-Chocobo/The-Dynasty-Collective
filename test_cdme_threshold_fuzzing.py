@@ -195,14 +195,21 @@ class BlockOpportunityBoundaryTests(unittest.TestCase):
     2 * NEED_BONUS_PER_DEDICATED_SLOT -- checked directly against that exact multiple."""
 
     def _raw(self, premium: float) -> list[dict]:
-        # rival_premium_take_probability fixed at 1.0 (fully credible) -- this class isolates
-        # the PREMIUM MAGNITUDE boundary alone; the separate credible-path gate has its own
-        # dedicated boundary tests in test_pick_synthesis.py's DecisionPathFlagsTests.
+        # The credible-path input is fixed at its most credible value so this class isolates the
+        # PREMIUM MAGNITUDE boundary alone; that gate has its own boundary tests in
+        # test_pick_synthesis.py's DecisionPathFlagsTests.
+        #
+        # MANDATE 3.4: that input is now `rival_premium_take_rank`, and rank 1 is the credible end
+        # of it. It was `rival_premium_take_probability: 1.0`, which had stopped being reachable --
+        # `#206` normalised the model so one opponent's take probabilities sum to <= 1 across their
+        # whole board, and the largest value that can reach the gate is 0.028. A fixture supplying
+        # 1.0 was asserting the boundary against an input production cannot produce, which is how
+        # every boundary test here went on passing while the flag was dead in the field.
         return [
             {"universal_value": 100.0, "team_acquisition_value": 100.0, "positional_forfeit": None,
-             "rival_premium": premium, "rival_premium_take_probability": 1.0},
+             "rival_premium": premium, "rival_premium_take_rank": 1},
             {"universal_value": 90.0, "team_acquisition_value": 90.0, "positional_forfeit": None,
-             "rival_premium": 0.0, "rival_premium_take_probability": 1.0},
+             "rival_premium": 0.0, "rival_premium_take_rank": 1},
         ]
 
     def test_premium_exactly_at_two_slots_fires(self):
