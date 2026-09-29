@@ -43,6 +43,80 @@ happens before freeze."* Under that ordering a battery finding sends work back *
 rather than after it — which is precisely the cycle just completed: the blind pass found things, the
 mandate repaired them, the battery re-ran clean. That is what earns v3.
 
+## What each version boundary PROVES (owner-set, 2026-09-29)
+
+The owner's instruction: *"make the version numbers correspond to evidence, not calendar time."*
+So each tag carries a claim, and the claim names its evidence.
+
+| tag | the claim | the evidence |
+|---|---|---|
+| `v2-freeze` `a8d1627` | known-good baseline | full suite 3512 OK, varied-field battery |
+| `v3-freeze` | **every known finding repaired, all seven owner decisions resolved** | the four mandate tiers certified, the 53-arm battery clean, the seven rulings shipped |
+| `v4-freeze` | **survived independent attack at the post-Fable architecture** | the three-instrument gate below |
+
+**v3 is explicitly NOT production, and its record must say so.** That is the point of it: v3 is a
+claim about the COMPLETENESS OF KNOWN WORK, not about correctness. v4 is the claim about correctness
+under an adversary. `FREEZE_RECORD_V2.md` set the habit that makes this legible — state what the
+freeze does not claim — and `FREEZE_RECORD_V3.md` must carry that sentence in its opening.
+
+### "The Fable battery" is TWO instruments, and they answer the gate question oppositely
+
+This distinction decides whether a v3 -> v4 gate is real or ceremonial, and the phrase hides it.
+
+* **The blind adversarial pass (`#52`)** — an unbriefed model reading the frozen tree, nine lenses,
+  two waves. A **discovery** instrument. Its yield comes from reading code no adversary has read,
+  which makes it effectively **one-shot per tree**.
+* **The draft battery (`run_draft_battery.py`)** — 53 arms, 9336 picks, structural findings on real
+  drafted rosters. A **regression** instrument: deterministic given code and data, fixed assertions
+  over fixed fixtures.
+
+So: **the existing battery is sufficient as a regression gate and cannot serve as a discovery gate.**
+Re-running it against v3 proves nothing known broke — necessary, and not a gate. Replaying v2's
+lenses would be ceremonial for the same reason. A FRESH pass over the 91-commit diff is not, because
+that code has never been read adversarially by anything but its author.
+
+### The independence hole is the author
+
+Every one of those 91 commits is mine. If I also design the lenses that read them, the pass inherits
+my blind spots and can only look where I thought to point it. Two mitigations, honestly ranked:
+
+* **Weak** — keep the pass unbriefed: give it TERRITORY (the diff range) and no CONCLUSIONS, nothing
+  about what the repairs claimed or where I think the risk is. Bounding territory is a mild briefing
+  and that is a real cost, recorded rather than hidden.
+* **Strong** — **write v4's pass/fail criteria BEFORE the pass runs.** This is the one that matters,
+  because it removes the judgement my own review is least able to police: moving the bar after seeing
+  the results.
+
+### The v3 -> v4 gate: three instruments, three distinct jobs
+
+| instrument | what it proves | ceremonial risk |
+|---|---|---|
+| fresh blind pass over the diff | discovery — what nobody anticipated | low, if the lenses are new and it stays unbriefed |
+| battery re-run | regression — nothing known broke | **high; label it confirmatory, never discovery** |
+| **mutation gate** over the new surface | the detection power of the test layer itself | none — it is a measurement |
+
+**The mutation gate is the one with demonstrated yield in this repo, and it is the only one whose
+value does not depend on who designed it.** `dbc4d4a`, from the v2 blind pass: all three invariant
+mutations SURVIVED the engine suite, and the two committed "caught" verdicts were wrong — artifacts
+of `--failfast` tripping on an unrelated anchors module. A self-certification instrument was
+reporting false positives about its own detection power. "4018 tests" is a number; "catches 9 of 12
+injected defects" is evidence.
+
+D1's own pinning test was mutation-checked this way before it was believed (three mutants: a
+constant `measured` companion, `#207`'s zero-initialised premium, and a basis decided off the value
+— 4, 97 and 2 failures respectively). That is the standard the gate generalises.
+
+### What stops v4 becoming v5
+
+This structure sits against the owner's other instruction — *"I don't want never-ending reworks"* —
+and adding a gate is structurally another cycle. The only thing that bounds it is that the gate's
+criteria are written in advance **including what is out of scope**: a finding outside the stated
+scope is RECORDED, not repaired. That is the stopping rule further down this file, applied to the
+gate itself. Without it, "v4 after a final battery" becomes v5 after the next one by exactly the
+mechanism that produced v3.
+
+---
+
 ## What is actually left: the seven rulings, and nothing else
 
 The four mandate tiers are complete and certified. The battery is clean. The only outstanding
@@ -67,9 +141,14 @@ The four mandate tiers are complete and certified. The battery is clean. The onl
 | **D6** | measure both of `#50`'s conventions against real boards, write `#50` up as its own item | none to do the work; answering it later unblocks `#21` and D7(a) |
 | **D7** | sweep candidate depth allowances over the battery's own final rosters, bring back three measured behaviours, then implement the chosen one | **one number from the owner**, which is the only thing in this file that can stall |
 
-### Phase B — the freeze
+### Phase B — the v3 candidate tag
 One full suite, all Tier 0 instruments green, `assertion_floors --write`, `FREEZE_RECORD_V3.md`
-written to be read cold, then cut and publish **`v3-freeze`**. The record must state what the
+written to be read cold and stating in its opening that **v3 is not production**, then cut and
+publish **`v3-freeze`**.
+
+### Phase C — the v4 gate
+Write the pass/fail criteria FIRST, including what is out of scope. Then the three instruments
+above. Then `v4-freeze`, which is the production claim. The record must state what the
 freeze rests on, what it does NOT claim, and what was left open — the three headings v2's record
 used, because they are what made this correction possible at all.
 
