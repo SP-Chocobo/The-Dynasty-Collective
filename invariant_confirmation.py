@@ -113,6 +113,43 @@ MUTATIONS = [
      '["_feasible", "_nofield", "final_score", "player_id"],',
      "the #30 fieldability backstop becomes advisory -- a roster resumes hoarding a position "
      "it cannot field, which is the nine-defense roster"),
+
+    # THE TWO BRANCHES STOPPED SHARING ONE SORT LINE AT D5, so they stopped sharing one anchor.
+    #
+    # The two entries above used to match TWICE each -- once per branch of compute_draft_board --
+    # which is the fact this file's docstring and test_invariant_confirmation_anchors were built
+    # around. D5 gave the upside branch a `projected_points` tie-break, so its sort now carries
+    # five keys against the balanced branch's four and the shared anchor matches only the balanced
+    # site. Left there, the harness would have gone on reporting `caught` while mutating HALF the
+    # engine -- the #254 failure mode, and precisely what `test_each_mutation_changes_every_site`
+    # exists to refuse.
+    #
+    # RE-DERIVED FROM THE SOURCE rather than by editing the expected count to match: each branch
+    # now carries its own anchor, and the coverage test asks whether every board-sort SITE is
+    # anchored instead of whether one string appears twice. Both replacements stay
+    # arity-preserving by the same construction as the four-key pair above -- five keys against
+    # five directions, one of them a constant column -- so the mutant runs and the only thing that
+    # changes is whether that backstop participates in the ordering.
+    #
+    # The upside sort is written on ONE LINE for the same reason every anchor here is: this file's
+    # `apply_mutation` replaces per line, to preserve each site's indentation. A sort wrapped across
+    # two lines cannot be anchored at all, so the harness would silently skip it -- which is how
+    # this pair came to be needed rather than merely tidy.
+    ("upside board order ignores feasibility", "draft_room.py",
+     'results = scored.sort_values(["_feasible", "_unfieldable", "final_score", '
+     '"projected_points", "player_id"],',
+     'results = scored.assign(_nofeas=1).sort_values(["_nofeas", "_unfieldable", "final_score", '
+     '"projected_points", "player_id"],',
+     "feasibility becomes advisory in upside mode -- the branch #154 tier 3 called the one where "
+     "it matters most, because upside scoring zeroes every roster-aware term"),
+
+    ("upside board order ignores fieldability", "draft_room.py",
+     'results = scored.sort_values(["_feasible", "_unfieldable", "final_score", '
+     '"projected_points", "player_id"],',
+     'results = scored.assign(_nofield=0).sort_values(["_feasible", "_nofield", "final_score", '
+     '"projected_points", "player_id"],',
+     "the fieldability backstop becomes advisory in upside mode -- the nine-defense roster, on "
+     "the branch that has no other roster awareness to fall back on"),
 ]
 
 

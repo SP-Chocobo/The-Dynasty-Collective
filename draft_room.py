@@ -609,7 +609,12 @@ DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX
 #: retired. invariant_registry counts that population (census 178) so a vendor refresh that
 #: refills it fails loudly instead of leaving this ruling silently out of date.
 
-UPSIDE_GROWTH_WEIGHT = 0.5
+#: UPSIDE_GROWTH_WEIGHT WAS HERE, at 0.5, and is DELETED rather than aliased (`#126`: a second
+#: name for one rate is the defect, not the cure -- the same call Tier 4 made for the duplicated
+#: undrafted-slot set). `upside_score` now converts the season-vs-3yr percentile gap at
+#: TIME_HORIZON_SLOPE, the rate this engine already applies to THAT EXACT PAIR. See D4 in
+#: OWNER_DECISIONS_PENDING.md and upside_score's own comment for the derivation and the measured
+#: blast radius.
 
 # confidence is now a direct, cheap encoding of which anchor a row actually used -- see
 # module docstring on why this replaced a composite-score cross-source-agreement lookup.
@@ -2675,22 +2680,36 @@ def upside_score(row: pd.Series) -> dict:
     # Sleeper projections, which publish points but no multi-year outlook.
     if row.get("_has_3yr", False) and season_pct is not None and proj3yr_pct is not None:
         growth = max(0.0, proj3yr_pct - season_pct)
-    # ONE PERCENTILE PAIR, ONE CONVERSION RATE (#52 phase 5, owner ruling).
+    # ONE PERCENTILE PAIR, ONE CONVERSION RATE (#52 phase 5; completed at D4).
     #
     # `growth` is a difference of two percentiles -- 0 to 100 -- and `bpa` is raw projected
     # points, whose span on the owner's league is 446. This line added the former to the latter
     # at 0.5 per percentile point and UNCLAMPED, so the growth term could move a candidate by up
     # to 50 points. `time_horizon_adj` reads THE SAME TWO COLUMNS (`_season_proj_pct` and
-    # `_proj3yr_pct`) and clamps their contribution to TIME_HORIZON_CLAMP, +/-10. Two readers of
-    # one input pair, converting it at rates five times apart, and only one of them admitting a
-    # percentile is not a point.
+    # `_proj3yr_pct`) and clamps their contribution to TIME_HORIZON_CLAMP, +/-10.
     #
-    # Clamped to the bound the other reader already uses rather than to a new number: #56
-    # forbids calibrating a constant, and TIME_HORIZON_CLAMP is not invented here -- it is the
-    # rate this engine already applies to this exact quantity. Deriving a per-percentile worth
-    # in points is real work and is not this.
+    # THE FIRST REPAIR TOOK THE BOUND AND LEFT THE SLOPE, and its own comment shows it knew the
+    # argument covered both: "not invented here -- it is the rate this engine already applies to
+    # this exact quantity." It then kept converting at 0.5 against time_horizon_adj's
+    # TIME_HORIZON_SLOPE of 0.20, so one input pair still had two conversion rates 2.5x apart --
+    # `#126` with the clamp bolted on, and the remaining half of what `#184` asked for.
+    #
+    # DERIVED, NOT CHOSEN (`#56`). The rate is not calibrated here and no new number is
+    # introduced: growth is converted at the slope this engine already applies to this exact
+    # percentile gap. That is the whole of the change, and it is what makes `#184`'s
+    # "percentile-to-points conversion" answerable without a calibration campaign.
+    #
+    # WHY NOT PRICE IT AT ZERO, which is what D4(c) ruled and what this deliberately does not do.
+    # (c) rested on my own claim that the term was never decisive, measured at "5 of 672 picks".
+    # That figure is real but is about mode="auto", which enters upside scoring on 672 of 9336
+    # battery picks and mostly on players carrying no 3yr outlook at all. In EXPLICIT upside mode
+    # -- what a person gets when they choose it -- growth is positive on 37.9% of 4584 rows and
+    # CHANGES THE TOP-1 PICK on 5 of 39 boards across three league shapes, rounds 10-22. So (c)
+    # would have removed working behaviour on the strength of a measurement about a different
+    # population. Adopting the slope instead moves the pick on 2 of those 39 boards: the
+    # conversion becomes derived, and the term keeps doing the work it demonstrably does.
     growth_points = max(TIME_HORIZON_CLAMP[0],
-                        min(UPSIDE_GROWTH_WEIGHT * growth, TIME_HORIZON_CLAMP[1]))
+                        min(TIME_HORIZON_SLOPE * growth, TIME_HORIZON_CLAMP[1]))
     value = round(bpa + growth_points, 2)
     return {"final_score": value, "growth_signal": round(growth, 1), "confidence": _confidence(row.get("bpa_source"))}
 
@@ -4485,8 +4504,33 @@ def compute_draft_board(
         scored["_unfieldable"] = unfieldable_last(scored, picks, players_db, my_roster_id,
                                                   roster_positions, pool_scope=pool_scope)
         scored["cannot_be_fielded"] = scored["_unfieldable"] == 1
-        results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "player_id"],
-                                     ascending=[True, True, False, True], kind="stable")
+        # D5 / task `#37`: A STATED CONVENTION FOR THE FLAT REGIONS, not a discovered one.
+        #
+        # `bpa` collapses to 0.00 board-wide once positional demand is exhausted (upside_score's
+        # own comment measures that), so late upside boards carry large exactly-tied blocks:
+        # MEASURED at 116 tied rows of 240 in round 8, 49 of 120 in round 18. The residual order
+        # inside a block was `player_id` -- deterministic since the fix described above, and
+        # arbitrary, because a Sleeper player id is a registration number. 1.3's precedent is that
+        # a residual tie may be settled by a CONVENTION where the convention is stated; this is
+        # that statement.
+        #
+        # THE CONVENTION: among candidates this board cannot distinguish, prefer the one projected
+        # to score more this season. `projected_points` is already on the row, already rendered,
+        # and is the quantity `bpa` is built from -- so a reader can see why two tied rows are
+        # ordered as they are. `player_id` stays LAST, because a convention still needs a
+        # deterministic floor under it (two players can tie on both).
+        #
+        # WHAT WAS MEASURED AND DECLINED. The balanced board's `universal_value` resolves 87.8% of
+        # tied rows against `projected_points`' 58.8% (769 tied rows over seven board states). It is
+        # not used, and the reason is `#126`: importing it would put a SECOND notion of
+        # team-agnostic value on a board whose `universal_value` is already defined as
+        # `final_score` itself (see the layer identity above). What that 29 points buys is which of
+        # two equal rows a person reads second, and an architectural rule is not worth that.
+        # ONE LINE, matching the balanced branch, because `invariant_confirmation`'s anchors are
+        # single-line by construction (`apply_mutation` replaces per line to preserve indentation).
+        # Wrapped across two lines this sort was unreachable by the harness -- see that file's note.
+        results = scored.sort_values(["_feasible", "_unfieldable", "final_score", "projected_points", "player_id"],
+                                     ascending=[True, True, False, False, True], kind="stable")
         return _records_with_normalized_nan(results[BALANCED_BOARD_COLUMNS])
 
     my_filled = _team_starters_filled(picks, players_db, my_roster_id, roster_positions)

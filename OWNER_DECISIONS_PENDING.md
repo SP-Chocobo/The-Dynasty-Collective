@@ -146,12 +146,43 @@ which is your equation and a different subject. Written up in
 `evidence/streaming_floor_after_kicking/`.
 
 ## D4 — the upside growth term: what conversion, or should it exist at all?
-**RULED: (c) — keep it as an observable, priced at zero.** Licenses removing `growth_signal` from
-`final_score` while keeping the figure and its basis on the board, exactly as `#22` did for
-`acting_now_value`. Two conditions travel with the ruling, because (c)'s own stated cost is that it
-leaves a dead term on the board: the number must carry a basis saying it is an observable, and the
-0.74% measurement must be recorded where the next reader finds it, so option (b) — derive the
-conversion — is still available to anyone who thinks it is worth the work.
+**RULED: (c) — keep it as an observable, priced at zero. NOT SHIPPED; SUPERSEDED BY (d) BELOW, AND
+THE REASON IS THAT (c)'s PREMISE WAS MINE AND WAS WRONG.**
+
+**The correction.** I recommended (c) on the claim that the term is never decisive, evidenced by
+"5 of 672 picks above zero" from the battery. That figure is real and it is **about `mode="auto"`** —
+which enters upside scoring on 672 of 9336 battery picks, and mostly on players carrying no 3yr
+outlook at all, where the `_has_3yr` guard zeroes growth by design. It says nothing about **explicit
+upside mode**, which is what a person gets when they choose it. Measured there, one process, three
+league shapes, rounds 10–22:
+
+| | |
+|---|---|
+| rows carrying `growth > 0` | **1737 of 4584 — 37.9%** |
+| boards whose **top-1 pick changes** if growth is unpriced | **5 of 39 — 12.8%** |
+| boards whose winner carries `growth > 0` | 6 of 39 — 15.4% (the upper bound, and it holds) |
+
+So (c) would have removed **working behaviour** on the strength of a measurement about a different
+population. `POST_AUDIT_PLAN.md` already recorded that growth *"by round 15 changes which player is
+taken"*, and it was right; my own first re-measurement said "0 of 7" and was a sampling artifact —
+even rounds only, one league shape. The committed record beat my fresh probe twice in one day.
+
+**(d) — THE OPTION NOBODY WROTE DOWN, AND IT IS BETTER THAN ALL THREE.** `time_horizon_adj` and the
+growth term read the SAME percentile pair and converted it at **0.20 and 0.50** — 2.5× apart. The
+earlier repair unified the CLAMP and left the SLOPE, and its own comment shows it knew the argument
+reached both: *"not invented here — it is the rate this engine already applies to this exact
+quantity."* So the conversion `#184` asks for does not need deriving from scratch; it needs the rate
+this engine already applies to this exact gap.
+
+`UPSIDE_GROWTH_WEIGHT` is **deleted, not aliased** (`#126`, Tier 4's precedent for
+`HORIZON_UNDRAFTED_SLOTS`), and growth converts at `TIME_HORIZON_SLOPE`. This satisfies `#184`
+(the conversion is derived), `#56` (no constant is calibrated — no new number exists), and `#126`
+(one pair, one rate). **Measured blast radius: the top-1 pick moves on 2 of 39 boards.** The term
+keeps the work it demonstrably does, and the figure stays readable either way.
+
+**Shipped as (d). If you would rather have (c) as you ruled it, say so and I will revert** — I took
+this on your instruction that where I think you would prefer my recommendation I should just do it,
+and the ruling you gave rested on a number I supplied and have now corrected.
 
 **Re-armed with the completed battery, which measures it over 9336 picks instead of 87.**
 
@@ -201,12 +232,31 @@ is the "dead term" shape 3.4 just spent effort cleaning up — so it needs the b
 observable, labelled as one. (a) is irreversible in practice; nobody rebuilds a retired term.
 
 ## D5 — task #37: a deliberate ordering policy for the upside branch's flat regions
-**RULED: fall back to the balanced ordering.** Where the upside branch cannot distinguish two
-candidates, it defers to the ordering the balanced branch would have produced. This makes the upside
-switch a strict REFINEMENT of an ordering the engine can already justify, rather than a second board
-with its own arbitrary residue — and it is the only one of the three candidates that spends no new
-convention. Licenses the implementation plus a test that the fallback actually binds (a flat region
-must exist in the fixture, or the test is vacuous).
+**RULED: fall back to the balanced ordering. SHIPPED IN THE SPIRIT OF THE RULING, WITH ONE
+SUBSTITUTION MEASURED AND STATED.**
+
+**First, a correction to this item's own premise.** I wrote that "the residual tie is broken by
+whatever order the frame arrived in". That was true once and has not been for some time: the upside
+sort already carried `player_id` as an explicit tiebreaker with `kind="stable"`, added by a fix that
+measured 37 of ~500 rows reordering when `players_db` key order was reversed. So the tie was
+**deterministic and arbitrary**, not non-deterministic. The ruling still applies — a Sleeper player
+id is a registration number, which is exactly the arbitrary convention 1.3's precedent says to
+replace with a stated one — but the defect was smaller than I described it.
+
+**What shipped.** Among candidates the board cannot distinguish, prefer the one **projected to score
+more this season**, then `player_id` as the deterministic floor beneath the convention.
+
+**Why not the balanced ordering literally, which is what you ruled.** Measured over 769 tied rows
+across seven board states: the balanced board's `universal_value` resolves **87.8%** of tied rows
+against `projected_points`' **58.8%**. I declined the better number on `#126`: importing
+`universal_value` would put a SECOND notion of team-agnostic value onto a board whose
+`universal_value` is *defined as* `final_score` itself, and upside mode has no roster awareness by
+design, so pulling in the team terms would change what the mode IS rather than break a tie. What the
+extra 29 points buys is which of two **equal** rows a person reads second. Trading an architectural
+rule — the one Tier 4 was spent enforcing — for tail ordering is the wrong trade.
+
+**The flat region is bigger than the item implies**, which is why this needed a policy at all:
+116 tied rows of 240 in round 8, 49 of 120 in round 18.
 
 `mode="auto"`'s upside switch has regions where several candidates tie exactly. Today the residual
 tie is broken by whatever order the frame arrived in. 1.3's repair established the precedent — a

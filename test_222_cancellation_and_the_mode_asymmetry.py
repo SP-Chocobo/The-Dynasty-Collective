@@ -17,7 +17,7 @@ facts it rests on had a test:
      Measured on the owner's real rulebook: WR +0.00 (WR defines the phantom), RB +46.94,
      TE +68.58.
 
-  3. THE MODE ASYMMETRY. `upside_score` is `bpa + UPSIDE_GROWTH_WEIGHT * growth` -- it retains
+  3. THE MODE ASYMMETRY. `upside_score` is `bpa + TIME_HORIZON_SLOPE * growth` -- it retains
      bpa at FULL WEIGHT -- while the upside branch zeroes every team-specific term including
      `displacement_adj`. So upside mode removes the half of the pair that cancels the level and
      keeps the half that applies it. That is a composition fact, not a number to tune, and
@@ -163,19 +163,29 @@ class UpsideModeKeepsTheWeightAndDropsTheCounterweight(unittest.TestCase):
         self.assertAlmostEqual(out["growth_signal"], 0.0, places=2)
 
     def test_growth_enters_at_its_declared_weight_and_bpa_at_one(self):
-        """The literal 0.5 is deliberate, and the first draft of this test got it wrong: written
-        as `40.0 + dr.UPSIDE_GROWTH_WEIGHT * 20.0` it read the constant from the module, so
-        doubling the constant moved BOTH sides and the mutation went uncaught. Same idiom as
+        """The literal is deliberate, and the first draft of this test got it wrong: written as
+        `40.0 + dr.UPSIDE_GROWTH_WEIGHT * 20.0` it read the constant from the module, so doubling
+        the constant moved BOTH sides and the mutation went uncaught. Same idiom as
         test_auto_mode_switches_to_upside_exactly_at_the_documented_round pinning the literal 15 --
-        change it here, on purpose, or not at all."""
+        change it here, on purpose, or not at all.
+
+        UPDATED AT D4, and the literal moved 0.5 -> 0.20 for a stated reason rather than a
+        retune: `upside_score` and `time_horizon_adj` read the SAME percentile pair, and the rate
+        is now the one this engine already applies to it (`#126`, `#56`). The second name for that
+        rate is gone, which the last assertion holds -- an alias would let both spellings drift
+        back apart."""
         import pandas as pd
         row = pd.Series({"bpa": 40.0, "_has_3yr": True,
                          "_season_proj_pct": 10.0, "_proj3yr_pct": 30.0, "bpa_source": None})
         out = dr.upside_score(row)
-        self.assertAlmostEqual(dr.UPSIDE_GROWTH_WEIGHT, 0.5, places=6,
-                               msg="UPSIDE_GROWTH_WEIGHT moved; decide that deliberately")
-        self.assertAlmostEqual(out["final_score"], 40.0 + 0.5 * 20.0, places=2)
+        self.assertAlmostEqual(dr.TIME_HORIZON_SLOPE, 0.20, places=6,
+                               msg="TIME_HORIZON_SLOPE moved; decide that deliberately -- it now "
+                                   "prices the upside growth term as well as time_horizon_adj")
+        self.assertAlmostEqual(out["final_score"], 40.0 + 0.20 * 20.0, places=2)
         self.assertAlmostEqual(out["growth_signal"], 20.0, places=1)
+        self.assertFalse(hasattr(dr, "UPSIDE_GROWTH_WEIGHT"),
+                         "the second conversion rate survives, so one percentile pair can be "
+                         "priced two ways again")
 
     def test_an_absent_bpa_does_not_become_a_number(self):
         """THE LATENT HAZARD. `upside_score` opens `bpa = row.get("bpa") or 0.0`. That is only

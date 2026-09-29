@@ -1673,7 +1673,7 @@ class InvariantTests(unittest.TestCase):
             # the invariant under test is "confidence isn't in this sum at all", not exact
             # float reproduction of an already-rounded display field.
             self.assertAlmostEqual(
-                row["final_score"], row["bpa"] + dr.UPSIDE_GROWTH_WEIGHT * row["growth_signal"], delta=0.1,
+                row["final_score"], row["bpa"] + dr.TIME_HORIZON_SLOPE * row["growth_signal"], delta=0.1,
             )
 
 

@@ -5569,7 +5569,18 @@ named. After D1 both are real projected points. That work is now expressible; it
 
 ## `upside_score`'s growth term — checked, and sound
 
-`upside_score` is `bpa + UPSIDE_GROWTH_WEIGHT * growth`, where `growth` is a **percentile**
+> **SUPERSEDED IN PART AT D4 (2026-09-29).** This section's MEASUREMENTS stand and its conclusion
+> that the term "still does real ordering work at every round" was **confirmed** — re-measured at
+> 37.9% of 4584 rows carrying `growth > 0` and the top-1 pick moving on 5 of 39 boards over three
+> league shapes, rounds 10–22. What is superseded is the last line, *"`UPSIDE_GROWTH_WEIGHT` is not
+> on the open-decisions list"*: it went onto that list as D4, and the constant **no longer exists**.
+> One percentile pair had two conversion rates — this term's 0.50 against `time_horizon_adj`'s
+> `TIME_HORIZON_SLOPE` of 0.20 — and the earlier repair that unified their CLAMP left the SLOPE
+> alone. Growth now converts at `TIME_HORIZON_SLOPE`, so the numbers in the table below are at the
+> old rate and the term's magnitudes are 2.5× smaller than shown. The measured cost of the change
+> is the top-1 pick moving on 2 of those 39 boards.
+
+`upside_score` is `bpa + TIME_HORIZON_SLOPE * growth`, where `growth` is a **percentile**
 difference and `bpa` is now real points. That is the same additive-unit shape as
 `universal_value`, so it was measured rather than assumed:
 
@@ -5584,8 +5595,8 @@ difference and `bpa` is now real points. That is the same additive-unit shape as
 The growth term's share of *magnitude* is small, but it still does real ordering work at every
 round, and the top 12 differs from a pure-`bpa` ordering at all of them — because the median
 adjacent gap (0.34–1.33 points) is smaller than the growth term itself. A small share of a score
-is not the same as a small influence on its order. **`UPSIDE_GROWTH_WEIGHT` is not on the
-open-decisions list.**
+is not the same as a small influence on its order. **This conclusion is why D4 did NOT price the
+term at zero** — see the correction block at the head of this section.
 
 ## D1 independently killed a previously-documented pathology
 

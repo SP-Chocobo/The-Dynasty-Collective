@@ -1652,7 +1652,7 @@ class CandidateSnapshot:
     # identically asserts a live measurement it does not have.
     replacement_basis: Optional[str] = None
     # Upside mode only, and there it is the term that DECIDES late picks:
-    # final_score = bpa + UPSIDE_GROWTH_WEIGHT * growth. Measured on real upside boards --
+    # final_score = bpa + TIME_HORIZON_SLOPE * growth. Measured on real upside boards --
     # 43-52% of rows carry growth > 0, mean 11.1 rising to 25.5 as the pool drains, and by
     # round 15 it changes which player is taken. None in balanced mode, where the quantity
     # genuinely is not computed; never 0.0, which would read as "measured, no trajectory".

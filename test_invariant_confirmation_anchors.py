@@ -20,6 +20,16 @@ import types
 import unittest
 from pathlib import Path
 
+
+def _offsets(haystack: str, needle: str) -> list[int]:
+    """Every start offset of `needle`. `str.count` answers how many; the coverage test needs
+    WHERE, so it can ask whether each site is anchored rather than trusting a total."""
+    found, start = [], haystack.find(needle)
+    while start != -1:
+        found.append(start)
+        start = haystack.find(needle, start + 1)
+    return found
+
 import invariant_confirmation as ic
 
 
@@ -49,15 +59,45 @@ class EveryAnchorStillMatchesTheSource(unittest.TestCase):
 
     def test_both_branches_of_compute_draft_board_are_covered(self):
         """The specific fact that broke it, stated so a future split or merge of the two branches
-        fails here rather than silently halving the harness's reach."""
+        fails here rather than silently halving the harness's reach.
+
+        RE-DERIVED AT D5, which is the event this test was built to catch and did catch. It used to
+        assert `source.count(anchor) == 2` for every draft_room anchor, because both branches of
+        `compute_draft_board` sorted on one identical line. D5 gave the upside branch a
+        `projected_points` tie-break, so the two lines diverged and the shared anchors matched only
+        the balanced site -- at which point the harness would have gone on reporting `caught` while
+        mutating half the engine.
+
+        The count was a PROXY for the thing that matters, and the proxy broke while the thing
+        itself stayed true. So this now asserts the thing: every board sort in this function is
+        anchored by at least one mutation. It survives the branches diverging, converging, or a
+        third appearing, and it fails if any of them goes unmutated."""
         source = Path("draft_room.py").read_text(encoding="utf-8")
-        for name, filename, anchor, _, _ in ic.MUTATIONS:
-            if filename == "draft_room.py":
-                with self.subTest(name):
-                    self.assertEqual(source.count(anchor), 2,
-                                     f"{name}: expected the upside-mode and balanced branches. If "
-                                     f"compute_draft_board was refactored, re-derive this number "
-                                     f"from the source rather than editing it to match.")
+        anchors = [(name, anchor) for name, filename, anchor, _, _ in ic.MUTATIONS
+                   if filename == "draft_room.py"]
+        self.assertTrue(anchors, "no draft_room mutation exists; the harness reaches no board")
+
+        sites = _offsets(source, "results = scored")
+        self.assertEqual(len(sites), 2,
+                         f"compute_draft_board has {len(sites)} board sorts, not the two this "
+                         f"harness was built around -- add or remove a mutation to match, and do "
+                         f"not relax this number to make it pass")
+        for offset in sites:
+            covering = [name for name, anchor in anchors if source.startswith(anchor, offset)]
+            line = source[offset:source.index("\n", offset)].strip()
+            with self.subTest(site=line[:60]):
+                self.assertTrue(covering,
+                                f"the board sort at offset {offset} ({line[:60]}...) is anchored "
+                                f"by no mutation, so the harness cannot reach it and a `caught` "
+                                f"verdict would be about the other branch only")
+
+    def test_the_feasibility_flag_anchor_still_reaches_both_branches(self):
+        """The one anchor that IS shared, kept as a separate check so that the coverage test above
+        cannot be satisfied by two anchors that both land on the same branch."""
+        source = Path("draft_room.py").read_text(encoding="utf-8")
+        shared = 'scored["fills_required_slot"] = scored["_feasible"] == 0'
+        self.assertEqual(source.count(shared), 2,
+                         "the flag is no longer set in both branches of compute_draft_board")
 
     def test_every_mutant_still_parses(self):
         """The failure mode with teeth. A mutant that does not compile fails EVERY test, and the

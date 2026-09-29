@@ -15,7 +15,7 @@ WHY THESE TWO ARE WORTH CARRYING, measured rather than asserted:
     it keeps being priced against its PRE-DRAFT level, and a consumer that renders both
     identically states a live measurement it does not have.
   growth_signal -- upside mode's whole distinguishing output: final_score = bpa +
-    UPSIDE_GROWTH_WEIGHT * growth. On real upside boards 43-52% of rows carry growth > 0
+    TIME_HORIZON_SLOPE * growth. On real upside boards 43-52% of rows carry growth > 0
     (mean 11.1 early, 25.5 once the pool drains), and by round 15 it changes which player is
     taken. Without it a retained record says who was chosen but not on what kind of evidence.
 """
@@ -118,7 +118,7 @@ class GrowthSignalReachesItsConsumersTests(_RealSnapshots):
     def test_it_reconstructs_the_upside_score_it_decomposes(self):
         """The strongest available check that the value arriving is the RIGHT one rather than
         merely present: upside mode's own identity is
-        final_score = bpa + UPSIDE_GROWTH_WEIGHT * growth_signal, so the carried field has to
+        final_score = bpa + TIME_HORIZON_SLOPE * growth_signal, so the carried field has to
         close that equation against the two numbers already on the snapshot."""
         for candidate in self._snapshot(24, "upside").candidates:
             if candidate.bpa is None:
@@ -126,7 +126,7 @@ class GrowthSignalReachesItsConsumersTests(_RealSnapshots):
             with self.subTest(player=candidate.name):
                 self.assertAlmostEqual(
                     candidate.team_acquisition_value,
-                    round(candidate.bpa + dr.UPSIDE_GROWTH_WEIGHT * candidate.growth_signal, 2),
+                    round(candidate.bpa + dr.TIME_HORIZON_SLOPE * candidate.growth_signal, 2),
                     places=1)
 
     def test_the_serializer_emits_it(self):
