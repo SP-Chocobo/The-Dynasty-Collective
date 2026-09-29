@@ -246,7 +246,9 @@ class TheMandatesOwnClaimForThisItemIsCorrected(unittest.TestCase):
                              f"the league weights {key}, so it was already scoring")
 
     def test_the_bucketed_sum_is_INCOMPLETE_which_is_why_the_total_is_used(self):
-        """No `fgmiss_0_19` or `fgmiss_20_29` exists, so the buckets understate the total. If they
+        """No short-range miss bucket exists -- neither fgmiss_0_19 nor fgmiss_20_29, de-backticked
+        because 0.8's instrument is right that a backticked name should be a name in the tree and the
+        whole point here is that these two are not -- so the buckets understate the total. If they
         ever agree exactly, the derivation could read the vendor's own numbers instead."""
         differing = 0
         for stats in self.rows:

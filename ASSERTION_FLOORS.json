@@ -8279,10 +8279,10 @@
       }
     },
     "test_kdst_integration.py": {
-      "test_methods": 53,
+      "test_methods": 54,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 28,
+        "assertEqual": 30,
         "assertFalse": 2,
         "assertGreater": 15,
         "assertGreaterEqual": 2,
@@ -8445,6 +8445,9 @@
         },
         "test_the_damping_is_not_position_aware": {
           "assertNotIn": 1
+        },
+        "test_the_eleven_defenses_no_longer_ride_the_no_number_path": {
+          "assertEqual": 2
         },
         "test_the_kdst_seeds_carry_no_raw_stats_and_so_cannot_be_rescored": {
           "assertEqual": 1,

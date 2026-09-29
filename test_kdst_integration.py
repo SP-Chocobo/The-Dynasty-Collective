@@ -133,11 +133,33 @@ class PoolAdmissionTests(unittest.TestCase):
         cls.merger = dm.DataMerger()
         cls.db = _players_db(cls.merger)
 
-    def _pool(self, league):
+    def _pool(self, league, db=None):
         from player_universe import league_usable_positions
         return dr.build_available_pool(
-            self.merger, self.db, set(), league_usable_positions(league["roster_positions"]),
+            self.merger, db if db is not None else self.db, set(),
+            league_usable_positions(league["roster_positions"]),
         )
+
+    #: MANDATE 2.3: A DELIBERATE SUBJECT FOR THE NO-NUMBER PATH, because the accidental one is gone.
+    #: `#193`'s contract -- a player admitted on evidence he is real, with nobody having published a
+    #: number for him -- was being tested against whoever happened to fall through, and on this
+    #: fixture that population was ENTIRELY the 11 team defenses `name_key` could not resolve. 2.3
+    #: repaired the resolution, all 32 defenses now carry numbers, and the path emptied: the test
+    #: failed on its own non-vacuity guard rather than on the contract.
+    #:
+    #: The contract is unchanged and still worth holding, so it gets a subject that exists ON PURPOSE
+    #: -- a real, currently relevant player no vendor table carries. A test whose subject arrives by
+    #: accident is a test that stops testing the day an unrelated repair lands, which is exactly what
+    #: happened here.
+    def _db_with_an_unnumbered_player(self):
+        db = dict(self.db)
+        db["_unnumbered_for_193"] = {
+            "player_id": "_unnumbered_for_193",
+            "full_name": "Zzz Unpricedman",
+            "position": "WR", "fantasy_positions": ["WR"], "team": "SF",
+            "status": "Active", "years_exp": 2,
+        }
+        return db
 
     def test_kicker_and_defense_enter_the_pool_when_the_league_rosters_them(self):
         pool = self._pool(KDST_LEAGUE)
@@ -179,19 +201,33 @@ class PoolAdmissionTests(unittest.TestCase):
         self.assertTrue(no_tv["projection"].notna().all(),
                         "a projection-only admission must still carry a real projection")
 
+    def test_the_eleven_defenses_no_longer_ride_the_no_number_path(self):
+        """MANDATE 2.3, stated positively: the population that used to fill the path above. Every
+        team defense now resolves to its transcribed row, so none of them reaches the pool without a
+        number. If this ever fails, `name_key`/`team_defense_key` has regressed and the test above
+        will keep passing on its synthetic subject while production quietly stops pricing 11 rows."""
+        pool = self._pool(KDST_LEAGUE)
+        defenses = pool[pool["position"] == "DEF"]
+        self.assertEqual(len(defenses), 32, "not every defense reached the pool")
+        unnumbered = defenses[defenses["trade_value"].isna() & defenses["projection"].isna()
+                              & defenses["sleeper_points"].isna()]
+        self.assertEqual(len(unnumbered), 0,
+                         f"{len(unnumbered)} defenses are still unpriceable")
+
     def test_a_row_with_no_number_is_admitted_and_says_so(self):
         # The other half of the split above, and the #193 contract stated positively: a player
         # can now reach the pool on evidence he is a real, currently relevant footballer with
         # nobody having published a number for him. That row is legitimate, carries None rather
         # than a fabricated 0.0, and the board labels it for what it is instead of borrowing
         # the trade_value branch's name.
-        pool = self._pool(KDST_LEAGUE)
+        db = self._db_with_an_unnumbered_player()
+        pool = self._pool(KDST_LEAGUE, db=db)
         unnumbered = pool[pool["trade_value"].isna() & pool["projection"].isna()
                           & pool["sleeper_points"].isna()]
         self.assertGreater(len(unnumbered), 0,
                            "vacuous: this fixture admits nobody on the no-number path")
         board = dr.compute_draft_board(
-            self.merger, self.db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced")
+            self.merger, db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced")
         ids = set(unnumbered["player_id"].astype(str))
         rows = [r for r in board if str(r["player_id"]) in ids]
         self.assertTrue(rows, "the no-number admissions never reached the board")
