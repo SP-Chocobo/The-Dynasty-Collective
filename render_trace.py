@@ -114,9 +114,19 @@ class _Recorder:
     #: "Data Freshness: Aging" -> "Data Freshness: <grade>" and left `class="status-bad"` and the
     #: ⚠️ icon in place -- both derived from the same grade, so both still turn over on the same
     #: calendar date. A half-blur would have moved the scheduled false diff without removing it.
-    _CALENDAR_DEPENDENT = re.compile(
-        r'<span class="status-\w+">\S+ Data Freshness: \w+</span>')
-    _CALENDAR_BLURRED = '<span class="status-<grade>">&lt;icon&gt; Data Freshness: &lt;grade&gt;</span>'
+    #: AND IT ESCAPED A SECOND TIME, in a different surface, which is why this is now a LIST.
+    #: `trade_ledger_ui.freshness_pill_html` renders "Values 34d stale" -- a raw day count, so it
+    #: turns over EVERY DAY rather than at a grade boundary, and `--check` went red at midnight UTC
+    #: with no code behind it. One pattern for one surface was the same half-measure the note above
+    #: describes: the rule is that NOTHING wall-clock-derived reaches the recorded trace verbatim,
+    #: and a rule needs a list, not a special case. A new calendar-derived string on a new surface
+    #: belongs here, and the day it appears is the day this check goes red for no reason.
+    _CALENDAR_DEPENDENT = (
+        (re.compile(r'<span class="status-\w+">\S+ Data Freshness: \w+</span>'),
+         '<span class="status-<grade>">&lt;icon&gt; Data Freshness: &lt;grade&gt;</span>'),
+        (re.compile(r'<span class="tl-pill stale">Values \d+d stale</span>'),
+         '<span class="tl-pill stale">Values &lt;n&gt;d stale</span>'),
+    )
 
     def record(self, path: str, args, kwargs):
         shown = [_shape(a) for a in args]
@@ -125,7 +135,9 @@ class _Recorder:
         # BLURRED, NOT DROPPED. The call still has to happen, and its shape is still compared --
         # only the grade WORD is replaced, so removing the freshness strip is still a diff while
         # the passage of time is not.
-        self.calls.append(self._CALENDAR_DEPENDENT.sub(self._CALENDAR_BLURRED, line))
+        for pattern, blurred in self._CALENDAR_DEPENDENT:
+            line = pattern.sub(blurred, line)
+        self.calls.append(line)
 
 
 class _Selection:

@@ -87,7 +87,7 @@
     "[\ud83c\udfc8 Matchup] st.subheader(str:Lineup Readiness)",
     "[\ud83c\udfc8 Matchup] st.markdown(str[long], unsafe_allow_html=bool:True)",
     "[\ud83c\udfc8 Matchup] st.markdown(str[long], unsafe_allow_html=bool:True)",
-    "[\ud83c\udfc8 Matchup] st.markdown(str:<span class=\"tl-pill stale\">Values 34d stale</span>, unsafe_allow_html=bool:True)",
+    "[\ud83c\udfc8 Matchup] st.markdown(str:<span class=\"tl-pill stale\">Values &lt;n&gt;d stale</span>, unsafe_allow_html=bool:True)",
     "[\ud83c\udfc8 Matchup] st.caption(str[long])",
     "[\ud83c\udfc8 Matchup] st.markdown(str:---)",
     "[\ud83c\udfc8 Matchup] st.markdown(str:**Your Roster**)",

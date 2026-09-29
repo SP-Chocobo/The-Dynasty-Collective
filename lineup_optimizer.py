@@ -104,6 +104,88 @@ def optimize_lineup(players: list[dict], slots: list[dict]) -> dict:
     return {"total_value": round(total_value, 2), "assignments": assignments, "benched": benched}
 
 
+# Weight of covering ONE slot in slot_coverage's objective. It has to dominate the SUM of every
+# tie-break term over every slot, so a coverage-maximising assignment is never traded away for a
+# more "preferred" arrangement that covers fewer slots. The preferences below decide only among
+# assignments that cover the same number of slots.
+_COVERAGE_WEIGHT = 1.0e6
+#: One step of the restrictiveness preference -- a slot eligible at fewer positions is filled
+#: first, so a dedicated slot beats a flex slot the same player could also occupy.
+_RESTRICTIVENESS_STEP = 1.0e3
+
+
+def slot_coverage(players: list[dict], slots: list[dict]) -> dict:
+    """Which of these STARTING SLOTS this set of players actually occupies -- the COUNTING
+    question (mandate 2.6 / `#172`), not the valuation one optimize_lineup answers.
+
+    players: [{"id": ..., "eligible": set[str]}, ...] -- no "value", deliberately. This asks how
+    many slots are covered, and a player's price has no bearing on whether he is legal in a
+    slot. Handing optimize_lineup a value of 1.0 apiece would reach the same cardinality and
+    then break every tie arbitrarily, which is exactly the part that has to be stated rather
+    than left to the solver.
+    slots: [{"slot_id", "label", "eligible"}, ...] from slots_from_roster_positions.
+
+    Returns {"occupied": [{"slot_id","label","player_id"}], "filled_labels": {label: n},
+    "benched": [id, ...]}.
+
+    THE OBJECTIVE, in order, all three encoded in one cost matrix:
+
+    1. COVER AS MANY SLOTS AS POSSIBLE -- exact maximum-cardinality matching, on the same
+       Hungarian solve optimize_lineup uses. An ineligible pair costs _INELIGIBLE_COST, which
+       dominates _COVERAGE_WEIGHT, which dominates everything below.
+    2. FILL THE MOST RESTRICTIVE SLOT FIRST. Where a player could sit in a dedicated slot or in
+       a flex slot that also accepts him, the dedicated one is filled. Not cosmetic: need_bonus
+       weights an unfilled DEDICATED slot four times a flex share, so an arrangement that left
+       the dedicated slot empty while the flex slot took the only eligible player would report a
+       need this roster does not have.
+    3. FILL THE SLOT THE LEAGUE DECLARES FIRST. A CONVENTION, not a measurement. It exists only
+       to make the remaining ties deterministic, so that this is a pure function of the SET of
+       players (sorted by id here) and not of the order the picks arrived in. It binds for one
+       shape: a player eligible at two equally restrictive slots, with no other player able to
+       take either -- a dual-eligible IDP on a roster holding one DL and one LB slot and nobody
+       else for them. Which of the two he is credited to is genuinely arbitrary; the league's own
+       roster_positions order is the one available answer that is at least stable and auditable.
+
+    WHAT THIS DOES NOT CLAIM. Per-slot-label fill is monotone in the player set only up to
+    those ties: adding a player can re-route a dual-eligible one, and two arrangements covering
+    the same slots can credit different labels. TOTAL coverage is monotone (a maximum matching
+    cannot shrink when a player is added). See test_demand_is_assignment_based.py.
+    """
+    ordered = sorted(players, key=lambda p: str(p["id"]))
+    if not ordered or not slots:
+        return {"occupied": [], "filled_labels": {}, "benched": [p["id"] for p in ordered]}
+
+    widest = max(len(slot["eligible"]) for slot in slots)
+    cost = np.full((len(ordered), len(slots)), _INELIGIBLE_COST)
+    for j, slot in enumerate(slots):
+        weight = (_COVERAGE_WEIGHT
+                  + (widest - len(slot["eligible"])) * _RESTRICTIVENESS_STEP
+                  - j)
+        for i, player in enumerate(ordered):
+            if player["eligible"] & slot["eligible"]:
+                cost[i, j] = -weight
+
+    row_idx, col_idx = linear_sum_assignment(cost)
+    occupied, taken = [], set()
+    for i, j in zip(row_idx, col_idx):
+        if cost[i, j] >= _INELIGIBLE_COST:
+            continue  # forced pairing with no real eligibility -- the slot stays empty
+        occupied.append({
+            "slot_id": slots[j]["slot_id"], "label": slots[j]["label"],
+            "player_id": ordered[i]["id"],
+        })
+        taken.add(ordered[i]["id"])
+
+    filled_labels: dict[str, int] = {}
+    for entry in occupied:
+        filled_labels[entry["label"]] = filled_labels.get(entry["label"], 0) + 1
+    return {
+        "occupied": occupied,
+        "filled_labels": filled_labels,
+        "benched": [p["id"] for p in ordered if p["id"] not in taken],
+    }
+
+
 def marginal_lineup_value(
     roster_players: list[dict], candidate: dict, roster_positions: list[str],
 ) -> dict:

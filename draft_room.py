@@ -883,37 +883,64 @@ def starter_slot_counts(
     Positions absent from a measured occupancy get 0.0 THERE, which is a measurement ("nothing
     at this position wins one of these slots"), not an absence. A slot type missing from the
     occupancy entirely is a different thing and falls back to the even split for that slot
-    alone, because an unmeasured slot type is not an empty one."""
+    alone, because an unmeasured slot type is not an empty one.
+
+    A slot's share is resolved ONCE, per appearance, by slot_share_by_position -- this function
+    is that share summed over every appearance the league declares. It is not the only consumer
+    any more (see unfilled_slot_share), and a second statement of the flex split is `#186`'s
+    failure exactly."""
     counts: dict[str, float] = {p: 0.0 for p in FANTASY_POSITIONS}
+    shares = slot_share_by_position(roster_positions, flex_occupancy, num_teams)
+    for slot in roster_positions or []:
+        for position, share in shares.get(slot, {}).items():
+            counts[position] += share
+    return counts
+
+
+def slot_share_by_position(
+    roster_positions: list[str],
+    flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
+    num_teams: Optional[int] = None,
+) -> dict[str, dict[str, float]]:
+    """ONE APPEARANCE of each slot label this league declares, resolved into the fantasy
+    positions it counts toward: label -> position -> share. A named slot is `{"QB": {"QB": 1.0}}`;
+    a flex label is split by the two rules starter_slot_counts documents in full -- measured off
+    `flex_occupancy` wherever a pool exists, an even split where none does.
+
+    THE HOME OF THE SPLIT, and it is extracted rather than restated because there are now two
+    consumers that must not disagree: starter_slot_counts (every appearance summed) and
+    unfilled_slot_share (only the appearances a roster has NOT covered). The summed number cannot
+    be divided back into the per-appearance one by a caller -- the measured branch has already
+    divided by the appearance count -- so a second consumer had to have the share itself."""
+    shares: dict[str, dict[str, float]] = {}
     measured = flex_occupancy if (flex_occupancy and num_teams) else None
     for slot in roster_positions or []:
+        if slot in shares:
+            continue
         if slot in FANTASY_POSITIONS:
-            counts[slot] += 1.0
+            shares[slot] = {slot: 1.0}
             continue
         if slot not in FLEX_SLOT_POSITIONS:
             continue
         won = (measured or {}).get(slot)
         if won is not None:
-            # Per-team share of THIS slot type. The occupancy counts every copy of the slot
-            # across the league; this league has one copy per team per appearance in
-            # roster_positions, so dividing by num_teams gives the per-team share of ONE
-            # appearance -- which is what a per-team slot count is.
+            # Per-team share of ONE APPEARANCE of this slot type. The occupancy counts every copy
+            # of the slot across the league; this league has one copy per team per appearance in
+            # roster_positions, so dividing by num_teams x appearances gives the per-team share of
+            # a single appearance -- which is what a per-appearance slot share is.
             appearances = sum(1 for s in roster_positions if s == slot) or 1
-            for pos, n in won.items():
-                if pos in counts:
-                    counts[pos] += n / (num_teams * appearances)
+            shares[slot] = {pos: n / (num_teams * appearances)
+                            for pos, n in won.items() if pos in FANTASY_POSITIONS}
             continue
         eligible = FLEX_SLOT_POSITIONS[slot]
         if slot == "SUPER_FLEX" and "QB" in eligible:
             non_qb = [pos for pos in eligible if pos != "QB"]
-            counts["QB"] += SUPER_FLEX_QB_SHARE
             remaining_share = (1.0 - SUPER_FLEX_QB_SHARE) / len(non_qb) if non_qb else 0.0
-            for pos in non_qb:
-                counts[pos] += remaining_share
+            shares[slot] = {"QB": SUPER_FLEX_QB_SHARE}
+            shares[slot].update({pos: remaining_share for pos in non_qb})
             continue
-        for pos in eligible:
-            counts[pos] += 1.0 / len(eligible)
-    return counts
+        shares[slot] = {pos: 1.0 / len(eligible) for pos in eligible}
+    return shares
 
 
 def slot_share_basis(flex_occupancy, num_teams) -> str:
@@ -963,10 +990,18 @@ def _drafted_counts_by_position(picks: list[dict], players_db: dict[str, dict]) 
 def team_filled_by_position(
     picks: list[dict], players_db: dict[str, dict],
 ) -> dict[str, dict[str, int]]:
-    """roster_id -> position -> how many that ONE roster has taken there. The per-team census
-    remaining_starter_demand is built from, and the generalisation of _team_starters_filled
-    (which answers the same question for a single roster and now delegates here, so there is
-    one definition of "what has this team taken" rather than two)."""
+    """roster_id -> position -> how many that ONE roster has taken there, by PRIMARY LABEL. A
+    plain per-team census, and -- like _drafted_counts_by_position, which is its league-wide
+    sibling -- it is NOT remaining demand and must not be subtracted from slot capacity to
+    produce one.
+
+    IT USED TO BE THE DEMAND MODEL'S INPUT, and that is the defect mandate 2.6 records: counting
+    by primary label mis-reads every multi-eligible player, so a DL/LB dual paid down DL demand
+    and left LB standing. Demand and need now both read team_slots_filled, which SOLVES which
+    slot a pick occupies. This survives because "how many has this team taken at this position"
+    is still a real question with a correct answer, and because the before-state of that repair
+    has to stay computable for the evidence that sized it -- see
+    evidence/multi_eligible_counting/, whose probes are its only callers."""
     filled: dict[str, dict[str, int]] = {}
     for pick in picks:
         info = players_db.get(str(pick.get("player_id")))
@@ -980,6 +1015,78 @@ def team_filled_by_position(
     return filled
 
 
+def team_slots_filled(
+    picks: list[dict], players_db: dict[str, dict], roster_positions: list[str],
+) -> dict[str, dict[str, int]]:
+    """roster_id -> slot label -> how many appearances of that slot ONE roster's picks actually
+    occupy. SOLVED, not counted: each roster's players are assigned to this league's real starting
+    slots by lineup_optimizer.slot_coverage, reading eligibility from `fantasy_positions` through
+    the one reader `#172` puts it behind.
+
+    MANDATE 2.6, THE OWNER'S RULING. The census this displaces (team_filled_by_position, which
+    survives for the questions that genuinely want a census) counted each pick under its PRIMARY
+    LABEL, so a DL/LB dual reduced demand at DL alone and left LB demand standing. Counting him at
+    BOTH positions is the other wrong answer, and a worse one: it claims a single player fills two
+    slots. Only an assignment can say which slot he occupies.
+
+    MEASURED, ON HEAVY_IDP, one round of a 12-team draft at a time: nil at round 5 (one dual held),
+    and at round 10 LB demand 10.0 -> 9.0 while DB demand goes the OTHER WAY, 12.0 -> 13.0, because
+    a DB/LB dual had been paying down a DB slot he does not occupy. Every LB in the top 40 loses
+    1.00 of final_score and every DB gains 1.15, through the replacement anchor. The 20.0 -> 13.0
+    figure that sized this item was the BY-ELIGIBILITY reading, which is the one the ruling rejected
+    -- see evidence/multi_eligible_counting/RULING.md, and note that the same repair corrects a
+    SECOND and larger defect that has nothing to do with eligibility (unfilled_slot_share).
+
+    A pick whose eligibility is EMPTY is skipped, exactly as the census skipped a pick with no
+    primary position -- he cannot occupy a slot, so he cannot fill one. See
+    player_eligible_positions on why an empty set is an answer here and not missing data."""
+    slots = lo.slots_from_roster_positions(roster_positions)
+    rows: dict[str, list[dict]] = {}
+    for pick in picks:
+        info = players_db.get(str(pick.get("player_id")))
+        if not info:
+            continue
+        eligible = player_eligible_positions(info)
+        if not eligible:
+            continue
+        rows.setdefault(str(pick.get("roster_id")), []).append(
+            {"id": str(pick.get("player_id")), "eligible": eligible})
+    return {roster: lo.slot_coverage(players, slots)["filled_labels"]
+            for roster, players in rows.items()}
+
+
+def unfilled_slot_share(
+    roster_positions: list[str], filled_labels: dict[str, int],
+    flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
+    num_teams: Optional[int] = None,
+) -> dict[str, float]:
+    """ONE roster's starting demand still open, by position: every slot appearance this league
+    declares that the roster's own assignment did NOT cover, resolved through the same
+    slot_share_by_position that starter_slot_counts sums. `filled_labels` is that roster's row out
+    of team_slots_filled.
+
+    THE SINGLE PER-ROSTER TERM behind both consumers of 2.6's ruling -- summed over every team it
+    is remaining_starter_demand; read for MY OWN roster alone it is need_bonus's flex component.
+    Those two ask the same question of different populations and now compute it once.
+
+    `unfilled <= 0` cannot bind for a `filled_labels` that came from team_slots_filled over these
+    same roster_positions: the assignment can only occupy slots the league declares. It is here so
+    a MISMATCHED pair yields no demand at that slot rather than a negative one."""
+    shares = slot_share_by_position(roster_positions, flex_occupancy, num_teams)
+    appearances: dict[str, int] = {}
+    for slot in roster_positions or []:
+        if slot in shares:
+            appearances[slot] = appearances.get(slot, 0) + 1
+    demand = {p: 0.0 for p in FANTASY_POSITIONS}
+    for label, declared in appearances.items():
+        unfilled = declared - (filled_labels or {}).get(label, 0)
+        if unfilled <= 0:
+            continue
+        for position, share in shares[label].items():
+            demand[position] += unfilled * share
+    return demand
+
+
 def remaining_starter_demand(
     roster_positions: list[str], num_teams: int, picks: list[dict], players_db: dict[str, dict],
     flex_occupancy: Optional[dict[str, dict[str, int]]] = None,
@@ -987,14 +1094,30 @@ def remaining_starter_demand(
     """How many starting slots at each position are STILL UNFILLED across the league --
     summed per team, never subtracted league-wide.
 
-        sum over teams of max(starter_slot_counts[position] - that team's own picks there, 0)
+        sum over teams of unfilled_slot_share(this team's solved assignment)
 
     EXACT and BOUNDED. It is computed entirely from roster_positions and the observed picks;
     it carries no prior, no estimate and no behavioural claim. It is bounded in
-    [0, num_teams x slots], is monotone non-increasing as picks accumulate, reaches exactly
-    zero when every team has filled its slots, and is invariant to the ORDER the picks
-    arrived in. Those properties are what make it usable as the domain test for a valuation
-    anchor -- see replacement_levels.
+    [0, num_teams x slots], reaches exactly zero when every team has filled its slots, and is
+    invariant to the ORDER the picks arrived in (team_slots_filled sorts each roster by player
+    id, so it is a function of the SET of picks). Those properties are what make it usable as
+    the domain test for a valuation anchor -- see replacement_levels.
+
+    WHAT 2.6'S RULING COST THIS DOCSTRING. It used to say "monotone non-increasing as picks
+    accumulate" of every position, and that claim belonged to the subtraction. A solved
+    assignment keeps it for the TOTAL -- a maximum matching cannot shrink when a player is added,
+    so total unfilled slots never rises -- and loses it PER POSITION at one shape only: a
+    dual-eligible player whose slot was decided by a tie can be re-routed by a later pick, moving
+    demand from one of his two positions to the other while the total falls. That is a real
+    weakening of a stated property, not a wording change, and it is pinned as such rather than
+    quietly dropped. Measured on the battery's IDP boards it does not occur; see
+    evidence/multi_eligible_counting/.
+
+    WHY THE SUBTRACTION HAD TO GO. `slot_counts[position] - that team's picks at position` counts
+    a pick under its PRIMARY LABEL, so a DL/LB dual paid down DL demand and left LB demand at full
+    height. On HEAVY_IDP that overstated LB demand by 7.0 of 20 slots after round five -- LBs
+    priced as though more LB slots needed filling than did. The alternative of counting him at
+    both positions is worse: it pays down two slots with one player. See team_slots_filled.
 
     WHY PER TEAM. The previous model computed `num_teams x slots - drafted_league_wide`, and
     that is not the same quantity, because max(., 0) does not distribute over a sum: one team
@@ -1016,19 +1139,19 @@ def remaining_starter_demand(
     modelled -- the league-wide form could not detect that at all, since it only ever summed a
     count. See compute_draft_board's `demand_picks` for the one caller that supplies a
     separate history, and why an EMPTY one is well defined while a foreign one is not."""
-    slot_counts = starter_slot_counts(roster_positions, flex_occupancy, num_teams)
-    filled = team_filled_by_position(picks, players_db)
+    filled = team_slots_filled(picks, players_db, roster_positions)
     if len(filled) > max(num_teams, 0):
         raise ValueError(
             f"demand history covers {len(filled)} rosters but the league has {num_teams} teams; "
             "per-team starter demand cannot be computed from a foreign roster universe"
         )
     rosters = list(filled.values()) + [{}] * (num_teams - len(filled))
-    return {
-        position: sum(max(slot_counts.get(position, 0.0) - roster.get(position, 0), 0.0)
-                      for roster in rosters)
-        for position in FANTASY_POSITIONS
-    }
+    demand = {position: 0.0 for position in FANTASY_POSITIONS}
+    for roster in rosters:
+        for position, share in unfilled_slot_share(
+                roster_positions, roster, flex_occupancy, num_teams).items():
+            demand[position] += share
+    return demand
 
 
 def remaining_draft_capacity(
@@ -2329,16 +2452,24 @@ def horizon_replacement(
     return out
 
 
-def _team_starters_filled(picks: list[dict], players_db: dict[str, dict], roster_id) -> dict[str, int]:
-    """How many of THIS roster's picks so far landed at each fantasy position -- the raw
-    count, not weighed against slot capacity yet (need_bonus does that separately).
-    Bench-vs-starter isn't distinguishable mid-draft (nothing's been assigned to a lineup
-    slot yet), so every pick counts toward "already have one of these" for need purposes.
+def _team_starters_filled(
+    picks: list[dict], players_db: dict[str, dict], roster_id, roster_positions: list[str],
+) -> dict[str, int]:
+    """Which of THIS roster's own starting slots its picks occupy, by slot label -- the solved
+    count, so a DL/LB dual is credited to the one slot he actually fills rather than to his
+    primary label (mandate 2.6).
 
-    One roster's row out of team_filled_by_position -- the same census
-    remaining_starter_demand sums over every team, deliberately not a second implementation
-    of "what has this team taken"."""
-    return dict(team_filled_by_position(picks, players_db).get(str(roster_id), {}))
+    One roster's row out of team_slots_filled -- the same assignment remaining_starter_demand
+    solves for every team, deliberately not a second implementation of "what has this team
+    covered". LABELS, not positions: the keys include this league's flex labels, because a flex
+    appearance a roster has filled is a filled slot and need_bonus has to see it as one.
+
+    IT USED TO BE A RAW PICK COUNT, and it defended that on the grounds that bench-vs-starter
+    "isn't distinguishable mid-draft (nothing's been assigned to a lineup slot yet)". The
+    distinction being made is not about a real lineup being fielded; it is about which slots this
+    roster's holdings could cover, which is answerable at any point in a draft and is the question
+    need_bonus was already asking with `max(dedicated - filled, 0)`."""
+    return dict(team_slots_filled(picks, players_db, roster_positions).get(str(roster_id), {}))
 
 
 def _team_roster_players(
@@ -4170,7 +4301,7 @@ def compute_draft_board(
                                      ascending=[True, True, False, True], kind="stable")
         return _records_with_normalized_nan(results[BALANCED_BOARD_COLUMNS])
 
-    my_filled = _team_starters_filled(picks, players_db, my_roster_id)
+    my_filled = _team_starters_filled(picks, players_db, my_roster_id, roster_positions)
     # DELIBERATELY THE EVEN SPLIT, not the measured share the demand model above uses, because
     # this answers a DIFFERENT QUESTION and I got that wrong once already.
     #
@@ -4188,7 +4319,13 @@ def compute_draft_board(
     # guard that went red in the same run -- rival_premium ceasing to clear one team-term's cap
     # -- which moved the WRONG WAY under this revert (10.04 -> 9.25) and is therefore downstream
     # of the ANCHOR, not of need_bonus. That one is its own finding and is not repaired here.
-    slot_counts = starter_slot_counts(roster_positions)
+    #
+    # It used to read starter_slot_counts(roster_positions) -- the league's slot CAPACITY, even
+    # split -- against a census of my picks. Mandate 2.6 replaces both halves at once: capacity
+    # minus a census becomes the slots my own solved assignment leaves open, which is what the
+    # subtraction was reaching for. The even split is the part that does NOT change, for exactly
+    # the reason above, and unfilled_slot_share takes no occupancy here so it gets it.
+    my_open_share = unfilled_slot_share(roster_positions, my_filled)
     dedicated_counts = dedicated_slot_counts(roster_positions)
     # Every key the pool refused, plus any claimed by two players who are BOTH already drafted
     # -- a pair that contested each other does not stop contesting once neither is available.
@@ -4280,16 +4417,20 @@ def compute_draft_board(
         # flex term is capped at one share -- NOT because flex waits for it. The two are
         # additive and both fire on an empty roster; the older wording here said otherwise and
         # was withdrawn at #52 phase 6 (see NEED_BONUS_PER_FLEX_SHARE's own comment).
+        # MANDATE 2.6: BOTH TERMS NOW READ A SOLVED ASSIGNMENT, not a pick census. `filled` is
+        # how many of my DEDICATED slots at this position are actually occupied -- a DL/LB dual
+        # occupies one of them, not both and not neither.
         filled = my_filled.get(position, 0)
         dedicated = dedicated_counts.get(position, 0)
         dedicated_needed = max(dedicated - filled, 0)
-        flex_share = max(slot_counts.get(position, 0) - dedicated, 0)
-        # Flex-eligible demand shrinks as picks beyond the dedicated slots consume it, not
-        # just a binary "have I met dedicated yet" switch -- otherwise a small residual flex
-        # share (e.g. two-thirds of a FLEX slot's worth) never actually reaches zero no
-        # matter how many extra players at this position a team has already drafted.
-        flex_already_used = max(filled - dedicated, 0)
-        flex_remaining = max(flex_share - flex_already_used, 0)
+        # What is left of my flex capacity at this position: my whole unfilled share here MINUS
+        # the dedicated part of it. Both come from one assignment over one set of slots, so this
+        # subtraction is an identity rather than an estimate -- my_open_share's dedicated component
+        # IS dedicated_needed (see unfilled_slot_share) and the remainder is the flex appearances
+        # nothing of mine covers. It reaches exactly zero when they are all covered, which the
+        # arithmetic it replaces had to approximate with a separate `flex_already_used` term
+        # because a census could not say which slot a pick sat in.
+        flex_remaining = my_open_share.get(position, 0.0) - dedicated_needed
         need_bonus = round(min(
             NEED_BONUS_PER_DEDICATED_SLOT * dedicated_needed + NEED_BONUS_PER_FLEX_SHARE * min(flex_remaining, 1),
             NEED_BONUS_MAX,

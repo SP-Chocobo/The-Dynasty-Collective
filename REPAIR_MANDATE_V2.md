@@ -999,7 +999,7 @@ goes to the owner. Pinned as a characterization test meanwhile.
 `diff_snapshots` dropping measured↔unmeasured transitions; the board payload's companions; injury
 status never crossing the boundary; `build_context`'s silent truncation.
 
-## 2.6 Multi-eligible players are counted by their primary label (`#172`) **[the READERS unified; the COUNTING next]**
+## 2.6 Multi-eligible players are counted by their primary label (`#172`) **[REPAIRED — and it turned out to be two defects, the second one larger]**
 
 **Roster fill is counted by primary label**, so `need_bonus` and league-wide starter demand mis-read
 every multi-eligible player; `roster_diagnostics` solves lineups with a single label, contradicting the
@@ -1054,7 +1054,8 @@ other.
 199, and every one is an IDP dual (`DL/LB`, `DB/LB`). Zero multi-eligible picks in the first three
 rounds of any arm measured.
 
-**The difference, isolated** on `HEAVY_IDP` with the same formula and only the count changing: LB
+**The difference, isolated** on `HEAVY_IDP` with the same formula and only the count changing — and
+this is the BY-ELIGIBILITY count, not the one that was ruled; see the correction below: LB
 demand **20.0 → 13.0 (−7.0 of 20 slots)** after round 5, −3.0 after round 10, nil by round 15. Every
 other position identical at every round.
 
@@ -1066,6 +1067,36 @@ carries no prior, no estimate", which it says is "what make[s] it usable as the 
 valuation anchor". Changing it changes every IDP price.
 
 **So it is `#184`, not a repair.** Put to the owner with the measurement rather than chosen here.
+
+### RULED ASSIGNMENT-BASED, BUILT — and the sizing above was wrong in two ways
+
+See `evidence/multi_eligible_counting/RULING.md` for the measurement in full. Both corrections belong
+to the owner's ruling; neither was visible from the sizing it was ruled on.
+
+**The −7.0 LB figure above is the BY-ELIGIBILITY reading**, which the ruling rejected. The assignment
+reading moves LB demand by **1.0 of 10**, not 7.0 of 20 — and it moves DB demand the *other way*,
+**12.0 → 13.0**, which is the half a label can never get right: a `DB/LB` dual had been paying down a
+DB slot he does not occupy. On `HEAVY_IDP`, the top pick did not change at any checkpoint; every LB in
+the top 40 loses 1.00 of `final_score` and every DB gains 1.15, through the replacement anchor.
+
+**AND THERE WAS A SECOND DEFECT IN THE SAME SUBTRACTION, WITH NOTHING TO DO WITH MULTI-ELIGIBILITY.**
+`max(capacity at this position − picks at this position, 0)` counts a position's share of every FLEX
+appearance as capacity — *including flex slots that are already occupied by somebody else*. After nine
+rounds of `12T_ppr_SF`, where every team can cover every starting slot and not one multi-eligible player
+is held, the label formula still declared **7.17 RB and 8.60 TE slots open league-wide**. The assignment
+says zero. At round 5 that is worth **RB −8.66, TE −10.04, WR −1.20** of `final_score` across the top 40,
+and **the engine's top pick changes** (Breece Hall → Rashee Rice). An order of magnitude past the IDP
+effect, on the most ordinary board in the battery.
+
+**What this does NOT have yet.** The suite certifies that nothing contradicts itself; it cannot certify
+that a board drafting differently drafts better. That is the battery's job and the battery has not run
+over this. Stated as a correctness repair with a measured price change and an unmeasured quality effect.
+
+**One stated property is weaker than it was.** `remaining_starter_demand` claimed per-position
+monotonicity, which belonged to the subtraction. Solved, the TOTAL is still monotone (a maximum matching
+cannot shrink when a player is added); per position it is no longer a proof, because a tie can re-route a
+dual. An exhaustive search over 2,860 roster configurations found no per-label decrease, which is
+evidence and is recorded as evidence, in `test_demand_is_assignment_based.py`, not promoted to a proof.
 
 ---
 

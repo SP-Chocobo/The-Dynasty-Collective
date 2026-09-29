@@ -4631,6 +4631,94 @@
         "early_returns": 0
       }
     },
+    "test_demand_is_assignment_based.py": {
+      "test_methods": 22,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 22,
+        "assertGreater": 1,
+        "assertGreaterEqual": 3,
+        "assertLessEqual": 2,
+        "assertRaises": 1
+      },
+      "by_method": {
+        "test_a_dedicated_slot_is_filled_before_a_flex_slot_that_would_take_him": {
+          "assertEqual": 1
+        },
+        "test_a_dual_pays_down_one_slot_not_two": {
+          "assertEqual": 1
+        },
+        "test_a_foreign_roster_universe_is_still_refused": {
+          "assertRaises": 1
+        },
+        "test_a_player_eligible_nowhere_this_league_starts_is_benched_not_forced": {
+          "assertEqual": 2
+        },
+        "test_a_slot_the_league_does_not_declare_contributes_nothing": {
+          "assertEqual": 2
+        },
+        "test_an_empty_league_needs_both_slots": {
+          "assertEqual": 2
+        },
+        "test_and_not_zero_slots": {
+          "assertEqual": 1
+        },
+        "test_and_so_the_LB_slot_stops_reading_as_unfilled": {
+          "assertEqual": 2
+        },
+        "test_coverage_is_never_traded_for_a_preferred_arrangement": {
+          "assertEqual": 1
+        },
+        "test_flex_takes_the_overflow_once_the_dedicated_slots_are_full": {
+          "assertEqual": 1
+        },
+        "test_it_does_not_depend_on_the_order_the_picks_arrived_in": {
+          "assertEqual": 1
+        },
+        "test_it_is_a_function_of_the_SET_of_players": {
+          "assertEqual": 1
+        },
+        "test_it_is_bounded_by_the_leagues_own_capacity": {
+          "assertGreaterEqual": 1,
+          "assertLessEqual": 1
+        },
+        "test_it_reaches_exactly_zero_when_every_slot_is_covered": {
+          "assertEqual": 1
+        },
+        "test_my_row_is_the_leagues_own_term_read_for_one_team": {
+          "assertAlmostEqual": 1,
+          "assertEqual": 1
+        },
+        "test_no_slot_label_ever_loses_its_occupant_when_a_player_is_added": {
+          "assertGreater": 1,
+          "assertGreaterEqual": 1
+        },
+        "test_the_assignment_reads_one_of_each": {
+          "assertEqual": 1
+        },
+        "test_the_census_still_reads_them_both_as_DL": {
+          "assertEqual": 1
+        },
+        "test_the_declaration_ORDER_is_the_tie_break_and_it_is_a_convention": {
+          "assertEqual": 2
+        },
+        "test_the_dedicated_part_of_my_share_is_exactly_the_dedicated_need": {
+          "assertGreaterEqual": 1
+        },
+        "test_the_narrower_flex_slot_is_filled_first": {
+          "assertEqual": 1
+        },
+        "test_total_demand_never_rises_as_picks_accumulate": {
+          "assertLessEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_denial_ablation_experiment.py": {
       "test_methods": 5,
       "asserts": {
@@ -11937,9 +12025,9 @@
       }
     },
     "test_render_trace.py": {
-      "test_methods": 15,
+      "test_methods": 16,
       "asserts": {
-        "assertEqual": 8,
+        "assertEqual": 9,
         "assertGreater": 1,
         "assertIn": 8,
         "assertNotEqual": 1,
@@ -11968,6 +12056,9 @@
         },
         "test_every_pass_appears_in_the_recorded_trace": {
           "assertTrue": 1
+        },
+        "test_no_ELAPSED_TIME_QUANTITY_of_any_kind_reaches_the_recorded_trace": {
+          "assertEqual": 1
         },
         "test_no_pass_stops_at_the_no_league_guard": {
           "assertNotIn": 1

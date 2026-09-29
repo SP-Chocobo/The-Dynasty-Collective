@@ -1,0 +1,221 @@
+{
+  "arm": "HEAVY_IDP",
+  "teams": 12,
+  "roster_positions": [
+    "QB",
+    "RB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "FLEX",
+    "DL",
+    "DL",
+    "LB",
+    "LB",
+    "DB",
+    "DB",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN"
+  ],
+  "checkpoints": [
+    {
+      "after_round": 4,
+      "picks": 48,
+      "demand": {},
+      "need_bonus_inputs_differ": {},
+      "top40_moved": [],
+      "top40_moved_n": 0,
+      "top_pick": {
+        "by_label": "Lamar Jackson",
+        "by_assignment": "Lamar Jackson"
+      },
+      "multi_eligible_held": 1
+    },
+    {
+      "after_round": 9,
+      "picks": 108,
+      "demand": {
+        "DB": {
+          "by_label": 12.0,
+          "by_assignment": 13.0
+        },
+        "LB": {
+          "by_label": 10.0,
+          "by_assignment": 9.0
+        },
+        "RB": {
+          "by_label": 4.0,
+          "by_assignment": 3.33
+        },
+        "TE": {
+          "by_label": 6.0,
+          "by_assignment": 5.33
+        }
+      },
+      "need_bonus_inputs_differ": {},
+      "top40_moved": [
+        {
+          "name": "Ventrell Miller",
+          "pos": "LB",
+          "rank": [
+            0,
+            0
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Devin Bush",
+          "pos": "LB",
+          "rank": [
+            1,
+            1
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Nate Landman",
+          "pos": "LB",
+          "rank": [
+            2,
+            2
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Xavier Watts",
+          "pos": "DB",
+          "rank": [
+            5,
+            3
+          ],
+          "final_score": 1.15,
+          "universal_value": 1.15
+        },
+        {
+          "name": "Alex Singleton",
+          "pos": "LB",
+          "rank": [
+            3,
+            4
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Malaki Starks",
+          "pos": "DB",
+          "rank": [
+            8,
+            5
+          ],
+          "final_score": 1.15,
+          "universal_value": 1.15
+        },
+        {
+          "name": "Terrel Bernard",
+          "pos": "LB",
+          "rank": [
+            4,
+            6
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Jalen Thompson",
+          "pos": "DB",
+          "rank": [
+            9,
+            7
+          ],
+          "final_score": 1.15,
+          "universal_value": 1.15
+        },
+        {
+          "name": "Cedric Gray",
+          "pos": "LB",
+          "rank": [
+            6,
+            8
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Cole Bishop",
+          "pos": "DB",
+          "rank": [
+            10,
+            9
+          ],
+          "final_score": 1.15,
+          "universal_value": 1.15
+        },
+        {
+          "name": "Quincy Williams",
+          "pos": "LB",
+          "rank": [
+            7,
+            10
+          ],
+          "final_score": -1.0,
+          "universal_value": -1.0
+        },
+        {
+          "name": "Xavier McKinney",
+          "pos": "DB",
+          "rank": [
+            11,
+            11
+          ],
+          "final_score": 1.15,
+          "universal_value": 1.15
+        }
+      ],
+      "top40_moved_n": 40,
+      "top_pick": {
+        "by_label": "Ventrell Miller",
+        "by_assignment": "Ventrell Miller"
+      },
+      "multi_eligible_held": 13
+    },
+    {
+      "after_round": 14,
+      "picks": 168,
+      "demand": {
+        "RB": {
+          "by_label": 3.33,
+          "by_assignment": 0.0
+        },
+        "TE": {
+          "by_label": 3.67,
+          "by_assignment": 0.0
+        },
+        "WR": {
+          "by_label": 0.67,
+          "by_assignment": 0.0
+        }
+      },
+      "need_bonus_inputs_differ": {
+        "RB": {
+          "old": 0.33,
+          "new": 0.0
+        }
+      },
+      "top40_moved": [],
+      "top40_moved_n": 0,
+      "top_pick": {
+        "by_label": "Robert Spillane",
+        "by_assignment": "Robert Spillane"
+      },
+      "multi_eligible_held": 21
+    }
+  ]
+}

@@ -896,8 +896,10 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
     def test_the_two_team_specific_terms_disagree_about_a_filled_slot(self):
         row = self._blind_spot_row()
         picks = [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}]
-        self.assertEqual(dr._team_starters_filled(picks, self.db, "1").get(row["position"]), 1,
-                         "need_bonus must see the slot filled")
+        self.assertEqual(
+            dr._team_starters_filled(picks, self.db, "1",
+                                     KDST_LEAGUE["roster_positions"]).get(row["position"]), 1,
+            "need_bonus must see the slot filled")
         self.assertEqual(len(dr._team_roster_players(picks, self.db, "1", self.merger)), 0,
                          "eligibility_bonus cannot price him, so he is dropped")
 

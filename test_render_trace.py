@@ -12,6 +12,7 @@ shape of thing this repository keeps finding: a check nobody has watched fail.
 """
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -102,6 +103,24 @@ class TheTraceReachesEveryViewTests(unittest.TestCase):
                               "the calendar")
                 self.assertNotIn('class="status-ok"', call)
                 self.assertNotIn('class="status-bad"', call)
+
+    def test_no_ELAPSED_TIME_QUANTITY_of_any_kind_reaches_the_recorded_trace(self):
+        """THE RULE, not the two instances of it. The test above pins the freshness grade and
+        passed while a SECOND calendar-derived string escaped beside it -- `trade_ledger_ui`'s
+        "Values 34d stale", a raw day count, so it turned over every midnight rather than at a
+        grade boundary, and `--check` went red on 2026-09-29 with no code behind it.
+
+        A test that names the strings it knows about cannot catch the next one. This one states
+        what the trace may not contain: an elapsed-time quantity, in any unit. Long strings are
+        blurred to `str[long]` before they get here, so a static caption mentioning a number of
+        days is not in scope -- only the short, verbatim ones, which is exactly the population
+        that turns over on a timer."""
+        elapsed = re.compile(r"\b\d+\s*(?:d|day|days|hr|hrs|hour|hours|w|wk|weeks?|"
+                             r"months?|yr|yrs|years?)\b")
+        offenders = [call for call in self.recorded if elapsed.search(call)]
+        self.assertEqual(offenders, [],
+                         "an elapsed-time quantity is recorded verbatim and will turn over with "
+                         "the calendar; blur it in _Recorder._CALENDAR_DEPENDENT")
 
 
 class TheTraceIsCurrentTests(unittest.TestCase):
