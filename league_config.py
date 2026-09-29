@@ -106,12 +106,58 @@ def draftable_slots(roster_positions: Optional[list[str]]) -> list[str]:
 #: silently fail to place, so it makes the config AMBIGUOUS.
 KNOWN_SLOTS = frozenset(FANTASY_POSITIONS) | frozenset(FLEX_SLOT_POSITIONS) | NON_PLAYING_SLOTS
 
-#: Scoring/settings keys whose ABSENCE changes what the engine concludes about a league -- not
-#: every key it might read. `compute_points_from_stats` iterates whatever it is given, so a
-#: missing category there is a smaller projection, not a misread league. These four are
-#: different: each one silently resolves to a DEFAULT that describes a different league.
-#: Kept in step with sleeper_client.league_format_summary by test_league_config.
-FORMAT_DECIDING_KEYS = ("rec", "bonus_rec_te", "type", "num_teams")
+#: Keys whose ABSENCE changes what the engine concludes about a league -- not every key it might
+#: read. `compute_points_from_stats` iterates whatever it is given, so a missing category there is
+#: a smaller projection, not a misread league. These are different: each silently resolves to a
+#: DEFAULT that describes a different league.
+#:
+#: THIS USED TO BE ONE FLAT TUPLE, ("rec", "bonus_rec_te", "type", "num_teams"), checked against
+#: `scoring` and `settings` together -- and it refused EVERY REAL LEAGUE (2.2). Measured over the
+#: 53 production-shaped leagues `draft_battery.league_matrix` builds: refused 53 of 53. Two of the
+#: four entries were wrong, in two different ways, and splitting them by WHERE THEY LIVE and HOW
+#: THEIR ABSENCE READS is what fixes both. The third and fourth are right and stay.
+
+#: `type` is the dynasty flag. `draft_room` reads `league["settings"]["type"] == 2` and gates BOTH
+#: `time_horizon_adj` and `risk_adj`'s trajectory scaling on it, so an absent `type` prices a
+#: dynasty league as a redraft and says nothing about having done so. No safe default exists,
+#: which is what earns a key a place here. Absent in 2 of the 53 -- both the CAPTURE_owner_league
+#: arms, whose `league_shape` carries three keys by design, and which `draft_battery` already
+#: states are drafted as redraft. The gate agreeing with that comment, arm for arm, is the gate
+#: working.
+FORMAT_DECIDING_SETTINGS_KEYS = ("type",)
+
+#: THE TEAM COUNT, UNDER THE NAME THE ENGINE READS (#126). This was `num_teams`, looked for in
+#: `scoring` and `settings` -- and nothing on the valuation path reads that key at all. Sleeper
+#: sends the count as `total_rosters` at the TOP LEVEL, and every production reader takes it from
+#: there: draft_room's `compute_draft_board`, and pick_synthesis in two places. Measured over the
+#: 53: `num_teams` absent in 53 of 53, `total_rosters` present in 53 of 53. So the gate refused
+#: every league in the matrix for want of a key the engine does not use, while the number it
+#: wanted sat one level up under its real name.
+#:
+#: Its absence still blocks, because the fallback is not benign: `compute_draft_board` reads
+#: `league.get("total_rosters") or len({roster_id from picks}) or 1`, so an empty draft with no
+#: count resolves to ONE TEAM, which puts every position's replacement level at its best player.
+TEAM_COUNT_KEY = "total_rosters"
+
+#: Scoring keys that decide FORMAT rather than points. They do not reach offensive valuation
+#: through `scoring_settings` at all -- the vendor's season projection is pre-computed -- they
+#: reach it by FILE SELECTION, through `league_format_hint` into `set_league_format`.
+#:
+#: THEIR ABSENCE IS NOT AN UNKNOWN, and treating it as one was the second false refusal. Sleeper
+#: returns a COMPLETE scoring dict and omits every category the league does not score, so a key
+#: missing from a POPULATED dict is a declared zero. That is also precisely how the engine reads
+#: it: `league_format_hint` takes `scoring_settings.get("rec", 0)` and concludes standard, and
+#: `.get("bonus_rec_te", 0) > 0` and concludes no TE premium. Both are CORRECT conclusions about a
+#: league that scores neither -- not defaults standing in for an unread setting. `bonus_rec_te` is
+#: absent in 47 of the 53, every one of them carrying a populated scoring dict.
+#:
+#: So these are reported only when the league carries NO `scoring_settings` at all, which is a
+#: genuinely unread config rather than a league that declines to score a category.
+FORMAT_DECIDING_SCORING_KEYS = ("rec", "bonus_rec_te")
+
+#: The same vocabulary whole, for readers that want it that way. `num_teams` is deliberately NOT
+#: in it: TEAM_COUNT_KEY names that fact now, under the name the engine reads.
+FORMAT_DECIDING_KEYS = FORMAT_DECIDING_SCORING_KEYS + FORMAT_DECIDING_SETTINGS_KEYS
 
 CONFIRMED = "confirmed"
 INFERRED = "inferred"
@@ -207,12 +253,18 @@ def ambiguities(league: Optional[dict]) -> list[dict]:
                       f"will score it as 1QB",
         })
 
-    missing = [key for key in FORMAT_DECIDING_KEYS
-               if key not in scoring and key not in settings]
+    # Each key is asked for WHERE IT LIVES, and a scoring key is asked at all only when the
+    # league brought no scoring dict -- see the three constants above for why both halves of
+    # that matter, and for what the flat version refused.
+    missing = [key for key in FORMAT_DECIDING_SETTINGS_KEYS if key not in settings]
+    if league.get(TEAM_COUNT_KEY) is None:
+        missing.append(TEAM_COUNT_KEY)
+    if not scoring:
+        missing.extend(FORMAT_DECIDING_SCORING_KEYS)
     if missing:
         found.append({
             "kind": "missing_format_keys",
-            "detail": f"{missing} absent -- each one silently resolves to a default that "
+            "detail": f"{sorted(missing)} absent -- each one silently resolves to a default that "
                       f"describes a DIFFERENT league",
         })
     return found

@@ -23,11 +23,19 @@ from player_universe import FANTASY_POSITIONS, FLEX_SLOT_POSITIONS
 
 _HERE = Path(__file__).parent
 
+#: THIS FIXTURE IS PART OF WHY 2.2 WENT UNNOTICED, so the change is recorded rather than quietly
+#: made. It used to carry the team count as `settings["num_teams"]` and NOTHING at the top level --
+#: a shape Sleeper does not send. So "a config that parses cleanly" was a league built to satisfy
+#: the gate's vocabulary instead of one built to look like a real league, and the gate could refuse
+#: all 53 production-shaped leagues in `draft_battery.league_matrix` while its own tests stayed
+#: green. The count now sits where Sleeper puts it and where the engine reads it, `total_rosters` at
+#: the top level, and `num_teams` is gone because nothing on the valuation path ever read it.
 CLEAN = {
     "league_id": "1", "name": "Test",
     "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "BN", "BN", "BN"],
-    "settings": {"type": 2, "num_teams": 12},
+    "settings": {"type": 2},
     "scoring_settings": {"rec": 1.0, "bonus_rec_te": 0.5},
+    "total_rosters": 12,
 }
 
 
@@ -149,6 +157,27 @@ class AmbiguityIsDerivedNotRememberedTests(unittest.TestCase):
         self.assertEqual(undeclared, [],
                          f"declared as format-deciding but never read by "
                          f"league_format_summary: {undeclared}")
+
+    def test_the_team_count_key_is_the_one_the_VALUATION_path_reads(self):
+        """HOW `num_teams` SURVIVED IN THAT LIST. The sibling test above pins the declared keys to
+        `sleeper_client.league_format_summary` -- a DISPLAY summary, which reads `num_teams` and
+        then falls back to `total_rosters` anyway. So the pin was satisfied by the one reader that
+        could not be hurt by the key's absence, while the gate refused every real league for it.
+        A claim about defaults that describe a different league is a claim about the VALUATION
+        path, so this reads that path instead: draft_room must take the count from TEAM_COUNT_KEY,
+        and must not read `num_teams` at all."""
+        tree = ast.parse((_HERE / "draft_room.py").read_text())
+        got = {node.args[0].value for node in ast.walk(tree)
+               if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+               and node.func.attr == "get" and node.args
+               and isinstance(node.args[0], ast.Constant)
+               and isinstance(node.args[0].value, str)}
+        self.assertIn(lc.TEAM_COUNT_KEY, got,
+                      f"the gate names {lc.TEAM_COUNT_KEY!r} as the team count but draft_room "
+                      f"never reads it")
+        self.assertNotIn("num_teams", got,
+                         "draft_room reads `num_teams` after all -- if the valuation path really "
+                         "consults it, it belongs back in the gate under that name")
 
     def test_an_empty_roster_positions_reports_that_and_stops(self):
         """No slots means every later check would be a claim about nothing. One honest finding
