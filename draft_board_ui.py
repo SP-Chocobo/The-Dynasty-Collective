@@ -268,8 +268,12 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         #: even if it wanted to. A direct unmodified read like every other field here: absent stays
         #: absent, and `availabilityBasis` is what separates "nothing was reported" from "healthy".
         #: WHETHER THE CARD RENDERS IT is a UI decision and is deliberately not made here, the same
-        #: way `actingNow` and `cannotBeFielded` reached this payload before the surface decided
-        #: where to put them. What is closed is that the payload no longer withholds it.
+        #: way `actingNow` reached this payload before the surface decided where to put it. What is
+        #: closed is that the payload no longer withholds it.
+        #:
+        #: (This note first cited `cannotBeFielded` as a second precedent and 0.8's instrument was
+        #: right to reject it: that flag is a CandidateSnapshot field and reaches no payload key at
+        #: all, so it is an example of the opposite -- a companion the surface still cannot see.)
         "injuryStatus": c.injury_status,
         "availabilityBasis": c.availability_basis,
         "forfeit": c.positional_forfeit,
