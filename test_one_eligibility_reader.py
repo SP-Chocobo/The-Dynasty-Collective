@@ -61,8 +61,17 @@ class ThereIsExactlyOneReaderTests(unittest.TestCase):
     """The structural half. A rule with two implementations has two answers, and this one already
     had three."""
 
+    #: The UI surface is NOT named here. It comes from `ui_source.units()`, so this covers every
+    #: view module rather than whichever one still happens to be called app.py -- the rule
+    #: test_ui_source enforces, and it caught this module naming the file directly.
     MODULES = ("realized_ruler.py", "draft_battery.py", "lineup_optimizer.py", "draft_room.py",
-               "pick_synthesis.py", "app.py", "player_universe.py")
+               "pick_synthesis.py", "player_universe.py")
+
+    def _sources(self):
+        import ui_source
+        for name in self.MODULES:
+            yield name, Path(name).read_text()
+        yield from ui_source.units().items()
 
     def test_nothing_assigns_an_ELIGIBLE_set_it_built_itself(self):
         """The retired shape, searched as parsed code so reformatting it is not a pass.
@@ -78,8 +87,8 @@ class ThereIsExactlyOneReaderTests(unittest.TestCase):
         So what is flagged is an inline set assigned to something CALLED eligible -- a variable of
         that name, or an `"eligible"` dict key. That is the population `#172` rules on."""
         offenders = []
-        for name in self.MODULES:
-            tree = ast.parse(Path(name).read_text())
+        for name, source in self._sources():
+            tree = ast.parse(source)
             for node in ast.walk(tree):
                 inline_sets = []
                 if isinstance(node, ast.Assign):

@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 218 markdown documents.
+`python3 doc_index.py` regenerates this. 221 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -9,7 +9,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | WITHDRAWN | 29 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 41 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 35 | says what kind of document it is before making claims. |
-| UNDECLARED | 113 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 116 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -130,6 +130,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `.claude/skills/close-register-item/SKILL.md`
 - `FREEZE_RECORD.md`
 - `README.md`
+- `REPAIR_HANDOFF.md`
 - `REPAIR_MANDATE_V2.md`
 - `WARPATH.md`
 - `data/baseline/external/dynastyprocess/ATTRIBUTION.md`
@@ -179,6 +180,8 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/kdst_streaming/HOLDOUT_2023.md`
 - `evidence/kdst_streaming/RESULT.md`
 - `evidence/kdst_streaming/UPGRADE_EXEMPTION.md`
+- `evidence/multi_eligible_counting/README.md`
+- `evidence/multi_eligible_counting/RULING.md`
 - `evidence/projection_rank/README.md`
 - `evidence/real_drafts/README.md`
 - `evidence/reference_rosters/OWNER_REDRAFT_2026-09-08.md`

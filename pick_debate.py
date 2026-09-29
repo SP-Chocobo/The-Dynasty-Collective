@@ -463,9 +463,14 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     # a MISSING key but passes an explicit None straight through, and a None there raised
     # TypeError on the `:+` format. That is a contract violation rather than a live path, so it
     # is guarded rather than repaired upstream, and saying so is the point of this note.
-    _sum_terms = (candidate.team_acquisition_value, candidate.universal_value,
-                  candidate.need_bonus)
-    if all(t is not None for t in _sum_terms):
+    # SPELLED OUT, not folded into `all(t is not None for t in ...)`, which is what this was.
+    # The guard was real, but 2.5's AST instrument requires the test to NAME the field being
+    # formatted -- a condition over a tuple of values does not say which fields it covers, and a
+    # guard a reader (or a checker) cannot attribute to a field is the shape that lets the next
+    # Optional field through. Naming all three costs one line and makes the coverage checkable.
+    if (candidate.team_acquisition_value is not None
+            and candidate.universal_value is not None
+            and candidate.need_bonus is not None):
         lines.append(
             f"  Team acquisition value: {candidate.team_acquisition_value} "
             f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"

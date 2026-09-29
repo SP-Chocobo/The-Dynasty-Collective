@@ -297,6 +297,21 @@ class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
                     for sub in ast.walk(branch):
                         if isinstance(sub, ast.JoinedStr):
                             guarded_by.setdefault(id(sub), set()).update(tested)
+            # AND AN ORDINARY `if` STATEMENT, which is the shape this scan could not see at all.
+            # It knew two: an early `return` at the top of a function, and a ternary. The most
+            # natural Python guard -- `if x.field is not None: <render it>` -- was neither, so
+            # `pick_debate`'s three-term sum came back as unguarded while being fully guarded. A
+            # scan that reports a real guard as a defect gets worked around at the call site, and
+            # contorting production code to suit a checker is worse than the blind spot. Both
+            # branches count, exactly as they do for the ternary above: `if x.f is None: <a> else:
+            # <b>` guards `<b>` just as `if x.f is not None: <b>` does.
+            elif isinstance(node, ast.If):
+                tested = {n.attr for n in ast.walk(node.test) if isinstance(n, ast.Attribute)}
+                for branch in (node.body, node.orelse):
+                    for stmt in branch:
+                        for sub in ast.walk(stmt):
+                            if isinstance(sub, ast.JoinedStr):
+                                guarded_by.setdefault(id(sub), set()).update(tested)
 
         unguarded = []
         for node in ast.walk(tree):

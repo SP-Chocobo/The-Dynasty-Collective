@@ -4428,8 +4428,10 @@ def compute_draft_board(
         # subtraction is an identity rather than an estimate -- my_open_share's dedicated component
         # IS dedicated_needed (see unfilled_slot_share) and the remainder is the flex appearances
         # nothing of mine covers. It reaches exactly zero when they are all covered, which the
-        # arithmetic it replaces had to approximate with a separate `flex_already_used` term
-        # because a census could not say which slot a pick sat in.
+        # arithmetic it replaces had to approximate with a separate flex-already-used term
+        # (de-backticked deliberately: 0.1's instrument is right that a name in prose should be a
+        # name in the tree, and this one is gone) because a census could not say which slot a pick
+        # sat in.
         flex_remaining = my_open_share.get(position, 0.0) - dedicated_needed
         need_bonus = round(min(
             NEED_BONUS_PER_DEDICATED_SLOT * dedicated_needed + NEED_BONUS_PER_FLEX_SHARE * min(flex_remaining, 1),

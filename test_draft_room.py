@@ -1506,17 +1506,49 @@ class InvariantTests(unittest.TestCase):
             "flag alone -- if this regresses, either the D formula or its constants changed",
         )
 
-    def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
+    def _wr_need_bonus_after(self, held: int):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        wr_ids = [r["player_id"] for r in board if r["position"] == "WR"][:3]
+        wr_ids = [r["player_id"] for r in board if r["position"] == "WR"][:held]
         my_picks = [{"roster_id": "99", "player_id": pid, "round": 1} for pid in wr_ids]
         board2 = dr.compute_draft_board(
-            self.merger, self.players_db, my_picks, my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+            self.merger, self.players_db, my_picks, my_roster_id="99", league=LIGHT_IDP_LEAGUE,
+            mode="balanced",
         )
-        remaining_wr = [r for r in board2 if r["position"] == "WR"]
-        self.assertTrue(all(r["need_bonus"] == 0 for r in remaining_wr))
+        return [r["need_bonus"] for r in board2 if r["position"] == "WR"]
+
+    def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
+        """FULLY SATISFIED MEANS EVERY SLOT A WR COULD OCCUPY, and this league declares FOUR of
+        them: two dedicated WR slots and TWO FLEX. The fixture used to hold three WRs and assert
+        zero, which the old arithmetic granted because it charged each pick beyond the dedicated
+        slots a WHOLE flex share -- so the third WR consumed 1.0 against a remaining WR flex share
+        of 0.667 and the position read as satisfied while one FLEX slot sat empty.
+
+        Mandate 2.6 reads the slots instead of the picks, so it takes four."""
+        self.assertTrue(all(nb == 0 for nb in self._wr_need_bonus_after(4)))
+
+    def test_and_it_is_NOT_zero_while_a_flex_slot_a_WR_could_fill_is_still_open(self):
+        """The other side of the same invariant, which is the part that changed. Three WRs cover
+        WR, WR and one FLEX; the second FLEX is open and a fourth WR could start in it, so WR need
+        is not zero -- it is that slot's own share of WR, and no more."""
+        after_three = self._wr_need_bonus_after(3)
+        self.assertTrue(after_three, "no WR rows survived the fixture; the test proves nothing")
+        self.assertTrue(all(nb > 0 for nb in after_three))
+        self.assertTrue(all(nb < dr.NEED_BONUS_PER_FLEX_SHARE for nb in after_three),
+                        "one third of one FLEX appearance is the whole remaining claim")
+
+    def test_the_need_ladder_falls_by_slots_and_reaches_zero(self):
+        """Monotone in the slots covered, which is what makes it a demand reading rather than a
+        pick count: 1 -> 2 closes the dedicated slot, 2 -> 3 and 3 -> 4 close one FLEX each, and a
+        FIFTH WR changes nothing because there is nothing left for him to open up."""
+        ladder = [self._wr_need_bonus_after(n) for n in (1, 2, 3, 4, 5)]
+        for rows in ladder:
+            self.assertTrue(rows, "a rung of the ladder has no WR rows")
+        tops = [max(rows) for rows in ladder]
+        self.assertEqual(tops, sorted(tops, reverse=True), f"need rose as slots filled: {tops}")
+        self.assertEqual(tops[3], 0.0)
+        self.assertEqual(tops[4], 0.0)
 
     def test_need_bonus_is_the_only_thing_that_differs_between_two_teams_at_the_same_draft_state(self):
         # universal_value has to be genuinely team-agnostic -- what ANY manager watching this
