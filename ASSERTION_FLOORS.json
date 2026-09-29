@@ -6505,10 +6505,10 @@
     "test_draft_room.py": {
       "test_methods": 98,
       "asserts": {
-        "assertAlmostEqual": 20,
+        "assertAlmostEqual": 21,
         "assertEqual": 65,
         "assertFalse": 3,
-        "assertGreater": 41,
+        "assertGreater": 44,
         "assertGreaterEqual": 6,
         "assertIn": 4,
         "assertIs": 2,
@@ -6516,7 +6516,6 @@
         "assertIsNotNone": 5,
         "assertLess": 9,
         "assertLessEqual": 4,
-        "assertNotAlmostEqual": 1,
         "assertNotEqual": 4,
         "assertNotIn": 5,
         "assertTrue": 20
@@ -6588,8 +6587,8 @@
           "assertGreater": 1
         },
         "test_bpa_magnitude_tracks_the_real_vor_gap_not_a_percentile_rank": {
-          "assertGreater": 1,
-          "assertNotAlmostEqual": 1
+          "assertAlmostEqual": 1,
+          "assertGreater": 4
         },
         "test_bpa_on_the_branch_is_trade_value_minus_one_level_per_position": {
           "assertEqual": 2,
@@ -7827,9 +7826,9 @@
       }
     },
     "test_identity_provenance.py": {
-      "test_methods": 14,
+      "test_methods": 15,
       "asserts": {
-        "assertEqual": 7,
+        "assertEqual": 8,
         "assertFalse": 1,
         "assertIn": 3,
         "assertIsNone": 3,
@@ -7884,6 +7883,9 @@
         "test_the_fourth_state_arrives_as_None_and_not_as_a_float": {
           "assertFalse": 1,
           "assertTrue": 2
+        },
+        "test_the_ordinary_board_now_resolves_EVERY_row": {
+          "assertEqual": 1
         }
       },
       "disabled": {
