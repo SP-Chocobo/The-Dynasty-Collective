@@ -4064,7 +4064,6 @@ def compute_draft_board(
             if r["position"] in point_replacement else float("nan"),
             axis=1,
         ).values
-        pool.loc[has_proj, "_season_proj_pct"] = _percentile_map(proj_pool["_points"]).values
         # Only rows that ACTUALLY carry a 3yr outlook get a real percentile here; everything
         # else keeps the neutral 50.0 default set above, which makes time_horizon_adj resolve
         # to ~0 (no opinion) rather than to a penalty.
@@ -4077,17 +4076,44 @@ def compute_draft_board(
         # fabricated signal. The 50.0 default a few lines above is already this module's
         # stated intent for an unknown outlook; the minimum-fill was the accident.
         #
-        # Provably a no-op for every source committed at the time of this change: zero rows
-        # in the real baseline carry a points projection WITHOUT a proj_3yr alongside it (see
-        # test_missing_proj_3yr_is_neutral_not_a_penalty). It exists for sources that legitimately
-        # have no multi-year dimension at all -- team defenses being the concrete case, since
-        # Draft Sharks publishes DST only as a redraft table and a defense has no career arc
-        # to project in the first place.
+        # MANDATE 3.1: BOTH PERCENTILES OVER ONE POPULATION. The difference of two ranks taken
+        # over different populations is not a difference of ranks. `_season_proj_pct` was a
+        # percentile over EVERY row carrying a points projection while `_proj3yr_pct` was one over
+        # only the rows carrying `proj_3yr` -- a subset of it. So a player's season standing was
+        # his rank among 292 and his three-year standing his rank among 259, and time_horizon_adj
+        # subtracted one from the other. The extra rows are the ones the vendor publishes with no
+        # multi-year outlook and they sit LOW (median 96.0 points), so including them lifted every
+        # matched row's season percentile and biased the difference DOWNWARD. Measured on the
+        # owner's own league: mean time_horizon_adj -0.6154 against -0.0322 once paired, 254 of
+        # 259 rows moving, 70 by more than a point, 27 changing sign.
+        #
+        # AND THE CLAIM THAT USED TO STAND HERE IS WITHDRAWN. It read: "Provably a no-op for every
+        # source committed at the time of this change: zero rows in the real baseline carry a
+        # points projection WITHOUT a proj_3yr alongside it", which is what made the mismatch
+        # invisible -- with one population the subtraction is sound. Measured across every arm
+        # league_matrix builds: 259 of 259 on all of them EXCEPT the two CAPTURE_owner_league
+        # arms, which price K and IDP and carry 292 against 259. True when written, false now,
+        # most likely falsified by #180 routing K/DEF/IDP through league-scored points.
+        #
+        # ONE POPULATION RATHER THAN A SECOND COLUMN (#126). The only readers of this pair are
+        # time_horizon_adj and upside_score's growth term, and both exist to subtract one from the
+        # other -- so "the season percentile among the rows that ALSO carry a three-year number"
+        # is what this column is for, and giving it that definition leaves both readers correct
+        # without either of them changing a line. A row with points and no `proj_3yr` now keeps
+        # the neutral 50.0 on BOTH halves; both readers gate on `_has_3yr` and never look.
+        #
+        # NOT JUSTIFIED BY A CHANGE IN RECOMMENDATIONS -- 3.1 says so in as many words, and the
+        # measurement agrees. Effect on every board today is zero: the only arms whose populations
+        # differ are the two owner-league arms, whose capture carries no dynasty flag, so
+        # `is_dynasty` is False and time_horizon_adj is never applied there at all; on every other
+        # arm the two populations are the same set and this is a provable no-op. It is right
+        # because a difference of ranks needs one population, and it begins to matter the moment
+        # that capture gains its dynasty flag.
         has_3yr = proj_pool["proj_3yr"].notna()
         if has_3yr.any():
-            pool.loc[proj_pool.index[has_3yr], "_proj3yr_pct"] = _percentile_map(
-                proj_pool.loc[has_3yr, "proj_3yr"]
-            ).values
+            paired = proj_pool.loc[has_3yr]
+            pool.loc[paired.index, "_season_proj_pct"] = _percentile_map(paired["_points"]).values
+            pool.loc[paired.index, "_proj3yr_pct"] = _percentile_map(paired["proj_3yr"]).values
 
     if (~has_proj).any():
         no_proj_pool = pool[~has_proj].copy()

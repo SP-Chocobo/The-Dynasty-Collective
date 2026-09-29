@@ -1286,18 +1286,64 @@ class InvariantTests(unittest.TestCase):
         cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR"))
 
     def test_need_bonus_cannot_flip_a_large_universal_value_gap(self):
-        board = dr.compute_draft_board(
+        """MANDATE 3.3: THE OLD BODY WAS A TAUTOLOGY, not merely vacuous on this fixture.
+
+        It took the TOP and BOTTOM priced rows, asserted their gap exceeded NEED_BONUS_MAX, then
+        asserted `top - (bottom + NEED_BONUS_MAX) > 0` -- which is the same statement rearranged.
+        The second assertion could not fail unless the first already had, and neither one ever read
+        a `need_bonus` the board had actually computed. It also picked the widest pair on the board
+        (a gap near 380 against a cap of 12), so even as a claim about the extremes it was asking
+        whether 380 beats 12.
+
+        What the invariant actually says: if two priced rows differ in universal_value by more than
+        the cap, no need_bonus either of them can earn may reverse their order. So it is tested
+        over EVERY qualifying pair, with the board's own numbers, on a roster where need_bonus
+        genuinely varies -- three RBs already taken, which collapses RB need to 0.33 while WR stays
+        at 8.33. A flat need_bonus cannot reverse anything, so a board carrying one value everywhere
+        would make this pass no matter what the code did."""
+        opening = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        priced = _priced(board)
-        top, bottom = priced[0], priced[-1]
-        self.assertGreater(top["universal_value"] - bottom["universal_value"], dr.NEED_BONUS_MAX,
-                            "fixture's own value spread is too small to exercise this invariant")
-        # Even at max possible need_bonus, the universal-value gap must still dominate.
-        self.assertGreater(
-            top["universal_value"] + 0 - (bottom["universal_value"] + dr.NEED_BONUS_MAX),
-            0,
+        taken = [row for row in _priced(opening) if row["position"] == "RB"][:3]
+        self.assertEqual(len(taken), 3, "fixture has too few priced RBs to move need off its flat value")
+        board = dr.compute_draft_board(
+            self.merger, self.players_db,
+            [{"player_id": row["player_id"], "roster_id": "99"} for row in taken],
+            my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
+        rows = [(row["universal_value"], row["need_bonus"]) for row in _priced(board)
+                if row.get("need_bonus") is not None]
+        self.assertGreater(len(rows), 50, "vacuous: too few priced rows carrying a need_bonus")
+
+        # THE CAP IS WHAT MAKES THE INVARIANT POSSIBLE, so it is asserted rather than assumed.
+        for _value, bonus in rows:
+            self.assertGreaterEqual(bonus, 0.0)
+            self.assertLessEqual(bonus, dr.NEED_BONUS_MAX)
+
+        # NON-VACUITY, both halves: the term must vary, and there must be qualifying pairs.
+        spread = max(bonus for _v, bonus in rows) - min(bonus for _v, bonus in rows)
+        self.assertGreater(spread, 1.0,
+                            "need_bonus is flat across this board, so nothing here could reverse "
+                            "an order and the test would pass against any implementation")
+
+        qualifying = tightest = 0
+        for high_value, high_bonus in rows:
+            for low_value, low_bonus in rows:
+                gap = high_value - low_value
+                if gap <= dr.NEED_BONUS_MAX:
+                    continue
+                qualifying += 1
+                if tightest == 0 or gap < tightest:
+                    tightest = gap
+                self.assertGreater(
+                    (high_value + high_bonus) - (low_value + low_bonus), 0,
+                    f"a universal_value gap of {gap:.3f} -- wider than the {dr.NEED_BONUS_MAX} cap "
+                    f"-- was reversed by need_bonus ({high_bonus} against {low_bonus})")
+        self.assertGreater(qualifying, 1000, "vacuous: almost no pair exceeds the cap")
+        # And the population reaches the EDGE of the cap, so this is not only testing easy pairs.
+        self.assertLess(tightest, dr.NEED_BONUS_MAX * 1.5,
+                        f"the tightest qualifying gap is {tightest:.3f}, far above the "
+                        f"{dr.NEED_BONUS_MAX} cap -- the boundary case is not being exercised")
 
     def test_bpa_magnitude_tracks_the_real_vor_gap_not_a_percentile_rank(self):
         # An independent audit caught this directly: percentile-ranking VOR (rather than
