@@ -15417,6 +15417,86 @@
         "early_returns": 0
       }
     },
+    "test_the_discount_arrives_with_its_cause.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreaterEqual": 1,
+        "assertIn": 18,
+        "assertIsNone": 3,
+        "assertNotEqual": 2,
+        "assertNotIn": 5,
+        "assertTrue": 1,
+        "fail": 1
+      },
+      "by_method": {
+        "test_NEITHER_is_read_with_a_default": {
+          "assertNotIn": 1
+        },
+        "test_a_designation_priced_by_the_PENALTY_says_the_discount_is_in_the_value": {
+          "assertIn": 2
+        },
+        "test_a_designation_priced_by_the_RULE_FLOOR_says_no_penalty_was_added": {
+          "assertIn": 2
+        },
+        "test_a_recorded_candidate_really_carries_the_designation": {
+          "assertEqual": 2
+        },
+        "test_an_absent_designation_is_stored_as_null_not_as_healthy": {
+          "assertIsNone": 1
+        },
+        "test_an_empty_string_is_treated_as_unreported_too": {
+          "assertNotIn": 1
+        },
+        "test_an_unreported_designation_says_NOTHING_rather_than_healthy": {
+          "assertNotIn": 2
+        },
+        "test_both_are_optional_so_an_ABSENT_status_stays_absent": {
+          "assertIsNone": 2
+        },
+        "test_it_no_longer_claims_the_numbers_do_not_know_about_injuries": {
+          "assertNotIn": 1,
+          "assertTrue": 1
+        },
+        "test_it_reads_both_keys_off_the_board_row": {
+          "assertIn": 2
+        },
+        "test_it_says_the_CURRENT_designation_is_given_and_already_priced": {
+          "assertIn": 2
+        },
+        "test_it_still_names_the_gap_that_is_REAL": {
+          "assertIn": 3
+        },
+        "test_the_board_has_emitted_both_all_along": {
+          "assertIn": 2
+        },
+        "test_the_projection_records_both": {
+          "assertIn": 2
+        },
+        "test_the_reader_shows_it_and_marks_an_absent_one_absent": {
+          "assertEqual": 2
+        },
+        "test_the_schema_version_moved_for_the_shape_change": {
+          "assertGreaterEqual": 1
+        },
+        "test_the_snapshot_declares_both_fields": {
+          "assertIn": 2
+        },
+        "test_the_term_they_explain_is_carried_too": {
+          "assertIn": 1
+        },
+        "test_the_two_regimes_do_not_read_the_same": {
+          "assertEqual": 1,
+          "assertNotEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_the_live_board_knows_when_its_picks_arrived.py": {
       "test_methods": 10,
       "asserts": {

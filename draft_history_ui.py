@@ -148,6 +148,9 @@ CANDIDATE_COLUMNS = (
     ("positional_forfeit", "Forfeit", 2),
     ("rival_premium", "Rival premium", 2),
     ("confidence", "Confidence", None),
+    #: MANDATE 2.5, schema 4. Shown because the stored price already carries its discount: a record
+    #: with a health-adjusted universal_value and no designation beside it cannot be read back.
+    ("injury_status", "Injury", None),
 )
 
 

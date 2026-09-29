@@ -1562,6 +1562,19 @@ class CandidateSnapshot:
     #: ordering question, and only one of them ("below every source's cutoff") is evidence of
     #: low value; carrying one token for all three asserted the strongest of them about all.
     absence_kind: Optional[str] = None
+    #: MANDATE 2.5: INJURY STATUS NEVER CROSSED THIS BOUNDARY, while the DISCOUNT IT CAUSES DID.
+    #: `risk_adj` is carried above, and part of what it is made of is `availability_factor`'s cut
+    #: for a designation Sleeper reported. So a chair received the penalty and had no way to see
+    #: what caused it -- and the Skeptic prompt then told that chair the engine knows nothing about
+    #: injuries, which was true only because of this gap. The board has had both columns all along.
+    #:
+    #: THE BASIS TRAVELS WITH IT (`#166`), for the reason availability_factor states at the source:
+    #: a factor of 1.0 means four different things -- nobody said anything, the designation carries
+    #: no information, the designation is unrecognised, or games-played was never reported -- and a
+    #: consumer that cannot tell them apart reads the last two as health. A bare status string has
+    #: the same failure: absent because he is healthy, or absent because nothing was reported.
+    injury_status: Optional[str] = None
+    availability_basis: Optional[str] = None
     # THE COMPANION THAT WAS DROPPED HERE (#174). The board emits it beside depth_exposure and
     # the snapshot did not carry it, so every consumer past this boundary -- the chair prose,
     # the board UI, screen_context -- saw a 0.0 and could not tell "measured, no exposure" from
@@ -1804,6 +1817,11 @@ def build_snapshot(
             # says so at the emission site, and this mirrors it rather than restating it).
             "time_horizon_adj": row.get("time_horizon_adj"),
             "risk_adj": row.get("risk_adj"),
+            # MANDATE 2.5: WHAT risk_adj IS PARTLY MADE OF. Carried with its basis and never
+            # defaulted -- an absent status is "nothing was reported", which is not "healthy", and
+            # the basis is the only thing that separates them.
+            "injury_status": row.get("injury_status"),
+            "availability_basis": row.get("availability_basis"),
             # #112: WHY this row is unpriced, if it is. None on a priced row -- there is no
             # absence to classify -- so this is not a three-state flag wearing two states.
             "absence_kind": row.get("absence_kind"),

@@ -967,7 +967,7 @@ with a non-JSON body escapes as `JSONDecodeError`, not `SleeperAPIError`, so the
 to fail soft do not.
 
 
-## 2.5 The absence contract breaks at the snapshot boundary (`#187`) **[1 of 6 repaired; 1 contested with the reason]**
+## 2.5 The absence contract breaks at the snapshot boundary (`#187`) **[4 of 6 repaired; 1 contested with the reason; 1 left]**
 
 `#187` says `None` never becomes `0.0`. At the snapshot boundary it does:
 
@@ -1024,10 +1024,44 @@ gains anything"* from *"this valuation has no notion of a rival gaining anything
 for different reasons. Giving it its own vocabulary is a decision about what the field claims, so it
 goes to the owner. Pinned as a characterization test meanwhile.
 
+### `diff_snapshots` REPAIRED — a transition is not a delta
+
+`if prev_val is None or curr_val is None: continue` skipped exactly the transitions `#187` exists to
+keep visible, so the audit trail whose job is "why did this move" was silent about the largest move a
+term can make. It is NOT a delta — no magnitude, so no unit to carry (`#116`), and subtracting from
+`None` to manufacture one would be this item's own fabrication. Its own field, its own two-word
+vocabulary, and both phrases name both sides of the change.
+
+**Both consumers had to move with it**, which is what would have made the fix cosmetic: the chairs'
+WHAT CHANGED block and the Draft Room's drawer each gated on `deltas`, so a candidate whose only
+change was a term crossing the boundary was dropped before it could be shown. A withheld term's
+transition is withheld on the same rule as its delta.
+
+### INJURY STATUS REPAIRED — and it closed the payload companion too
+
+**The DISCOUNT crossed this boundary and the DESIGNATION did not.** `risk_adj` is carried (`#119`, so
+a price can be explained), and part of what it is made of is `health_penalty`'s cut for a designation
+Sleeper reported. The designation and `availability_basis` stayed on the board, so a chair received
+the penalty with nothing to attribute it to.
+
+**The Skeptic was then told the engine is blind to it** — "these numbers don't know about bye weeks, a
+player's specific injury history, or a personality clash". True of history and prognosis, FALSE of the
+current designation, which the engine holds and has already priced. A prompt telling a model to
+distrust a figure the engine computed invites the second-guessing the same prompt forbids two
+paragraphs later. Corrected without overshooting: the real gap is history and prognosis, and it is
+still named.
+
+**The basis travels with the status, and it is not decoration.** `health_penalty` returns 0.0 under
+`RULE_FLOOR` because the games are already out of the projection; a chair told only "Out" would
+double-count it. The two regimes now read differently and a test requires that they must.
+
+**And the stored record carries both** (`EVIDENCE_SCHEMA_VERSION` 3 → 4), which is the payload
+companion sub-item: a persisted board with a health-adjusted price and no designation beside it could
+not be read back. An absent designation stores as null, never as healthy.
+
 ### STILL OPEN IN 2.5
 
-`diff_snapshots` dropping measured↔unmeasured transitions; the board payload's companions; injury
-status never crossing the boundary; `build_context`'s silent truncation.
+`build_context`'s silent truncation, and the Draft Room seed handing the panel undefined units.
 
 ## 2.6 Multi-eligible players are counted by their primary label (`#172`) **[REPAIRED — and it turned out to be two defects, the second one larger]**
 

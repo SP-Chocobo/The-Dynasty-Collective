@@ -58,7 +58,7 @@ HISTORY_DIR = Path("data/draft_history")
 #: its four fields. A version-2 record has no pool_scope or players_db_stamp KEY at all, which is
 #: what lets a reader tell "never captured" from "captured as absent" -- the distinction this
 #: constant's own comment exists for, and the reason the number moves rather than the old records.
-EVIDENCE_SCHEMA_VERSION = 3
+EVIDENCE_SCHEMA_VERSION = 4
 
 # The candidate fields retained per row. Chosen to answer "why is this one above that one" --
 # the value layer, the two bonuses that separate universal from team-acquisition value, the
@@ -88,6 +88,11 @@ _CANDIDATE_EVIDENCE_FIELDS = (
     #: so EVIDENCE_SCHEMA_VERSION goes to 2 and every record written under 1 stays readable and
     #: keeps its own number, exactly as that constant's contract says.
     "projected_points", "waiting_cost",
+    #: MANDATE 2.5, SCHEMA 3 -> 4. The stored record carried `risk_adj`'s effect through
+    #: `universal_value` and not the designation that caused it, so a historical board could show a
+    #: discounted price with nothing in the record explaining the discount. Both, with the basis,
+    #: because an absent status without one cannot be told from a healthy player.
+    "injury_status", "availability_basis",
 )
 
 _SAFE_SCOPE = re.compile(r"[^A-Za-z0-9_.-]")

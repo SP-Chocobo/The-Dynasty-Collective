@@ -63,6 +63,7 @@ from llm_engine import (
     UNAVAILABLE_REPORT, _report_for_handoff, is_failed_call,
 )
 import pick_synthesis as ps
+import player_universe as pu
 from pick_synthesis import (ABSENCE_KIND_LABELS,
                             CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
                             DISPLACEMENT_BASIS_LABELS, DISPLACEMENT_MEASURED,
@@ -279,9 +280,11 @@ pressure-test that case, not restate it.
 
 Look specifically for: whether the availability assumptions you were actually given hold here (a detected positional run
 is a real signal from recent picks, not a certainty -- would this read differ without it?), whether a roster-fit
-concern the numbers can't fully capture is being glossed over (these numbers don't know about bye weeks, a
-player's specific injury history, or a personality clash with the rest of the roster -- say so if something like
-that plausibly matters and isn't reflected in what you were given), and whether the numeric case genuinely
+concern the numbers can't fully capture is being glossed over (these numbers don't know about bye weeks or a
+personality clash with the rest of the roster -- say so if something like that plausibly matters and isn't
+reflected in what you were given; on health, note that a CURRENT injury designation IS given to you when the
+engine has one, and its discount is already inside the universal value, so the gap is a player's longer injury
+HISTORY and his prognosis, not his present status), and whether the numeric case genuinely
 supports the Strategist's conclusion or is being stretched to fit it. If the Strategist recommended a candidate
 whose market-consensus rank and tier (KeepTradeCut's crowd data, not this engine's own math) sit well below where
 he is being taken, that's exactly the kind of call worth pressure-testing hardest: is the evidence actually
@@ -400,6 +403,23 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         f"CANDIDATE: {candidate.name} ({candidate.position}{', ' + candidate.team if candidate.team else ''}){flag}",
         f"  Pick necessity: {candidate.pick_necessity}/100 -- {candidate.necessity_label} (NOT a value score -- see below for value)",
     ]
+    # MANDATE 2.5. THE DESIGNATION THAT MOVED risk_adj, stated to the chair that receives risk_adj.
+    # It never crossed the snapshot boundary, so a chair saw the health discount inside
+    # universal_value and had nothing to attribute it to -- while the Skeptic's own instructions
+    # told it the engine knows nothing about injuries. Said only when the engine HAS a designation:
+    # an absent status is "nothing was reported", and printing "healthy" for it would be exactly the
+    # absence-as-measurement move #187 forbids. The basis rides along because RULE_FLOOR means the
+    # games are already out of the projection and no penalty was charged on top (see
+    # draft_room.health_penalty) -- a chair told only "Out" would double-count it in its own head.
+    if candidate.injury_status:
+        already_priced = candidate.availability_basis == pu.RULE_FLOOR
+        lines.append(
+            f"  Injury designation: {candidate.injury_status} -- "
+            + ("the games this designation is known to cost are ALREADY REMOVED from his "
+               "projection, so no further discount was applied on top"
+               if already_priced else
+               "a health discount is already inside the universal value below")
+        )
     # #183. AN UNPRICED ROW REACHES THIS FORMATTER. `universal_value` and
     # `team_acquisition_value` are both Optional, and the board's absence convention gives an
     # unpriced row `final_score = None`, which becomes a None TAV here. Printed straight into an
