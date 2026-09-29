@@ -170,7 +170,11 @@ class UnfieldableDepthFiresTests(unittest.TestCase):
         traj = self._roster(self.NINE_DEF)
         findings = batt.unfieldable_depth(traj, self.KDST_LEAGUE, self.KDST_PLAYERS)
         self.assertEqual(1, len(findings))
-        self.assertEqual("DEF", findings[0]["position"])
+        # MANDATE 3.2: reported per GROUP, not per position, because that is the shape of the
+        # bound the engine enforces -- a roster is over by a number of PLAYERS who can only fill
+        # the same set of slots. For a position nothing else is eligible at, the group is itself
+        # and the numbers below are unchanged.
+        self.assertEqual(["DEF"], findings[0]["positions"])
         self.assertEqual(9, findings[0]["held"])
         self.assertEqual(1, findings[0]["startable_per_week"])
         # ceiling = 1 dedicated slot + the one bye week. 9 - 2 = 7 provably unplayable.

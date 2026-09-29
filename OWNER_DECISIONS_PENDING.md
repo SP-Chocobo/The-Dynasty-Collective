@@ -117,6 +117,61 @@ recorded so the block is visible rather than implicit.
 
 ---
 
+## D7 — 3.2: should the fieldability bound extend to flex-reachable groups? (needs a depth allowance)
+
+**Status: the derivable half is repaired and certified; this half needs a number you choose.**
+
+**What was repaired.** `fieldable_ceiling` bounds one position at a time — `slots(P) + 1`, the
+second term being the one bye week every team has. A player eligible at TWO ceilinged positions
+consumes a slot from either, and the engine was counting a pick only when it had exactly one
+eligible position, so every multi-eligible player was counted at no position at all. The battery
+measured the cost on HEAVY_IDP: **ten rosters over the ceiling, each by exactly its number of
+multi-eligible holdings** — roster 2 held 6 LB, being 3 counted and 3 skipped edge rushers eligible
+at {DL, LB}. The bound is now taken over the group a roster's own players span, which for a
+one-position group is the old number exactly.
+
+**The question.** 3.2 asks for the same bound on flex-reachable groups, and names the case: a
+roster at `slots_reachable(P) + 1` for DL, LB *and* DB holds six IDP and the optimizer starts one,
+because a single `IDP_FLEX` admits all three. The joint bound there is `1 slot + 1` = **2**, and it
+would catch what nothing catches today.
+
+**Why I stopped.** The same arithmetic applied to the offence group is not survivable. Measured on
+the battery's own rosters: it would flag **12 of 12 seats in 12T_ppr** (holding 12–13 players
+eligible within RB/WR/TE against `7 slots + 1`) and **9 of 12 in HEAVY_IDP**. Those are ordinary,
+correct rosters — a 14-round draft into 7 offensive slots *must* carry about twelve. And
+`unfieldable_last`'s own docstring sets the test this fails: *"IT IS A BACKSTOP AND MUST STAY ONE,
+by `feasibility_first`'s own test -- whether it binds on a roster that was never in danger."*
+
+The reason the arithmetic does not transfer is in `#30`. The `+ 1` is justified by the measured
+finding that the churn a spare buys is **free on the waiver wire**, which is true of a flat,
+dedicated, streamable position and false of RB/WR, where bench depth is the point of the bench. So
+the joint bound is sound as a statement about ONE WEEK and needs a *depth allowance* before it can
+be a backstop — and an allowance is a number somebody chooses, which is the line I did not cross.
+
+**Options.**
+  * **(a) Extend it only to groups whose positions are all streamable**, with the allowance derived
+    from `#30`'s streaming baseline rather than chosen. Catches the IDP_FLEX case, leaves offence
+    alone. Needs `#30` re-derived first (see D3), and needs "streamable" to be a derived property
+    rather than a list of positions.
+  * **(b) Extend it with a per-group depth allowance you set.** Honest and immediate: the bound
+    becomes `slots + 1 + allowance(group)`, and the allowance is recorded as a stated CONVENTION
+    the way 1.3's tie-break was. Cheap, and the number is visibly yours rather than derived.
+  * **(c) Leave it.** The IDP_FLEX over-accumulation stays uncaught. It is real — 3.2 measured six
+    of twelve rosters holding 6–7 IDP against a bound of 2 — so this is a decision to accept a
+    known loss, not a no-op.
+
+**My recommendation: (b) now, (a) when `#30` is re-derived.** (c) leaves a measured defect in place
+for an unbounded time. (a) is the right end state and is blocked behind D3. (b) gets the guard
+working against the case that motivates 3.2 while keeping the chosen number visible and revisable,
+and a test already pins that the backstop does not fire on an ordinary offence roster, so the day
+someone sets the allowance too low it fails loudly.
+
+**What it costs to be wrong.** Too small an allowance demotes legitimate bench depth and the engine
+starts declining players it should take. Too large and the guard never binds, which is where we are
+now for flex-reachable groups.
+
+---
+
 # Answered by measurement instead of by you
 
 These were heading for this file and did not need to. Recorded so you can object.

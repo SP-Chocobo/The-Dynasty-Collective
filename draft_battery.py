@@ -470,30 +470,37 @@ def unfieldable_depth(trajectory, league: dict, players_db: dict) -> list[dict]:
     a second reading of which positions have flex reach is exactly how `undraftable_positions`
     went wrong before it was repaired.
     """
-    slots = lo.slots_from_roster_positions(league.get("roster_positions") or [])
-    # A position is flex-reachable if ANY slot that admits it admits something else too.
-    dedicated: dict[str, int] = {}
-    flexible: set[str] = set()
-    for slot in slots:
-        eligible = set(slot.get("eligible") or ())
-        if len(eligible) == 1:
-            position = next(iter(eligible))
-            dedicated[position] = dedicated.get(position, 0) + 1
-        else:
-            flexible |= eligible
+    # MANDATE 3.2 -- ONE HOME FOR THE BOUND (`#126`). This audit no longer keeps its own.
+    #
+    # It used to re-derive the ceiling here: count dedicated slots, exempt anything flex-reachable,
+    # compare `slots(P) + 1` against a count taken by PRIMARY POSITION. That is a second reading of
+    # a rule draft_room already owns, and the two disagreed the way a second reading eventually
+    # always does. This audit reported HEAVY_IDP roster 2 as holding 6 LB against a ceiling of 3;
+    # the engine counted 3, because the other three were edge rushers eligible at {DL, LB} and its
+    # `held` count skipped every multi-eligible player. An audit that asks a different question
+    # from the engine cannot tell a defect from a disagreement, and ten of this battery's findings
+    # were the disagreement.
+    #
+    # Both now ask `draft_room.fieldable_ceiling_groups`, over eligibility rather than the primary
+    # bucket, so a finding here is a statement about the bound the ENGINE enforces. Reported per
+    # GROUP because that is the shape of the bound -- a roster is over by a number of players, not
+    # by a number at a named position.
+    ceilings = dr.fieldable_ceiling(league.get("roster_positions") or [])
+    if not ceilings:
+        return []
 
     findings = []
-    for roster_id, counts in sorted(roster_shape(trajectory, players_db).items()):
-        for position, held in sorted(counts.items()):
-            if position in flexible or position not in dedicated:
-                continue
-            # +1 for the bye week every team has exactly one of. Nothing else is added.
-            ceiling = dedicated[position] + 1
-            if held > ceiling:
+    for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
+        eligibilities = [player_eligible_positions(players_db.get(str(pid)) or {})
+                         for pid in player_ids]
+        for group in dr.fieldable_ceiling_groups(ceilings, eligibilities):
+            if group["held"] > group["ceiling"]:
                 findings.append({
                     "audit": "unfieldable_depth", "roster_id": roster_id,
-                    "position": position, "held": held, "startable_per_week": dedicated[position],
-                    "ceiling": ceiling, "unfieldable": held - ceiling,
+                    "positions": sorted(group["positions"]), "held": group["held"],
+                    "startable_per_week": group["slots"],
+                    "ceiling": group["ceiling"],
+                    "unfieldable": group["held"] - group["ceiling"],
                 })
     return findings
 

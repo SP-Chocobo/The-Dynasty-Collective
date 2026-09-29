@@ -3662,6 +3662,97 @@ def fieldable_ceiling(roster_positions: list[str]) -> dict[str, int]:
             if position not in flexible}
 
 
+def fieldable_ceiling_groups(ceilings: dict[str, int],
+                             held_eligibilities) -> list[dict]:
+    """MANDATE 3.2. The JOINT bound, over the groups a roster's own players actually span.
+
+    `fieldable_ceiling` answers one position at a time, and that is not enough, because a player
+    can be eligible at TWO ceilinged positions and so consume a slot from either. The battery
+    measured what that costs. On HEAVY_IDP -- which fields DL/DL, LB/LB, DB/DB as dedicated slots
+    and so HAS a per-position ceiling of 3 at each -- ten rosters carried more than the ceiling,
+    and every one of them was over by exactly the number of MULTI-eligible players it held:
+
+        roster  2   LB 6 = 3 counted + 3 skipped        roster 11   LB 5 = 3 + 2
+        roster  8   LB 5 = 3 + 2, DB 4 = 3 + 1
+
+    The backstop stopped each of them at exactly 3 and was then blind. The skipped players are
+    edge rushers eligible at {DL, LB} (plus one safety at {DB, LB}), and HEAVY_IDP has no
+    IDP_FLEX, so they reach NO shared slot at all -- `len(eligible) == 1` was standing in for
+    "reaches a shared slot" and is not the same question.
+
+    THE BOUND IS DERIVED, NOT CHOSEN (`#56`), and it is the same two league facts one position at
+    a time rested on, applied to a set: the players whose eligibility lies entirely inside a group
+    can only ever start in slots that admit some member of that group, so at most that many start
+    in any week, and one spare covers the one bye every team has.
+
+        held(group) <= |slots admitting any member| + 1
+
+    It REDUCES EXACTLY to the old behaviour for a one-position group -- `slots(P) + 1` is
+    `ceilings[P]` -- so this widens the count without moving the bar for anything already counted.
+
+    Groups come from the ROSTER'S OWN eligibility sets, not from a fixed partition: positions are
+    joined when one held player is eligible at both. A roster holding no edge rushers has DL and
+    LB as separate groups and sees exactly the old bound.
+
+    SCOPED TO POSITIONS THAT HAVE A CEILING AT ALL, which keeps the flex exemption intact and is
+    a deliberate limit rather than an oversight -- see the owner decision recorded for the other
+    half of 3.2. Applying this same arithmetic to a flex-reachable group is what 3.2 asks for, and
+    measured on the battery's own rosters it would flag 12 of 12 seats in 12T_ppr (holding 12-13
+    players eligible within RB/WR/TE against `7 slots + 1`) and 9 of 12 in HEAVY_IDP. Those are
+    ordinary rosters: a 14-round draft into 7 offensive slots MUST carry about twelve. The `+ 1`
+    rests on `#30`'s measured finding that the churn a spare buys is free on the waiver wire,
+    which holds for a flat dedicated position and plainly not for RB/WR, where bench depth is the
+    point. So the joint bound is sound as arithmetic about ONE WEEK and needs a depth allowance
+    before it can be a backstop -- and an allowance is a number somebody chooses, which is the
+    line this function does not cross on its own.
+    """
+    if not ceilings:
+        return []
+    ceilinged = frozenset(ceilings)
+    parent = {position: position for position in ceilinged}
+
+    def find(position):
+        while parent[position] != position:
+            parent[position] = parent[parent[position]]
+            position = parent[position]
+        return position
+
+    def union(left, right):
+        left, right = find(left), find(right)
+        if left != right:
+            parent[right] = left
+
+    counted = []
+    for eligible in held_eligibilities:
+        eligible = frozenset(eligible)
+        # A player who reaches ANY position without a ceiling reaches a shared slot somewhere, so
+        # he saturates nothing -- the original exemption, kept, and now asked as the right question.
+        if not eligible or not eligible <= ceilinged:
+            continue
+        counted.append(eligible)
+        first = next(iter(eligible))
+        for position in eligible:
+            union(first, position)
+
+    groups: dict[str, set] = {}
+    for position in ceilinged:
+        groups.setdefault(find(position), set()).add(position)
+
+    out = []
+    for members in groups.values():
+        members = frozenset(members)
+        # `ceilings[P]` is already `slots(P) + 1`, so the slot count is one less. Summed over the
+        # group, plus the single bye spare -- not one spare per position.
+        slots = sum(ceilings[position] - 1 for position in members)
+        out.append({
+            "positions": members,
+            "slots": slots,
+            "ceiling": slots + 1,
+            "held": sum(1 for eligible in counted if eligible <= members),
+        })
+    return out
+
+
 def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
                      pool_scope: str = "all"):
     """A sort key, the mirror image of `feasibility_first`: 1 for a candidate at a position this
@@ -3754,21 +3845,27 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
     ceilings = fieldable_ceiling(roster_positions)
     if not ceilings:
         return default
-    held: dict[str, int] = {}
+    held_eligibilities = []
     for pick in picks:
         if str(pick.get("roster_id")) != str(my_roster_id):
             continue
         info = players_db.get(str(pick.get("player_id"))) or {}
-        # #172: eligibility, not the single grouping bucket. A player who reaches a shared slot
-        # is not saturating a dedicated one, so he is counted at no ceilinged position at all.
-        # MANDATE 2.6: read through the one function that answers this (`#126`).
-        eligible = player_eligible_positions(info)
-        if len(eligible) == 1:
-            position = next(iter(eligible))
-            if position in ceilings:
-                held[position] = held.get(position, 0) + 1
-    saturated = {position for position, ceiling in ceilings.items()
-                 if held.get(position, 0) >= ceiling}
+        # #172: eligibility, not the single grouping bucket. MANDATE 2.6: read through the one
+        # function that answers this (`#126`).
+        #
+        # MANDATE 3.2: THE WHOLE SET, not just the single-position case. This used to count a pick
+        # only `if len(eligible) == 1`, on the stated grounds that a player reaching a shared slot
+        # is not saturating a dedicated one -- true, but that is not what the test asked. An edge
+        # rusher eligible at {DL, LB} in a league with dedicated DL and LB slots and no IDP_FLEX
+        # reaches no shared slot whatever, and was counted at NO position at all. Measured by the
+        # battery on HEAVY_IDP: ten rosters over the ceiling, each by exactly its number of
+        # multi-eligible holdings. `fieldable_ceiling_groups` asks the right question -- does this
+        # man reach anything WITHOUT a ceiling -- and bounds the group he does reach.
+        held_eligibilities.append(player_eligible_positions(info))
+    saturated = set()
+    for group in fieldable_ceiling_groups(ceilings, held_eligibilities):
+        if group["held"] >= group["ceiling"]:
+            saturated |= group["positions"]
     if not saturated:
         return default
 
