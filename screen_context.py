@@ -108,6 +108,42 @@ def build_trade_context(
 _MAX_CANDIDATES_IN_CONTEXT = 8
 
 
+def cut_note(shown: int, total: int, what: str) -> Optional[str]:
+    """"...and N more <what>." for a list that was cut, or None for one that was not.
+
+    MANDATE 2.5 / `#126`: THE CONVENTION EXISTED HERE AND HAD NO HOME. This module already told a
+    reader when it had shortened a list, in two places, with two wordings -- and `app.py`'s
+    `build_context`, which assembles the largest block of text a panel ever reads, did not tell them
+    at all. It cut a pinned message at 400 characters mid-sentence, showed the top 15 of an available
+    pool under a heading that reads as "the pool", and listed 20 of a user's uploaded captions under
+    "REFERENCE MATERIAL the user uploaded". A model reading any of those concludes the rest does not
+    exist -- and for the captions it concludes the user never mentioned the thing.
+
+    A cut list is the list-shaped case of the absence contract: silence about what was removed is
+    read as nothing having been removed. One function so the five sites cannot drift, and so a sixth
+    inherits it. Returns None rather than an empty string, because `if note:` at a call site should
+    mean "something was cut", not "the note happens to be falsy"."""
+    remaining = total - shown
+    if remaining <= 0:
+        return None
+    return f"...and {remaining} more {what}."
+
+
+def cut_body(text: str, limit: int) -> str:
+    """`text` if it fits, otherwise the first `limit` characters with the cut named on the end.
+
+    The BODY-shaped case of `cut_note`, and it belongs beside it. `build_context` cut a pinned chat
+    message at 400 characters and appended nothing, so the message stopped mid-sentence and read as
+    complete -- a model could reason from a conclusion whose qualifier was the part that got cut.
+
+    The real length is in the marker on purpose: "there was more" and "there were 3,000 more
+    characters" support different amounts of caution about what the remainder might have said."""
+    body = text or ""
+    if len(body) <= limit:
+        return body
+    return f"{body[:limit]} […cut here: {len(body) - limit} more character(s) not shown]"
+
+
 def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
     """Draft Room's ScreenContext -- built entirely from an already-computed PickSnapshot,
     the same translation-layer discipline as draft_board_ui.py's serialize_snapshot. Every
@@ -143,9 +179,9 @@ def build_draft_room_context(snap: PickSnapshot) -> ScreenContext:
                if c.team_acquisition_value is not None else "unpriced")
         lines.append(f"{c.name} ({c.position}) — {c.necessity_label}, acquisition value {tav}, "
                      f"{survival}")
-    remaining = len(snap.candidates) - len(shown)
-    if remaining > 0:
-        lines.append(f"...and {remaining} more candidate(s) in the current pool/scope.")
+    note = cut_note(len(shown), len(snap.candidates), "candidate(s) in the current pool/scope")
+    if note:
+        lines.append(note)
     evidence = "\n".join(lines) if lines else "No candidates available in the current pool/scope."
     return ScreenContext(
         surface="Draft Room", looking_at=looking_at, decision=decision,
@@ -236,9 +272,9 @@ def build_free_agents_context(rows: Sequence[dict], position_filter: Optional[st
         team_bit = f", {r['team']}" if r.get("team") else ""
         tail = " — " + ", ".join(bits) if bits else ""
         lines.append(f"{r['name']} ({r['position']}{team_bit}){tail}")
-    remaining = len(rows) - len(shown)
-    if remaining > 0:
-        lines.append(f"...and {remaining} more in the current filter.")
+    note = cut_note(len(shown), len(rows), "in the current filter")
+    if note:
+        lines.append(note)
     evidence = "\n".join(lines) if lines else "No free agents match the current filter."
     decision = f"{len(rows)} free agent(s) match the current filter/search."
     return ScreenContext(

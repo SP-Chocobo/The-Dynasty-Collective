@@ -967,7 +967,7 @@ with a non-JSON body escapes as `JSONDecodeError`, not `SleeperAPIError`, so the
 to fail soft do not.
 
 
-## 2.5 The absence contract breaks at the snapshot boundary (`#187`) **[4 of 6 repaired; 1 contested with the reason; 1 left]**
+## 2.5 The absence contract breaks at the snapshot boundary (`#187`) **[REPAIRED — 5 of 6; the sixth contested with the reason and put to the owner]**
 
 `#187` says `None` never becomes `0.0`. At the snapshot boundary it does:
 
@@ -1059,9 +1059,29 @@ double-count it. The two regimes now read differently and a test requires that t
 companion sub-item: a persisted board with a health-adjusted price and no designation beside it could
 not be read back. An absent designation stores as null, never as healthy.
 
-### STILL OPEN IN 2.5
+### `build_context`'s SILENT TRUNCATION REPAIRED — and the convention already existed elsewhere
 
-`build_context`'s silent truncation, and the Draft Room seed handing the panel undefined units.
+Three sections presented a cut thing as a whole one, in ascending order of harm: a pinned chat message
+at `[:400]`, stopping mid-sentence, so a model could reason from a conclusion whose QUALIFIER was the
+part cut; `projected_available[:15]` under a heading reading "Sleeper canonical player pool", so a panel
+asked "who else is out there" could answer from fifteen rows believing it had seen the pool; and
+`captioned[:20]` under "REFERENCE MATERIAL the user uploaded" — the worst, because a panel can then tell
+the user they never mentioned something they did upload.
+
+**`screen_context` had the convention and `build_context` had it nowhere.** "...and N more
+candidate(s)…" was already there, restated twice with two wordings, while the surface that assembles
+the largest block of text a panel ever reads said nothing at any of its cuts. So this is a `#126`
+unification as much as a 2.5 repair: `cut_note` for a list, `cut_body` for a body, one home, every site
+routed through it, and the existing wordings preserved exactly so the tests pinning them still hold.
+
+A cut list is the list-shaped case of the absence contract: silence about what was removed is read as
+nothing having been removed.
+
+### WHAT IS LEFT IN 2.5 — one item, and it is the owner's
+
+`rival_premium_basis` borrows `denial_basis`. The 0.0 is a MEASURED zero (above), so this is semantics,
+not arithmetic: a reader cannot tell *"no rival gains anything"* from *"this valuation has no notion of
+a rival gaining anything"*. Giving it its own vocabulary is a decision about what the field claims.
 
 ## 2.6 Multi-eligible players are counted by their primary label (`#172`) **[REPAIRED — and it turned out to be two defects, the second one larger]**
 
