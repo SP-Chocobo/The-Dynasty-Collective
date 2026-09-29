@@ -926,7 +926,7 @@ for ROSTER freshness — the same sync carries the rosters, so keeping the older
 roster too. Which staleness a person would rather live with is a product decision, not one a cache
 writer should make silently. Stated for a reader and left to the owner.
 
-## 2.2 The league-config gate is unwired — *four lenses* **[VERIFIED]**
+## 2.2 The league-config gate is unwired — *four lenses* **[REPAIRED — it could not be wired, and two of its four required keys were wrong]**
 
 `ambiguities` / `confirmation_state` / `admits_decision` / `decision_config` have **zero production
 callers**. Measured consequences: empty `roster_positions` → 1944 rows, **0 priced, no reason on any
@@ -940,6 +940,35 @@ while pricing QBs under the 1QB regime (Josh Allen 91.03 against 170.02).
 **This is not a straightforward repair and it is partly a design question — see Owner Decisions.**
 What is not a design question: a board built on a config the gate would refuse should not be silently
 priced.
+
+### REPAIRED — the gate refused **53 of 53** production-shaped leagues, and that is why it was unwired
+
+Measured over every league `draft_battery.league_matrix` builds. Wire it as written and the app stops
+working on every league including the owner's own; leave it unwired and the checks are decoration.
+Both horns were one defect.
+
+- **The team count was asked for under a name nothing reads (`#126`).** The gate wanted `num_teams`
+  in `scoring` or `settings`; Sleeper sends `total_rosters` at the top level and every production
+  reader takes it from there. Absent in 53 of 53 while `total_rosters` was present in 53 of 53.
+- **An omitted scoring key was read as an unknown (`#187`).** Sleeper returns a complete scoring dict
+  and omits what the league does not score, so a key missing from a POPULATED dict is a declared
+  zero — which is exactly what `league_format_hint` concludes from it. `bonus_rec_te` absent in 47 of
+  53, all with populated dicts.
+- **`type` is NOT one of them and this item lumped it in.** `compute_draft_board` reads
+  `league["settings"]["type"] == 2` and gates both `time_horizon_adj` and `risk_adj` on it. It stays.
+
+**After: 53 refused → 2**, and the two are the `CAPTURE_owner_league` arms whose dynasty flag is
+genuinely absent — the same verdict `draft_battery`'s own comment reaches independently, arm for arm.
+
+**And the fixture was part of why this survived.** `test_league_config`'s CLEAN league carried the
+count as `settings["num_teams"]` with nothing at the top level, a shape Sleeper does not send. So "a
+config that parses cleanly" described a league built to satisfy the gate rather than to look real.
+
+**The verdict now travels with the board** — on `PickSnapshot`, written by `build_snapshot` from its
+own `league`, reaching the person (a warning above the board), the archive (schema 4 → 5) and the
+chairs (the debate prompt). Three states, not two (`#187`): `None` nobody asked, `()` asked and
+clean, a populated tuple asked and doubtful. It is deliberately NOT a staleness stamp. **The
+refuse-vs-warn policy is the owner's — D2.**
 
 ## 2.3 Identity and reach into the stat line **[REPAIRED — and the kicking claim was wrong; the real gap was different]**
 
@@ -1262,7 +1291,7 @@ evidence and is recorded as evidence, in `test_demand_is_assignment_based.py`, n
 
 Every item here was narrowed or refined by a later pass. **Do not repair from the wave-1 text.**
 
-## 3.1 `time_horizon_adj` subtracts percentiles over different populations **[VERIFIED]**
+## 3.1 `time_horizon_adj` subtracts percentiles over different populations **[REPAIRED — and this item's own figures did not reproduce]**
 
 `_season_proj_pct` is a percentile over **all priced rows**; `_proj3yr_pct` over **only rows carrying
 `proj_3yr`**. I measured the populations: **481 priced, 259 with `proj_3yr`, 222 without** (median
@@ -1281,7 +1310,31 @@ smallest at the top — which is where picks come from.
 whose measured effect on picks is zero — which makes it safe, and also means **no repair here should
 be justified by a claim that it changes recommendations.**
 
-## 3.2 The fieldability ceiling — and the bound the fix must use **[VERIFIED]**
+### REPAIRED — one population, and the numbers above are corrected
+
+Both percentiles are now computed over the rows carrying BOTH values. One population, not a second
+column (`#126`): the pair has exactly two readers and both exist to subtract one from the other, so
+neither changed a line.
+
+**This item's figures did not reproduce.** It reports 481 priced / 259 with `proj_3yr` / 222 without,
+and a −3.710 production bias against −0.021 matched. Measured on this tree: **292 / 259 / 33, on one
+arm out of 53** — every other arm is 259/259. The −3.710 was the whole-population figure including
+rows the `_has_3yr` gate already excludes from the term entirely, so it never reached a price; the
+matched figure is the real one, and −0.021 against my −0.0322 agrees closely.
+
+**What the repair does move:** mean `time_horizon_adj` −0.6154 → −0.0322 on the matched population,
+254 of 259 rows, 70 by more than a point, 27 changing sign. Effect on every board today is **zero** —
+the only mismatched arms carry no dynasty flag, so the term is never applied there.
+
+**A claim in the code was also withdrawn.** The comment asserted "zero rows in the real baseline carry
+a points projection WITHOUT a proj_3yr alongside it", which is what made the mismatch invisible. True
+when written, false now, most likely falsified by `#180` routing K/DEF/IDP through league-scored points.
+
+**And it improved the upside signal, reported as a consequence rather than a justification:** the
+mixed populations had been clipping five of forty RBs to zero growth — young backs whose three-year
+outlook genuinely exceeds their season standing.
+
+## 3.2 The fieldability ceiling — and the bound the fix must use **[REPAIRED — the derivable half; the joint bound is derivable for dedicated groups and NOT for flex-reachable ones]**
 
 The exemption is real: a flex-reachable position gets no ceiling at all, and a real draft left six of
 twelve rosters holding 6–7 IDP against a derivable bound of 2, with every guard silent.
@@ -1299,7 +1352,30 @@ IDP-specific** — one roster holds **7 TE** against a bound of 3, three hold 7 
 **Repair:** implement the joint bound. Consolidating after wave 1 would have shipped the per-position
 form and missed the case.
 
-## 3.3 Constants sized for a scale that no longer exists **[VERIFIED: the scale and the constants]**
+### REPAIRED — and the battery found the defect this item did not name
+
+Running the battery over 2.6, 24 offence-only arms returned **zero** findings and `HEAVY_IDP`
+returned **ten**, every one over the per-position ceiling by exactly its number of MULTI-eligible
+holdings. `unfieldable_last` counted a pick only `if len(eligible) == 1` — and in a league with
+dedicated DL/LB/DB and no `IDP_FLEX`, an edge rusher eligible at `{DL, LB}` reaches no shared slot
+whatever, so he was counted at no position at all.
+
+`fieldable_ceiling_groups` bounds the group a roster's own players span, derived from the same two
+facts (`#56`) and reducing exactly to `slots(P) + 1` for a one-position group. **Verified by
+re-drafting the arm: 10 findings → 1**, the survivor a genuine single-player overflow. The battery's
+own audit had been re-deriving the ceiling and counting by primary position, so ten of its findings
+were the disagreement rather than the defect (`#126`); it now asks the same function.
+
+**THE FLEX-REACHABLE HALF IS NOT DERIVABLE AND THIS ITEM TREATS IT AS IF IT WERE.** Applied to the
+offence group the same arithmetic flags **12 of 12 seats in 12T_ppr** (holding 12–13 players eligible
+within RB/WR/TE against `7 slots + 1`) and 9 of 12 in HEAVY_IDP. Those are ordinary rosters — a
+14-round draft into 7 offensive slots must carry about twelve — and `unfieldable_last`'s own docstring
+sets the test that fails: a backstop must not bind on a roster that was never in danger. The `+ 1`
+rests on `#30`'s measured finding that the churn a spare buys is free on the wire, true of a flat
+dedicated position and false of RB/WR. **So it needs a depth allowance, which is a chosen number —
+D7.** Evidence: `evidence/fieldability_joint_bound/`.
+
+## 3.3 Constants sized for a scale that no longer exists **[VERIFIED — the vacuous test REPAIRED (it was a tautology); the constants are D8]**
 
 `_scale_vor_to_bpa` is now the identity; the `bpa` span is **−328.6 to +227.6**. The bounded additive
 terms were sized for a 0–100 scale: `RISK_ADJ` −18 is now "18 projected points" (10.4% of a
@@ -1314,7 +1390,22 @@ priced rows (gap ≈556 against a cap of 12), so the invariant it guards is **va
 **These are `#56` territory — a re-derivation, not a re-tuning — and re-deriving a conversion is real
 work. See Owner Decisions.** The vacuous test should be fixed regardless, in Tier 0.
 
-## 3.4 Terms that are dead or describe the wrong roster **[VERIFIED: `block_opportunity` only]**
+### THE TEST WAS A TAUTOLOGY, not merely vacuous — REPAIRED
+
+It took the top and bottom priced rows, asserted their gap exceeded `NEED_BONUS_MAX`, then asserted
+`top - (bottom + NEED_BONUS_MAX) > 0` — the same statement rearranged. The second could not fail
+unless the first already had, and neither ever read a `need_bonus` the board had computed. Replaced
+with the invariant over every qualifying pair (14055 of them) on a roster where `need_bonus` varies,
+since a flat term cannot reverse anything. Mutation-checked against an uncapped bonus at 6.8× the cap
+— the historical defect — and against a flattened term.
+
+**Two of this item's figures are corrected, measured on a 12T_ppr opening board:** the `bpa` span is
+**−324.0 to +194.0** (not −328.6 to +227.6), and the cross-position inversions number **16 of 1149
+pairs** (not 21). And `need_bonus` on an empty roster is **not** flat across positions — QB 4.00, TE
+4.67, RB 8.67, WR 8.67. It is flat *within* a position, which on an empty roster is correct. The
+sharp version of the complaint is the 16 inversions. **The constants are D8.**
+
+## 3.4 Terms that are dead or describe the wrong roster **[REPAIRED — all three; the third was already closed by 2.5]**
 
 - **`block_opportunity` has been dead since the `#206` normalisation.** Its 0.10 threshold means
   "rank-4-or-better" on the raw table; normalised over ~960 rows rank-1 is 0.025. Measured: 4,812
@@ -1328,9 +1419,38 @@ work. See Owner Decisions.** The vacuous test should be fixed regardless, in Tie
   absent team terms cross as `None` with explicit "never 0.0" comments — then printed to the chairs as
   a measured term beside two honestly-withheld ones.
 
+### REPAIRED — all three, and the third needed nothing
+
+**`block_opportunity` was dead since `#206`, and the cause is a scale that moved under a constant.**
+The flag needs a premium AND the premium-driving rival having a credible path. The second half read
+`take_probability >= CREDIBLE_RIVAL_PATH_THRESHOLD`, threshold 0.10 — a number lifted from the RAW
+`RANK_TAKE_PROBABILITY` table, where 0.10 is the rank-4 entry. `#206` then normalised the model so one
+opponent's take probabilities sum to ≤ 1 across their board, and the threshold stayed in raw units.
+Measured on a real mid-draft turn with 23 intervening picks: the largest take probability reaching the
+gate is **0.028**, the premium half fires on **24 of 48** candidates, and the flag is True on **0 of
+48**. Restated as the rank it was always described as — derived from the same table, not chosen
+(`#56`) — it now fires on **5 of 48**. The probability survives as an observable and a test reads the
+AST to keep it out of the gate.
+
+**The test nobody was running is the one that matters:** that the bar is REACHABLE. Every boundary
+test in the suite passed throughout, because each supplied a take probability production cannot
+produce.
+
+**`depth_exposure` now says when the roster was not priced whole.** `_team_roster_players` drops a
+rostered man it cannot price — 48 of 216 over a complete HEAVY_IDP draft, every one IDP — and the
+answer went on claiming a full measurement. `EXPOSURE_ROSTER_PARTIAL` is stamped on every position
+such a man could have covered, matching the treatment `displacement_adjustments` already had. The two
+terms fail in OPPOSITE directions: a missing occupant makes displacement under-count (its number is a
+floor) and depth over-count (a ceiling). On a complete draft 32 cells are relabelled — 26 from
+`no_surplus` and 4 from `vacant`, both of which were **false claims about the roster**, and 2 from
+`measured`, withdrawing 2.16 and 1.44 of over-credit.
+
+**The third bullet was already closed by 2.5**, which repaired that exact line and documented it at
+the site. The remaining `0.0` defaults are in measurement scripts that only `run_*` reports import.
+
 ---
 
-# TIER 4 — one concept, two homes (`#126`) **[VERIFIED: every second home exists]**
+# TIER 4 — one concept, two homes (`#126`) **[REPAIRED — all six, and two of the second homes were SHORT rather than duplicated]**
 
 Found incidentally by five separate lenses before a dedicated sweep confirmed them. Each is small;
 together they are the mechanism by which the tiers above drifted apart.
@@ -1347,6 +1467,37 @@ player takes −18); two literal copies of the transcribed-file set.
 **Repair:** each is a delete-and-import. Do them **after** Tiers 0–2, because several of them are
 load-bearing for repairs above and changing a vocabulary under an unrepaired instrument is how the
 next drift starts.
+
+### REPAIRED — all six, and two of the second homes were SHORT rather than duplicated
+
+Done after Tiers 0–3, as this item directs.
+
+- **Injury statuses.** `RISK_ADJ` listed `{IR, Out, Doubtful}` against `GAMES_MISSED_FLOOR`'s
+  `{IR: 4, PUP: 4, Out: 1}`, and the gap bit at one input — a player with a season line and no
+  games-played, where the haircut cannot be computed and `RISK_ADJ` is the whole discount. **PUP was
+  priced fully fit there while an identical IR player took −18.** PUP now takes IR's penalty, DERIVED
+  from their shared four-game floor rather than chosen (`#56`), with a test pinning that designations
+  sharing a floor share a penalty. `app.INJURY_OK_STATUSES` was the third copy and now imports
+  `player_universe.GAME_TIME_CALL_DESIGNATIONS`.
+- **Flex slot types — SHORT, not merely duplicated.** `draft_board_ui` listed three of five, so a
+  league rostering `REC_FLEX` or `WRRB_FLEX` got **no board view for it at all** — invisible because
+  `position_view_options` only offers a view when the slot is in that league's own roster. Fixed, plus
+  an append guard so a new type cannot be dropped. `app.FA_POSITION_FILTERS` had copied the MEANINGS;
+  its sets are imported and its labels, order and rows are unchanged.
+- **The superflex spelling** closes with it: with the set keyed by `SUPER_FLEX`, `SUPERFLEX` is only a
+  label and cannot be copied as a token.
+- **Team count** — three derivations, one fallback → `league_config.team_count` with a stated order of
+  authority. The callers still hold different inputs and the tests say so rather than letting that
+  look like a remaining defect.
+- **Round number** — three copies of `n // teams + 1` → `league_config.round_of`, returning `None`
+  rather than guessing so the one caller with a recorded-round fallback keeps it at its own site.
+- **Transcribed-file set** → `data_merger.TRANSCRIBED_SOURCE_FILES`, public, with `draft_room` binding
+  its own name to that object. An alias is not a second home; a second literal was.
+- **The undrafted-slot set** was the concrete half of the starting-slot item:
+  `draft_room.HORIZON_UNDRAFTED_SLOTS` held `("IR",)` and `league_config.UNDRAFTED_SLOTS` holds the
+  same one. Deleted, and `draftable_slots_per_team` delegates. The item's other three names are **not
+  duplicates** — they compute different quantities, and the battery's solves the real assignment
+  problem rather than counting against a predicate.
 
 **What I verified, site by site.** Each row is the second home, named, at today's HEAD:
 
