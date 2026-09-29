@@ -2475,6 +2475,7 @@ def _team_starters_filled(
 def _team_roster_players(
     picks: list[dict], players_db: dict[str, dict], roster_id, merger: DataMerger,
     contested_keys: frozenset = frozenset(),
+    unpriced: Optional[list] = None,
 ) -> list[dict]:
     """This roster's own drafted players as lineup_optimizer rows ({"id","value","eligible"})
     -- what eligibility_bonus needs to solve "best lineup with/without this candidate" for a
@@ -2561,6 +2562,21 @@ def _team_roster_players(
             # most of an IDP pool down this path. DL/LB dual listings are graded on the same
             # rubric, so flexibility is the ONLY thing that dual listing conveys -- and it is
             # exactly what gets discarded. Pinned by ProjectionOnlyRosterVisibilityTests.
+            #
+            # MANDATE 3.4: HE LEAVES A RECORD NOW. The repair above is still unchosen, but the
+            # CONSEQUENCE no longer travels silently -- `unpriced` collects the eligibility of
+            # every man dropped here, and depth_exposure stamps EXPOSURE_ROSTER_PARTIAL on any
+            # position he could have covered, exactly as _team_roster_points_players already does
+            # for displacement. An out-parameter rather than a second return value, the same shape
+            # `data_merger.load_all` uses for `skipped` (MANDATE 2.4), because this function has
+            # callers that want only the players and a changed return shape would touch all of
+            # them. Measured over a complete 216-pick HEAVY_IDP draft: 48 of 216 rostered players
+            # are dropped here, every one of them IDP (DL 10, LB 18, DB 20).
+            if unpriced is not None:
+                # Asked of ELIGIBILITY, not the primary bucket (`#172`): a dual DL/LB man could
+                # have covered a slot at either, so both positions' answers describe a roster
+                # missing him.
+                unpriced.append(set(player_eligible_positions(info)))
             continue
         players.append({"id": player_id, "value": float(value), "eligible": player_eligible_positions(info)})
     return players
@@ -4458,12 +4474,17 @@ def compute_draft_board(
         k for k, ids in drafted_identity_claims(
             merger, players_db, {str(p.get("player_id")) for p in picks},
             league_usable_positions(roster_positions)).items() if len(ids) > 1)
+    # MANDATE 3.4: the dropped men are collected, not just skipped -- see the drop branch in
+    # _team_roster_players for why this is an out-parameter, and EXPOSURE_ROSTER_PARTIAL for what
+    # the depth answer then says about them.
+    my_roster_unpriced: list = []
     my_roster_players = _team_roster_players(picks, players_db, my_roster_id, merger,
-                                             contested_keys)
+                                             contested_keys, unpriced=my_roster_unpriced)
     # Per POSITION, not per candidate -- one lineup solve per rostered starter for the whole
     # board, rather than per row. Computed here beside the roster it reads because that is the
     # only thing it depends on; the candidate does not enter it at all.
-    depth_by_position = lo.depth_exposure(my_roster_players, roster_positions)
+    depth_by_position = lo.depth_exposure(my_roster_players, roster_positions,
+                                          unpriced_eligibilities=my_roster_unpriced)
     # The fourth team-specific term (#216), also per POSITION and also computed once beside the
     # roster it reads. Priced in PROJECTED POINTS, not trade_value: it compares my starters
     # against the points replacement levels above, and the two currencies do not mix (see

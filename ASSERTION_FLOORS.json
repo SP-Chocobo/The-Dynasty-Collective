@@ -745,6 +745,155 @@
         "early_returns": 0
       }
     },
+    "test_a_bar_no_input_can_clear_is_not_a_gate.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 1,
+        "assertFalse": 4,
+        "assertGreater": 2,
+        "assertIn": 3,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotIn": 2,
+        "assertTrue": 5
+      },
+      "by_method": {
+        "test_a_rank_at_the_bar_is_credible": {
+          "assertTrue": 1
+        },
+        "test_a_rank_past_the_bar_is_not": {
+          "assertFalse": 1
+        },
+        "test_a_tiny_take_probability_no_longer_suppresses_a_top_ranked_rival": {
+          "assertTrue": 1
+        },
+        "test_an_absent_rank_is_not_credible_and_does_not_default_to_one": {
+          "assertFalse": 1
+        },
+        "test_premium_magnitude_alone_still_does_not_fire_it": {
+          "assertFalse": 1
+        },
+        "test_the_OLD_threshold_would_still_be_unreachable_here": {
+          "assertLess": 1,
+          "assertTrue": 1
+        },
+        "test_the_audit_reads_the_same_bar": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_bar_is_the_rank_whose_raw_probability_was_the_old_threshold": {
+          "assertEqual": 1
+        },
+        "test_the_flag_fires_on_at_least_one_candidate": {
+          "assertTrue": 1
+        },
+        "test_the_gate_does_not_read_the_probability_at_all": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "test_the_premium_half_alone_is_not_what_is_being_measured": {
+          "assertTrue": 1
+        },
+        "test_the_rank_reaches_the_audit_from_the_same_place_the_probability_does": {
+          "assertIn": 1
+        },
+        "test_the_retired_constant_is_gone_rather_than_left_unread": {
+          "assertFalse": 1
+        },
+        "test_the_turn_really_has_rivals_ahead_of_it": {
+          "assertGreater": 2,
+          "assertIsNotNone": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_a_bound_over_one_position_misses_the_player_who_fills_two.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 27,
+        "assertGreater": 1,
+        "assertIsNotNone": 4,
+        "assertLessEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_chain_of_eligibility_merges_three_positions": {
+          "assertEqual": 2,
+          "assertIsNotNone": 1
+        },
+        "test_a_further_linebacker_is_demoted_once_the_group_is_saturated": {
+          "assertEqual": 1
+        },
+        "test_a_group_of_one_has_exactly_that_positions_ceiling": {
+          "assertEqual": 1,
+          "assertIsNotNone": 1
+        },
+        "test_a_league_with_no_derivable_ceiling_yields_no_groups": {
+          "assertEqual": 2
+        },
+        "test_a_player_eligible_at_one_ceilinged_and_one_flex_position_is_exempt": {
+          "assertEqual": 1
+        },
+        "test_a_player_reaching_a_position_with_no_ceiling_saturates_nothing": {
+          "assertTrue": 1
+        },
+        "test_a_rookie_draft_is_still_exempt": {
+          "assertEqual": 1
+        },
+        "test_a_roster_at_the_bound_is_left_alone": {
+          "assertEqual": 2
+        },
+        "test_a_safety_is_NOT_demoted_because_his_group_is_untouched": {
+          "assertEqual": 1
+        },
+        "test_positions_stay_separate_when_no_held_player_links_them": {
+          "assertIsNotNone": 1
+        },
+        "test_so_is_a_further_lineman_since_he_competes_for_the_same_slots": {
+          "assertEqual": 1
+        },
+        "test_the_audit_and_the_sort_key_agree_on_the_same_roster": {
+          "assertEqual": 1
+        },
+        "test_the_audit_reports_groups_and_not_positions": {
+          "assertEqual": 5,
+          "assertNotIn": 1
+        },
+        "test_the_exact_roster_the_battery_flagged_is_now_over_its_bound": {
+          "assertEqual": 2,
+          "assertGreater": 1
+        },
+        "test_the_group_is_the_union_and_the_bound_is_the_summed_slots_plus_ONE": {
+          "assertEqual": 2,
+          "assertIsNotNone": 1
+        },
+        "test_the_old_count_saw_three_of_those_six": {
+          "assertEqual": 1,
+          "assertLessEqual": 1
+        },
+        "test_the_per_position_ceilings_are_what_they_were": {
+          "assertEqual": 1
+        },
+        "test_three_single_eligible_linebackers_are_at_the_bound_and_not_over": {
+          "assertEqual": 2
+        },
+        "test_twelve_offence_players_draw_no_demotion": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_a_cut_list_says_it_was_cut.py": {
       "test_methods": 15,
       "asserts": {
@@ -801,6 +950,103 @@
         },
         "test_the_uploaded_captions_report_what_was_not_shown": {
           "assertIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_a_doubtful_config_reaches_the_person.py": {
+      "test_methods": 21,
+      "asserts": {
+        "assertEqual": 12,
+        "assertGreaterEqual": 1,
+        "assertIn": 2,
+        "assertIsNone": 5,
+        "assertIsNot": 1,
+        "assertIsNotNone": 1,
+        "assertLess": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 5,
+        "assertTrue": 7
+      },
+      "by_method": {
+        "test_a_board_on_a_doubtful_config_is_still_CURRENT_when_nothing_moved": {
+          "assertIsNone": 1,
+          "assertTrue": 1
+        },
+        "test_a_clean_config_says_nothing": {
+          "assertNotIn": 1
+        },
+        "test_a_clean_stored_board_reports_an_empty_list_and_not_None": {
+          "assertEqual": 1
+        },
+        "test_a_doubtful_stored_board_reports_its_reasons": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "test_a_hand_built_snapshot_says_NOBODY_ASKED": {
+          "assertIsNone": 1
+        },
+        "test_a_readable_league_records_that_it_was_CHECKED_and_clean": {
+          "assertEqual": 1,
+          "assertIsNotNone": 1
+        },
+        "test_a_record_written_before_the_check_existed_reports_None": {
+          "assertIsNone": 1
+        },
+        "test_all_three_states_survive_the_write_distinguishably": {
+          "assertEqual": 1,
+          "assertIsNone": 1,
+          "assertTrue": 1
+        },
+        "test_an_UNCHECKED_snapshot_also_says_nothing": {
+          "assertNotIn": 1
+        },
+        "test_an_unreadable_league_records_every_reason": {
+          "assertEqual": 1,
+          "assertTrue": 2
+        },
+        "test_build_snapshot_writes_it_and_no_caller_can_pass_it": {
+          "assertNotIn": 1
+        },
+        "test_each_stored_ambiguity_is_a_NAMED_object_not_a_bare_pair": {
+          "assertEqual": 2
+        },
+        "test_it_agrees_exactly_with_the_gate_it_reports": {
+          "assertEqual": 1
+        },
+        "test_it_is_read_from_a_snapshot_and_not_rederived_in_the_view": {
+          "assertEqual": 1
+        },
+        "test_stamp_is_current_does_not_take_the_config_verdict": {
+          "assertNotIn": 2
+        },
+        "test_the_draft_room_reads_the_verdict_off_the_snapshot": {
+          "assertTrue": 1
+        },
+        "test_the_prompt_carries_the_warning_and_every_reason": {
+          "assertIn": 2
+        },
+        "test_the_record_is_json_round_trippable": {
+          "assertEqual": 1
+        },
+        "test_the_schema_version_moved_rather_than_the_old_records": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 1
+        },
+        "test_the_three_states_are_distinguishable": {
+          "assertEqual": 1,
+          "assertIsNone": 1,
+          "assertIsNot": 1,
+          "assertNotEqual": 1,
+          "assertTrue": 1
+        },
+        "test_the_warning_sits_above_the_candidates_it_qualifies": {
+          "assertLess": 1
         }
       },
       "disabled": {
@@ -1081,6 +1327,120 @@
         "test_the_truncation_empties_the_top_of_a_superflex_board_of_quarterbacks": {
           "assertEqual": 1,
           "assertGreater": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_a_rank_difference_needs_one_population.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 1,
+        "assertGreater": 1,
+        "assertIn": 4,
+        "assertIsNotNone": 4,
+        "assertTrue": 7
+      },
+      "by_method": {
+        "test_neither_reader_uses_a_percentile_the_other_does_not": {
+          "assertIn": 2
+        },
+        "test_the_growth_term_gates_on_the_three_year_flag": {
+          "assertIn": 1
+        },
+        "test_the_league_really_holds_priced_rows_with_no_three_year_outlook": {
+          "assertTrue": 2
+        },
+        "test_the_positions_that_DO_carry_an_outlook_are_still_adjusted": {
+          "assertTrue": 2
+        },
+        "test_the_term_is_live_on_this_league_so_the_measurement_is_about_something": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "test_the_time_horizon_term_gates_on_the_same_flag": {
+          "assertIn": 1
+        },
+        "test_they_are_computed_over_the_IDENTICAL_row_set_on_the_mismatched_arm": {
+          "assertGreater": 1,
+          "assertIsNotNone": 2,
+          "assertTrue": 1
+        },
+        "test_they_share_one_population_across_the_format_axes": {
+          "assertIsNotNone": 2,
+          "assertTrue": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_a_roster_the_solver_never_saw_whole.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 13,
+        "assertGreater": 4,
+        "assertIn": 2,
+        "assertIs": 1,
+        "assertNotEqual": 2,
+        "assertNotIn": 1
+      },
+      "by_method": {
+        "test_NOT_APPLICABLE_is_never_overridden": {
+          "assertEqual": 1
+        },
+        "test_a_dropped_man_is_recorded_by_ELIGIBILITY_not_by_his_primary_bucket": {
+          "assertEqual": 1
+        },
+        "test_a_dual_eligible_dropped_man_stamps_BOTH_positions": {
+          "assertEqual": 2
+        },
+        "test_a_position_a_dropped_man_could_cover_is_stamped": {
+          "assertEqual": 1
+        },
+        "test_almost_every_relabelled_cell_was_ALREADY_withholding_its_number": {
+          "assertGreater": 2
+        },
+        "test_it_replaces_the_no_surplus_claim_which_was_FALSE": {
+          "assertEqual": 2
+        },
+        "test_it_replaces_the_vacant_claim_too": {
+          "assertEqual": 2
+        },
+        "test_no_relabelled_cell_ends_up_in_a_state_that_still_claims_a_measurement": {
+          "assertEqual": 1
+        },
+        "test_nothing_is_stamped_when_the_roster_was_fully_priced": {
+          "assertNotIn": 1
+        },
+        "test_positions_he_could_NOT_cover_are_untouched": {
+          "assertNotEqual": 2
+        },
+        "test_the_board_prices_worst_loss_ONLY_under_measured": {
+          "assertIn": 1
+        },
+        "test_the_cells_that_WERE_measured_carried_a_false_label_at_no_point": {
+          "assertEqual": 1
+        },
+        "test_the_drop_population_is_not_empty": {
+          "assertGreater": 1
+        },
+        "test_the_dropped_body_really_does_inflate_the_number": {
+          "assertEqual": 2,
+          "assertGreater": 1
+        },
+        "test_the_parameter_is_optional_so_no_existing_caller_changes": {
+          "assertIs": 1
+        },
+        "test_the_token_has_words_of_its_own": {
+          "assertIn": 1
         }
       },
       "disabled": {
@@ -5230,7 +5590,7 @@
         "assertFalse": 2,
         "assertGreater": 6,
         "assertGreaterEqual": 2,
-        "assertIn": 3,
+        "assertIn": 4,
         "assertIsNone": 3,
         "assertLess": 4,
         "assertLessEqual": 1,
@@ -5329,6 +5689,10 @@
         "test_the_module_states_no_position_specific_risk_constant": {
           "assertNotIn": 1
         },
+        "test_the_no_surplus_state_was_NOT_split_in_two": {
+          "assertEqual": 2,
+          "assertIn": 1
+        },
         "test_the_state_it_describes_really_does_carry_a_measurement": {
           "assertGreater": 1,
           "assertTrue": 1
@@ -5345,9 +5709,6 @@
         "test_the_uncoverable_loss_is_the_SAME_NUMBER_bench_or_no_bench": {
           "assertEqual": 4,
           "assertGreater": 1
-        },
-        "test_the_vocabulary_did_NOT_gain_a_member": {
-          "assertEqual": 2
         },
         "test_two_positions_with_identical_shape_get_identical_exposure": {
           "assertEqual": 1
@@ -6506,16 +6867,16 @@
       "test_methods": 98,
       "asserts": {
         "assertAlmostEqual": 21,
-        "assertEqual": 65,
+        "assertEqual": 66,
         "assertFalse": 3,
-        "assertGreater": 44,
-        "assertGreaterEqual": 6,
+        "assertGreater": 46,
+        "assertGreaterEqual": 7,
         "assertIn": 4,
         "assertIs": 2,
         "assertIsNone": 8,
         "assertIsNotNone": 5,
-        "assertLess": 9,
-        "assertLessEqual": 4,
+        "assertLess": 10,
+        "assertLessEqual": 5,
         "assertNotEqual": 4,
         "assertNotIn": 5,
         "assertTrue": 20
@@ -6694,7 +7055,11 @@
           "assertLessEqual": 1
         },
         "test_need_bonus_cannot_flip_a_large_universal_value_gap": {
-          "assertGreater": 2
+          "assertEqual": 1,
+          "assertGreater": 4,
+          "assertGreaterEqual": 1,
+          "assertLess": 1,
+          "assertLessEqual": 1
         },
         "test_need_bonus_favors_an_unfilled_dedicated_slot_over_already_satisfied_flex_demand": {
           "assertGreater": 1
@@ -8286,7 +8651,7 @@
         "assertAlmostEqual": 3,
         "assertEqual": 30,
         "assertFalse": 2,
-        "assertGreater": 15,
+        "assertGreater": 16,
         "assertGreaterEqual": 2,
         "assertIn": 1,
         "assertIsNone": 4,
@@ -8318,6 +8683,7 @@
         },
         "test_a_measured_zero_and_an_absent_data_zero_are_different_things": {
           "assertFalse": 1,
+          "assertGreater": 1,
           "assertTrue": 4
         },
         "test_a_missing_trade_value_declines_the_flexibility_premium_rather_than_inventing_one": {
@@ -8528,13 +8894,13 @@
       }
     },
     "test_league_config.py": {
-      "test_methods": 19,
+      "test_methods": 20,
       "asserts": {
         "assertEqual": 8,
         "assertFalse": 2,
-        "assertIn": 8,
+        "assertIn": 9,
         "assertIsNone": 3,
-        "assertNotIn": 1,
+        "assertNotIn": 2,
         "assertTrue": 4
       },
       "by_method": {
@@ -8595,6 +8961,10 @@
         },
         "test_the_manifest_itself_carries_the_real_age": {
           "assertIn": 1
+        },
+        "test_the_team_count_key_is_the_one_the_VALUATION_path_reads": {
+          "assertIn": 1,
+          "assertNotIn": 1
         },
         "test_two_literal_QB_slots_without_the_token_is_caught": {
           "assertIn": 1
@@ -10639,7 +11009,7 @@
         "assertLessEqual": 4,
         "assertNotIn": 12,
         "assertRaises": 2,
-        "assertTrue": 17
+        "assertTrue": 18
       },
       "by_method": {
         "test_a_1qb_league_never_gets_consensus_data": {
@@ -10729,7 +11099,7 @@
         },
         "test_block_opportunity_requires_a_credible_rival_path_not_premium_magnitude_alone": {
           "assertFalse": 3,
-          "assertTrue": 1
+          "assertTrue": 2
         },
         "test_both_modes_carry_every_field_a_consumer_indexes_unguarded": {
           "assertTrue": 2
@@ -15751,6 +16121,77 @@
         "test_the_two_regimes_do_not_read_the_same": {
           "assertEqual": 1,
           "assertNotEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_the_gate_admits_the_leagues_it_governs.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 11,
+        "assertGreater": 1,
+        "assertIn": 5,
+        "assertIs": 1,
+        "assertNotIn": 4,
+        "assertTrue": 6
+      },
+      "by_method": {
+        "test_a_clean_league_is_INFERRED_and_admitted": {
+          "assertEqual": 1,
+          "assertIs": 1,
+          "assertTrue": 1
+        },
+        "test_a_league_carrying_total_rosters_and_no_num_teams_is_admitted": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "test_a_league_scoring_no_receptions_at_all_is_admitted_as_standard": {
+          "assertEqual": 1
+        },
+        "test_a_league_with_NO_scoring_dict_is_still_refused": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_a_populated_scoring_dict_missing_a_zero_valued_key_is_admitted": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "test_an_absent_dynasty_flag_still_blocks": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_an_absent_team_count_blocks_because_the_fallback_is_one_team": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "test_num_teams_alone_does_NOT_satisfy_the_gate": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "test_num_teams_is_no_longer_declared_anywhere_in_the_vocabulary": {
+          "assertEqual": 1,
+          "assertNotIn": 3
+        },
+        "test_the_arms_the_gate_refuses_are_the_ones_the_battery_itself_calls_redraft": {
+          "assertTrue": 2
+        },
+        "test_the_count_is_read_from_the_TOP_LEVEL_not_from_settings": {
+          "assertTrue": 1
+        },
+        "test_the_matrix_is_big_enough_for_a_rate_over_it_to_mean_anything": {
+          "assertGreater": 1
+        },
+        "test_the_only_leagues_still_refused_are_the_ones_missing_a_dynasty_flag": {
+          "assertEqual": 2,
+          "assertIn": 1
+        },
+        "test_the_union_is_exactly_its_two_halves": {
+          "assertEqual": 1
         }
       },
       "disabled": {

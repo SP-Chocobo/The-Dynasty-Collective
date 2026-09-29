@@ -293,6 +293,26 @@ EXPOSURE_NO_SURPLUS = "no_surplus"
 #: 2209-test suite while its disclosure silently stopped rendering (#122).
 EXPOSURE_MEASURED = "measured"
 
+#: MANDATE 3.4. A rostered player who could cover a slot at this position carried no price, so he
+#: was left out of the solve and the roster was one body emptier than it really is. Deliberately the
+#: SAME TOKEN STRING as DISPLACEMENT_ROSTER_PARTIAL below, because it is the same condition about
+#: the same roster; the displacement term got this treatment and depth got nothing.
+#:
+#: THE TWO TERMS FAIL IN OPPOSITE DIRECTIONS, which is worth stating because the labels must not
+#: borrow each other's wording. A missing occupant makes DISPLACEMENT under-count -- an open slot
+#: deducts nothing -- so its number is a FLOOR. It makes DEPTH over-count, because a hole with no
+#: cover costs more than a hole a spare would have filled, so this number is a CEILING. Measured on
+#: a hand-built roster with two LB starters: with the bench LB priced, worst_loss 13 and
+#: depth_exposure 1.56; with him dropped and another spare behind him, worst_loss 28 and
+#: depth_exposure 3.36.
+#:
+#: AND IT REPLACES A LABEL THAT WAS FALSE, not merely incomplete. When the dropped man was the ONLY
+#: spare, the basis read EXPOSURE_NO_SURPLUS -- "you hold no backup here" -- which is a claim about
+#: the roster that the engine is in no position to make: the backup exists and could not be priced.
+#: Measured over a complete 216-pick HEAVY_IDP draft: 48 of 216 rostered players are dropped for
+#: want of a trade value, every one of them IDP (DL 10, LB 18, DB 20).
+EXPOSURE_ROSTER_PARTIAL = "roster_partially_priced"
+
 #: token -> the words a person reads (#174). depth_exposure crossed the snapshot boundary
 #: WITHOUT this companion, so every consumer downstream of PickSnapshot saw a 0.0 that could
 #: mean "measured, this position carries no exposure" or "never measured" and had no way to
@@ -301,6 +321,8 @@ EXPOSURE_MEASURED = "measured"
 #: consumers saw meant "not measured", and every one of them read as "safe".
 EXPOSURE_BASIS_LABELS = {
     EXPOSURE_MEASURED: "measured against your own lineup",
+    EXPOSURE_ROSTER_PARTIAL: ("a ceiling -- a player you drafted could not be priced, so a spare "
+                              "who may cover this position was left out of the solve"),
     EXPOSURE_VACANT: "not measured -- you hold no starter at this position to insure",
     #: I-06/J-06, RULED: one token, and the LABEL is what was false. This read "not measured --
     #: you hold no backup here, so there is no surplus to value", and the first half of that is
@@ -328,7 +350,8 @@ EXPOSURE_BASIS_LABELS = {
 }
 
 
-def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> dict[str, dict]:
+def depth_exposure(roster_players: list[dict], roster_positions: list[str],
+                   unpriced_eligibilities=()) -> dict[str, dict]:
     """Per position, what this roster loses if one of its starters there becomes unavailable.
 
     THE QUESTION THIS ANSWERS. Depth demand is not "a slot exists, so fill it." Nobody needs a
@@ -384,7 +407,7 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
             }
 
     if not roster_players or not slots:
-        return out
+        return _stamp_roster_partial(out, unpriced_eligibilities)
 
     baseline = optimize_lineup(roster_players, slots)
     starting_ids = {a["player_id"] for a in baseline["assignments"]}
@@ -446,6 +469,31 @@ def depth_exposure(roster_players: list[dict], roster_positions: list[str]) -> d
             "basis": (EXPOSURE_MEASURED if all(covered.get(position, []))
                       else EXPOSURE_NO_SURPLUS),
         }
+    return _stamp_roster_partial(out, unpriced_eligibilities)
+
+
+def _stamp_roster_partial(out: dict[str, dict], unpriced_eligibilities) -> dict[str, dict]:
+    """MANDATE 3.4: say so where a rostered player could not be priced.
+
+    `depth_exposure` solves against the players it was GIVEN, and draft_room drops a rostered man
+    it cannot price, so for any position such a man could have covered the answer describes a
+    roster one body emptier than the real one. The consequence is stated on the answer rather than
+    absorbed -- the same treatment `displacement_adjustments` already gives the same hole.
+
+    OVERRIDES EVERY STATE BUT NOT_APPLICABLE, and each for its own reason. Under MEASURED the
+    number is a ceiling (a hole with no cover costs more than one a spare would have filled). Under
+    NO_SURPLUS and VACANT the LABEL is false, not merely imprecise -- "you hold no backup here"
+    and "you hold no starter here" are claims about the roster, and the engine is in no position to
+    make either when the man exists and could not be priced. NOT_APPLICABLE is untouched because it
+    is a fact about the LEAGUE (no slot admits the position) that no roster can change.
+    """
+    covered = set()
+    for eligible in unpriced_eligibilities or ():
+        covered |= set(eligible)
+    for position in covered:
+        cell = out.get(position)
+        if cell is not None and cell.get("basis") != EXPOSURE_NOT_APPLICABLE:
+            cell["basis"] = EXPOSURE_ROSTER_PARTIAL
     return out
 
 

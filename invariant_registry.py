@@ -356,9 +356,18 @@ REGISTRY: tuple[Invariant, ...] = (
               "that basis and no other.",
         population="The basis vocabulary. A new token is a new pricing decision at the consumer, "
                    "whether or not anyone makes it deliberately -- which is how the roster-wide "
-                   "surplus flag came to stamp `measured` on positions with no backup at all.",
+                   "surplus flag came to stamp `measured` on positions with no backup at all. "
+                   "4 -> 5 (MANDATE 3.4): EXPOSURE_ROSTER_PARTIAL, and the pricing decision it "
+                   "forces was made deliberately and is NOT to spend the number. It can override "
+                   "`measured` (where worst_loss is a backup's job) or `no_surplus` (where it is a "
+                   "starter's whole value), and those are different scales, so under this token the "
+                   "quantity is no longer identifiable and the consumer's `== EXPOSURE_MEASURED` "
+                   "gate correctly withholds it. Measured on a complete 216-pick HEAVY_IDP draft: "
+                   "32 cells relabelled, 26 from `no_surplus` and 4 from `vacant` (both already "
+                   "withholding, both previously stating something false about the roster) and 2 "
+                   "from `measured`, which withdraws an over-credit of 2.16 and 1.44.",
         members=_exposure_vocabulary,
-        census=4,
+        census=5,
         pinned_by=(
             "test_depth_exposure.TheFourStatesOfKnowingTests"
             ".test_a_real_bench_reports_measured_AT_THE_POSITIONS_THAT_HAVE_ONE",

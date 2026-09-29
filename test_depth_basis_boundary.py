@@ -49,7 +49,10 @@ class TheVocabularyHasOneHomeTests(unittest.TestCase):
 
     def test_every_basis_the_optimizer_can_emit_has_words(self):
         emitted = {lo.EXPOSURE_MEASURED, lo.EXPOSURE_VACANT,
-                   lo.EXPOSURE_NO_SURPLUS, lo.EXPOSURE_NOT_APPLICABLE}
+                   lo.EXPOSURE_NO_SURPLUS, lo.EXPOSURE_NOT_APPLICABLE,
+                   # MANDATE 3.4: stamped when a rostered player could not be priced, so the solve
+                   # ran against a roster one body emptier than the real one.
+                   lo.EXPOSURE_ROSTER_PARTIAL}
         self.assertEqual(emitted, set(lo.EXPOSURE_BASIS_LABELS))
 
     def test_the_consumer_re_exports_rather_than_copies(self):

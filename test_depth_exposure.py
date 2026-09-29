@@ -158,15 +158,30 @@ class TheNoSurplusLabelTellsTheTruthTests(unittest.TestCase):
             with self.subTest(position=pos):
                 self.assertGreater(worst, 0.0)
 
-    def test_the_vocabulary_did_NOT_gain_a_member(self):
-        """The ruling was ONE token. Splitting the state would take its entire population and
-        leave no_surplus unreachable -- the unreachable-predicate shape basis_semantics.py names
-        as the 18th withdrawal."""
-        self.assertEqual(len(lo.EXPOSURE_BASIS_LABELS), 4)
+    def test_the_no_surplus_state_was_NOT_split_in_two(self):
+        """RENAMED, BECAUSE THE VOCABULARY DID GAIN A MEMBER AND THE GUARD IS NARROWER THAN ITS OLD
+        NAME. What I-06/J-06 ruled was that the NO-SURPLUS STATE stays one token: splitting it
+        would take its entire population and leave `no_surplus` unreachable -- the
+        unreachable-predicate shape basis_semantics.py names as the 18th withdrawal. A raw count of
+        the whole dict enforced that only by accident, and would block any addition for any reason.
+
+        MANDATE 3.4 added EXPOSURE_ROSTER_PARTIAL, which is not that split. It answers a different
+        question -- was this roster fully PRICED -- about a fact outside the solve, and it can
+        override any of the other states including measured. no_surplus keeps its whole population
+        wherever the roster was completely priced, which the sibling tests above exercise."""
         self.assertEqual(
             set(lo.EXPOSURE_BASIS_LABELS),
             {lo.EXPOSURE_MEASURED, lo.EXPOSURE_VACANT, lo.EXPOSURE_NO_SURPLUS,
-             lo.EXPOSURE_NOT_APPLICABLE})
+             lo.EXPOSURE_NOT_APPLICABLE, lo.EXPOSURE_ROSTER_PARTIAL})
+        # THE GUARD ITSELF, and not as a substring match on the words -- the labels are prose and
+        # get rewritten (this one was, at I-06/J-06). A split shows up as two tokens sharing one
+        # STATE, so what is pinned is that every token carries its own distinct wording and that
+        # no_surplus is still reachable, which the sibling tests above observe on a real roster.
+        words = list(lo.EXPOSURE_BASIS_LABELS.values())
+        self.assertEqual(len(set(words)), len(words),
+                         "two exposure tokens carry identical wording, which is what a split state "
+                         "looks like -- see this test's docstring")
+        self.assertIn(lo.EXPOSURE_NO_SURPLUS, lo.EXPOSURE_BASIS_LABELS)
 
 
 class TheFourStatesOfKnowingTests(unittest.TestCase):
