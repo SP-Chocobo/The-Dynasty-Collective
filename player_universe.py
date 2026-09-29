@@ -211,14 +211,72 @@ def player_eligible_positions(info: dict) -> set[str]:
     return {primary} if primary else set()
 
 
+#: MANDATE 2.3: THE LEAGUE'S MISS RULE AND THE VENDOR'S MISS STATS ARE DIFFERENT VOCABULARIES.
+#: `score_projection` is a dot product over the stat keys present, so a scoring category with no
+#: matching stat key silently contributes nothing -- and the captured league scores a GENERIC
+#: `fgmiss` (-1.0) while Sleeper projects only BUCKETED misses (`fgmiss_30_39`, `fgmiss_40_49`,
+#: `fgmiss_50p`), for which that league declares no weight at all. Neither side could reach the
+#: other, so no missed field goal of any length was ever scored.
+#:
+#: THE MANDATE'S OWN CLAIM FOR THIS ITEM IS FALSE ON THIS CAPTURE, and it is corrected rather than
+#: repeated. It says "There is no `fgm_50p` key, so 5.5-8.8 projected 50+ makes per kicker are never
+#: scored". Measured over all 559 kicker-week projections: `fgm_50p` is present in 527 of them (94%)
+#: and the league weights it at 5.0, so those makes were already scoring. `xpmiss` is present in
+#: 559 of 559 and is weighted too. The unscored quantity was the MISSES, not the long makes.
+_KICKING_MISS_INPUTS = ("fga", "fgm")
+
+
+def derive_kicking_categories(stats: dict) -> dict:
+    """`stats` plus any scoring category it implies EXACTLY, or `stats` unchanged.
+
+    TOTAL MISSED FIELD GOALS ARE EXACT: `fga - fgm`, by definition, no modelling and no assumption.
+    Measured on the capture at a mean of 5.40 per kicker-season, worth -5.40 points each at the
+    captured league's -1.0, and previously worth nothing at all.
+
+    WHY THE TOTAL AND NOT THE VENDOR'S OWN BUCKETED SUM, which would look like the more faithful
+    read: the buckets are INCOMPLETE. There is no `fgmiss_0_19` or `fgmiss_20_29`, so
+    `fgmiss_30_39 + fgmiss_40_49 + fgmiss_50p` understates the total -- it differs from `fga - fgm`
+    in 510 of the 527 rows that carry buckets, by up to 0.190. A league scoring a generic `fgmiss`
+    is scoring every miss, so the total is the quantity its rule names.
+
+    Derived only when BOTH inputs are present: `fga` without `fgm` says nothing about makes, and a 0
+    assumed for either would fabricate the difference (`#187`). A vendor-supplied `fgmiss` is never
+    overwritten -- a real figure outranks a derived one. And attempts BELOW makes is a projection
+    whose own numbers disagree, which is left absent rather than scored as a measured zero.
+
+    WHAT THIS CHANGES, measured rather than asserted: every kicker loses 4.22-6.44 points (mean
+    -5.40) and none gains, because a miss can only cost. 16 of 33 kickers change rank against each
+    other, while the top five hold their identity and order. K ordering is what `#30`'s streaming
+    floor is derived from, so that floor is worth re-deriving over this -- flagged in
+    REPAIR_MANDATE_V2 2.3 rather than claimed to be unaffected."""
+    if not isinstance(stats, dict) or not stats:
+        return stats
+    if any(stats.get(key) is None for key in _KICKING_MISS_INPUTS):
+        return stats
+    if "fgmiss" in stats:
+        return stats  # a real figure outranks a derived one; never overwrite the vendor
+    try:
+        misses = float(stats["fga"]) - float(stats["fgm"])
+    except (TypeError, ValueError):
+        return stats
+    if misses <= 0:
+        # Attempts at or below makes is a projection whose own numbers disagree, not a measurement
+        # of zero misses. Left absent rather than scored as 0.0 (`#187`).
+        return stats
+    return {**stats, "fgmiss": misses}
+
+
 def score_projection(stats: dict, scoring_settings: dict) -> float:
     # Not module-private -- draft_room.py reuses this to score Sleeper's native weekly
     # projections under a league's real scoring rules for positions Draft Sharks doesn't
     # project at all (currently IDP), same as this module already does for roster display.
     """Score native Sleeper stat projections without coupling this data model to HTTP."""
+    # MANDATE 2.3: derived categories first, so a rule the league declares can reach the stat line.
+    # A no-op for every position that projects no field goals.
+    scored = derive_kicking_categories(stats or {})
     total = sum(
         float(value) * float(scoring_settings.get(category, 0))
-        for category, value in (stats or {}).items()
+        for category, value in (scored or {}).items()
         if value
     )
     return round(total, 2)

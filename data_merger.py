@@ -266,6 +266,37 @@ def name_key(norm_name: str) -> tuple[str, str]:
     return (tokens[0][0], " ".join(tokens[1:]))
 
 
+def team_defense_key(norm_name: str) -> tuple[str, str]:
+    """A TEAM DEFENSE's (first-initial, nickname) key -- the vendor's OWN abbreviation convention.
+
+    MANDATE 2.3: 11 of 32 team defenses could not resolve to their transcribed row, and every one
+    of the 11 has a multi-word city. `name_key` keys on everything after the FIRST token, which is
+    right for a person and wrong here: Sleeper names a defense from `first_name` (the city) plus
+    `last_name` (the nickname), so "Green Bay Packers" keys to ("g", "bay packers") while the
+    vendor's own row, "G Packers", keys to ("g", "packers"). Measured: the 11 are exactly Green
+    Bay, Kansas City, Las Vegas, Los Angeles (x2), New England, New Orleans, New York (x2), San
+    Francisco and Tampa Bay. The 21 single-word cities matched by luck.
+
+    NO LIST OF 32 NICKNAMES, deliberately. A hardcoded team roster is a constant that goes stale
+    the next time a franchise renames itself -- this app has been bitten by a hand-set constant
+    often enough to have a register item about it. What this function encodes instead is the
+    ABBREVIATION RULE both sides already follow: the first letter of the first token, and the last
+    token. Applied to "green bay packers" and to "g packers" it produces the same key, which is the
+    whole requirement.
+
+    NOT REACHED FOR A PERSON, and that separation is the point. `name_key`'s docstring records a
+    real defect from keying a person on their last token alone -- "A.J. Brown" and "Amon-Ra St.
+    Brown" both key to ("a", "brown") and one was silently priced as the other. This is called only
+    where the caller has said the position IS a team defense, which `_TEAM_DEFENSE_POSITIONS`
+    already names, and a team defense is not a person at all (see the namespace comment there)."""
+    tokens = norm_name.split() if isinstance(norm_name, str) else []
+    if not tokens:
+        return ("", "")
+    if len(tokens) == 1:
+        return (tokens[0][0], tokens[0])
+    return (tokens[0][0], tokens[-1])
+
+
 def _normalize_columns(df: pd.DataFrame, default_kind: str = "rankings") -> pd.DataFrame:
     rename = {}
     for col in df.columns:
@@ -1338,6 +1369,44 @@ def load_all(
     # different shape than rankings rows -- a separate bucket, not folded into
     # rankings, so DataMerger.projections never mixes player rankings with rookie
     # pick slot/future pick rows that would never sensibly match a roster player.
+    # MANDATE 2.3: THE HINT IS DETECTED PER FILE AND MUST APPLY ACROSS THEM. Simultaneity is a
+    # per-file fact and is observable nowhere else, so the detection above stays exactly where it
+    # is. The BUG is that the stamp stayed there too: a name contested in one file and alone in
+    # another got "j love|QB" from the first and "j love|" from the second, which are two different
+    # dedup keys, so one player split into two canonical records. Mechanism confirmed in all 12
+    # format hints, wrong file wins in 5.
+    #
+    # So the fact is propagated rather than re-derived: a name any file has flagged as two people
+    # is two people in every file, and every row of that name carries its position as the
+    # discriminator. Re-deriving it over the concatenation instead would LOSE the fact -- a
+    # reclassification and a trade also produce two rows once files are combined, which is the
+    # exact conflation the per-file detection exists to avoid.
+    #
+    # Measured consequence: <=0.12 universal-value points and ZERO rank changes. Repaired because
+    # the mechanism is wrong, and recorded at the size it is rather than dressed up.
+    _contested_names: set = set()
+    for _entries in (rankings_entries, fa_entries, tvc_entries):
+        for _entry in _entries:
+            _frame = _entry[2]
+            if "_identity_hint" in _frame.columns and "norm_name" in _frame.columns:
+                flagged = _frame["_identity_hint"].fillna("").astype(str) != ""
+                _contested_names.update(_frame.loc[flagged, "norm_name"].astype(str))
+    if _contested_names:
+        def _propagate(frame):
+            if "position" not in frame.columns or "norm_name" not in frame.columns or not len(frame):
+                return frame
+            names = frame["norm_name"].astype(str)
+            positions = frame["position"].astype(str).str.strip().str.upper()
+            existing = (frame["_identity_hint"].fillna("").astype(str)
+                        if "_identity_hint" in frame.columns
+                        else pd.Series([""] * len(frame), index=frame.index))
+            return frame.assign(
+                _identity_hint=positions.where(names.isin(_contested_names), existing))
+
+        rankings_entries = [(d, n, _propagate(f), sc) for d, n, f, sc in rankings_entries]
+        fa_entries = [(d, n, _propagate(f)) for d, n, f in fa_entries]
+        tvc_entries = [(d, n, _propagate(f)) for d, n, f in tvc_entries]
+
     fa_entries.sort(key=lambda e: (e[0], e[1]))
     tvc_entries.sort(key=lambda e: (e[0], e[1]))
     rankings_entries.sort(key=lambda e: (e[0], e[1]))
@@ -2416,7 +2485,18 @@ class DataMerger:
                 return None, None, len(exact_matches), False
             return exact_candidate, "exact", len(exact_matches), len(exact_matches) == 1
 
-        key = name_key(norm_name)
+        # MANDATE 2.3: A TEAM DEFENSE IS KEYED BY THE VENDOR'S ABBREVIATION RULE, not the person
+        # one. See team_defense_key -- 11 of 32 defenses could not resolve, all of them
+        # multi-word cities, because the person rule keys on everything after the first token.
+        # Gated on the CALLER's stated position rather than on the shape of the name, so a person
+        # can never fall into it: the last-token key is a measured defect for people.
+        #
+        # The row side needs no change. Every vendor row is already the abbreviated form, so
+        # `name_key` and `team_defense_key` agree on it -- both give ("g", "packers") for
+        # "g packers". It is only the QUERY, which arrives spelled out from Sleeper, that needed
+        # the other rule.
+        defense_query = bool(position) and str(position).strip().upper() in _TEAM_DEFENSE_POSITIONS
+        key = team_defense_key(norm_name) if defense_query else name_key(norm_name)
         # Use the precomputed column when this table has one (every table _load() builds
         # does) -- falls back to computing it on the fly for an ad hoc table (e.g. a
         # one-off external-source subset) that never went through _load().

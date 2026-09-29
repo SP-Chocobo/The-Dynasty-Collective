@@ -941,7 +941,7 @@ while pricing QBs under the 1QB regime (Josh Allen 91.03 against 170.02).
 What is not a design question: a board built on a config the gate would refuse should not be silently
 priced.
 
-## 2.3 Identity and reach into the stat line **[VERIFIED: the 11 defenses only]**
+## 2.3 Identity and reach into the stat line **[REPAIRED — and the kicking claim was wrong; the real gap was different]**
 
 - **11 of 32 team defenses cannot resolve** to their transcribed row — `name_key` takes the first
   initial plus everything after the first token, so "Green Bay Packers" never matches "G Packers".
@@ -956,6 +956,47 @@ priced.
   confirmed in all 12 format hints, wrong file wins in 5 — **consequence measured at ≤0.12
   universal-value points and zero rank change.** Repair the mechanism cheaply; do not justify it with
   a cost it does not have.
+
+### REPAIRED — three parts, and the third is a correction to this item's own text
+
+**The 11 defenses: 11 → 0.** `name_key` keys on everything after the first token, which is right for
+a person and wrong for a franchise — Sleeper names a defense city + nickname, so "Green Bay Packers"
+keys to `("g", "bay packers")` against the vendor's own "G Packers" → `("g", "packers")`. The 11 are
+exactly the multi-word cities; the 21 single-word ones matched by luck. `team_defense_key` encodes the
+ABBREVIATION RULE both sides already follow rather than a list of 32 nicknames, which would go stale
+on the next franchise rename. Gated on the caller's stated position, never on the shape of the name,
+because last-token keying is a MEASURED defect for people ("A.J. Brown" priced as "Amon-Ra St.
+Brown"). A/B in one process: 11 unresolved before, 0 after.
+
+**The identity hint now applies across files.** Detection stays per file — simultaneity is observable
+nowhere else — and only the STAMP moved: a name any file flags as two people is two people in every
+file. Measured on the committed baseline: 775 → 774 rows, 20 → 22 hinted, and the one row that
+collapsed is named — **`("k williams", "RB")`**, which had held two canonical records for one player.
+
+### THE KICKING CLAIM IS FALSE ON THIS CAPTURE, and the real gap is a vocabulary mismatch
+
+This item says *"There is no `fgm_50p` key, so 5.5–8.8 projected 50+ makes per kicker are never
+scored"*. Measured over **all 559 kicker-week projections**: `fgm_50p` is present in **527 (94%)** and
+the league weights it at 5.0, so those makes were already scoring. `xpmiss` is present in 559 of 559
+and is weighted too. **The long makes were never the problem.**
+
+**The MISSES were.** The league scores a GENERIC `fgmiss` (−1.0); Sleeper projects only BUCKETED
+misses (`fgmiss_30_39`, `fgmiss_40_49`, `fgmiss_50p`), for which that league declares no weight.
+Neither vocabulary could reach the other, so no missed field goal of any length was ever scored.
+
+**Repaired with the total, not the vendor's bucketed sum**, because the buckets are incomplete —
+there is no `fgmiss_0_19` or `fgmiss_20_29`, so the sum understates, differing from `fga − fgm` in
+**510 of the 527** bucketed rows by up to 0.190. A league scoring a generic `fgmiss` is scoring every
+miss, so the total is the quantity its rule names.
+
+**What it moves:** every kicker loses **4.22–6.44** points (mean **−5.40**) and none gains, because a
+miss can only cost. **16 of 33 kickers change rank**; the top five hold their identity and order.
+K ordering is what `#30`'s streaming floor is derived from, so **that floor is worth re-deriving over
+this** — flagged, not claimed to be unaffected.
+
+**And I reached the mandate's own wrong answer first**, by sampling one week's first kicker and
+generalising to the pool. The measurement discipline exists for exactly that, and the test module now
+pins the corrected coverage figures so nobody repairs the non-defect later.
 
 ## 2.4 Sources that vanish quietly **[REPAIRED]**
 
