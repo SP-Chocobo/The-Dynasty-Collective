@@ -211,12 +211,27 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         # 264 before #52 phase 1.1 and 2 MORE after it, which is a net of two opposite effects
         # and worth stating because the number alone hides both. Four offensive players came
         # back (Jordan Love among them, a startable superflex QB the loader had been deleting
-        # outright). Two did not: the pool carries two K Williams rows at the SAME position on
-        # the SAME club, which no name, position or team test can split, so the contested-
-        # identity guard withholds the one price that belongs to exactly one of them -- and
-        # that refusal is the engine working, not a shortfall. The ratio claim below is what
-        # this test is actually about and it is untouched either way.
-        self.assertEqual((offense_supply, offense_demand), (266, 96))
+        # outright). Two did not, and the reason recorded here was WRONG -- see below.
+        #
+        # 266 -> 267 (MANDATE 2.3), AND THE OLD EXPLANATION IS WITHDRAWN. This comment used to
+        # say the pool carried "two K Williams rows at the SAME position on the SAME club, which
+        # no name, position or team test can split", so the contested-identity guard withheld the
+        # one price belonging to exactly one of them -- "that refusal is the engine working, not a
+        # shortfall". Measured at dc2de79, there were THREE rows named K Williams:
+        #
+        #     RB  LAR  fantasy_football_dynasty_rankings.csv   hint ""
+        #     RB  LAR  te_premium_dynasty_rankings.csv         hint "RB"
+        #     WR  NE   te_premium_dynasty_rankings.csv         hint "WR"
+        #
+        # The first two are ONE PLAYER from two files. They failed to collapse only because
+        # `_identity_hint` was stamped per file, so the same man carried "" in one and "RB" in the
+        # other and the dedup key saw two people. The guard was withholding a price from a player
+        # who deserved one, and this comment had rationalised that as correct behaviour.
+        #
+        # 2.3 propagates the hint across files; the duplicate collapses, the surviving RB/LAR row
+        # prices, and supply is 267. The WR/NE row is a different man and still stands apart. The
+        # ratio claim below is what this test is actually about and is untouched either way.
+        self.assertEqual((offense_supply, offense_demand), (267, 96))
         offense_ratio = offense_supply / offense_demand
         idp_ratio = sum(self.supply.values()) / self.total_demand
         self.assertGreater(offense_ratio, 2.0)

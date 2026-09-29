@@ -248,10 +248,23 @@ class HorizonIsGatedOnRealDataTests(_BoardFixture):
         # proj_3yr is not carried on the emitted board record, so the presence of a multi-year
         # outlook has to be read from the canonical table the row was scored from.
         proj = self.merger.projections
-        horizon_by_name = dict(zip(proj["name"], proj["proj_3yr"]))
+        # KEYED ON (NAME, POSITION), NOT NAME. A name is not an identity in this table and the
+        # codebase has paid for that lesson twice already ("A.J. Brown" priced as "Amon-Ra St.
+        # Brown"; "J Love" the QB deleted for "J Love" the DB). `dict(zip(name, proj_3yr))` keeps
+        # whichever row happens to come LAST, so for a shared name it answers about one person and
+        # this loop then checks the other person's board row.
+        #
+        # Found when mandate 2.3's identity repair made "K Williams" resolve into two rows -- a
+        # Rams RB with proj_3yr 458.0 and a Patriots WR with none, two different men in one vendor
+        # file. The dict reported "no outlook" from the WR and the assertion read -5.68 off the RB.
+        # The engine was right both times; the test's key was ambiguous.
+        horizon_by_identity = {
+            (str(row.name_), str(row.position)): row.proj_3yr
+            for row in proj.rename(columns={"name": "name_"}).itertuples()
+        }
         checked = 0
         for row in self.board:
-            outlook = horizon_by_name.get(row["name"])
+            outlook = horizon_by_identity.get((str(row["name"]), str(row["position"])))
             if outlook is None or _is_absent(outlook):
                 self.assertEqual(row.get("time_horizon_adj", 0.0), 0.0, row["name"])
                 checked += 1

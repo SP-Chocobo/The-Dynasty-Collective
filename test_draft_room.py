@@ -1310,14 +1310,48 @@ class InvariantTests(unittest.TestCase):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        top8 = board[:8]
-        big_gap = top8[0]["bpa"] - top8[3]["bpa"]  # #1 vs #4: real tier gap expected
-        small_gap = top8[3]["bpa"] - top8[7]["bpa"]  # #4 vs #8: shallower part of the pool
-        self.assertGreater(top8[0]["bpa"] - top8[-1]["bpa"], 10.0, "fixture's spread too flat to exercise this")
-        # Not a strict inequality in every possible fixture shape, but percentile-ranking
-        # would make these two gaps nearly identical (rank-based spacing is ~uniform) --
-        # linear VOR scaling should not.
-        self.assertNotAlmostEqual(big_gap, small_gap, delta=0.5)
+        # THE OLD PROXY IS WITHDRAWN, AND IT IS WORTH SAYING WHY. This test used to compare two
+        # four-player windows -- (#1 - #4) against (#4 - #8) -- and require them to differ by
+        # more than 0.5, on the reasoning that rank-based spacing is ~uniform and linear VOR
+        # scaling is not. It went red when both windows came back 33.0 (188.0 -> 155.0 -> 122.0):
+        # a coincidence, in a pool where bpa was a perfectly linear points scale the whole time.
+        # Whether two arbitrary windows happen to be equal says nothing about linear-vs-rank, so
+        # the proxy could fail on a healthy engine and pass on a percentile-ranked one. It is
+        # replaced below by the property itself.
+        #
+        # `bpa` is now `_vor` verbatim (`_scale_vor_to_bpa` returns `vor.astype(float)`), and
+        # every player at one position is measured against ONE replacement level. So within a
+        # position the level cancels and the difference between two players' bpa must equal the
+        # difference between their projected points EXACTLY. A percentile rank cannot satisfy
+        # that for a single pair, let alone all of them; a rescaled-to-100 bpa could not either.
+        # Measured here: 8161 same-position pairs, worst deviation 0.0.
+        by_position = {}
+        for row in board:
+            if (row.get("bpa") is not None and row.get("projected_points") is not None
+                    and row.get("bpa_source") == "points_vor_draftsharks"):
+                by_position.setdefault(row["position"], []).append(
+                    (row["name"], float(row["bpa"]), float(row["projected_points"])))
+        pairs = 0
+        for position, rows in by_position.items():
+            for i in range(len(rows)):
+                for j in range(i + 1, len(rows)):
+                    pairs += 1
+                    self.assertAlmostEqual(
+                        rows[i][1] - rows[j][1], rows[i][2] - rows[j][2], delta=0.01,
+                        msg=(f"{position}: {rows[i][0]} vs {rows[j][0]} -- bpa gap "
+                             f"{rows[i][1] - rows[j][1]} does not match the real points gap "
+                             f"{rows[i][2] - rows[j][2]}, so bpa is no longer the real VOR"))
+        self.assertGreater(pairs, 1000, "vacuous: too few same-position priced pairs to check")
+
+        # And the other half of the same claim, stated positively: a rank scale spaces players
+        # ~uniformly, so its consecutive gaps would all be about equal. Real VOR gaps are not.
+        gaps = [a[1] - b[1] for rows in by_position.values() for a, b in zip(rows, rows[1:])]
+        self.assertGreater(len(gaps), 50, "vacuous: no consecutive pairs to measure spacing over")
+        self.assertGreater(max(gaps) - min(gaps), 10.0,
+                            "consecutive bpa gaps are near-uniform, which is what a percentile "
+                            "rank produces and what real points-above-replacement does not")
+        self.assertGreater(board[0]["bpa"] - board[7]["bpa"], 10.0,
+                            "fixture's spread too flat to exercise this")
 
     def test_replacement_level_reflects_remaining_demand_not_static_league_demand(self):
         # An independent audit caught this directly: with a STATIC target rank (num_teams x
