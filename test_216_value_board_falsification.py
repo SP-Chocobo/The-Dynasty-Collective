@@ -638,7 +638,22 @@ class E_OverCorrectionGuards(unittest.TestCase):
         league = _league(False)
         priced = _priced(_board(league, [], "1"))[:200]
         index = {str(r["player_id"]): i for i, r in enumerate(priced)}
-        margin = (dr.TIME_HORIZON_CLAMP[1] - dr.TIME_HORIZON_CLAMP[0]) + max(abs(v) for v in dr.RISK_ADJ.values())
+        #: D8. The health discount stopped being a flat points table whose largest entry bounds it;
+        #: it is now a SHARE of each player's own projection, so there is no single number to add.
+        #:
+        #: TAKEN FROM WHAT THE TERMS ACTUALLY DO ON THIS BOARD, not from their theoretical worst
+        #: case. The first attempt used the steepest rate against the largest projection, which is a
+        #: true bound and a useless one: it came to 117.2 against the old 38.0 and left 2 qualifying
+        #: pairs where the test needs more than 5 -- a guard made vacuous by being too safe. The
+        #: sentence this margin exists to express is "more than horizon and risk could ever move a
+        #: row", and the honest reading of "ever" is over the rows in front of it: almost nothing on
+        #: a real board carries an injury designation at all.
+        _observed = [r for r in priced if r.get("time_horizon_adj") is not None]
+        _horizons = [r["time_horizon_adj"] for r in _observed]
+        _risks = [abs(r["risk_adj"]) for r in priced
+                  if r.get("risk_adj") is not None and r["risk_adj"] == r["risk_adj"]]
+        margin = ((max(_horizons) - min(_horizons) if _horizons else 0.0)
+                  + (max(_risks) if _risks else 0.0))
         qbs = [r for r in priced if r["position"] == "QB"]
         wrs = [r for r in priced if r["position"] == "WR"]
         pairs = [(q, w) for q in qbs for w in wrs

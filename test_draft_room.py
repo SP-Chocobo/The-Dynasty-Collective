@@ -24,6 +24,7 @@ import draft_room as dr
 import draft_strategy as ds
 import lineup_optimizer as lo
 import pick_synthesis as ps
+import player_universe as pu
 
 
 def _priced(board):
@@ -1479,13 +1480,21 @@ class InvariantTests(unittest.TestCase):
         # RISK_ADJ documented as the intended penalty. Only "IR" worked, since it's already an
         # abbreviation in Sleeper's own real vocabulary too -- exactly the one status the
         # pre-existing injury test (immediately above) happened to cover, so nothing caught this.
-        self.assertEqual(dr.RISK_ADJ.get("Out"), -10.0)
-        self.assertEqual(dr.RISK_ADJ.get("Doubtful"), -5.0)
+        # D8 renamed the table and changed its unit from points to a share of the player's own
+        # projection, so the magnitudes below are gone. WHAT THIS TEST IS ACTUALLY ABOUT SURVIVES
+        # INTACT: the keys are Sleeper's real full words, not abbreviations. That is the bug it was
+        # written for -- "Out" matching nothing -- and it is asserted on the keys, which is where
+        # the bug lived, rather than on numbers that were never its subject.
+        self.assertIsNotNone(dr.HEALTH_DISCOUNT_RATE.get("Out"))
+        self.assertIsNotNone(dr.HEALTH_DISCOUNT_RATE.get("Doubtful"))
+        self.assertIsNotNone(dr.HEALTH_DISCOUNT_RATE.get("IR"))
+        for abbreviation in ("O", "D", "Q", "PU"):
+            self.assertIsNone(dr.HEALTH_DISCOUNT_RATE.get(abbreviation),
+                              f"{abbreviation!r} is an abbreviation Sleeper never sends")
         # "Questionable" was here at -1.5 and is GONE by owner ruling (#191) -- inverted, not
         # deleted, so the vocabulary repair this test records stays pinned for the statuses
         # that survived it.
-        self.assertIsNone(dr.RISK_ADJ.get("Questionable"))
-        self.assertEqual(dr.RISK_ADJ.get("IR"), -18.0)
+        self.assertIsNone(dr.HEALTH_DISCOUNT_RATE.get("Questionable"))
 
         healthy = dict(self.players_db)
         pid = next(iter(healthy))
@@ -1513,10 +1522,18 @@ class InvariantTests(unittest.TestCase):
             # time_horizon_adj -- not hardcoded to any one player's number.
             th = healthy_row["time_horizon_adj"]
             expected_scale = 1.0 if th <= 0 else 1.0 - (1.0 - dr.DYNASTY_RISK_ADJ_MIN_SCALE) * (th / dr.TIME_HORIZON_CLAMP[1])
+            #: D8: the discount is a share of HIS OWN projection, so the expected loss is built
+            #: from the healthy row instead of from the literal 10.0 the flat table used to hold.
+            expected_loss = abs(dr.HEALTH_DISCOUNT_RATE["Out"]
+                                * healthy_row["projected_points"]) * expected_scale
+            #: delta, not places: `universal_value` is rounded to 2 decimals, so a DIFFERENCE of
+            #: two of them carries up to 0.01 of rounding error. The old flat magnitudes were whole
+            #: numbers and hid that; a share of a projection does not divide evenly, so the
+            #: tolerance has to be stated. 0.02 is two rounding steps and nothing looser.
             self.assertAlmostEqual(
-                uv_healthy - uv_out, 10.0 * expected_scale,
-                msg="a player marked 'Out' should lose the -10.0 RISK_ADJ discount, scaled by "
-                "experiment D's trajectory-aware factor in this dynasty-league fixture",
+                uv_healthy - uv_out, expected_loss, delta=0.02,
+                msg="a player marked 'Out' should lose his own Out-share of projected points, "
+                "scaled by experiment D's trajectory-aware factor in this dynasty-league fixture",
             )
 
     def test_trajectory_aware_risk_adj_fixes_the_thin_bpa_sign_flip_this_test_used_to_flag(self):
@@ -1556,7 +1573,13 @@ class InvariantTests(unittest.TestCase):
         # d_scale IS DYNASTY_RISK_ADJ_MIN_SCALE (the floor), and the flag must move his
         # universal_value by exactly that scaled penalty and by nothing else -- risk_adj is the
         # only term an injury status is allowed to touch.
-        self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_MIN_SCALE)
+        #: D8: the penalty is a share of HIS OWN projection, so the expected value is built from
+        #: the row rather than looked up. The claim is unchanged -- at the positive clamp his
+        #: d_scale is the floor, and risk_adj must be exactly the floored penalty.
+        self.assertAlmostEqual(
+            row_ir["risk_adj"],
+            dr.HEALTH_DISCOUNT_RATE["IR"] * row_ir["projected_points"]
+            * dr.DYNASTY_RISK_ADJ_MIN_SCALE, places=6)
         self.assertAlmostEqual(row_ir["universal_value"],
                                young_rising["universal_value"] + row_ir["risk_adj"], places=2)
 
@@ -1570,7 +1593,10 @@ class InvariantTests(unittest.TestCase):
         # an injury flag, and asserting "universal_value >= 0" there would be asserting his
         # position's scarcity, not experiment D. If the real pool contains no such player this
         # run, that is a reportable fixture limitation, not a pass.
-        thin_bound = abs(dr.RISK_ADJ["IR"]) * dr.DYNASTY_RISK_ADJ_MIN_SCALE
+        #: D8: "thin bpa" is bounded by what the IR discount can actually take off THIS player,
+        #: which is a share of his own projection rather than a table entry.
+        thin_bound = abs(dr.HEALTH_DISCOUNT_RATE["IR"] * young_rising["projected_points"]) \
+            * dr.DYNASTY_RISK_ADJ_MIN_SCALE
         if abs(young_rising["bpa"]) > thin_bound or young_rising["universal_value"] < 0.0:
             self.skipTest(
                 "no max-positive-trajectory player in the current real pool is also thin-bpa "
@@ -1699,12 +1725,23 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
     def setUpClass(cls):
         cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR"))
 
-    def _risk_adj_for_status(self, league: dict, status: str, pid: str) -> float:
+    def _row_for_status(self, league: dict, status, pid: str) -> dict:
         pdb = dict(self.players_db)
         pdb[pid] = dict(pdb[pid], injury_status=status)
         board = dr.compute_draft_board(self.merger, pdb, [], my_roster_id="99", league=league, mode="balanced")
-        row = next(r for r in board if r["player_id"] == pid)
-        return row["risk_adj"]
+        return next(r for r in board if r["player_id"] == pid)
+
+    def _risk_adj_for_status(self, league: dict, status, pid: str) -> float:
+        return self._row_for_status(league, status, pid)["risk_adj"]
+
+    def _unscaled_penalty(self, league: dict, status: str, pid: str) -> float:
+        """D8: the discount is a share of THIS player's projection, so the number experiment D
+        scales cannot be looked up in a table any more -- it has to be built from the same row the
+        board priced. That is the whole of what changed in these four tests; the claims are the
+        same. Reading the projection off the row rather than recomputing it also keeps the
+        comparison honest if the pricing path ever adjusts points before the discount applies."""
+        row = self._row_for_status(league, status, pid)
+        return dr.HEALTH_DISCOUNT_RATE[status] * row["projected_points"]
 
     def _expected_d_scale(self, time_horizon_adj: float) -> float:
         if time_horizon_adj <= 0:
@@ -1724,18 +1761,29 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         to a three-entry literal and so failed when MANDATE 4 added "PUP", whose magnitude is IR's
         because GAMES_MISSED_FLOOR gives them the same four-game floor. That is a membership change
         with no new number in it -- exactly the thing this test is NOT about -- while a dict equality
-        cannot tell a resize from an addition."""
-        for designation, penalty in (("IR", -18.0), ("Out", -10.0), ("Doubtful", -5.0)):
-            self.assertEqual(dr.RISK_ADJ[designation], penalty,
-                             f"experiment D changed {designation}'s SIZE, which it must not")
+        cannot tell a resize from an addition.
+
+        AND THE MAGNITUDES THEMSELVES MOVED AT D8, on an owner ruling, which is the one thing this
+        test was written to forbid -- so it can no longer be expressed as points. What experiment D
+        must not do is change the SIZE of the discount; what D8 did was change its UNIT, from flat
+        points to a share of the player's own projection. Those are different claims, and the way to
+        keep this test's claim while admitting D8's is to pin the derivation: each rate is the games
+        that designation is priced at, over the season. Experiment D touches neither side of that.
+        """
+        for designation, games in pu.GAMES_MISSED_PRICED.items():
+            self.assertAlmostEqual(
+                dr.HEALTH_DISCOUNT_RATE[designation], -(games / pu.SEASON_GAMES), places=9,
+                msg=f"experiment D changed {designation}'s SIZE, which it must not")
 
     def test_redraft_league_is_byte_identical_to_before_this_change(self):
         # A non-dynasty league must see EXACTLY the old flat discount -- this experiment is
         # explicitly dynasty-scoped, per the user's own instruction.
         pid = next(iter(self.players_db))
-        for status, expected in dr.RISK_ADJ.items():
+        for status in dr.HEALTH_DISCOUNT_RATE:
             with self.subTest(status=status):
-                self.assertEqual(self._risk_adj_for_status(self.REDRAFT_LEAGUE, status, pid), expected)
+                self.assertAlmostEqual(
+                    self._risk_adj_for_status(self.REDRAFT_LEAGUE, status, pid),
+                    self._unscaled_penalty(self.REDRAFT_LEAGUE, status, pid), places=6)
 
     def test_dynasty_league_gives_full_penalty_to_a_flat_or_declining_trajectory_player(self):
         board = dr.compute_draft_board(
@@ -1744,11 +1792,13 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         declining = next((r for r in board if r["time_horizon_adj"] <= 0), None)
         if declining is None:
             self.skipTest("fixture has no real flat/declining-trajectory player to exercise this")
-        for status, base in dr.RISK_ADJ.items():
+        for status in dr.HEALTH_DISCOUNT_RATE:
             with self.subTest(status=status):
                 self.assertAlmostEqual(
-                    self._risk_adj_for_status(self.DYNASTY_LEAGUE, status, declining["player_id"]), base,
-                    msg="a flat/declining trajectory should keep the FULL flat penalty under D",
+                    self._risk_adj_for_status(self.DYNASTY_LEAGUE, status, declining["player_id"]),
+                    self._unscaled_penalty(self.DYNASTY_LEAGUE, status, declining["player_id"]),
+                    places=6,
+                    msg="a flat/declining trajectory should keep the FULL penalty under D",
                 )
 
     def test_dynasty_league_scales_a_positive_trajectory_player_by_the_d_formula(self):
@@ -1759,11 +1809,12 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         if rising["time_horizon_adj"] <= 0:
             self.skipTest("fixture has no real positive-trajectory player to exercise this")
         expected_scale = self._expected_d_scale(rising["time_horizon_adj"])
-        for status, base in dr.RISK_ADJ.items():
+        for status in dr.HEALTH_DISCOUNT_RATE:
             with self.subTest(status=status):
                 self.assertAlmostEqual(
                     self._risk_adj_for_status(self.DYNASTY_LEAGUE, status, rising["player_id"]),
-                    base * expected_scale,
+                    self._unscaled_penalty(self.DYNASTY_LEAGUE, status, rising["player_id"])
+                    * expected_scale, places=6,
                 )
 
     def test_healthy_players_are_unaffected_in_either_league_type(self):

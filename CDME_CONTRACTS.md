@@ -3792,8 +3792,26 @@ those three terms is locally correct, and their sum stops meaning what it says.
 
 ## The horizon is priced on a ruler that shrinks under it
 
+> **HALF RESOLVED AT D8 (2026-09-29), and the half that is resolved is the one this section is
+> sharpest about.** `RISK_ADJ` no longer exists. It held flat POINTS sized against the old bounded
+> scale, which made the health discount regressive in the player's own value once `bpa` became real
+> points — the same designation charging 10.4% of a 173-point player and 4.5% of a 400-point one.
+> It is replaced by `HEALTH_DISCOUNT_RATE`, a share of the player's own projection DERIVED from
+> `player_universe.GAMES_MISSED_PRICED` (`games_missed / SEASON_GAMES`), so no magnitude is chosen
+> except the one `Doubtful` assumption that table names as such. Renamed rather than repurposed,
+> because a name saying `RISK_ADJ` while holding a fraction is this section's own thesis repeated.
+>
+> The check that the derivation is the right one: `availability_factor`'s haircut path and this
+> penalty path now give the SAME `universal_value` for one fact, to 6 decimal places. Before, the
+> two readings differed by −22.71 points for a 173-point IR player and −76.12 for a 400-point one.
+>
+> **`NEED_BONUS_MAX`, `DEPTH_EXPOSURE_MAX` and `TIME_HORIZON_CLAMP` are NOT resolved** and stay on
+> this section's account. They inherited a SCALE; `RISK_ADJ` inherited a UNIT, which is why D8
+> separated them and re-derived only the second. The caps' open question — which spread to size
+> them against — is recorded as D8(a) in `OWNER_DECISIONS_PENDING.md`.
+
 `TIME_HORIZON_SLOPE = 0.20` on a percentile difference, clamped to `±10.0` **bpa points**;
-`RISK_ADJ` is `−1.5 … −18.0` on the same scale. Both are documented as *"small, bounded, additive
+`RISK_ADJ` was `−1.5 … −18.0` on the same scale. Both are documented as *"small, bounded, additive
 nudges … deliberately incapable of overriding a real VOR gap on their own."* Measured over the
 priced rows of the audit board:
 

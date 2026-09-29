@@ -79,7 +79,11 @@ class ARecordedExperimentPinsItsOwnMagnitudesTests(unittest.TestCase):
             if not isinstance(node, ast.Subscript):
                 continue
             value = node.value
-            if isinstance(value, ast.Attribute) and value.attr == "RISK_ADJ":
+            #: D8 renamed the production table (the unit changed from points to a share of the
+            #: projection), so the rule names BOTH spellings: a script still reaching for the old
+            #: one would now AttributeError, and one reaching for the new one is the live-read this
+            #: rule exists to forbid.
+            if isinstance(value, ast.Attribute) and value.attr in ("RISK_ADJ", "HEALTH_DISCOUNT_RATE"):
                 found.append(ast.dump(node)[:60])
         return found
 
@@ -116,7 +120,7 @@ class ARecordedExperimentPinsItsOwnMagnitudesTests(unittest.TestCase):
         # untested decoration rather than a live guarantee.
         import draft_room as dr
         import run_risk_adj_experiment_D_comparison as d
-        self.assertNotEqual(dict(dr.RISK_ADJ), d.RISK_ADJ_AS_MEASURED)
+        self.assertNotEqual(dict(dr.HEALTH_DISCOUNT_RATE), d.RISK_ADJ_AS_MEASURED)
 
 
 # MUTATIONS -- each applied, this file re-run, the named test observed to FAIL, then reverted:

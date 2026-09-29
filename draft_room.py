@@ -461,9 +461,48 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 #: Two designations the engine already treats as identically severe cannot carry different
 #: penalties for the same player, and the invariant that says so is pinned by a test rather than
 #: left to this comment -- see test_one_injury_vocabulary_not_two.py.
-RISK_ADJ = {"IR": -18.0, "PUP": -18.0, "Out": -10.0, "Doubtful": -5.0}
+#: D8 -- RE-DERIVED, AND RENAMED BECAUSE THE UNIT CHANGED.
+#:
+#: RISK_ADJ WAS HERE, holding {IR: -18.0, PUP: -18.0, Out: -10.0, Doubtful: -5.0} -- flat POINTS.
+#: Those magnitudes were sized against a `bpa` that was `clip(vor / max(vor) * 100, 0, 100)`, where
+#: -18 meant 18% of a bounded scale. `_scale_vor_to_bpa` is now the identity, so -18 means 18
+#: PROJECTED POINTS, and the same designation charges unequally:
+#:
+#:     a 173-point player   -18 is 10.4% of him
+#:     a 400-point player   -18 is  4.5% of him
+#:
+#: The health discount became REGRESSIVE IN THE PLAYER'S OWN VALUE while nothing in the code said
+#: so -- a constant whose meaning changed underneath it rather than whose size was merely inherited.
+#: Measured on the real capture, the flat table charged two IR players with 0.0 projected points a
+#: full -18.0 each: an infinite proportional penalty on a man projected to score nothing.
+#:
+#: THE DERIVATION WAS ALREADY IN THE TREE. `availability_factor` converts a rule floor into a
+#: discount -- `playable / projected_games` -- and `health_penalty` exists only for the rows where
+#: that cannot be computed because the feed reports no games-played. It was substituting an invented
+#: flat number where it could compute the same proportion. So the rate is
+#: `games_missed / SEASON_GAMES`, from the one priced-games vocabulary, and NO NEW NUMBER EXISTS
+#: (`#56`) beyond the single `Doubtful` assumption that table names as chosen.
+#:
+#: AND THE TWO PATHS NOW AGREE EXACTLY, which is the check that says the derivation is the right
+#: one rather than merely a tidier one. For an IR player with a full slate reported:
+#:
+#:     gp known    points cut to 13/17 before bpa, penalty 0.0 (#191 stand-down)
+#:                 universal_value = 0.765*points - replacement + time_horizon_adj
+#:     gp absent   points uncut, penalty = -(4/17)*points
+#:                 universal_value = points - replacement + th - 0.235*points  ... the SAME
+#:
+#: Before this, those two readings of one fact differed by (0.235*points - 18) -- 22.6 points of
+#: disagreement for a 173-point player. `#126` one concept, one answer.
+#:
+#: RENAMED rather than repurposed: a name that says RISK_ADJ while holding a FRACTION is precisely
+#: the trap this item is about. Deleted, not aliased, on Tier 4's precedent.
+HEALTH_DISCOUNT_RATE = {
+    designation: -(games / pu.SEASON_GAMES)
+    for designation, games in pu.GAMES_MISSED_PRICED.items()
+}
 
-def health_penalty(status: Optional[str], availability_basis: Optional[str]) -> float:
+def health_penalty(status: Optional[str], availability_basis: Optional[str],
+                   projected_points: Optional[float]) -> float:
     """The health term of universal_value -- and ZERO where the input already carries it (#191).
 
     Extracted so the decision is testable directly rather than only through a full board.
@@ -476,12 +515,31 @@ def health_penalty(status: Optional[str], availability_basis: Optional[str]) -> 
 
     IT STAYS EVERYWHERE ELSE, which is why this is a split and not a blanket removal: a row
     priced off the vendor's projection has no games-played figure to cut against, so this is
-    still the only place health enters for it. NOT a claim that the surviving magnitudes are
-    right -- see #202 and the note above RISK_ADJ.
+    still the only place health enters for it.
+
+    D8: PROPORTIONAL TO THE PLAYER'S OWN PROJECTION, not a flat points figure -- see
+    HEALTH_DISCOUNT_RATE above for the derivation and for why the flat form had become regressive.
+    `projected_points` is required rather than defaulted: a default would let a caller that has no
+    projection silently receive 0.0, which is the shape of the PUP hole this vocabulary was
+    consolidated to close.
+
+    SCALED AGAINST THE PROJECTION AND NOT AGAINST `bpa`, deliberately. `bpa` is value above
+    replacement and goes NEGATIVE for most of the pool, so a proportional penalty on it would turn
+    into a BONUS for every below-replacement player -- rewarding an injury. The projection is also
+    the quantity `availability_factor` scales, which is what makes the two paths agree.
     """
     if availability_basis == pu.RULE_FLOOR:
         return 0.0
-    return RISK_ADJ.get(status, 0.0)
+    rate = HEALTH_DISCOUNT_RATE.get(status)
+    if rate is None:
+        return 0.0
+    if projected_points is None or projected_points != projected_points:
+        #: No projection, so no proportion of it exists to charge. NaN and not 0.0 (`#187`): 0.0
+        #: would read as "measured, and this designation costs nothing", the strongest claim off
+        #: the weakest evidence. The one production caller already returns NaN for an unpriced row,
+        #: so this is the same verdict reached one layer in rather than a new state.
+        return float("nan")
+    return rate * projected_points
 
 
 # Dynasty risk_adj calibration, history preserved for attribution (see
@@ -4633,7 +4691,8 @@ def compute_draft_board(
         if pd.isna(bpa):
             risk_adj = float("nan")
         else:
-            risk_adj = health_penalty(row.get("injury_status"), row.get("availability_basis"))
+            risk_adj = health_penalty(row.get("injury_status"), row.get("availability_basis"),
+                                      row.get("_points"))
         if is_dynasty and not pd.isna(risk_adj):
             # Trajectory-aware scaling (experiment "D" -- see this constant's own docstring
             # above for the full evidence trail): a flat-or-declining trajectory

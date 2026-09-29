@@ -70,7 +70,7 @@ class TheRulingIsStatedOnceTests(unittest.TestCase):
 class ItIsNotPricedTests(unittest.TestCase):
 
     def test_risk_adj_no_longer_carries_it(self):
-        self.assertNotIn("Questionable", dr.RISK_ADJ)
+        self.assertNotIn("Questionable", dr.HEALTH_DISCOUNT_RATE)
 
     def test_the_designations_that_survived_are_untouched(self):
         # Non-vacuity: the ruling removed ONE key, it did not empty the table or rescale it.
@@ -81,9 +81,16 @@ class ItIsNotPricedTests(unittest.TestCase):
         # the rescale this test exists to catch. An equality on a growing table owns every future
         # addition to it, which is the same shape as the schema-version pin #a979c26 converted to a
         # floor.
-        for designation, penalty in (("IR", -18.0), ("Out", -10.0), ("Doubtful", -5.0)):
-            self.assertEqual(dr.RISK_ADJ[designation], penalty,
-                             f"{designation}'s magnitude moved, which the #191 ruling did not do")
+        #: RESTATED AT D8, WHICH DID RESCALE THE TABLE -- deliberately, on an owner ruling, and
+        #: the whole point of this test is to catch a rescale that was NOT decided. So it no longer
+        #: pins points (the unit is gone); it pins the DERIVATION, in the games each designation is
+        #: taken to cost. A drift in either the vocabulary or the conversion fails here, and an
+        #: invented magnitude cannot reappear because there is no literal left to edit.
+        for designation, games in (("IR", 4), ("Out", 1), ("Doubtful", 0.5)):
+            self.assertAlmostEqual(
+                dr.HEALTH_DISCOUNT_RATE[designation], -(games / pu.SEASON_GAMES), places=9,
+                msg=f"{designation}'s discount no longer matches the {games} games it is priced "
+                    f"at, so the rate has been chosen rather than derived")
 
 
 class ItIsNotSpokenTests(unittest.TestCase):

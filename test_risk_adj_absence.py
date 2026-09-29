@@ -33,27 +33,64 @@ import run_draft_battery as rdb
 CAPTURE = rdb.CAPTURE_PATH
 
 
+#: D8. Something for a proportional penalty to be a proportion of. Not a measurement.
+REFERENCE_PROJECTION = 200.0
+
+
 class HealthPenaltyIsUnchangedTests(unittest.TestCase):
-    """The ruling: magnitudes stay. Pin them so the absence repair cannot drift into one."""
+    """The ruling was: magnitudes stay, so pin them and the absence repair cannot drift into one.
+
+    RESTATED AT D8, WHICH CHANGED THEM ON PURPOSE. The class keeps its job -- an *undecided* drift
+    must fail here -- but it can no longer do that job by pinning points, because the unit is gone:
+    the health discount is a share of the player's own projection, derived from the games each
+    designation is taken to cost. So the pin moved down one level, to the derivation, where there is
+    no literal left for anyone to quietly edit."""
 
     def test_the_table_still_holds_the_measured_magnitudes(self):
         # PER DESIGNATION, NOT BY DICT EQUALITY -- the third pin of this shape in the tree, and the
-        # last. All three compared RISK_ADJ to a three-entry literal while guarding MAGNITUDES, so
+        # last. All three compared the table to a three-entry literal while guarding MAGNITUDES, so
         # all three failed when MANDATE 4 added "PUP" with IR's number (derived from their shared
         # four-game rule floor, not chosen). An equality on a growing table owns every future
         # addition to it and cannot tell a resize from a new member.
-        for designation, penalty in (("IR", -18.0), ("Out", -10.0), ("Doubtful", -5.0)):
-            self.assertEqual(dr.RISK_ADJ[designation], penalty,
-                             f"{designation}'s measured magnitude moved")
+        import player_universe as pu
+        for designation, games in (("IR", 4), ("PUP", 4), ("Out", 1), ("Doubtful", 0.5)):
+            self.assertAlmostEqual(
+                dr.HEALTH_DISCOUNT_RATE[designation], -(games / pu.SEASON_GAMES), places=9,
+                msg=f"{designation} no longer costs the {games} games it is priced at")
 
     def test_a_priced_IR_row_with_no_games_reported_still_takes_the_full_penalty(self):
         # availability_basis None = the #191 haircut could not reach him (Sleeper reports no
-        # games-played figure), so the flat penalty is the only thing standing in for it.
-        self.assertEqual(dr.health_penalty("IR", None), -18.0)
+        # games-played figure), so this penalty is the only thing standing in for it. "Full" now
+        # means the whole four-game share of HIS OWN projection, which is the point of D8: the old
+        # flat -18.0 was 10.4% of a 173-point player and 4.5% of a 400-point one.
+        import player_universe as pu
+        self.assertAlmostEqual(dr.health_penalty("IR", None, REFERENCE_PROJECTION),
+                               -(4 / pu.SEASON_GAMES) * REFERENCE_PROJECTION, places=6)
+
+    def test_the_penalty_scales_with_the_player_rather_than_charging_everyone_the_same(self):
+        """D8's defect, stated as the property that replaces it. Two players, one designation: the
+        more valuable man loses more points and the SAME SHARE of himself."""
+        small = dr.health_penalty("IR", None, 100.0)
+        large = dr.health_penalty("IR", None, 400.0)
+        self.assertLess(large, small, "the more valuable player is not charged more points")
+        self.assertAlmostEqual(small / 100.0, large / 400.0, places=9,
+                               msg="the same designation charges two players different shares")
+
+    def test_a_player_projected_to_score_nothing_is_charged_nothing(self):
+        """Measured on the real capture: the flat table charged two IR players with 0.0 projected
+        points a full -18.0 each -- an infinite proportional penalty on a man projected to score
+        nothing. It changed no ordering, and it is the unit mismatch at its starkest."""
+        self.assertEqual(dr.health_penalty("IR", None, 0.0), 0.0)
+
+    def test_an_absent_projection_is_absent_and_not_a_free_pass(self):
+        """`#187` at the one place D8 could have reopened the PUP hole: with no projection there is
+        no proportion to charge, and 0.0 would read as "measured, this designation costs nothing"."""
+        import math
+        self.assertTrue(math.isnan(dr.health_penalty("IR", None, None)))
 
     def test_the_haircut_still_suppresses_the_penalty_where_it_DID_fire(self):
         import player_universe as pu
-        self.assertEqual(dr.health_penalty("IR", pu.RULE_FLOOR), 0.0)
+        self.assertEqual(dr.health_penalty("IR", pu.RULE_FLOOR, REFERENCE_PROJECTION), 0.0)
 
 
 @unittest.skipUnless(CAPTURE.exists(), "needs the real capture")

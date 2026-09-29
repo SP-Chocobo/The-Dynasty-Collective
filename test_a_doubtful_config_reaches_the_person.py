@@ -267,6 +267,51 @@ class ThePersonSeesItAboveTheBoardTests(unittest.TestCase):
                         "no UI module reads config_ambiguities, so a board priced on an unreadable "
                         "league is still silently priced")
 
+    def test_the_REPLAY_reads_the_verdict_too_and_separates_all_three_states(self):
+        """D2(b)'s remaining half. The live board has warned since 2.2; the stored-board replay
+        carried the verdict in its projection and RENDERED NONE OF IT -- so a reader was handed a
+        table of stored prices with no sign that the config they were priced on did not parse.
+
+        The replay is also the one surface where all three states genuinely occur. On the live board
+        every snapshot comes from `build_snapshot` and is therefore checked, so `None` never
+        arrives and a truthiness test is honest there. A stored record written before schema 5 was
+        never checked, and showing that as "checked and clean" tells someone a board was fine when
+        nobody looked -- which is the whole of `#187` in one branch.
+
+        Checked structurally rather than by executing the view, because the block sits behind
+        Streamlit session state that a test cannot stand up. What is asserted is that the replay's
+        own projection key is read, and that the read distinguishes the empty case from the absent
+        one."""
+        reads = [(name, node) for name, node in self._nodes()
+                 if isinstance(node, ast.Subscript)
+                 and isinstance(node.slice, ast.Constant)
+                 and node.slice.value == "config_ambiguities"]
+        self.assertTrue(reads,
+                        "the stored-board replay never reads config_ambiguities, so a board priced "
+                        "on an unreadable league replays as though it were sound")
+
+        #: The three-state distinction, as an `is None` test somewhere in the same unit. A bare
+        #: truthiness check would collapse "checked and clean" into "never checked".
+        units = {name for name, _ in reads}
+        distinguished = False
+        for name in units:
+            for node in ast.walk(self.trees[name]):
+                if (isinstance(node, ast.Compare) and node.ops
+                        and isinstance(node.ops[0], ast.Is)
+                        and isinstance(node.comparators[0], ast.Constant)
+                        and node.comparators[0].value is None
+                        and isinstance(node.left, ast.Subscript)
+                        and isinstance(node.left.slice, ast.Constant)
+                        and node.left.slice.value == "config_ambiguities"):
+                    distinguished = True
+        self.assertTrue(distinguished,
+                        "the replay reads config_ambiguities but never tests it against None, so a "
+                        "record nobody checked renders identically to one that came back clean")
+
+        #: The DATA half of this is already covered, in the class that owns `record_summary`:
+        #: the projection's three states are asserted there. Not restated here, because a second
+        #: copy of an assertion is one more thing that can drift from what it is copying.
+
     def test_it_is_read_from_a_snapshot_and_not_rederived_in_the_view(self):
         """The view must not call the gate itself -- a second call site is a second answer that
         can disagree with the board actually on screen (`#126`)."""

@@ -35,6 +35,11 @@ from __future__ import annotations
 import unittest
 
 import draft_room as dr
+#: D8. A stated reference projection, so a proportional penalty has something to be a proportion
+#: OF. 200.0 is not a measurement and nothing depends on its value -- it is the denominator this
+#: module's arithmetic is written against, named once instead of repeated as a literal.
+REFERENCE_PROJECTION = 200.0
+
 import player_universe as pu
 import ui_source
 
@@ -42,20 +47,20 @@ import ui_source
 class TheTwoHomesAgreeOnMembershipTests(unittest.TestCase):
     def test_every_designation_with_a_rule_floor_is_priced(self):
         """The gap PUP fell through. A designation the engine knows costs games must cost value."""
-        unpriced = sorted(set(pu.GAMES_MISSED_FLOOR) - set(dr.RISK_ADJ))
+        unpriced = sorted(set(pu.GAMES_MISSED_FLOOR) - set(dr.HEALTH_DISCOUNT_RATE))
         self.assertEqual(unpriced, [],
                          f"{unpriced} carry a rule floor on games missed and no health penalty, so "
                          f"a player with no games-played reported is priced fully fit")
 
     def test_the_only_priced_designation_without_a_floor_is_the_one_known_to_be_chosen(self):
         """`Doubtful`. Naming it here is what stops a SECOND invented magnitude arriving quietly."""
-        chosen = sorted(set(dr.RISK_ADJ) - set(pu.GAMES_MISSED_FLOOR))
+        chosen = sorted(set(dr.HEALTH_DISCOUNT_RATE) - set(pu.GAMES_MISSED_FLOOR))
         self.assertEqual(chosen, ["Doubtful"],
                          f"{chosen} are priced with no rule floor to derive the number from, which "
                          f"is a chosen magnitude and needs the owner (see D8)")
 
     def test_both_vocabularies_are_inside_the_recognised_set(self):
-        for designation in tuple(dr.RISK_ADJ) + tuple(pu.GAMES_MISSED_FLOOR):
+        for designation in tuple(dr.HEALTH_DISCOUNT_RATE) + tuple(pu.GAMES_MISSED_FLOOR):
             self.assertIn(designation, pu.RECOGNISED_DESIGNATIONS,
                           f"{designation} is acted on without being declared recognised")
 
@@ -71,8 +76,8 @@ class DesignationsSharingAFloorSharePenaltyTests(unittest.TestCase):
     def test_equal_floors_carry_equal_penalties(self):
         by_floor: dict[int, set] = {}
         for designation, floor in pu.GAMES_MISSED_FLOOR.items():
-            if designation in dr.RISK_ADJ:
-                by_floor.setdefault(floor, set()).add(dr.RISK_ADJ[designation])
+            if designation in dr.HEALTH_DISCOUNT_RATE:
+                by_floor.setdefault(floor, set()).add(dr.HEALTH_DISCOUNT_RATE[designation])
         for floor, penalties in sorted(by_floor.items()):
             self.assertEqual(len(penalties), 1,
                              f"designations with a {floor}-game floor carry different penalties "
@@ -81,8 +86,8 @@ class DesignationsSharingAFloorSharePenaltyTests(unittest.TestCase):
 
     def test_a_steeper_floor_never_costs_less(self):
         """Derived ordering, not a chosen one: more guaranteed games missed cannot be worth more."""
-        priced = sorted(((floor, dr.RISK_ADJ[d]) for d, floor in pu.GAMES_MISSED_FLOOR.items()
-                         if d in dr.RISK_ADJ), key=lambda pair: pair[0])
+        priced = sorted(((floor, dr.HEALTH_DISCOUNT_RATE[d]) for d, floor in pu.GAMES_MISSED_FLOOR.items()
+                         if d in dr.HEALTH_DISCOUNT_RATE), key=lambda pair: pair[0])
         for (small, light), (large, heavy) in zip(priced, priced[1:]):
             if small == large:
                 continue
@@ -98,14 +103,14 @@ class DesignationsSharingAFloorSharePenaltyTests(unittest.TestCase):
                 pup_factor, pup_basis = pu.availability_factor("PUP", games_played)
                 self.assertEqual(ir_factor, pup_factor)
                 self.assertEqual(ir_basis, pup_basis)
-                self.assertEqual(dr.health_penalty("IR", ir_basis),
-                                 dr.health_penalty("PUP", pup_basis))
+                self.assertEqual(dr.health_penalty("IR", ir_basis, REFERENCE_PROJECTION),
+                                 dr.health_penalty("PUP", pup_basis, REFERENCE_PROJECTION))
 
     def test_a_PUP_player_with_no_games_reported_is_no_longer_priced_fully_fit(self):
         """Stated as its own test because it is the defect, not a corollary of one."""
         _factor, basis = pu.availability_factor("PUP", None)
         self.assertEqual(basis, pu.NO_GAMES_REPORTED)
-        self.assertLess(dr.health_penalty("PUP", basis), 0.0,
+        self.assertLess(dr.health_penalty("PUP", basis, REFERENCE_PROJECTION), 0.0,
                         "PUP with a season line and no games-played takes no discount at all")
 
     def test_the_penalty_still_stands_down_where_the_haircut_already_applied(self):
@@ -113,7 +118,7 @@ class DesignationsSharingAFloorSharePenaltyTests(unittest.TestCase):
         for designation in ("IR", "PUP", "Out"):
             _factor, basis = pu.availability_factor(designation, 17.0)
             self.assertEqual(basis, pu.RULE_FLOOR)
-            self.assertEqual(dr.health_penalty(designation, basis), 0.0,
+            self.assertEqual(dr.health_penalty(designation, basis, REFERENCE_PROJECTION), 0.0,
                              f"{designation} is charged twice when games-played is known")
 
 

@@ -121,6 +121,29 @@ GAME_TIME_CALL_DESIGNATIONS = ("Questionable", "Doubtful")
 #: Every designation the engine has a ruling for, either way.
 RECOGNISED_DESIGNATIONS = tuple(GAME_TIME_CALL_DESIGNATIONS) + tuple(GAMES_MISSED_FLOOR)
 
+#: D8. THE ONE CHOSEN NUMBER IN THIS WHOLE VOCABULARY, named here so it cannot hide.
+#:
+#: `Doubtful` is priced and has no rule floor to derive a magnitude from -- `availability_factor`
+#: returns UNRECOGNISED_DESIGNATION for it, because a game-time call guarantees nothing. The flat
+#: table it used to live in expressed a RATIO: -5.0 against `Out`'s -10.0, so half of one game.
+#: That ratio is PRESERVED here rather than re-chosen, which is what makes this a unit conversion
+#: of an existing decision instead of a new decision:
+#:
+#:     Out       1 game    the NFL rule floor
+#:     Doubtful  0.5 game  half of Out, the ratio the flat magnitudes already stated
+#:
+#: It is still a chosen number and `test_one_injury_vocabulary_not_two` names it as the single
+#: licensed exception, so a SECOND invented magnitude cannot arrive quietly beside it. `Doubtful`
+#: also never occurs once in the real feed, which is why nothing measured has ever depended on it.
+ASSUMED_GAMES_MISSED = {"Doubtful": 0.5}
+
+#: Every designation the board PRICES, and the games each is taken to cost. One table, so the
+#: membership of the priced set and the membership of the floor set cannot drift apart -- which is
+#: exactly how PUP came to carry a four-game floor and no penalty (`#126`). Floors first, then the
+#: one assumption, so a designation that later earns a real rule floor overrides its assumption
+#: rather than shadowing it.
+GAMES_MISSED_PRICED = {**GAMES_MISSED_FLOOR, **ASSUMED_GAMES_MISSED}
+
 #: What the engine does with a designation it has never seen. NOT 0.0, which would silently
 #: price an unknown as healthy -- the absence contract's whole point (#202). PUP reached the
 #: board with no entry anywhere and was treated as fully fit for exactly that reason.

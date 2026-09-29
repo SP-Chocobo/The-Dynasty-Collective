@@ -46,6 +46,11 @@ import unittest
 import data_merger as dm
 import draft_battery as db
 import draft_room as dr
+#: D8. A stated reference projection, so a proportional penalty has something to be a proportion
+#: OF. 200.0 is not a measurement and nothing depends on its value -- it is the denominator this
+#: module's arithmetic is written against, named once instead of repeated as a literal.
+REFERENCE_PROJECTION = 200.0
+
 import player_universe as pu
 import run_draft_battery as rdb
 
@@ -314,19 +319,23 @@ class ThePenaltyIsNotChargedTwiceTests(unittest.TestCase):
     extracted here for the same reason."""
 
     def test_a_rule_floor_row_carries_no_extra_penalty(self):
-        self.assertEqual(dr.health_penalty("IR", pu.RULE_FLOOR), 0.0)
+        self.assertEqual(dr.health_penalty("IR", pu.RULE_FLOOR, REFERENCE_PROJECTION), 0.0)
 
     def test_a_row_the_haircut_could_not_reach_keeps_its_penalty(self):
         """The reason this is a SPLIT and not a blanket removal: a row priced off the vendor's
         projection has no games-played figure to cut against, so risk_adj is still the only
         place health enters for it."""
-        self.assertEqual(dr.health_penalty("IR", None), -18.0)
+        self.assertAlmostEqual(dr.health_penalty("IR", None, REFERENCE_PROJECTION),
+                               dr.HEALTH_DISCOUNT_RATE["IR"] * REFERENCE_PROJECTION,
+                               places=6)
 
     def test_every_basis_that_is_not_a_cut_leaves_the_penalty_alone(self):
         for basis in (pu.NO_DESIGNATION, pu.IMMATERIAL, pu.UNRECOGNISED_DESIGNATION,
                       pu.NO_GAMES_REPORTED, None):
             with self.subTest(basis=basis):
-                self.assertEqual(dr.health_penalty("IR", basis), -18.0)
+                self.assertAlmostEqual(dr.health_penalty("IR", basis, REFERENCE_PROJECTION),
+                                       dr.HEALTH_DISCOUNT_RATE["IR"] * REFERENCE_PROJECTION,
+                                       places=6)
 
     def test_a_designation_with_no_magnitude_is_still_zero_here(self):
         # THIS USED TO NAME PUP, AND PUP WAS THE DEFECT. The comment read: "PUP has no RISK_ADJ
@@ -345,7 +354,7 @@ class ThePenaltyIsNotChargedTwiceTests(unittest.TestCase):
         for designation in ("Sus", "DNR", "NA"):
             with self.subTest(designation=designation):
                 self.assertNotIn(designation, pu.RECOGNISED_DESIGNATIONS)
-                self.assertEqual(dr.health_penalty(designation, None), 0.0)
+                self.assertEqual(dr.health_penalty(designation, None, REFERENCE_PROJECTION), 0.0)
 
 
 # MUTATIONS -- each applied, this file re-run, the named test observed to FAIL, then reverted:

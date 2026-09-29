@@ -1014,7 +1014,7 @@
       }
     },
     "test_a_doubtful_config_reaches_the_person.py": {
-      "test_methods": 21,
+      "test_methods": 22,
       "asserts": {
         "assertEqual": 12,
         "assertGreaterEqual": 1,
@@ -1025,7 +1025,7 @@
         "assertLess": 1,
         "assertNotEqual": 1,
         "assertNotIn": 5,
-        "assertTrue": 7
+        "assertTrue": 9
       },
       "by_method": {
         "test_a_board_on_a_doubtful_config_is_still_CURRENT_when_nothing_moved": {
@@ -1078,6 +1078,9 @@
         },
         "test_stamp_is_current_does_not_take_the_config_verdict": {
           "assertNotIn": 2
+        },
+        "test_the_REPLAY_reads_the_verdict_too_and_separates_all_three_states": {
+          "assertTrue": 2
         },
         "test_the_draft_room_reads_the_verdict_off_the_snapshot": {
           "assertTrue": 1
@@ -2576,8 +2579,8 @@
     "test_availability_haircut.py": {
       "test_methods": 24,
       "asserts": {
-        "assertAlmostEqual": 7,
-        "assertEqual": 20,
+        "assertAlmostEqual": 9,
+        "assertEqual": 18,
         "assertGreater": 3,
         "assertGreaterEqual": 1,
         "assertIn": 2,
@@ -2602,7 +2605,7 @@
           "assertNotEqual": 1
         },
         "test_a_row_the_haircut_could_not_reach_keeps_its_penalty": {
-          "assertEqual": 1
+          "assertAlmostEqual": 1
         },
         "test_a_rule_floor_designation_cuts_the_projection": {
           "assertAlmostEqual": 1,
@@ -2621,7 +2624,7 @@
           "assertEqual": 1
         },
         "test_every_basis_that_is_not_a_cut_leaves_the_penalty_alone": {
-          "assertEqual": 1
+          "assertAlmostEqual": 1
         },
         "test_every_row_without_points_says_so_with_None_not_a_number": {
           "assertIsNone": 1,
@@ -6973,15 +6976,15 @@
     "test_draft_room.py": {
       "test_methods": 98,
       "asserts": {
-        "assertAlmostEqual": 21,
-        "assertEqual": 66,
+        "assertAlmostEqual": 23,
+        "assertEqual": 61,
         "assertFalse": 3,
         "assertGreater": 46,
         "assertGreaterEqual": 7,
         "assertIn": 4,
         "assertIs": 2,
-        "assertIsNone": 8,
-        "assertIsNotNone": 5,
+        "assertIsNone": 9,
+        "assertIsNotNone": 8,
         "assertLess": 10,
         "assertLessEqual": 5,
         "assertNotEqual": 4,
@@ -7212,7 +7215,7 @@
           "assertEqual": 1
         },
         "test_redraft_league_is_byte_identical_to_before_this_change": {
-          "assertEqual": 1
+          "assertAlmostEqual": 1
         },
         "test_remaining_demand_shrinks_as_the_position_gets_drafted": {
           "assertIsNone": 1,
@@ -7227,8 +7230,8 @@
         },
         "test_risk_adj_uses_sleepers_real_full_word_injury_vocabulary": {
           "assertAlmostEqual": 1,
-          "assertEqual": 3,
-          "assertIsNone": 1
+          "assertIsNone": 2,
+          "assertIsNotNone": 3
         },
         "test_rookies_only_and_veterans_only_partition_the_all_scope_pool": {
           "assertEqual": 2,
@@ -7292,7 +7295,7 @@
           "assertGreater": 1
         },
         "test_the_magnitudes_are_unchanged_by_this_experiment": {
-          "assertEqual": 1
+          "assertAlmostEqual": 1
         },
         "test_the_narrowed_field_is_wide_enough_to_measure_a_standout_against": {
           "assertGreaterEqual": 1
@@ -8521,7 +8524,8 @@
     "test_injury_status_materiality.py": {
       "test_methods": 9,
       "asserts": {
-        "assertEqual": 3,
+        "assertAlmostEqual": 1,
+        "assertEqual": 2,
         "assertFalse": 3,
         "assertIn": 2,
         "assertNotIn": 2,
@@ -8553,7 +8557,7 @@
           "assertNotIn": 1
         },
         "test_the_designations_that_survived_are_untouched": {
-          "assertEqual": 1
+          "assertAlmostEqual": 1
         }
       },
       "disabled": {
@@ -10256,6 +10260,93 @@
         },
         "test_the_universe_builder_admits_on_the_same_reader": {
           "assertIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_one_fact_two_paths_one_answer.py": {
+      "test_methods": 20,
+      "asserts": {
+        "assertAlmostEqual": 5,
+        "assertEqual": 11,
+        "assertFalse": 1,
+        "assertIsNotNone": 1,
+        "assertLess": 4,
+        "assertLessEqual": 3,
+        "assertNotIn": 1,
+        "assertTrue": 4
+      },
+      "by_method": {
+        "test_a_below_replacement_player_is_never_REWARDED_for_an_injury": {
+          "assertLessEqual": 1
+        },
+        "test_a_player_projected_to_score_nothing_is_charged_nothing": {
+          "assertEqual": 1
+        },
+        "test_a_steeper_cost_never_charges_less": {
+          "assertLessEqual": 1
+        },
+        "test_an_absent_projection_is_absent_rather_than_free": {
+          "assertTrue": 2
+        },
+        "test_an_unrecognised_designation_is_not_priced_at_all": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "test_designations_sharing_a_cost_share_a_rate": {
+          "assertEqual": 1,
+          "assertLess": 1
+        },
+        "test_every_charged_row_is_charged_its_own_share": {
+          "assertLess": 1,
+          "assertLessEqual": 1
+        },
+        "test_every_designation_with_a_rule_floor_is_priced": {
+          "assertEqual": 1
+        },
+        "test_every_rate_is_the_games_it_is_priced_at_over_the_season": {
+          "assertAlmostEqual": 1,
+          "assertTrue": 1
+        },
+        "test_no_priced_row_is_charged_against_an_absent_projection": {
+          "assertEqual": 1,
+          "assertIsNotNone": 1
+        },
+        "test_the_doubtful_assumption_keeps_the_ratio_the_flat_table_stated": {
+          "assertAlmostEqual": 1
+        },
+        "test_the_haircut_path_and_the_penalty_path_agree": {
+          "assertAlmostEqual": 1
+        },
+        "test_the_more_valuable_player_loses_more_points": {
+          "assertLess": 1
+        },
+        "test_the_old_flat_table_did_NOT_agree_with_itself": {
+          "assertAlmostEqual": 1
+        },
+        "test_the_old_points_table_is_gone_rather_than_holding_a_fraction": {
+          "assertFalse": 1
+        },
+        "test_the_only_chosen_number_is_the_one_declared_chosen": {
+          "assertEqual": 2
+        },
+        "test_the_population_is_not_empty": {
+          "assertTrue": 1
+        },
+        "test_the_priced_set_and_the_rate_set_cannot_drift_apart": {
+          "assertEqual": 1
+        },
+        "test_the_same_designation_takes_the_same_share_of_everyone": {
+          "assertAlmostEqual": 1
+        },
+        "test_the_two_paths_are_genuinely_different_code": {
+          "assertEqual": 3,
+          "assertLess": 1
         }
       },
       "disabled": {
@@ -13858,20 +13949,27 @@
       }
     },
     "test_risk_adj_absence.py": {
-      "test_methods": 12,
+      "test_methods": 15,
       "asserts": {
-        "assertEqual": 7,
+        "assertAlmostEqual": 3,
+        "assertEqual": 6,
         "assertGreater": 2,
         "assertIsNotNone": 1,
-        "assertLess": 1,
-        "assertTrue": 4
+        "assertLess": 2,
+        "assertTrue": 5
       },
       "by_method": {
-        "test_a_priced_IR_row_with_no_games_reported_still_takes_the_full_penalty": {
+        "test_a_player_projected_to_score_nothing_is_charged_nothing": {
           "assertEqual": 1
+        },
+        "test_a_priced_IR_row_with_no_games_reported_still_takes_the_full_penalty": {
+          "assertAlmostEqual": 1
         },
         "test_absence_is_None_and_never_a_float_nan": {
           "assertEqual": 1
+        },
+        "test_an_absent_projection_is_absent_and_not_a_free_pass": {
+          "assertTrue": 1
         },
         "test_depth_basis_still_reports_vacant_because_that_IS_the_companion": {
           "assertTrue": 1
@@ -13888,6 +13986,10 @@
         "test_the_haircut_still_suppresses_the_penalty_where_it_DID_fire": {
           "assertEqual": 1
         },
+        "test_the_penalty_scales_with_the_player_rather_than_charging_everyone_the_same": {
+          "assertAlmostEqual": 1,
+          "assertLess": 1
+        },
         "test_the_penalty_still_reaches_the_rows_it_is_for": {
           "assertIsNotNone": 1,
           "assertLess": 1,
@@ -13897,7 +13999,7 @@
           "assertGreater": 2
         },
         "test_the_table_still_holds_the_measured_magnitudes": {
-          "assertEqual": 1
+          "assertAlmostEqual": 1
         },
         "test_time_horizon_adj_keeps_its_documented_zero": {
           "assertTrue": 1

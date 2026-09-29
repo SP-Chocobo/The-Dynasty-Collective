@@ -74,7 +74,23 @@ divergence that has not happened. (a) costs one test and converts the silent ris
 ---
 
 ## D2 — 2.2: what should the app DO when the config gate refuses? (policy, not mechanism)
-**RULED: (b) — price, and carry the refusal on the board.** This is mostly already shipped:
+**RULED: (b) — price, and carry the refusal on the board. BOTH HALVES NOW SHIPPED.**
+
+**The gap (b) had left, found by asking the question the ruling implies rather than the one 2.2
+answered.** The live Draft Room has warned since 2.2. The **stored-board replay** carried the
+verdict in its own projection dict and rendered none of it — so a reader was handed a table of
+stored prices with no sign that the config they were priced on had not parsed. That is the same
+defect one surface over, and (b)'s promise is *every* surface, not the one that happened to be
+built first.
+
+It is also the only surface where all three of `#187`'s states genuinely occur: on the live board
+every snapshot comes from `build_snapshot` and is therefore checked, so `None` never arrives and a
+truthiness test is honest there. A stored record written before schema 5 was **never checked**, and
+rendering that identically to "checked and clean" tells someone a board was fine when nobody
+looked. The replay now separates all three, and a test asserts the `is None` branch exists rather
+than only that the key is read.
+
+The original status, which remains accurate for the rest:
 `PickSnapshot.config_ambiguities` carries `(kind, detail)` pairs, `draft_history` persists them at
 schema 5, and the Draft Room renders the warning before the board. What the ruling LICENSES is the
 remaining half of (b)'s promise — *every* surface that renders a number from a doubtful config must
@@ -342,7 +358,40 @@ now for flex-reachable groups.
 ---
 
 ## D8 — 3.3: the bounded additive terms were sized for a 0–100 scale that no longer exists
-**RULED: (b) — re-derive `RISK_ADJ` only; leave the caps.** `RISK_ADJ` is the one constant whose
+**RULED: (b) — re-derive `RISK_ADJ` only; leave the caps. SHIPPED, and the derivation turned out to
+already exist in the tree.**
+
+`RISK_ADJ` is **deleted** and replaced by `HEALTH_DISCOUNT_RATE`, a share of the player's own
+projection derived as `games_missed / SEASON_GAMES` from a new single vocabulary,
+`player_universe.GAMES_MISSED_PRICED`. Renamed rather than repurposed: a name saying `RISK_ADJ`
+while holding a fraction is exactly the mechanism of this defect.
+
+**Nothing was calibrated.** `availability_factor` already converts a rule floor into a discount
+(`playable / projected_games`), and `health_penalty` exists only for rows where that cannot be
+computed because the feed reports no games-played — it was substituting an invented flat number
+where the same proportion was available. The one chosen number left in the vocabulary is
+`Doubtful`'s half-game, which preserves the ratio the flat table already stated (−5 against Out's
+−10) and is named in its own constant, `ASSUMED_GAMES_MISSED`, so a second cannot arrive quietly.
+
+**The check that says the derivation is right rather than merely tidier: the two paths now agree
+exactly.** One fact — "this man is on IR" — reached two ways:
+
+| | `universal_value` |
+|---|---|
+| `gp` known: points cut to 13/17, penalty stands down (`#191`) | `0.765·points − replacement + th` |
+| `gp` absent: points uncut, penalty `−(4/17)·points` | `0.765·points − replacement + th` |
+
+Measured, both arms in one process: gap **0.000** at every designation and projection tested.
+Before D8 those two readings of one fact differed by **−22.71 points** for a 173-point IR player
+and **−76.12** for a 400-point one. It was not a unit wart; it was a 76-point self-contradiction.
+
+**Measured on the real capture:** 70 designated rows, 8 of them where this penalty is the whole
+discount. The flat table charged two IR players with **0.0 projected points** a full −18.0 each —
+an infinite proportional penalty on a man projected to score nothing. Mutation-checked 5/5,
+including the tempting wrong choice of scaling against `bpa` (which would pay below-replacement
+players to be injured) and the absent-projection case returning 0.0 instead of `NaN`.
+
+**The caps are untouched and stay open**, exactly as ruled — see the original text below. `RISK_ADJ` is the one constant whose
 MEANING changed rather than its size being merely inherited: a flat points penalty charges a
 173-point player 10.4% and a 400-point player 4.5% for the same designation, so the health discount
 is regressive in the player's own value. Licenses re-deriving it as a proportional discount, under

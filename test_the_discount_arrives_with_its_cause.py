@@ -91,8 +91,10 @@ class TheChairsAreToldTheCauseOfTheDiscount(unittest.TestCase):
         penalised = pd._format_candidate(
             _with(injury_status="Out", availability_basis=pu.NO_DESIGNATION), None)
         self.assertNotEqual(floored, penalised)
-        self.assertEqual(dr.health_penalty("Out", pu.RULE_FLOOR), 0.0)
-        self.assertNotEqual(dr.health_penalty("Out", pu.NO_DESIGNATION), 0.0)
+        #: D8: the discount is a share of the player's own projection, so it needs one. 200.0 is
+        #: a denominator, not a measurement -- what is asserted is the BRANCH, exactly as before.
+        self.assertEqual(dr.health_penalty("Out", pu.RULE_FLOOR, 200.0), 0.0)
+        self.assertNotEqual(dr.health_penalty("Out", pu.NO_DESIGNATION, 200.0), 0.0)
 
     def test_an_unreported_designation_says_NOTHING_rather_than_healthy(self):
         text = pd._format_candidate(_with(injury_status=None), None)

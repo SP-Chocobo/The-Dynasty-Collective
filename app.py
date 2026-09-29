@@ -6085,6 +6085,38 @@ elif main_view == DRAFT_VIEW:
                                                 "so it cannot be asked "
                                                 + ", ".join(_chosen["unanswerable"]) + "."
                                             )
+                                        # MANDATE 2.2 / D2(b). THE REPLAY IS A SURFACE TOO, and it
+                                        # was the one that carried the config verdict and did not
+                                        # show it: the rows below are prices, and a reader was being
+                                        # handed them with no sign that the config they were priced
+                                        # on did not parse. The live board has warned since 2.2;
+                                        # this is the other half of what (b) promised -- every
+                                        # surface that renders a number from a doubtful config
+                                        # carries the reason.
+                                        #
+                                        # ALL THREE STATES ARE DISTINGUISHED (`#187`), which is why
+                                        # this cannot just copy the live board's truthiness test.
+                                        # There, every board comes from build_snapshot and is
+                                        # therefore checked, so None never occurs. Here it does:
+                                        # a record written before schema 5 has NOT been checked, and
+                                        # rendering that the same as "checked and clean" would tell
+                                        # someone a stored board was fine when nobody had looked.
+                                        if _chosen["config_ambiguities"]:
+                                            st.warning(
+                                                "The league configuration did not parse cleanly "
+                                                "when this board was stored. The rows below were "
+                                                "priced anyway, from defaults wherever the config "
+                                                "was silent, so they may describe a different "
+                                                "league than the one you are playing:\n\n"
+                                                + "\n".join(
+                                                    f"- {item['detail']}"
+                                                    for item in _chosen["config_ambiguities"])
+                                            )
+                                        elif _chosen["config_ambiguities"] is None:
+                                            st.caption(
+                                                "This record predates the configuration check, so "
+                                                "whether its league parsed cleanly was never asked."
+                                            )
                                         _stored_rows = draft_history_ui.stored_candidate_rows(
                                             draft_history.load_snapshot_record(
                                                 st.session_state.selected_league_id,
