@@ -1718,8 +1718,16 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         reason (#191 -- it is not really an injury status, and Sleeper projects such players
         for a full season). That removal is a change to the VOCABULARY, which is exactly what
         this test says experiment D did not make -- so it is recorded here rather than allowed
-        to look like drift in D's own scope."""
-        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0})
+        to look like drift in D's own scope.
+
+        AND THE ASSERTION IS NOW PER DESIGNATION, for the same reason. It compared the whole table
+        to a three-entry literal and so failed when MANDATE 4 added "PUP", whose magnitude is IR's
+        because GAMES_MISSED_FLOOR gives them the same four-game floor. That is a membership change
+        with no new number in it -- exactly the thing this test is NOT about -- while a dict equality
+        cannot tell a resize from an addition."""
+        for designation, penalty in (("IR", -18.0), ("Out", -10.0), ("Doubtful", -5.0)):
+            self.assertEqual(dr.RISK_ADJ[designation], penalty,
+                             f"experiment D changed {designation}'s SIZE, which it must not")
 
     def test_redraft_league_is_byte_identical_to_before_this_change(self):
         # A non-dynasty league must see EXACTLY the old flat discount -- this experiment is

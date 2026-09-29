@@ -66,7 +66,7 @@ from data_merger import (
 import league_config
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
-from player_universe import FLEX_SLOT_POSITIONS, available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
+from player_universe import FLEX_SLOT_POSITIONS, GAME_TIME_CALL_DESIGNATIONS, available_players, build_player_universe, league_usable_positions, matching_players, player_name, player_position
 from sleeper_client import SleeperAPIError, SleeperClient, compute_points_from_stats, find_roster_for_user, league_format_summary
 
 # Friendly display labels for pick_synthesis.diff_snapshots' real field names -- presentation
@@ -1129,18 +1129,38 @@ def activate_league(league_id: str) -> None:
 
 
 SLOT_SORT_ORDER = {"Starter": 0, "Bench": 1, "TAXI": 2, "IR": 3}
-INJURY_OK_STATUSES = ("Questionable", "Doubtful")
+# MANDATE 4 / `#126`: IMPORTED, NOT RE-LISTED. This spelled ("Questionable", "Doubtful") -- the
+# same set player_universe already names as the recognised designations with no rule floor, which is
+# exactly the question this pill asks (may he play, or is he out). A second copy of an injury
+# vocabulary is how PUP came to be painted from one list and priced from another.
+INJURY_OK_STATUSES = GAME_TIME_CALL_DESIGNATIONS
 
 # Free Agents position filter: ordered the way a manager actually scans a roster
 # (offense skill positions first, then the flex-style umbrella options, then
 # kicker/D-ST, then IDP broken out individually with its own umbrella last).
 # `None` means "no positions to intersect" i.e. the unfiltered "All" option.
+# MANDATE 4 / `#126`: THE LABELS ARE THIS SCREEN'S, THE SETS ARE THE VOCABULARY'S.
+#
+# "FLEX", "SUPERFLEX" and "IDP" are reader-facing words and stay chosen here -- so does the ORDER,
+# which is how a manager scans a roster. What was also spelled here, and should not have been, is
+# what each of those words MEANS: {"WR","RB","TE"}, {"QB","WR","RB","TE"} and {"DL","LB","DB"} were
+# literal copies of three FLEX_SLOT_POSITIONS values. That is the second home, and it is also where
+# the SUPERFLEX-vs-SUPER_FLEX spelling came from: with the set taken by its real key the label is
+# only a label, and cannot teach the next reader the wrong token.
+#
+# NO FILTER ROW IS ADDED. WRRB_FLEX and REC_FLEX exist in the vocabulary and are deliberately not
+# offered here: `wanted & league_positions` would show both in nearly every league, since almost
+# every league uses RB and WR, and a subset of a FLEX filter already on the list is noise rather
+# than a missing capability. That is a product judgement, stated rather than left as an omission --
+# unlike draft_board_ui's view order, where the same two names WERE a real gap.
 FA_POSITION_FILTERS = [
     ("All", None),
     ("QB", {"QB"}), ("WR", {"WR"}), ("RB", {"RB"}), ("TE", {"TE"}),
-    ("FLEX", {"WR", "RB", "TE"}), ("SUPERFLEX", {"QB", "WR", "RB", "TE"}),
+    ("FLEX", set(FLEX_SLOT_POSITIONS["FLEX"])),
+    ("SUPERFLEX", set(FLEX_SLOT_POSITIONS["SUPER_FLEX"])),
     ("K", {"K"}), ("D/ST", {"DEF"}),
-    ("DL", {"DL"}), ("LB", {"LB"}), ("DB", {"DB"}), ("IDP", {"DL", "LB", "DB"}),
+    ("DL", {"DL"}), ("LB", {"LB"}), ("DB", {"DB"}),
+    ("IDP", set(FLEX_SLOT_POSITIONS["IDP_FLEX"])),
 ]
 
 TABLE_COLUMN_LABELS = {

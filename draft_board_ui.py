@@ -321,8 +321,23 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
 # presentation ordering; FLEX_SLOT_POSITIONS (imported from player_universe.py, never
 # duplicated) is the one and only source of which real positions each flex-type slot
 # actually covers -- this file invents no eligibility rule of its own.
-_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF",
-                        "DL", "LB", "DB", "IDP_FLEX"]
+#: MANDATE 4 / `#126`: ORDER IS A DISPLAY DECISION AND STAYS HERE. MEMBERSHIP IS NOT.
+#:
+#: This hand-listed three flex types -- FLEX, SUPER_FLEX, IDP_FLEX -- while
+#: `player_universe.FLEX_SLOT_POSITIONS` spells five. The two it omitted, WRRB_FLEX and REC_FLEX,
+#: are exactly the two `position_view_options` filters on: it only offers a flex view when the slot
+#: is in the league's own roster_positions, so the omission was invisible in every league without
+#: one and offered NO view at all to a league with one. The board view is the only way to look at a
+#: single slot's candidates, so such a league simply could not.
+#:
+#: The append below is the part that matters more than the two names: a flex type added to the
+#: vocabulary and not to this list is now placed at the end rather than silently dropped, so the
+#: next one cannot repeat this. Pinned by test_one_injury_vocabulary_not_two's sibling in
+#: test_a_flex_view_exists_for_every_flex_slot.py.
+_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "WRRB_FLEX", "REC_FLEX", "SUPER_FLEX",
+                        "K", "DEF", "DL", "LB", "DB", "IDP_FLEX"]
+_POSITION_VIEW_ORDER += [slot for slot in FLEX_SLOT_POSITIONS
+                         if slot not in _POSITION_VIEW_ORDER]
 
 
 def position_view_options(positions_present: set[str], roster_positions: list[str]) -> list[str]:

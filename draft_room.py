@@ -436,9 +436,30 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 #: Questionable players for a full season (95 of 100 at gp=17), and the penalty moved 99 of
 #: 2084 board rows by at most six ranks, never touching the top 50. See
 #: player_universe.IMMATERIAL_INJURY_STATUSES for the ruling and the condition for its return.
-#: NOT a statement that the remaining magnitudes are right -- see #202: PUP, NA, Sus and DNR
-#: occur in the real feed and have no entry here at all, while "Doubtful" never occurs once.
-RISK_ADJ = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0}
+#: NOT a statement that the remaining magnitudes are right -- see #202: NA, Sus and DNR occur in
+#: the real feed and have no entry here at all, while "Doubtful" never occurs once.
+#:
+#: MANDATE 4 / `#126`: PUP WAS IN THAT LIST AND IS NOT ANY MORE, because its number did not have to
+#: be chosen. This dict and `player_universe.GAMES_MISSED_FLOOR` are two hand-listed injury
+#: vocabularies with DIFFERENT membership -- {IR, Out, Doubtful} against {IR: 4, PUP: 4, Out: 1} --
+#: and the gap had a measured consequence at exactly one input, a player with a season line and no
+#: games-played:
+#:
+#:     status   gp=17                      gp=None (the factor is not computable)
+#:     IR       0.765 haircut, penalty 0   factor 1.0, penalty -18.0
+#:     PUP      0.765 haircut, penalty 0   factor 1.0, penalty   0.0   <- priced FULLY FIT
+#:     Out      0.941 haircut, penalty 0   factor 1.0, penalty -10.0
+#:
+#: With `gp` present the two agree, because `availability_factor` applies the rule floor and
+#: `health_penalty` stands down to avoid double-counting (`#191`). With `gp` absent the haircut
+#: cannot be computed and this dict is the whole discount -- so PUP fell through both.
+#:
+#: DERIVED, NOT CHOSEN (`#56`). PUP is not given a new magnitude: it takes IR's, because
+#: GAMES_MISSED_FLOOR gives them the SAME four-game floor on the same reading of the same NFL rule.
+#: Two designations the engine already treats as identically severe cannot carry different
+#: penalties for the same player, and the invariant that says so is pinned by a test rather than
+#: left to this comment -- see test_one_injury_vocabulary_not_two.py.
+RISK_ADJ = {"IR": -18.0, "PUP": -18.0, "Out": -10.0, "Doubtful": -5.0}
 
 def health_penalty(status: Optional[str], availability_basis: Optional[str]) -> float:
     """The health term of universal_value -- and ZERO where the input already carries it (#191).

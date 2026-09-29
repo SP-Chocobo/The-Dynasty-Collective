@@ -74,7 +74,16 @@ class ItIsNotPricedTests(unittest.TestCase):
 
     def test_the_designations_that_survived_are_untouched(self):
         # Non-vacuity: the ruling removed ONE key, it did not empty the table or rescale it.
-        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0})
+        #
+        # ASSERTED PER DESIGNATION, NOT BY DICT EQUALITY. This compared the whole table to a
+        # three-entry literal, so it failed when MANDATE 4 ADDED "PUP" -- an addition, with a
+        # magnitude derived from IR's shared four-game rule floor rather than chosen, which is not
+        # the rescale this test exists to catch. An equality on a growing table owns every future
+        # addition to it, which is the same shape as the schema-version pin #a979c26 converted to a
+        # floor.
+        for designation, penalty in (("IR", -18.0), ("Out", -10.0), ("Doubtful", -5.0)):
+            self.assertEqual(dr.RISK_ADJ[designation], penalty,
+                             f"{designation}'s magnitude moved, which the #191 ruling did not do")
 
 
 class ItIsNotSpokenTests(unittest.TestCase):

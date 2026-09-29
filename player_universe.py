@@ -101,6 +101,26 @@ SEASON_GAMES = 17
 
 GAMES_MISSED_FLOOR = {"IR": 4, "PUP": 4, "Out": 1}
 
+#: MANDATE 4 / `#126`. The designations this engine RECOGNISES and that carry NO rule floor: a
+#: game-time call, where the man may well play. The complement of GAMES_MISSED_FLOOR within the
+#: recognised vocabulary, which is why it is defined here beside it rather than wherever it happens
+#: to be read.
+#:
+#: `app.INJURY_OK_STATUSES` hand-listed exactly these two to decide whether a status pill reads
+#: amber (playable, flagged) or crimson (unavailable). Same set, second home -- and the input that
+#: splits them is a new designation, which is how PUP reached a board with no entry anywhere.
+#:
+#: LISTED RATHER THAN DERIVED AS "not in GAMES_MISSED_FLOOR", and that is the point of it. A
+#: designation nobody has ruled on must NOT come out of this set as playable: "not in the floor
+#: table" is true of PUP-before-it-was-added, of Sus, of DNR and of any string the feed invents
+#: next, and painting an unknown as playable is precisely the absence-contract failure
+#: UNRECOGNISED_DESIGNATION exists to prevent. So this names what has been ruled on, and anything
+#: outside both sets is unrecognised in both.
+GAME_TIME_CALL_DESIGNATIONS = ("Questionable", "Doubtful")
+
+#: Every designation the engine has a ruling for, either way.
+RECOGNISED_DESIGNATIONS = tuple(GAME_TIME_CALL_DESIGNATIONS) + tuple(GAMES_MISSED_FLOOR)
+
 #: What the engine does with a designation it has never seen. NOT 0.0, which would silently
 #: price an unknown as healthy -- the absence contract's whole point (#202). PUP reached the
 #: board with no entry anywhere and was treated as fully fit for exactly that reason.
