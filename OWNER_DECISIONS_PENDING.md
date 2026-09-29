@@ -79,31 +79,36 @@ config you could have read around.
 
 ---
 
-## D3 — `#30`'s streaming floor: re-derive over the kicker repricing?
+## D3 — WITHDRAWN: `#30`'s streaming floor needed no re-derivation, and the repricing cancels itself
 
-**The question.** 2.3 repaired kicker scoring: the league scores a generic `fgmiss`, Sleeper
-projects only bucketed misses, and neither vocabulary could reach the other, so **no missed field
-goal of any length was ever scored**. Repaired with the total (`fga − fgm`) rather than the
-vendor's bucketed sum, because the buckets are incomplete.
+**This was a decision and is now answered by measurement. Nothing is asked of you.**
 
-**What it moved.** Every kicker loses **4.22–6.44** points (mean **−5.40**) and none gains, because
-a miss can only cost. **16 of 33 kickers change rank.** The top five hold their identity and order.
+I wrote it up as "re-derive the floor over 2.3's kicker repricing", following 2.3's own flag. Two
+things were wrong with that.
 
-**Why it is yours.** `#30`'s streaming floor was DERIVED from K ordering (register `#56`: constants
-are derived, not calibrated). The ordering it was derived from has changed for half the position.
-Re-deriving is a measurement I can run; whether the floor should move is a judgement about whether
-the *derivation* is still the one you want, given `#21` is already blocked on `#50` for the same
-constant family.
+**There is nothing to re-derive.** `streaming_replacement_levels` is computed LIVE from weekly
+projections — its docstring says "No constant is selected (`#56`)" and "the live board computes it
+from the season it is actually drafting". The floor moves with a scoring change through the same
+path that made it. It does not lag.
 
-**Options.** (a) Re-derive now and ship whatever falls out. (b) Re-derive and report, ship nothing
-until you have read it. (c) Leave it; the top five are unchanged and streaming decisions live at
-the top.
+**And the repricing nearly cancels itself.** A/B in one process on one dataset, toggling only 2.3's
+`derive_kicking_categories`, on the arm that carries both a K and a DEF slot:
 
-**My recommendation: (b).** The measurement is cheap and I should not ship a moved constant on my
-own authority. (c) is defensible — the argument that streaming only cares about the top of the
-position is real — but it is an argument you should get to make rather than inherit.
+| | K floor | DEF floor |
+|---|---|---|
+| with 2.3 | 139.76 | 123.89 |
+| without | 145.44 | 123.89 |
+| change | **−5.68** | 0.00 (the control) |
 
----
+Over the 38 kickers priced in both arms, projected points fell by a mean of **−4.44** and `bpa`
+against the floor moved by **+1.24** — kickers are very slightly *better* off, because the floor fell
+with them. Every kicker remains far below it either way: mean `bpa` −40.46, best **−10.68**. `#30`'s
+conclusion is untouched.
+
+What stands from 2.3 is the reordering: **16 of 33 kickers changed rank**, top five unchanged — inside
+a position the floor says not to draft early. `#21`'s own floor derivation is still blocked on `#50`,
+which is your equation and a different subject. Written up in
+`evidence/streaming_floor_after_kicking/`.
 
 ## D4 — `#184` / task #36: a percentile-to-points conversion for the upside growth term
 
