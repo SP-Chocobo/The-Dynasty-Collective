@@ -288,11 +288,13 @@ class DenialCredibleGateProductionInvariantTests(unittest.TestCase):
     """Regression coverage for the REFINE production change (denial-semantics audit +
     leave-one-force-out ablation experiment, greenlit and authorized): block_opportunity /
     the human-facing DENIAL flag now additionally requires the premium-driving rival's own
-    take_probability to clear CREDIBLE_RIVAL_PATH_THRESHOLD. Per the authorization: this must
+    rank on his board to clear CREDIBLE_RIVAL_PATH_MAX_RANK (MANDATE 3.4 restated the same bar as
+    a rank, after `#206`'s normalisation left the old take_probability threshold unreachable by
+    every input). Per the authorization: this must
     change ONLY that one boolean -- rival_premium itself, TAV, candidate ordering, and
     necessity arithmetic must stay byte-identical regardless of credible-path status. Uses a
     real board (real DataMerger/players_db) with draft_strategy.pick_analysis's OWN real
-    output patched only on the one field under test (rival_premium_take_probability), forced
+    output patched only on the one field under test (rival_premium_take_rank), forced
     onto a real candidate whose real rival_premium already clears the block_opportunity
     magnitude boundary -- proving the wiring on real data, not a hand-built fixture."""
 
@@ -311,7 +313,7 @@ class DenialCredibleGateProductionInvariantTests(unittest.TestCase):
         forced_id = str(board[0]["player_id"])
         real_pick_analysis = ps.ds.pick_analysis
 
-        def _stub_factory(take_prob):
+        def _stub_factory(take_rank):
             def _stub(*args, **kwargs):
                 rows = real_pick_analysis(*args, **kwargs)
                 for row in rows:
@@ -320,16 +322,20 @@ class DenialCredibleGateProductionInvariantTests(unittest.TestCase):
                         # isolates the credible-path gate as the ONLY thing toggling between
                         # the two calls below; the real premium magnitude this candidate
                         # actually earned is irrelevant to what this test is proving.
+                        #
+                        # MANDATE 3.4: the toggled field is the RANK. It was the take_probability,
+                        # and `#206`'s normalisation left that on a different scale from the 0.10
+                        # threshold reading it, so the gate could never open at all.
                         row["rival_premium"] = 100.0
-                        row["rival_premium_take_probability"] = take_prob
+                        row["rival_premium_take_rank"] = take_rank
                 return rows
             return _stub
 
-        with mock.patch.object(ps.ds, "pick_analysis", side_effect=_stub_factory(0.9)):
+        with mock.patch.object(ps.ds, "pick_analysis", side_effect=_stub_factory(1)):
             snap_credible = ps.build_snapshot(
                 self.merger, self.players_db, [], self.pick_order, 0, "1", STANDARD_LEAGUE, pick_label="1.01", top_n=8,
             )
-        with mock.patch.object(ps.ds, "pick_analysis", side_effect=_stub_factory(0.0)):
+        with mock.patch.object(ps.ds, "pick_analysis", side_effect=_stub_factory(40)):
             snap_not_credible = ps.build_snapshot(
                 self.merger, self.players_db, [], self.pick_order, 0, "1", STANDARD_LEAGUE, pick_label="1.01", top_n=8,
             )
@@ -348,7 +354,7 @@ class DenialCredibleGateProductionInvariantTests(unittest.TestCase):
 
             self.assertEqual(c1.rival_premium, c2.rival_premium, pid)
             self.assertEqual(c1.pick_necessity, c2.pick_necessity,
-                              f"{pid}: necessity arithmetic must not read rival_premium_take_probability")
+                              f"{pid}: necessity arithmetic must not read rival_premium_take_rank")
 
         top_credible = by_id_credible[forced_id]
         top_not_credible = by_id_not_credible[forced_id]

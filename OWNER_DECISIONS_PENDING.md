@@ -14,26 +14,34 @@ instead**, so you can see what was decided without you and object if you disagre
 
 ## D1 — `rival_premium_basis`: should it borrow `denial_basis`? (from 2.5, the sixth of six)
 
+**Correction to how I first wrote this up.** I described the borrow as the *proposed* fix. It is
+the CURRENT STATE: `draft_strategy.py` already emits `"rival_premium_basis": denial_basis`, and the
+comment beside it presents the borrow as deliberate — *"the companion, same vocabulary denial_basis
+uses"*. So the question is not whether to start borrowing; it is whether to keep doing so.
+
 **The question.** Five of 2.5's six absence-contract breaks were repaired. The sixth is
-`rival_premium`, which reaches a caller as a number with no basis string of its own. The cheap fix
-is to have it report `denial_basis` — the basis already computed beside it.
+`rival_premium`, whose basis string is not its own: it is `denial_basis`, computed for a different
+quantity in the same loop.
 
 **Why I stopped.** `denial_basis` answers *"why was this player's denial value what it was"*.
-`rival_premium` is a different quantity, and a basis that describes a neighbouring number is the
-kind of thing that reads as corroboration for the rest of the codebase's life (`#193`: an
-admission on evidence with no number). If the two ever diverge, every consumer has been told the
-wrong provenance and nothing will notice.
+`rival_premium` is a different number, and a basis that describes a neighbouring one reads as
+corroboration for the rest of the codebase's life (`#193`: an admission on evidence with no
+number). The two agree today because they are computed from the same rival scan — but nothing
+enforces that, and if they ever diverge every consumer has been told the wrong provenance and
+nothing will notice.
 
 **Options.**
-  * **(a) Borrow `denial_basis`.** One line. Every surface immediately gets a basis string. Risk:
-    it is not this number's basis, and the label outlives whoever knew that.
+  * **(a) Keep the borrow, and pin it.** Zero code change plus one test asserting the two are
+    computed from the same scan, so a future divergence fails loudly instead of lying quietly.
   * **(b) Give `rival_premium` its own basis vocabulary.** Correct, and the work is a day: the term
     has four distinguishable states and each needs a name and a test.
-  * **(c) Leave it absent and say so.** `None` is honest; consumers already handle absence (`#187`).
-    The number stays usable, unlabelled.
+  * **(c) Withdraw the borrowed label and report absence.** `None` is honest and consumers already
+    handle it (`#187`), but it removes a string that is *correct today* from every surface.
 
-**My recommendation: (c) now, (b) when the term is next touched.** (a) is the only option that can
-make a surface say something false, and the absence contract already gives (c) a clean meaning.
+**My recommendation: (a) now, (b) when the term is next touched.** This is a change from what I
+first wrote, and the reason is the correction above: with the borrow already shipped, (c) is no
+longer "leave it alone", it is a removal that makes surfaces less informative to guard against a
+divergence that has not happened. (a) costs one test and converts the silent risk into a loud one.
 
 ---
 

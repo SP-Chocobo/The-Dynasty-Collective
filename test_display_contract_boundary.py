@@ -623,8 +623,17 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #     designation beside it is the same gap this mandate item found at the snapshot
         #     boundary, one surface along. WHERE it goes on the card is a UI decision and is not
         #     made here -- the same treatment actingNow and cannot_be_fielded got.
+        # 54 -> 55 (MANDATE 3.4): rival_premium_take_rank. CONFIRMED AGAINST BOTH HALVES:
+        #   SCALE -- it is an ORDINAL, a rival's rank on his own board, not a quantity. There are no
+        #     units and nothing that could be read as universal-value points. It replaces a gate on
+        #     `rival_premium_take_probability`, which stays as an observable; that field was on a
+        #     scale `#206`'s normalisation had moved out from under the threshold reading it, which
+        #     is exactly the class of error this pin exists to make somebody look at.
+        #   RENDER -- NO. The card already shows what this decides: the "Denies {team}" flag. The
+        #     rank is the gate's input, not a fact about the player, and putting an opponent's
+        #     internal board position on a card would invite reading it as a property of the man.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 54,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 55,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

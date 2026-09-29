@@ -81,6 +81,10 @@ def audit_candidates(
             picks, players_db, pick_order, current_index, my_roster_id, pid, opponent_boards, league=league,
         )
         take_prob_by_team = {r["roster_id"]: r["take_probability"] for r in survival["risk_by_team"]}
+        # MANDATE 3.4: the RANK too, because that is what the credible-path gate reads now. Same
+        # source as the probability, so this audit still mirrors production rather than restating it.
+        take_rank_by_team = {r["roster_id"]: r.get("rank_on_their_board")
+                             for r in survival["risk_by_team"]}
 
         rival_premium = 0.0
         premium_team = None
@@ -95,9 +99,10 @@ def audit_candidates(
                 premium_team = roster_id
 
         premium_team_take_probability = take_prob_by_team.get(premium_team) if premium_team else None
+        premium_team_take_rank = take_rank_by_team.get(premium_team) if premium_team else None
         credible_rival_path = (
-            premium_team_take_probability is not None
-            and premium_team_take_probability >= ps.CREDIBLE_RIVAL_PATH_THRESHOLD
+            premium_team_take_rank is not None
+            and premium_team_take_rank <= ps.CREDIBLE_RIVAL_PATH_MAX_RANK
         )
         results.append(DenialAudit(
             player_id=str(pid),

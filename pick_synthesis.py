@@ -478,7 +478,29 @@ NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to need_bonus -- NOT
 # scoped to this ONE flag -- rival_premium's own continuous contribution to pick_necessity
 # (NECESSITY_DENIAL_WEIGHT above) is untouched by this threshold; only the label a UI is
 # allowed to display "DENIAL" for is gated.
-CREDIBLE_RIVAL_PATH_THRESHOLD = 0.10
+#: MANDATE 3.4: THE SAME BAR, IN THE UNIT IT WAS ALWAYS STATED IN. This was
+#: `CREDIBLE_RIVAL_PATH_THRESHOLD = 0.10`, compared against a take_probability, and the comment
+#: above says what 0.10 meant: "roughly rank-4-or-better under draft_strategy's own
+#: RANK_TAKE_PROBABILITY", whose rank-4 entry is exactly 0.10.
+#:
+#: IT BECAME UNREACHABLE. `#206` normalised the rank model so one opponent's take probabilities
+#: are mutually exclusive and sum to <= 1 across their whole board -- unnormalised they summed to
+#: 23.49. The threshold was left in RAW table units. Measured on a real mid-draft turn with 23
+#: intervening picks: the largest take_probability reaching this gate is 0.028, `rival_premium >=
+#: 2 x NEED_BONUS_PER_DEDICATED_SLOT` fires on 24 of 48 candidates, and `block_opportunity` is
+#: True on 0 of 48. The premium half fires abundantly and the AND is always False, so the flag has
+#: been dead since the normalisation and the "Denies {team}" label it gates has never appeared.
+#:
+#: Expressed as a RANK the bar cannot drift with the probability model again, which is the whole
+#: lesson of the constant it replaces. Derived from the same table rather than chosen (`#56`):
+#: rank 4 is the entry whose value WAS 0.10.
+#:
+#: NOT A NEW BAR. This restores a stated intent; it does not decide a different one. Whether
+#: rank-4-or-better is the right bar is a separate question, and one measurement recorded here for
+#: whoever asks it: the pace-driven branch of the take model can exceed the rank-based probability
+#: for a rival whose ROSTER pace makes the take likely at a worse rank, and such a rival is not
+#: credited with a credible path by a rank test. That was equally true of the 0.10 version.
+CREDIBLE_RIVAL_PATH_MAX_RANK = 4
 
 LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room switches to upside mode
 LATE_ROUND_NECESSITY_CAP = 30.0
@@ -1029,7 +1051,9 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         not to how often it lights.
 
       block_opportunity -- rival_premium >= 2 x NEED_BONUS_PER_DEDICATED_SLOT AND that same
-        premium-driving rival's own take_probability clears CREDIBLE_RIVAL_PATH_THRESHOLD:
+        premium-driving rival's own rank on his board clears CREDIBLE_RIVAL_PATH_MAX_RANK
+        (MANDATE 3.4 -- it was a take_probability against a threshold, on a scale `#206`'s
+        normalisation had since moved out from under it):
         at least one intervening rival values him at a MULTIPLE-unfilled-dedicated-starters
         premium over his universal value -- a rival with a genuinely gaping hole (the real
         observed case: a superflex rival with no QB1 at all), not routine need -- AND that
@@ -1099,8 +1123,11 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
     flags = []
     for i, c in enumerate(candidates):
         premium = c.get("rival_premium") or 0.0
-        take_prob = c.get("rival_premium_take_probability")
-        credible_rival_path = take_prob is not None and take_prob >= CREDIBLE_RIVAL_PATH_THRESHOLD
+        # MANDATE 3.4: asked of the RANK, not of a normalised probability compared against a
+        # raw-table number. `None` means no rival board could price him at all, which is not a
+        # credible path -- the same reading the probability version gave absence.
+        take_rank = c.get("rival_premium_take_rank")
+        credible_rival_path = take_rank is not None and take_rank <= CREDIBLE_RIVAL_PATH_MAX_RANK
         measurable = i in priced
         flags.append({
             # block_opportunity reads rival_premium and cliff_protection reads the cliff dict.
@@ -1541,10 +1568,15 @@ class CandidateSnapshot:
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
     projected_points: Optional[float]
-    # The premium-driving rival's own real take_probability -- see CREDIBLE_RIVAL_PATH_
-    # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
-    # existing hand-built CandidateSnapshot fixtures that predate this field still construct.
+    # The premium-driving rival's own real take_probability. OBSERVABLE ONLY since MANDATE 3.4 --
+    # it no longer gates anything, because `#206`'s normalisation left it on a different scale from
+    # the bar that read it. Kept because it is the magnitude a reader wants beside the rank.
+    # Defaulted so existing hand-built CandidateSnapshot fixtures still construct.
     rival_premium_take_probability: Optional[float] = None
+    # That rival's RANK on his own board -- see CREDIBLE_RIVAL_PATH_MAX_RANK and
+    # decision_path_flags' block_opportunity, the one consumer. `None` means no rival board priced
+    # him, which is a different statement from "ranked badly" (`#187`).
+    rival_premium_take_rank: Optional[int] = None
     # #139's third team-specific term, alongside need_bonus and eligibility_bonus above.
     # Defaulted, and down here rather than beside them, for the same two reasons that field
     # is: upside-mode boards genuinely never compute it, and hand-built CandidateSnapshot
@@ -1871,6 +1903,7 @@ def build_snapshot(
             "denial_team": a.get("denial_team"),
             "rival_premium": a.get("rival_premium"),
             "rival_premium_take_probability": a.get("rival_premium_take_probability"),
+            "rival_premium_take_rank": a.get("rival_premium_take_rank"),
             "positional_forfeit": a.get("positional_forfeit"),
             "position_expected_taken": a.get("position_expected_taken"),
             "position_best_now": a.get("position_best_now"),

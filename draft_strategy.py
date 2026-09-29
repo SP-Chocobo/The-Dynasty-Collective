@@ -1245,6 +1245,8 @@ def pick_analysis(
         # than there, because rival_premium FEEDS pick_necessity.
         rival_premium = None
         rival_premium_take_probability = None
+        # MANDATE 3.4: THE RANK, which is what the credible-path bar was always stated in.
+        rival_premium_take_rank = None
         # #187. THREE different facts used to leave denial_value at exactly 0.0, and the UI
         # promised, verbatim, that "a measured 0 means no rival was positioned to gain".
         # Counted here, where the difference is knowable, instead of being reconstructed
@@ -1305,6 +1307,15 @@ def pick_analysis(
                 # pick_synthesis.decision_path_flags' block_opportunity, the one consumer of
                 # this field.
                 rival_premium_take_probability = risk["take_probability"]
+                # MANDATE 3.4. The probability alone cannot carry the bar any more. `#206`
+                # normalised this model so one opponent's take probabilities sum to <= 1 across
+                # their whole board, and `CREDIBLE_RIVAL_PATH_THRESHOLD` was 0.10 -- a number
+                # lifted from the RAW rank table, where 0.10 is the rank-4 entry. Measured after
+                # normalisation: the largest take_probability reaching that gate is 0.028, so the
+                # bar sat above every value it could ever be handed and `block_opportunity` was
+                # False on every candidate. The rank is the unit the bar was stated in and the one
+                # that cannot drift when the probability model is renormalised again.
+                rival_premium_take_rank = risk.get("rank_on_their_board")
 
         # WHICH OF THE THREE (#187), and the absence made real where there was no measurement.
         #
@@ -1346,6 +1357,7 @@ def pick_analysis(
             # wanted him more" from "nobody was there to want him".
             "rival_premium_basis": denial_basis,
             "rival_premium_take_probability": rival_premium_take_probability,
+            "rival_premium_take_rank": rival_premium_take_rank,
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
             "position_best_now": (forfeits.get(my_row.get("position")) or {}).get("best_now"),

@@ -459,13 +459,18 @@ class DecisionPathFlagsTests(unittest.TestCase):
     pin that reuse (each boundary is asserted against the constant itself, not a copied
     literal) and the rule that the flags classify without ever changing a score."""
 
-    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0, cliff=None):
-        # take_prob defaults to 1.0 (fully credible) so every PRE-EXISTING test in this class
-        # -- none of which cares about the credible-path gate -- keeps exercising exactly the
-        # boundary it was written to test, undisturbed by that gate's addition.
+    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0, take_rank=1, cliff=None):
+        # take_rank defaults to 1 (the most credible path there is) so every PRE-EXISTING test in
+        # this class -- none of which cares about the credible-path gate -- keeps exercising
+        # exactly the boundary it was written to test, undisturbed by that gate's presence.
+        #
+        # MANDATE 3.4: the gate reads the RANK now. `take_prob` is still carried because the field
+        # still exists and is still observable, but nothing gates on it -- `#206` normalised the
+        # probability model out from under the threshold that used to.
         return {"universal_value": uv, "team_acquisition_value": tav,
                 "positional_forfeit": forfeit, "rival_premium": premium,
                 "rival_premium_take_probability": take_prob,
+                "rival_premium_take_rank": take_rank,
                 "positional_cliff": ({"tier": cliff} if cliff is not None else None)}
 
     def test_cliff_protection_fires_on_the_material_cliff_tiers_and_no_others(self):
@@ -519,21 +524,36 @@ class DecisionPathFlagsTests(unittest.TestCase):
     def test_block_opportunity_requires_a_credible_rival_path_not_premium_magnitude_alone(self):
         # The REFINE production change: a premium big enough to clear the 2x-dedicated-slot
         # boundary is necessary but no longer sufficient -- the specific rival driving that
-        # premium must ALSO have a credible real chance of taking the player
-        # (take_probability >= CREDIBLE_RIVAL_PATH_THRESHOLD), per the denial-semantics audit
-        # finding that ~1 in 5 premium-qualifying flags had no such rival path (both real
-        # trial formats).
+        # premium must ALSO have a credible real chance of taking the player, per the
+        # denial-semantics audit finding that ~1 in 5 premium-qualifying flags had no such rival
+        # path (both real trial formats).
+        #
+        # MANDATE 3.4: THE BAR IS NOW A RANK, and the boundary cases move with it. It was
+        # `take_probability >= 0.10`, and 0.10 is the rank-4 entry of draft_strategy's own raw
+        # RANK_TAKE_PROBABILITY table -- but `#206` normalised that model so one opponent's take
+        # probabilities sum to <= 1 across their whole board, leaving the threshold in raw units.
+        # Measured: the largest take_probability that can reach this gate is 0.028, so the flag was
+        # False on every candidate and the "Denies {team}" label never appeared. Stated as a rank it
+        # is the same bar and cannot drift when the probability model is renormalised again.
         import draft_room as dr
         boundary = 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT
-        no_path = self._cand(80, 85, premium=boundary + 5.0, take_prob=0.02)
-        missing_take_prob = self._cand(80, 85, premium=boundary + 5.0, take_prob=None)
-        at_threshold = self._cand(80, 85, premium=boundary + 5.0, take_prob=ps.CREDIBLE_RIVAL_PATH_THRESHOLD)
-        just_below_threshold = self._cand(80, 85, premium=boundary + 5.0, take_prob=ps.CREDIBLE_RIVAL_PATH_THRESHOLD - 0.001)
-        flags = ps.decision_path_flags([no_path, missing_take_prob, at_threshold, just_below_threshold])
+        no_path = self._cand(80, 85, premium=boundary + 5.0, take_rank=40)
+        missing_take_rank = self._cand(80, 85, premium=boundary + 5.0, take_rank=None)
+        at_the_bar = self._cand(80, 85, premium=boundary + 5.0,
+                                take_rank=ps.CREDIBLE_RIVAL_PATH_MAX_RANK)
+        just_beyond = self._cand(80, 85, premium=boundary + 5.0,
+                                 take_rank=ps.CREDIBLE_RIVAL_PATH_MAX_RANK + 1)
+        flags = ps.decision_path_flags([no_path, missing_take_rank, at_the_bar, just_beyond])
         self.assertFalse(flags[0]["block_opportunity"], "high premium alone must not fire DENIAL without a credible rival path")
-        self.assertFalse(flags[1]["block_opportunity"], "a missing take_probability must not default to credible")
-        self.assertTrue(flags[2]["block_opportunity"], "the credible-path threshold itself is inclusive (>=)")
+        self.assertFalse(flags[1]["block_opportunity"],
+                         "a missing rank means no rival board priced him, which is not credible -- "
+                         "it must not default to credible")
+        self.assertTrue(flags[2]["block_opportunity"], "the credible-path bar itself is inclusive (<=)")
         self.assertFalse(flags[3]["block_opportunity"])
+        # AND THE FLAG IS REACHABLE AT ALL, which is what 3.4 found it was not. A bar no input can
+        # clear is not a gate, and this pins that at least one of these cases fires.
+        self.assertTrue(any(flag["block_opportunity"] for flag in flags),
+                        "no candidate clears the credible-path bar, so the flag is dead again")
 
     def test_credible_gate_does_not_touch_rival_premiums_own_value(self):
         # The user's explicit constraint: the continuous rival_premium contribution (and the
