@@ -46,9 +46,7 @@ import league_config as lc
 import pick_debate as pdb
 import pick_synthesis as ps
 import run_draft_battery as rdb
-
-_HERE = Path(__file__).parent
-
+import ui_source
 
 class _Fixture:
     """Built once: the real capture universe is the only pool that can express a real league."""
@@ -245,27 +243,39 @@ class TheChairsAreToldTests(unittest.TestCase):
 
 class ThePersonSeesItAboveTheBoardTests(unittest.TestCase):
     """Read from the AST rather than the text (`#200`): a substring search would be satisfied by
-    the field's name appearing in a comment."""
+    the field's name appearing in a comment.
+
+    Through `ui_source.units`, never `app.py` off disk. The UI is one module today, so the two are
+    the same bytes -- but a view extracted into its own file tomorrow would silently drop out of an
+    app.py read, and this check would go on passing while covering nothing. Each unit is parsed
+    separately because `ui_source.text` joins them with boundary markers that are not Python."""
 
     @classmethod
     def setUpClass(cls):
-        cls.tree = ast.parse((_HERE / "app.py").read_text(encoding="utf-8"))
+        cls.trees = {name: ast.parse(source)
+                     for name, source in ui_source.units().items()}
+
+    def _nodes(self):
+        for name, tree in self.trees.items():
+            for node in ast.walk(tree):
+                yield name, node
 
     def test_the_draft_room_reads_the_verdict_off_the_snapshot(self):
-        reads = [node for node in ast.walk(self.tree)
+        reads = [name for name, node in self._nodes()
                  if isinstance(node, ast.Attribute) and node.attr == "config_ambiguities"]
-        self.assertTrue(reads, "app.py never reads config_ambiguities, so a board priced on an "
-                               "unreadable league is still silently priced")
+        self.assertTrue(reads,
+                        "no UI module reads config_ambiguities, so a board priced on an unreadable "
+                        "league is still silently priced")
 
     def test_it_is_read_from_a_snapshot_and_not_rederived_in_the_view(self):
         """The view must not call the gate itself -- a second call site is a second answer that
         can disagree with the board actually on screen (`#126`)."""
-        called = [node for node in ast.walk(self.tree)
+        called = [f"{name}: {node.func.attr}" for name, node in self._nodes()
                   if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
                   and node.func.attr in ("ambiguities", "admits_decision")]
         self.assertEqual(called, [],
-                         "app.py derives the config verdict itself instead of reading the one the "
-                         "snapshot was built with")
+                         f"a UI module derives the config verdict itself instead of reading the one "
+                         f"the snapshot was built with: {called}")
 
 
 if __name__ == "__main__":
