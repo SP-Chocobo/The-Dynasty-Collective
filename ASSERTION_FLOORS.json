@@ -5880,7 +5880,7 @@
     "test_draft_board_ui.py": {
       "test_methods": 49,
       "asserts": {
-        "assertEqual": 38,
+        "assertEqual": 40,
         "assertFalse": 1,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
@@ -5963,7 +5963,7 @@
           "assertIsInstance": 1
         },
         "test_every_field_is_a_direct_unmodified_read": {
-          "assertEqual": 10
+          "assertEqual": 12
         },
         "test_every_flex_slot_has_a_label": {
           "assertLessEqual": 1,

@@ -261,6 +261,17 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "cliffTier": cliff.get("tier"),
         "cliffGap": cliff.get("gap"),
         "cliffTypical": cliff.get("typical_gap"),
+        #: MANDATE 2.5: THE COMPANION TO A PRICE THIS PAYLOAD ALREADY CARRIES. `uv` above is
+        #: health-adjusted -- `risk_adj` includes `health_penalty`'s cut for a reported designation
+        #: -- and neither the designation nor the basis that says which health regime priced it
+        #: reached this payload, so the surface could not have shown the cause of its own number
+        #: even if it wanted to. A direct unmodified read like every other field here: absent stays
+        #: absent, and `availabilityBasis` is what separates "nothing was reported" from "healthy".
+        #: WHETHER THE CARD RENDERS IT is a UI decision and is deliberately not made here, the same
+        #: way `actingNow` and `cannotBeFielded` reached this payload before the surface decided
+        #: where to put them. What is closed is that the payload no longer withholds it.
+        "injuryStatus": c.injury_status,
+        "availabilityBasis": c.availability_basis,
         "forfeit": c.positional_forfeit,
         #: WHAT WAITING WOULD COST. The board is ordered on team_acquisition_value, NOT on
         #: this (#22) -- it briefly was, and that ordering lost 6.090% of starting-lineup

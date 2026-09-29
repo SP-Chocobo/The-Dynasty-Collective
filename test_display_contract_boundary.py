@@ -612,8 +612,19 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         # it is a companion to a SELECTION decision rather than a price -- the same shape as
         # `fills_required_slot`, which the card already carries. Whether the card should show
         # "this roster cannot field another one" is a UI decision and is not made here.
+        # 52 -> 54 (MANDATE 2.5): injury_status and availability_basis. CONFIRMED AGAINST THE
+        # QUESTION THIS TEST ASKS, both halves of it:
+        #   SCALE -- neither is a quantity. One is Sleeper's own designation vocabulary ("Out",
+        #     "IR", "PUP"), the other a basis token from player_universe. No units, so there is no
+        #     scale for the card to misrepresent and nothing to read as universal-value points.
+        #   RENDER -- YES, eventually, and the payload now carries both so the surface can. They are
+        #     the companion to a price the card ALREADY shows: `uv` is health-adjusted, because
+        #     risk_adj includes health_penalty's cut. A card showing the adjusted number with no
+        #     designation beside it is the same gap this mandate item found at the snapshot
+        #     boundary, one surface along. WHERE it goes on the card is a UI decision and is not
+        #     made here -- the same treatment actingNow and cannot_be_fielded got.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 52,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 54,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

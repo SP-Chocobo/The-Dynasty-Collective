@@ -53,6 +53,11 @@ class SerializeCandidateTests(unittest.TestCase):
         self.assertEqual(row["denialTeam"], c.denial_team)
         self.assertEqual(row["needBonus"], c.need_bonus)
         self.assertEqual(row["fillsRequiredSlot"], c.fills_required_slot)
+        # MANDATE 2.5: the companion to `uv`, which is health-adjusted. Read unmodified like the
+        # rest -- a serializer that transformed either would be a second place deciding what the
+        # designation means.
+        self.assertEqual(row["injuryStatus"], c.injury_status)
+        self.assertEqual(row["availabilityBasis"], c.availability_basis)
 
     def test_positional_cliff_fields_unpacked_when_present(self):
         row = ui.serialize_candidate(_candidate())
