@@ -110,11 +110,54 @@ a position the floor says not to draft early. `#21`'s own floor derivation is st
 which is your equation and a different subject. Written up in
 `evidence/streaming_floor_after_kicking/`.
 
-## D4 — `#184` / task #36: a percentile-to-points conversion for the upside growth term
+## D4 — the upside growth term: what conversion, or should it exist at all?
 
-Carried from 1.3. `growth_signal` is a percentile; everything it is added to is points. The
-conversion factor is an engine-design choice with no measurement that settles it, which is exactly
-what `#184` marks. Deferred post-freeze by agreement; listed here so it is not lost.
+**Re-armed with the completed battery, which measures it over 9336 picks instead of 87.**
+
+**The question as `#184` framed it.** `growth_signal` is a percentile and everything it is added to is
+points. The conversion factor is an engine-design choice with no measurement that settles it, and the
+±10 clamp was borrowed from `time_horizon_adj` precisely because `#56` forbids calibrating one.
+
+**What the battery now says.** The report carries growth counts per arm. Summed over all 53:
+
+| | |
+|---|---|
+| picks where growth was measured at all | **672** of 9336 |
+| picks where growth was **above zero** | **5** |
+| share of measured picks | **0.74%** |
+| arms with any pick above zero | **3 of 53** |
+
+**And this measurement is independent, which the mandate's own figure was not.** The item reports
+"positive on 2 of 87 real picks" and then discloses the problem itself: that number is *mine*, from
+the pre-freeze `evidence/upside_gap/` work, and my commit subject leaked it into a `git log` the
+blind pass could read — so it was never a two-source result. The battery's instrument reproduces it
+at 100× the population, with no knowledge of the earlier figure.
+
+**So the question has changed shape.** At 5 of 672 the live issue is not which conversion the term
+should use. It is whether a term that fires on 0.74% of the picks that reach it should exist.
+
+**Options.**
+  * **(a) Retire it, and say what would bring it back.** The precedent is well worn here — the
+    survival term (`#24`), `context_elevated` (`#25`) and `eligibility_bonus` (6.1b) were all retired
+    on measurement, each with its condition for return recorded. Cheapest, and it removes a term the
+    board spends a clamp on for almost nothing.
+  * **(b) Derive the conversion first, then re-measure.** Answers `#184` on its own terms. But the
+    derivation is real work, and if the term still fires on 5 of 672 afterwards the work bought a
+    better number for something that does not happen.
+  * **(c) Keep it as an observable, priced at zero.** It stops contributing to `final_score` and
+    stays on the board as a number a person can read. Matches exactly what `#22` did for
+    `acting_now_value` — reverted the ordering, kept the figure.
+
+**My recommendation: (c).** (a) is tempting and I would defend it, but the term's *inputs* are sound
+— `proj_3yr` against the season percentile, now over one population after 3.1 — and what is missing
+is only the conversion into points. Retiring it discards a working measurement to avoid an unmade
+decision. (c) keeps the measurement visible, stops it spending an unearned clamp on 0.74% of picks,
+and leaves (b) available whenever the conversion is worth deriving. It is also the option this
+codebase has already run once and liked.
+
+**What it costs to be wrong.** (c) leaves a number on the board that no longer moves anything, which
+is the "dead term" shape 3.4 just spent effort cleaning up — so it needs the basis discipline: an
+observable, labelled as one. (a) is irreversible in practice; nobody rebuilds a retired term.
 
 ## D5 — task #37: a deliberate ordering policy for the upside branch's flat regions
 
