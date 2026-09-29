@@ -540,23 +540,40 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
                             f"{pos} carries a real 3yr outlook and should still be scored on it")
 
     def test_a_measured_zero_and_an_absent_data_zero_are_different_things(self):
-        # The distinction this whole class exists to protect, and the one the bug erased.
-        # Every RB on a full-pool board scores growth 0.0 -- not because the data is missing
-        # but because it is present and says so: an RB's 3yr outlook sits BELOW his season
-        # percentile across the board, which is the aging cliff showing up exactly where it
-        # should, then clipped at 0 because upside mode does not carry negative growth.
-        # K and DEF also score 0.0, from having no 3yr outlook at all.
+        # The distinction this whole class exists to protect, and the one the bug erased. A row
+        # can score growth 0.0 for two opposite reasons: because its 3yr outlook is PRESENT and
+        # sits at or below its season percentile (the aging cliff showing up where it should,
+        # clipped at 0 because upside mode carries no negative growth), or because there is no
+        # 3yr outlook at all. Identical output, opposite meaning, and only _has_3yr tells them
+        # apart. A future change that "fixes" one of these zeroes by relaxing the guard would
+        # silently resurrect the artifact, so both are pinned here with the flag that separates
+        # them.
         #
-        # Identical output, opposite meaning, and only _has_3yr tells them apart. A future
-        # change that "fixes" one of these zeroes by relaxing the guard would silently
-        # resurrect the artifact, so both are pinned here together with the flag that
-        # separates them.
+        # THIS USED TO ASSERT THAT *EVERY* RB SCORES 0.0, and that was an accident of the data
+        # rather than the distinction being tested. MANDATE 3.1 paired the two percentile
+        # populations -- they had been a rank among 292 rows minus a rank among 259 -- which
+        # removed a systematic downward bias of about 0.58 on the horizon scale. Five of the 40
+        # RBs then crossed back above zero, and they are the right five: Omarion Hampton,
+        # Treveyon Henderson, Zach Charbonnet and two others, young backs whose three-year
+        # outlook genuinely does exceed their season standing. The old bias was clipping real
+        # upside signal to zero, so the premise was never safe to pin.
+        #
+        # What is pinned instead is the contrast itself: the measured-zero group must be
+        # non-empty (or there is no "measured zero" to distinguish), and the absent-data group
+        # must be zero WITHOUT EXCEPTION (one non-zero there is the artifact returning).
         rb = [r for r in self.upside_board if r["position"] == "RB"]
         kdef = [r for r in self.upside_board if r["position"] in ("K", "DEF")]
         self.assertTrue(rb and kdef)
-        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in rb),
-                        "an RB with a positive 3yr trajectory would invalidate this test's premise")
-        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in kdef))
+        measured_zero = [r for r in rb if r.get("growth_signal", 0.0) == 0.0]
+        self.assertTrue(measured_zero,
+                        "no RB measures growth 0.0, so this board has no MEASURED zero left to "
+                        "contrast against the absent-data one")
+        self.assertGreater(len(measured_zero), len(rb) // 2,
+                           "only a handful of RBs measure zero -- the aging cliff should still put "
+                           "most of the position at or below its season percentile")
+        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in kdef),
+                        "a row with NO 3yr outlook scored growth, which is the fabricated signal "
+                        "this class exists to keep dead")
         # The measured group has the data; the absent group does not.
         proj = self.merger.projections
         rb_rows = proj[proj["position"] == "RB"]
