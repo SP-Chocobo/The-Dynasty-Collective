@@ -37,7 +37,14 @@ class HealthPenaltyIsUnchangedTests(unittest.TestCase):
     """The ruling: magnitudes stay. Pin them so the absence repair cannot drift into one."""
 
     def test_the_table_still_holds_the_measured_magnitudes(self):
-        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0})
+        # PER DESIGNATION, NOT BY DICT EQUALITY -- the third pin of this shape in the tree, and the
+        # last. All three compared RISK_ADJ to a three-entry literal while guarding MAGNITUDES, so
+        # all three failed when MANDATE 4 added "PUP" with IR's number (derived from their shared
+        # four-game rule floor, not chosen). An equality on a growing table owns every future
+        # addition to it and cannot tell a resize from a new member.
+        for designation, penalty in (("IR", -18.0), ("Out", -10.0), ("Doubtful", -5.0)):
+            self.assertEqual(dr.RISK_ADJ[designation], penalty,
+                             f"{designation}'s measured magnitude moved")
 
     def test_a_priced_IR_row_with_no_games_reported_still_takes_the_full_penalty(self):
         # availability_basis None = the #191 haircut could not reach him (Sleeper reports no

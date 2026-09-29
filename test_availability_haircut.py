@@ -202,10 +202,31 @@ class ThroughTheRealBoardTests(unittest.TestCase):
         The A/B (one process, toggling only GAMES_MISSED_FLOOR) moves 547 rows, at most 90
         places, and leaves the top 50 untouched. The demoted set is exactly the designated one:
         Harold Landry (PUP) +90, Micah Parsons (PUP) +67, Jordyn Tyson (IR) +46."""
-        import player_universe as _pu
-        real = dict(_pu.GAMES_MISSED_FLOOR)
+        # ONE VARIABLE, AND IT USED NOT TO BE. This cleared GAMES_MISSED_FLOOR to switch the
+        # haircut off -- which also flips availability_basis from RULE_FLOOR to
+        # UNRECOGNISED_DESIGNATION, and THAT switches the RISK_ADJ fallback ON. So the comparison
+        # was never "haircut against nothing"; it was "haircut against the fallback penalty", and
+        # the fallback's coverage decided the population.
+        #
+        # MANDATE 4 exposed it. PUP had no RISK_ADJ entry, so PUP players were the one group whose
+        # haircut effect this A/B saw undiluted, and they carried the count. Giving PUP IR's penalty
+        # (derived from their shared four-game floor) made it behave like every other designation,
+        # and the count fell from above 10 to 7 -- no regression, just a comparison whose population
+        # had always depended on which designations the FALLBACK happened to cover.
+        #
+        # Isolating the haircut properly is better on every axis, which is the argument for the
+        # change rather than the failure being the argument: 33 rows move and ALL 33 carry a
+        # rule-floor designation (IR 21, PUP 12), against 7 of 306 under the old comparison. The
+        # claim "the haircut demotes the designated players" is what that measures.
+        #
+        # Switched off at the FACTOR instead: 1.0 with the basis left at RULE_FLOOR, which is the
+        # one state meaning "already charged", so health_penalty stays 0 and the haircut is the only
+        # thing that moves. draft_room binds the function as `player_availability_factor`.
+        real_factor = dr.player_availability_factor
         try:
-            _pu.GAMES_MISSED_FLOOR.clear()
+            dr.player_availability_factor = lambda status, gp: (
+                (1.0, pu.RULE_FLOOR) if status in pu.GAMES_MISSED_FLOOR
+                else real_factor(status, gp))
             merger = dm.DataMerger()
             merger.set_league_format(db.league_format_hint(self.league))
             uncut = dr.compute_draft_board(
@@ -213,15 +234,21 @@ class ThroughTheRealBoardTests(unittest.TestCase):
                 sleeper_projections=self.projections,
                 sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
         finally:
-            _pu.GAMES_MISSED_FLOOR.update(real)
+            dr.player_availability_factor = real_factor
         before = {r["player_id"]: i for i, r in enumerate(uncut)}
         moved_down = [p for p, i in before.items()
                       if p in self.rank and self.rank[p] > i]
         self.assertGreater(len(moved_down), 0, "the haircut moved nobody -- it is not reaching the board")
-        # and every one of them carries a rule-floor designation
+        # and the ones that moved carry a rule-floor designation
         designated = {p for p in moved_down
                       if (self.players.get(str(p)) or {}).get("injury_status") in pu.GAMES_MISSED_FLOOR}
         self.assertGreater(len(designated), 10)
+        # BOTH designations represented, so this is not one group carrying the whole claim -- which
+        # is exactly how the old fixture's number came to depend on PUP's inconsistency.
+        moved_statuses = {(self.players.get(str(p)) or {}).get("injury_status") for p in designated}
+        self.assertGreaterEqual(len(moved_statuses & set(pu.GAMES_MISSED_FLOOR)), 2,
+                                f"only {moved_statuses} moved; the haircut should reach every "
+                                f"designation with a rule floor")
 
     def test_it_does_not_disturb_the_top_of_the_board(self):
         """Non-vacuity in the other direction, and the honest scope of this repair: on the
@@ -302,9 +329,23 @@ class ThePenaltyIsNotChargedTwiceTests(unittest.TestCase):
                 self.assertEqual(dr.health_penalty("IR", basis), -18.0)
 
     def test_a_designation_with_no_magnitude_is_still_zero_here(self):
-        # PUP has no RISK_ADJ entry (#202). Its health now enters through the HAIRCUT, not
-        # through this term, and this test pins that rather than leaving it implied.
-        self.assertEqual(dr.health_penalty("PUP", None), 0.0)
+        # THIS USED TO NAME PUP, AND PUP WAS THE DEFECT. The comment read: "PUP has no RISK_ADJ
+        # entry (#202). Its health now enters through the HAIRCUT, not through this term, and this
+        # test pins that rather than leaving it implied." The reasoning holds only where the haircut
+        # CAN be computed. With a season line and no games-played, availability_factor returns
+        # NO_GAMES_REPORTED and factor 1.0, the haircut applies nothing, and RISK_ADJ is the whole
+        # discount -- which is why the sibling test above requires IR to take -18.0 in exactly that
+        # state. PUP was excluded from that only by having no entry, so it was priced fully fit
+        # while an identical IR player took 18 points. MANDATE 4 gave it IR's number, derived from
+        # their shared four-game floor.
+        #
+        # The statement this test wants is still worth making, so it now uses designations that
+        # genuinely have no magnitude to derive: they carry no rule floor and no ruling either way,
+        # so nothing here may charge them.
+        for designation in ("Sus", "DNR", "NA"):
+            with self.subTest(designation=designation):
+                self.assertNotIn(designation, pu.RECOGNISED_DESIGNATIONS)
+                self.assertEqual(dr.health_penalty(designation, None), 0.0)
 
 
 # MUTATIONS -- each applied, this file re-run, the named test observed to FAIL, then reverted:
