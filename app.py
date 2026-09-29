@@ -5579,7 +5579,15 @@ elif main_view == DRAFT_VIEW:
                     # rule in team_count's stated order -- but the derivation is no longer this
                     # screen's own. The engine reads the same function, so a draft with fewer seats
                     # than the league has rosters can no longer give the two different counts.
-                    num_teams = league_config.team_count(league_for_engine, pick_order=round_1_order)
+                    # `pick_order` ONLY, because it is the first rule in team_count's order of
+                    # authority and no league dict exists in this scope yet -- league_for_engine is
+                    # built further down. Passing the seats is not a narrowing: the seats win over
+                    # every other input by design.
+                    #
+                    # One behaviour difference, in the safe direction: `len(round_1_order)` returned
+                    # 0 for an empty order, and the round label two screens down divides by it.
+                    # team_count's last resort is 1, so that ZeroDivisionError is gone.
+                    num_teams = league_config.team_count(pick_order=round_1_order)
                     current_index = len(draft_picks)
 
                     # This used to run on as a permanent inline caption between the toolbar and
