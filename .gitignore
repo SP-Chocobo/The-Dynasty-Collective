@@ -83,3 +83,17 @@ CDME_v2_audit_findings.pdf
 # Ephemeral blind-pass shield (#52): deny rules copied from .claude/blind-pass.settings.json.
 # Never committable -- a committed copy blinds every checkout, silently. See evidence/blind_pass/MANDATE_V2.md.
 .claude/settings.local.json
+
+# BATTERY SHARD SCRATCH (v4 gate). A sharded battery writes one file per shard while it runs,
+# and those files are PARTIAL for hours: `run_draft_battery` rewrites its report after every arm
+# (#213b) so a restart cannot lose the run. Committing a half-written report would put an
+# unfinished measurement in the record as though it were a result, which is the defect class
+# this whole cycle exists to remove.
+#
+# NOT HIDDEN, DEFERRED. When a run completes, its shard reports are force-added
+# (`git add -f`) beside the merged report, so a reader can verify the merge instead of
+# trusting it -- the merge concatenates results and hands them to the driver's own
+# `_battery_report`, which is what runs `duplicate_arms` and `commits_present`. The `.log`
+# files carry only buffered per-arm timings and are not kept.
+evidence/batteries/shards/
+evidence/batteries/vds_shards/
