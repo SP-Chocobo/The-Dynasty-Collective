@@ -1766,14 +1766,34 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         AND THE MAGNITUDES THEMSELVES MOVED AT D8, on an owner ruling, which is the one thing this
         test was written to forbid -- so it can no longer be expressed as points. What experiment D
         must not do is change the SIZE of the discount; what D8 did was change its UNIT, from flat
-        points to a share of the player's own projection. Those are different claims, and the way to
-        keep this test's claim while admitting D8's is to pin the derivation: each rate is the games
-        that designation is priced at, over the season. Experiment D touches neither side of that.
+        points to a share of the player's own projection. Those are different claims.
+
+        THE PREVIOUS VERSION OF THIS TEST CHECKED NOTHING, and it was written in this range by the
+        same hand that is now fixing it (D-F6). It read, for each designation,
+        `HEALTH_DISCOUNT_RATE[d] == -(games / SEASON_GAMES)` -- and `HEALTH_DISCOUNT_RATE` IS that
+        expression, comprehended over `GAMES_MISSED_PRICED`. Both sides moved together: raising IR
+        from four games to eight passed. The docstring called that "pinning the derivation", which
+        is exactly the error -- a derivation compared to itself pins nothing, and the claim being
+        made here is about MAGNITUDES, so magnitudes are what must be literal.
+
+        Coverage was never lost (two sibling tests pin the literal game counts), but this test's
+        stated claim was not the one it checked, which is `#133`'s shape in a test body.
         """
-        for designation, games in pu.GAMES_MISSED_PRICED.items():
-            self.assertAlmostEqual(
-                dr.HEALTH_DISCOUNT_RATE[designation], -(games / pu.SEASON_GAMES), places=9,
-                msg=f"experiment D changed {designation}'s SIZE, which it must not")
+        expected = {"IR": -4 / 17, "PUP": -4 / 17, "Out": -1 / 17, "Doubtful": -0.5 / 17}
+        # MEMBERSHIP FIRST, and separately: an ADDED designation is a vocabulary change, which is
+        # the thing this test says experiment D did not make, and it must not read as a resize.
+        self.assertEqual(set(dr.HEALTH_DISCOUNT_RATE), set(expected),
+                         "the priced designations changed -- that is a VOCABULARY change, not the "
+                         "magnitude change this test forbids; update the literals deliberately")
+        for designation, rate in sorted(expected.items()):
+            with self.subTest(designation=designation):
+                self.assertAlmostEqual(
+                    dr.HEALTH_DISCOUNT_RATE[designation], rate, places=9,
+                    msg=f"{designation}'s discount SIZE moved, which experiment D must not do")
+        # AND THE SEASON ITSELF IS A LITERAL, because the rates above are shares of it: a changed
+        # SEASON_GAMES rescales every discount while leaving the game counts alone, and no
+        # assertion over the table alone would see it.
+        self.assertEqual(pu.SEASON_GAMES, 17)
 
     def test_redraft_league_is_byte_identical_to_before_this_change(self):
         # A non-dynasty league must see EXACTLY the old flat discount -- this experiment is

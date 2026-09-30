@@ -3802,8 +3802,16 @@ those three terms is locally correct, and their sum stops meaning what it says.
 > because a name saying `RISK_ADJ` while holding a fraction is this section's own thesis repeated.
 >
 > The check that the derivation is the right one: `availability_factor`'s haircut path and this
-> penalty path now give the SAME `universal_value` for one fact, to 6 decimal places. Before, the
-> two readings differed by −22.71 points for a 173-point IR player and −76.12 for a 400-point one.
+> penalty path give the SAME `universal_value` for one fact, to 6 decimal places, **when the feed
+> reports a full slate** (`gp == SEASON_GAMES`). Before, the two readings differed by −22.71 points
+> for a 173-point IR player and −76.12 for a 400-point one.
+>
+> **The condition is not a footnote and was missing here (A-F1).** The feed reports `gp=16` for most
+> IR players, and 0 of the 13 rule-floor IR rows on the committed capture satisfy the equality. Below
+> a full slate the paths diverge by design: `availability_factor` divides a season-anchored numerator
+> by `gp` so the cut is self-limiting, while the penalty path fires only when `gp` is absent and
+> therefore cannot see the games the feed has already removed. Measured worst case, 2.25 points. The
+> direction and the bound are what the suite pins.
 >
 > **`NEED_BONUS_MAX`, `DEPTH_EXPOSURE_MAX` and `TIME_HORIZON_CLAMP` are NOT resolved** and stay on
 > this section's account. They inherited a SCALE; `RISK_ADJ` inherited a UNIT, which is why D8

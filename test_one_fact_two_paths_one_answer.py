@@ -134,12 +134,48 @@ class OneFactReachedTwoWaysGivesOneAnswerTests(unittest.TestCase):
         return adjusted - self.REPLACEMENT + self.TIME_HORIZON + dr.health_penalty(
             status, basis, adjusted)
 
-    def test_the_haircut_path_and_the_penalty_path_agree(self):
+    def test_the_haircut_path_and_the_penalty_path_agree_AT_A_FULL_SLATE(self):
+        """Exact agreement holds when `gp == SEASON_GAMES`, and the method name now says so.
+
+        A-F1: this only ever called the helper with 17.0, while the FEED REPORTS gp=16 for most IR
+        players -- measured on the real capture: IR/None 103 rows, IR/16 20, PUP/None 9, PUP/17 8,
+        PUP/16 4, IR/17 3, and 0 of the 13 rule-floor IR rows satisfy the equality. So the claim
+        "the two paths agree exactly", which is D8's sole stated validation, was pinned only on
+        the minority `gp` value."""
         for status in sorted(pu.GAMES_MISSED_PRICED):
             for points in (50.0, 173.0, 400.0):
                 with self.subTest(status=status, points=points):
-                    self.assertAlmostEqual(self._universal(status, points, 17.0),
+                    self.assertAlmostEqual(self._universal(status, points, pu.SEASON_GAMES),
                                            self._universal(status, points, None), places=6)
+
+    def test_below_a_full_slate_THEY_DIVERGE_AND_MUST(self):
+        """AND THAT DIVERGENCE IS THE DESIGN WORKING, not the seam leaking.
+
+        `availability_factor` is anchored to the SEASON and divided by `gp`, deliberately: the
+        naive `(gp - missed) / gp` keeps removing the same four games forever, so once Sleeper
+        zeroes out the weeks a man has already missed, the engine would charge that absence a
+        second time. The committed form is self-limiting -- as `gp` falls the cut SHRINKS, because
+        the feed has already done part of the work.
+
+        The penalty path cannot see any of that; it fires only when `gp` is absent. So at gp < 17
+        the gp-KNOWN path holds strictly more information, and the two readings are not supposed
+        to match. What must hold is the direction and the bound, which is what this checks."""
+        points = 173.0
+        full = self._universal("IR", points, pu.SEASON_GAMES)
+        previous = None
+        for gp in (17.0, 16.0, 15.0, 14.0):
+            value = self._universal("IR", points, gp)
+            self.assertGreaterEqual(value, full - 1e-9,
+                                    f"at gp={gp} the haircut cuts MORE than the penalty path; the "
+                                    f"self-limiting form must only ever cut less")
+            if previous is not None:
+                self.assertGreaterEqual(value, previous - 1e-9,
+                                        "the cut must shrink monotonically as gp falls, or the "
+                                        "double-charge this form exists to prevent is back")
+            previous = value
+        # AND IT STOPS: at gp <= SEASON_GAMES - missed there is nothing left to remove.
+        factor, _basis = pu.availability_factor("IR", 13.0)
+        self.assertEqual(factor, 1.0)
 
     def test_the_two_paths_are_genuinely_different_code(self):
         """Non-vacuity, and it matters more than usual: if both arms took the same branch the

@@ -7036,7 +7036,7 @@
       "test_methods": 98,
       "asserts": {
         "assertAlmostEqual": 23,
-        "assertEqual": 61,
+        "assertEqual": 63,
         "assertFalse": 3,
         "assertGreater": 46,
         "assertGreaterEqual": 7,
@@ -7311,7 +7311,8 @@
           "assertAlmostEqual": 1
         },
         "RiskAdjTrajectoryScalingTests.test_the_magnitudes_are_unchanged_by_this_experiment": {
-          "assertAlmostEqual": 1
+          "assertAlmostEqual": 1,
+          "assertEqual": 2
         },
         "RookieDraftRosterContextTieredGateTests.test_a_real_standout_survives_maximal_roster_need_at_the_number_two_players_position": {
           "assertEqual": 1,
@@ -10334,11 +10335,12 @@
       }
     },
     "test_one_fact_two_paths_one_answer.py": {
-      "test_methods": 20,
+      "test_methods": 21,
       "asserts": {
         "assertAlmostEqual": 5,
-        "assertEqual": 13,
+        "assertEqual": 14,
         "assertFalse": 1,
+        "assertGreaterEqual": 2,
         "assertIsNotNone": 1,
         "assertLess": 6,
         "assertLessEqual": 3,
@@ -10357,7 +10359,11 @@
         "OnTheRealBoardTests.test_the_population_is_not_empty": {
           "assertTrue": 1
         },
-        "OneFactReachedTwoWaysGivesOneAnswerTests.test_the_haircut_path_and_the_penalty_path_agree": {
+        "OneFactReachedTwoWaysGivesOneAnswerTests.test_below_a_full_slate_THEY_DIVERGE_AND_MUST": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 2
+        },
+        "OneFactReachedTwoWaysGivesOneAnswerTests.test_the_haircut_path_and_the_penalty_path_agree_AT_A_FULL_SLATE": {
           "assertAlmostEqual": 1
         },
         "OneFactReachedTwoWaysGivesOneAnswerTests.test_the_old_flat_table_did_NOT_agree_with_itself": {
@@ -10474,13 +10480,15 @@
       }
     },
     "test_one_injury_vocabulary_not_two.py": {
-      "test_methods": 13,
+      "test_methods": 14,
       "asserts": {
         "assertEqual": 9,
-        "assertIn": 3,
+        "assertIn": 4,
         "assertLess": 2,
         "assertLessEqual": 1,
-        "assertNotIn": 4
+        "assertNotIn": 4,
+        "assertTrue": 1,
+        "fail": 1
       },
       "by_method": {
         "DesignationsSharingAFloorSharePenaltyTests.test_PUP_and_IR_are_priced_identically_in_both_states": {
@@ -10501,6 +10509,11 @@
         },
         "DesignationsSharingAFloorSharePenaltyTests.test_the_rule_is_not_vacuous": {
           "assertLess": 1
+        },
+        "DesignationsSharingAFloorSharePenaltyTests.test_the_table_is_DERIVED_and_not_HAND_WRITTEN": {
+          "assertIn": 1,
+          "assertTrue": 1,
+          "fail": 1
         },
         "ThePlayablePillHasOneHomeTests.test_an_unrecognised_designation_is_NOT_playable": {
           "assertNotIn": 2

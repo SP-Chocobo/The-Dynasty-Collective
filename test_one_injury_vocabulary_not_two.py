@@ -73,7 +73,46 @@ class DesignationsSharingAFloorSharePenaltyTests(unittest.TestCase):
                         "no two designations share a rule floor, so the rule below is vacuous and "
                         "PUP's penalty would have had to be chosen after all")
 
+    def test_the_table_is_DERIVED_and_not_HAND_WRITTEN(self):
+        """THE CLAIM THE TWO TESTS BELOW ACTUALLY REST ON, and it was never asserted (D-F6).
+
+        Since D8, `HEALTH_DISCOUNT_RATE` is a comprehension over `GAMES_MISSED_PRICED`, so it is a
+        monotone function of the floor -- and that makes both tests below true BY CONSTRUCTION.
+        Equal floors cannot carry unequal rates when the rate is computed from the floor; a
+        steeper floor cannot cost less. They were real tests against the old hand-written
+        `RISK_ADJ` table, where IR and PUP genuinely could drift apart, and after D8 they became
+        restatements of the comprehension.
+
+        They are KEPT rather than deleted, because the divergence they forbid becomes possible
+        again the moment someone replaces the comprehension with a literal table -- and that is
+        the change this test refuses. Read as a pair: this one says the derivation exists, those
+        two say what must hold if it ever stops existing. What is NOT honest is letting them look
+        like independent evidence, which is what their docstrings implied.
+        """
+        import ast
+        import pathlib
+        tree = ast.parse(pathlib.Path("draft_room.py").read_text(encoding="utf-8"))
+        derived = False
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Assign)
+                    and any(getattr(t, "id", None) == "HEALTH_DISCOUNT_RATE" for t in node.targets)):
+                derived = isinstance(node.value, ast.DictComp)
+                names = {n.attr for n in ast.walk(node.value) if isinstance(n, ast.Attribute)}
+                self.assertIn("GAMES_MISSED_PRICED", names,
+                              "HEALTH_DISCOUNT_RATE no longer derives from GAMES_MISSED_PRICED, so "
+                              "the one injury vocabulary has two homes again (`#126`)")
+                break
+        else:
+            self.fail("HEALTH_DISCOUNT_RATE is not assigned at module level in draft_room.py")
+        self.assertTrue(derived,
+                        "HEALTH_DISCOUNT_RATE is a hand-written table again -- the two ordering "
+                        "tests below stop being structural guarantees and become real checks, "
+                        "which is the situation they were written for; re-read them before "
+                        "trusting this module")
+
     def test_equal_floors_carry_equal_penalties(self):
+        """TRUE BY CONSTRUCTION today -- see `test_the_table_is_DERIVED_and_not_HAND_WRITTEN`.
+        Retained as the guard that binds if the derivation is ever replaced by a literal table."""
         by_floor: dict[int, set] = {}
         for designation, floor in pu.GAMES_MISSED_FLOOR.items():
             if designation in dr.HEALTH_DISCOUNT_RATE:
@@ -85,7 +124,10 @@ class DesignationsSharingAFloorSharePenaltyTests(unittest.TestCase):
                              f"and cannot then charge them differently")
 
     def test_a_steeper_floor_never_costs_less(self):
-        """Derived ordering, not a chosen one: more guaranteed games missed cannot be worth more."""
+        """Derived ordering, not a chosen one: more guaranteed games missed cannot be worth more.
+
+        ALSO TRUE BY CONSTRUCTION today, for the same reason and with the same standing: the rate
+        is computed from the floor, so the ordering cannot invert while that holds."""
         priced = sorted(((floor, dr.HEALTH_DISCOUNT_RATE[d]) for d, floor in pu.GAMES_MISSED_FLOOR.items()
                          if d in dr.HEALTH_DISCOUNT_RATE), key=lambda pair: pair[0])
         for (small, light), (large, heavy) in zip(priced, priced[1:]):

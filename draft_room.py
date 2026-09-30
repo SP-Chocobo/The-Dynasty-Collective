@@ -483,8 +483,22 @@ TIME_HORIZON_CLAMP = (-10.0, 10.0)  # season-proj percentile)
 #: `games_missed / SEASON_GAMES`, from the one priced-games vocabulary, and NO NEW NUMBER EXISTS
 #: (`#56`) beyond the single `Doubtful` assumption that table names as chosen.
 #:
-#: AND THE TWO PATHS NOW AGREE EXACTLY, which is the check that says the derivation is the right
-#: one rather than merely a tidier one. For an IR player with a full slate reported:
+#: AND THE TWO PATHS AGREE EXACTLY AT A FULL SLATE (`gp == SEASON_GAMES`), which is the check that
+#: says the derivation is the right one rather than merely a tidier one. STATED WITH ITS CONDITION
+#: SINCE A-F1: this read "NOW AGREE EXACTLY", unqualified, while the feed reports `gp=16` for most
+#: IR players and 0 of the 13 rule-floor IR rows on the real capture satisfy the equality. The
+#: agreement is real and it is the right check; the claim was scoped to the minority `gp` value and
+#: written as though it covered every row.
+#:
+#: BELOW A FULL SLATE THEY DIVERGE, AND MUST. `availability_factor` is anchored to the season and
+#: divided by `gp` so the cut is SELF-LIMITING -- once Sleeper zeroes the weeks already missed, a
+#: naive `(gp - missed) / gp` would charge that absence twice. The penalty path fires only when
+#: `gp` is absent and cannot see any of that, so at `gp < 17` the haircut path holds strictly more
+#: information and the readings are not supposed to match. Measured worst case on the capture:
+#: 2.25 points (Jordyn Tyson, -31.30 against -33.55). What is pinned is the direction and the
+#: bound, in `test_below_a_full_slate_THEY_DIVERGE_AND_MUST`.
+#:
+#: For an IR player with a full slate reported:
 #:
 #:     gp known    points cut to 13/17 before bpa, penalty 0.0 (#191 stand-down)
 #:                 universal_value = 0.765*points - replacement + time_horizon_adj

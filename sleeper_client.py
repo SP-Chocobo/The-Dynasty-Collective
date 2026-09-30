@@ -1024,6 +1024,24 @@ def priceable_season_projections(snapshot: Optional[dict]) -> tuple[Optional[dic
     coverage = (snapshot or {}).get("season_projection_coverage")
     projections = (snapshot or {}).get("season_projections") or None
     if projections is None:
+        # A FAILED FETCH IS NOT AN ABSENT ONE (E-F5). When the season fetch fails outright the
+        # sync stores `season_projections = {}` and sets `coverage.error` -- and `{} or None` is
+        # None, so this early return handed the caller no refusal string and the Draft Room
+        # rendered NO WARNING while the board was vendor-priced. The silent fallback to
+        # vendor-only that the paragraph above calls "the other half of this same defect" was
+        # reachable through the one branch that skipped the paragraph's own machinery.
+        #
+        # The two cases must stay separated, which is why this is not simply moved below: with
+        # NOTHING EVER SYNCED there is no coverage record, nothing was attempted, and a
+        # vendor-priced board is the correct and unremarkable pre-sync state -- warning there
+        # would train the reader to ignore the warning that matters.
+        if (coverage or {}).get("error"):
+            return None, (
+                f"This board is NOT scored under your league's own rules: the projection fetch "
+                f"failed outright ({(coverage or {}).get('error')}), so no week answered and "
+                f"there are no season totals to price from. The board falls back to the vendor's "
+                f"complete season projection. Re-sync this league to restore league scoring."
+            )
         return None, None
     if season_sum_is_complete(coverage):
         return projections, None
