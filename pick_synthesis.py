@@ -1617,6 +1617,20 @@ class CandidateSnapshot:
     #: ordering question, and only one of them ("below every source's cutoff") is evidence of
     #: low value; carrying one token for all three asserted the strongest of them about all.
     absence_kind: Optional[str] = None
+    #: EVERY POSITION THIS MAN CAN BE STARTED AT, not just the one the feed named first (C-F3).
+    #:
+    #: `position` is a single primary bucket, and it was the only positional fact that crossed
+    #: this boundary -- so `draft_board_ui.filter_candidates_by_view` had nothing else to filter
+    #: on, and a dual-eligible candidate appeared in exactly ONE single-position view. Measured on
+    #: the owner league at pick 1.01, a 94-candidate snapshot: the LB view hid 8 eligible
+    #: candidates, T.J. Watt among them -- while the board's own `need_bonus` had already priced
+    #: him with LB slots in the assignment. `#174`'s exact shape: the number crossed, its
+    #: companion did not.
+    #:
+    #: Defaulted to empty rather than required, so every existing construction site and every
+    #: stored board written before this field keep working; consumers fall back to `position`,
+    #: which is what they did before this existed.
+    eligible_positions: frozenset = frozenset()
     #: MANDATE 2.5: INJURY STATUS NEVER CROSSED THIS BOUNDARY, while the DISCOUNT IT CAUSES DID.
     #: `risk_adj` is carried above, and part of what it is made of is `availability_factor`'s cut
     #: for a designation Sleeper reported. So a chair received the penalty and had no way to see
@@ -2024,9 +2038,16 @@ def build_snapshot(
     tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
     path_flags = decision_path_flags(raw_candidates)
 
+    # READ THROUGH THE ONE ELIGIBILITY READER (`#172`/MANDATE 2.6), never off the row's own
+    # label, so the view filter downstream keys off exactly what `need_bonus` keyed off.
+    def _eligibility(row: dict) -> frozenset:
+        info = (players_db or {}).get(str(row.get("player_id")))
+        eligible = dr.player_eligible_positions(info) if info else None
+        return frozenset(eligible or ({row["position"]} if row.get("position") else ()))
+
     candidates = [
         CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label,
-                          near_tie_with_leader=tie, **paths)
+                          near_tie_with_leader=tie, eligible_positions=_eligibility(c), **paths)
         for c, (necessity, label), tie, paths in zip(
             raw_candidates, necessity_by_candidate, tie_flags, path_flags)
     ]

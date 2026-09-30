@@ -306,5 +306,45 @@ class ASyncThatCameBackWithLessSaysSoTests(unittest.TestCase):
                         "stored copy does not carry it")
 
 
+class AFailedFetchIsNotAnAbsentOneTests(unittest.TestCase):
+    """E-F5. When the season fetch fails OUTRIGHT the sync stores `season_projections = {}` with
+    `coverage.error` set. `{} or None` is None, so `priceable_season_projections` took its early
+    return and gave the caller no refusal string -- the Draft Room rendered NO WARNING while the
+    board was vendor-priced. The silent fallback to vendor-only that this module's subject calls
+    "the other half of this same defect" was reachable through the one branch that skipped the
+    machinery built to prevent it.
+    """
+
+    def test_a_total_failure_refuses_WITH_a_reason(self):
+        projections, refusal = sc.priceable_season_projections({
+            "season_projections": {},
+            "season_projection_coverage": {"error": "HTTP 503", "weeks_answered": [],
+                                           "weeks_failed": list(range(1, 19))}})
+        self.assertIsNone(projections)
+        self.assertTrue(refusal, "a failed fetch still returns no reason, so nothing is displayed")
+        self.assertIn("NOT scored under your league's own rules", refusal)
+        self.assertIn("HTTP 503", refusal,
+                      "the reason does not name the failure, so a reader cannot tell this from a "
+                      "partial week")
+
+    def test_NOTHING_EVER_SYNCED_stays_silent(self):
+        """THE CASE THAT MUST NOT REGRESS INTO NOISE, and the reason the fix is not simply moving
+        the check below the early return. With no coverage record nothing was attempted, and a
+        vendor-priced board is the correct pre-sync state -- warning there teaches the reader to
+        ignore the warning that matters."""
+        for snapshot in ({}, {"season_projections": None}, {"season_projections": {}}):
+            with self.subTest(snapshot=snapshot):
+                projections, refusal = sc.priceable_season_projections(snapshot)
+                self.assertIsNone(projections)
+                self.assertIsNone(refusal)
+
+    def test_a_partial_week_failure_still_refuses(self):
+        """The branch that always worked, kept so the repair cannot be 'always warn'."""
+        _projections, refusal = sc.priceable_season_projections({
+            "season_projections": {"1": {"pts": 1.0}},
+            "season_projection_coverage": {"weeks_answered": [1, 2], "weeks_failed": [3]}})
+        self.assertIn("did not answer", refusal or "")
+
+
 if __name__ == "__main__":
     unittest.main()

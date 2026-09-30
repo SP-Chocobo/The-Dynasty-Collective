@@ -1377,22 +1377,33 @@
       }
     },
     "test_a_partial_season_is_not_a_season.py": {
-      "test_methods": 27,
+      "test_methods": 30,
       "asserts": {
         "assertEqual": 10,
         "assertFalse": 7,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 19,
+        "assertIn": 22,
         "assertIs": 1,
-        "assertIsNone": 10,
+        "assertIsNone": 13,
         "assertIsNotNone": 2,
         "assertLess": 2,
         "assertNotEqual": 1,
         "assertNotIn": 2,
-        "assertTrue": 4
+        "assertTrue": 5
       },
       "by_method": {
+        "AFailedFetchIsNotAnAbsentOneTests.test_NOTHING_EVER_SYNCED_stays_silent": {
+          "assertIsNone": 2
+        },
+        "AFailedFetchIsNotAnAbsentOneTests.test_a_partial_week_failure_still_refuses": {
+          "assertIn": 1
+        },
+        "AFailedFetchIsNotAnAbsentOneTests.test_a_total_failure_refuses_WITH_a_reason": {
+          "assertIn": 2,
+          "assertIsNone": 1,
+          "assertTrue": 1
+        },
         "ASyncThatCameBackWithLessSaysSoTests.test_a_lost_week_count_is_recorded_with_where_the_better_sums_are": {
           "assertEqual": 3,
           "assertIsNotNone": 1
@@ -10331,6 +10342,60 @@
         "skip_decorators": 0,
         "expected_failures": 0,
         "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_one_eligibility_vocabulary_everywhere.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 6,
+        "assertIn": 7,
+        "assertNotIn": 2
+      },
+      "by_method": {
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_a_dual_appears_in_BOTH_of_his_views": {
+          "assertIn": 2
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_a_flex_view_admits_anyone_eligible_for_that_slot": {
+          "assertIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_a_stored_board_without_the_field_replays_on_its_primary_bucket": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_the_ALL_view_still_shows_one_row_per_PRIMARY_bucket": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_the_LB_view_does_NOT_show_a_DL_only_candidate": {
+          "assertNotIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_the_LB_view_shows_a_dual_labelled_DL": {
+          "assertIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_the_snapshot_carries_eligibility_at_all": {
+          "assertIn": 1
+        },
+        "FeasibilityFirstReadsEligibilityOnBothSidesTests.test_a_dual_labelled_elsewhere_is_promoted_for_the_hole_he_can_fill": {
+          "assertEqual": 1
+        },
+        "FeasibilityFirstReadsEligibilityOnBothSidesTests.test_a_man_who_CANNOT_fill_the_hole_is_NOT_promoted": {
+          "assertEqual": 1
+        },
+        "FeasibilityFirstReadsEligibilityOnBothSidesTests.test_an_unknown_candidate_falls_back_to_his_primary_bucket": {
+          "assertEqual": 1
+        },
+        "FeasibilityFirstReadsEligibilityOnBothSidesTests.test_the_key_is_not_uniform": {
+          "assertEqual": 1
+        },
+        "FeasibilityFirstReadsEligibilityOnBothSidesTests.test_the_pure_LB_is_still_promoted": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
         "early_returns": 0
       }
     },

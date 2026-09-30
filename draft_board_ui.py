@@ -399,10 +399,21 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
                                      if c.team_acquisition_value is not None else 0.0,
                                      str(c.player_id)))
         return overview
+    # FILTERED ON ELIGIBILITY, NOT THE PRIMARY BUCKET (C-F3). These read `c.position` because
+    # that was the only positional fact on the snapshot; with `eligible_positions` now crossing
+    # the boundary, a view shows everyone who can actually be STARTED there -- which is what the
+    # docstring above already claims ("the same semantics draft_room.py's own need_bonus math
+    # already keys off of"). Before this, a manager with an open LB slot opened the LB view and
+    # did not see T.J. Watt, while the board had already credited him for that slot.
+    #
+    # `position` remains the fallback for a snapshot written before the field existed, so a
+    # stored board replays exactly as it did when it was recorded.
+    def _startable_at(candidate, positions) -> bool:
+        return bool((candidate.eligible_positions or {candidate.position}) & set(positions))
+
     if view in FLEX_SLOT_POSITIONS:
-        eligible = FLEX_SLOT_POSITIONS[view]
-        return [c for c in candidates if c.position in eligible]
-    return [c for c in candidates if c.position == view]
+        return [c for c in candidates if _startable_at(c, FLEX_SLOT_POSITIONS[view])]
+    return [c for c in candidates if _startable_at(c, {view})]
 
 
 # Flex slots are labelled by what they actually ACCEPT, so the control explains itself

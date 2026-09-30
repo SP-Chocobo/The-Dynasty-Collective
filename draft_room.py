@@ -3801,8 +3801,29 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
     # fill later, which is the whole point of not making this a preference.
     if picks_remaining > unfilled:
         return default
-    return scored["position"].map(
-        lambda position: 0 if position in needed_positions else 1).astype(int)
+    # ELIGIBILITY, NOT THE PRIMARY BUCKET (B-F4). This read `scored["position"]` -- one label per
+    # candidate -- while the ROSTER side above reads `player_eligible_positions`, and this
+    # function's own docstring promises to promote whoever can fill the hole "whichever hole that
+    # is". With an LB-only slot open, a DL/LB dual labelled DL scored 1 while a pure LB scored 0:
+    # the man who could fill the hole was ranked behind the man who could, on the strength of
+    # which bucket the feed happened to name first. The roster side was moved to eligibility at
+    # MANDATE 2.6 and the candidate side was not, so the two halves of one comparison read two
+    # different vocabularies (`#126`, `#172`).
+    #
+    # The primary bucket remains the FALLBACK, for a candidate the pool has no record of: that is
+    # the same degradation `player_eligible_positions` already applies, and an empty eligibility
+    # set must not silently promote everybody.
+    def _fills_a_hole(player_id, position) -> int:
+        info = players_db.get(str(player_id)) if players_db else None
+        eligible = player_eligible_positions(info) if info else None
+        if not eligible:
+            eligible = {position}
+        return 0 if (set(eligible) & needed_positions) else 1
+
+    return pd.Series(
+        [_fills_a_hole(pid, pos)
+         for pid, pos in zip(scored["player_id"], scored["position"])],
+        index=scored.index, dtype=int)
 
 
 def fieldable_ceiling(roster_positions: list[str]) -> dict[str, int]:
