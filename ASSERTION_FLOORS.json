@@ -1549,10 +1549,10 @@
       "asserts": {
         "assertEqual": 13,
         "assertGreater": 4,
-        "assertIn": 2,
+        "assertIn": 3,
         "assertIs": 1,
         "assertNotEqual": 2,
-        "assertNotIn": 1
+        "assertNotIn": 2
       },
       "by_method": {
         "test_NOT_APPLICABLE_is_never_overridden": {
@@ -1602,7 +1602,8 @@
           "assertIs": 1
         },
         "test_the_token_has_words_of_its_own": {
-          "assertIn": 1
+          "assertIn": 2,
+          "assertNotIn": 1
         }
       },
       "disabled": {
@@ -10328,13 +10329,13 @@
       "test_methods": 20,
       "asserts": {
         "assertAlmostEqual": 5,
-        "assertEqual": 11,
+        "assertEqual": 13,
         "assertFalse": 1,
         "assertIsNotNone": 1,
-        "assertLess": 4,
+        "assertLess": 6,
         "assertLessEqual": 3,
         "assertNotIn": 1,
-        "assertTrue": 4
+        "assertTrue": 2
       },
       "by_method": {
         "test_a_below_replacement_player_is_never_REWARDED_for_an_injury": {
@@ -10347,7 +10348,8 @@
           "assertLessEqual": 1
         },
         "test_an_absent_projection_is_absent_rather_than_free": {
-          "assertTrue": 2
+          "assertEqual": 2,
+          "assertLess": 2
         },
         "test_an_unrecognised_designation_is_not_priced_at_all": {
           "assertEqual": 1,
@@ -14007,11 +14009,11 @@
       "test_methods": 15,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 6,
+        "assertEqual": 8,
         "assertGreater": 2,
         "assertIsNotNone": 1,
-        "assertLess": 2,
-        "assertTrue": 5
+        "assertLess": 4,
+        "assertTrue": 4
       },
       "by_method": {
         "test_a_player_projected_to_score_nothing_is_charged_nothing": {
@@ -14024,7 +14026,8 @@
           "assertEqual": 1
         },
         "test_an_absent_projection_is_absent_and_not_a_free_pass": {
-          "assertTrue": 1
+          "assertEqual": 2,
+          "assertLess": 2
         },
         "test_depth_basis_still_reports_vacant_because_that_IS_the_companion": {
           "assertTrue": 1
@@ -16434,14 +16437,14 @@
       }
     },
     "test_the_discount_arrives_with_its_cause.py": {
-      "test_methods": 19,
+      "test_methods": 20,
       "asserts": {
         "assertEqual": 5,
         "assertGreaterEqual": 1,
-        "assertIn": 18,
+        "assertIn": 20,
         "assertIsNone": 3,
         "assertNotEqual": 2,
-        "assertNotIn": 5,
+        "assertNotIn": 6,
         "assertTrue": 1,
         "fail": 1
       },
@@ -16454,6 +16457,10 @@
         },
         "test_a_designation_priced_by_the_RULE_FLOOR_says_no_penalty_was_added": {
           "assertIn": 2
+        },
+        "test_a_designation_this_engine_does_NOT_price_says_so": {
+          "assertIn": 2,
+          "assertNotIn": 1
         },
         "test_a_recorded_candidate_really_carries_the_designation": {
           "assertEqual": 2
