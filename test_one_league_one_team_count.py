@@ -1,5 +1,11 @@
 """A-F5 / C-F2 / B-F6 -- one team count, and a rosterless pick means one thing.
 
+`#126` (one home for a vocabulary) is the register item this module answers to, with `#166` (the
+companion returned with the number) for the basis half. Named here rather than only in the class
+docstrings below, because `suite_taxonomy` reads the MODULE docstring and refused this file for
+answering to nothing -- correctly: a module whose subject lives only in its internals is a module
+nobody can place.
+
 `team_count` was built to be the single derivation and its docstring said so: "The engine reads the
 same function, so a draft with fewer seats than the league has rosters can no longer give the two
 different counts." **That was false for exactly the input it names.** The seats win over every other

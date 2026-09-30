@@ -415,81 +415,34 @@ between two items that were filed separately.
 
 ---
 
-**RULED BY THE OWNER, AND THE RULING MOVED THE ITEM OFF BOTH ITS OPTIONS.** Asked to choose
-between (1) and (2), the owner challenged the framing instead:
+**RULED: (1) — price a demand-exhausted position against its PRE-DRAFT ANCHOR. And (1) was
+already the engine's behaviour, so nothing changed.** Full reasoning, every measurement, and the
+three errors I made reaching it: `evidence/d9_replacement_equation/D9_RULING.md`.
 
-> *Shouldn't the grading criterion be the value of the depth as insurance against lost starter
-> production? ... It may mean the valuation should transition from starter-demand value to
-> depth/contingency value.* And: *if neither 1 nor 2 actually captures that cleanly, I'd rather call
-> that out than force the engine into one of the two because they're the presented choices.*
+The short form:
 
-He asked for that verified against what the machinery represents rather than argued. Verified, and
-**the criterion is already implemented.**
+* `_fill_omitted_from_anchor` (`draft_room.py:3379`) already fills exhausted-demand positions from
+  the pre-draft anchor and stamps `replacement_basis = predraft_anchor`. By round 18 the anchor
+  governs 76 of 108 priced rows. The item read as a proposal and was a description.
+* **The anchor never reaches QB, by design.** The fill declines any position `startable_floors`
+  handled, and `compute_draft_board` always passes `startable_floors={"QB": ...}` (`:312`), because
+  `qb_startable_floor` is a stricter mechanism anchored on the full baseline rather than the
+  draining pool. `#50`'s motivating example is a QB case, so the item's own evidence sits at the one
+  position its own preferred convention cannot touch.
+* **(2) was unsound and I recommended it twice.** Marking the row absent would have suppressed 76
+  of 108 rows that each carry a real anchored price for the player's own production. Absence is for
+  a quantity with no basis (`#187`); the quantity without a basis here is the starter-demand
+  increment, not the row.
+* **THE DOUBLE-COUNT, which the owner asked to be checked and which decides the whole item.** Three
+  things look like "the value of depth" and only one is an increment: the body's own production
+  (`universal_value`); the marginal upgrade over the man he replaces (`depth_exposure` under
+  `EXPOSURE_MEASURED`); and the whole hole he fills when nothing covers it — which is the first one
+  again, and is therefore **measured and never charged**. `lineup_optimizer.py:344`. Those
+  uncharged cells carry the largest numbers in the vocabulary (median `worst_loss` 62.00 against
+  MEASURED's 42.00). The owner's insurance criterion is the third thing, and it cannot become a
+  positive term without paying twice.
 
-### `depth_exposure` IS the contingency term, and it is live
-
-`draft_room.py:653-675`, reaching `team_acquisition_value` at `:4912`, one of the four
-team-specific terms named in the module's own composition line at `:35`:
-
-> *depth_exposure prices what a HOLE would cost: remove a starter, re-solve the lineup, and the
-> drop is what one backup at that position would be buying. ... depth_exposure prices insurance
-> against losing a starter you DO need.*
-
-It is DERIVED, not chosen -- the number comes from re-solving the lineup through
-`lineup_optimizer.depth_exposure`, bounded by construction (removing one player can cost the lineup
-at most that player's own value), and its bound is set equal to `NEED_BONUS_MAX` rather than
-invented. It is "only `measured` from round 9, once a bench exists for depth to be a meaningful
-question about" -- which is exactly the range this item is about.
-
-**MY FIRST ANSWER TO THIS CHALLENGE WAS WRONG AND IS CORRECTED HERE.** I replied that the owner's
-criterion needed an injury base-rate input the engine does not have, and filed the general form as
-out of scope on that ground. The engine does not need a base rate to price this, because
-`depth_exposure` does not ask "how likely is the starter to miss time" -- it asks "what does the
-lineup lose if he is gone", which needs no probability at all. The item I filed as blocked on a new
-input is neither blocked nor new. `#292`: the record wins.
-
-### Why that means NEITHER (1) NOR (2), as the owner suspected
-
-Both options treat the row as carrying ONE value, and this engine deliberately splits it by
-altitude. What goes to zero when league-wide starter demand is exhausted is `universal_value`'s
-replacement anchor -- the STARTER-DEMAND quantity. `depth_exposure` is a different altitude,
-computed against MY OWN roster, and nothing about league-wide demand exhaustion zeroes it.
-
-So **(2) is the more dangerous of the two, and it was my recommendation.** Marking the row ABSENT
-would suppress a row that still carries a live derived contingency price, and would assert "this
-engine has no basis for saying what another body is worth" while one of its four team terms is at
-that moment saying precisely that. Not the absence contract honoured -- the absence contract
-inverted, which is the mirror of `#193`.
-
-### D9(c) -- the answer, in the owner's own words
-
-The valuation TRANSITIONS rather than vanishing. At a position whose league-wide starter demand is
-exhausted:
-
-  * `universal_value`'s starter-demand basis is **absent** (`#187`), because that quantity genuinely
-    has nothing left to measure -- which is the true half of (2), applied to the term it is about
-    instead of to the whole row;
-  * `depth_exposure` **continues to price the row**, as the contingency value of a playable body
-    behind a starter, unchanged and already derived;
-  * and the row's own label says which of the two is speaking, so a person reading a small number
-    can tell "no starter demand left here" from "this body is worth little as insurance". `#166`:
-    the companion travels with the number.
-
-No new input, no new magnitude, no redefinition of the replacement equation.
-
-### THE ONE THING STILL TO MEASURE BEFORE THIS SHIPS
-
-Whether `depth_exposure` is actually NON-ZERO on those rows at rounds 18-20. The transition above is
-only real if the contingency term is live exactly where the starter-demand term dies. If it measures
-0.0 there, the row really does carry no basis and (2) comes back -- so this is the measurement that
-decides it, and it has not been run. `run_216_review_probe.py` already emits
-`depth_exposure_positive_rows` and `depth_exposure_max`, so the instrument exists.
-
-**Stated as an open question rather than resolved**, because asserting the transition without that
-measurement would be the same error as my first answer: a plausible claim about a term I had not
-looked at.
-
-**Cost of leaving it:** `#21` and D7(a) stay blocked. D7 continues to ship with a number and a test.
+`#21` and D7(a) are unblocked by this. Both stay out of scope for v4 per `V4_GATE_CRITERIA.md` §8.
 
 ## D7 — 3.2: should the fieldability bound extend to flex-reachable groups? (needs a depth allowance)
 **RULED: (b) — extend it with a per-group depth allowance, recorded as a stated convention.
