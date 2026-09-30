@@ -5744,15 +5744,32 @@ elif main_view == DRAFT_VIEW:
                                 # and None (never checked) both stay silent -- the second is a gap
                                 # this surface cannot honestly describe, since every board it
                                 # renders comes from build_snapshot and is therefore checked.
+                                # D10: AS LOUD AS THE CONSEQUENCE. Split on
+                                # league_config.IMMATERIAL_AMBIGUITY_KINDS rather than matching
+                                # kind strings here, so a kind added later cannot be quiet on one
+                                # surface and loud on another (`#126`).
                                 if snap.config_ambiguities:
-                                    st.warning(
-                                        "This league's configuration did not parse cleanly. The "
-                                        "board below was priced anyway, from defaults wherever the "
-                                        "config was silent, so it may describe a different league "
-                                        "than the one you are playing:\n\n"
-                                        + "\n".join(f"- {detail}"
-                                                    for _kind, detail in snap.config_ambiguities)
-                                    )
+                                    _loud = [d for k, d in snap.config_ambiguities
+                                             if k not in league_config.IMMATERIAL_AMBIGUITY_KINDS]
+                                    _quiet = [d for k, d in snap.config_ambiguities
+                                              if k in league_config.IMMATERIAL_AMBIGUITY_KINDS]
+                                    if _loud:
+                                        st.warning(
+                                            "This league's configuration did not parse cleanly. "
+                                            "The board below was priced anyway, from defaults "
+                                            "wherever the config was silent, so it may describe a "
+                                            "different league than the one you are playing:\n\n"
+                                            + "\n".join(f"- {detail}" for detail in _loud)
+                                        )
+                                    # NEVER HIDDEN, only quieter: the measured consequence of
+                                    # these is zero, and the owner's ruling is to disclose
+                                    # everything and shout only when it matters.
+                                    if _quiet:
+                                        st.caption(
+                                            "\\* " + "  ".join(_quiet)
+                                            + " -- disclosed for completeness; it does not change "
+                                              "any number on this board."
+                                        )
                                 if not is_live:
                                     on_clock_id = str(pick_order[current_index])
                                     on_clock_name = owner_names_by_id.get(on_clock_id, f"Roster {on_clock_id}")
@@ -6114,16 +6131,33 @@ elif main_view == DRAFT_VIEW:
                                         # rendering that the same as "checked and clean" would tell
                                         # someone a stored board was fine when nobody had looked.
                                         if _chosen["config_ambiguities"]:
-                                            st.warning(
-                                                "The league configuration did not parse cleanly "
-                                                "when this board was stored. The rows below were "
-                                                "priced anyway, from defaults wherever the config "
-                                                "was silent, so they may describe a different "
-                                                "league than the one you are playing:\n\n"
-                                                + "\n".join(
-                                                    f"- {item['detail']}"
-                                                    for item in _chosen["config_ambiguities"])
-                                            )
+                                            # D10, same split as the live surface and through the
+                                            # same set. A record with no `kind` predates the
+                                            # classification and is treated as LOUD.
+                                            _r_loud = [
+                                                i["detail"] for i in _chosen["config_ambiguities"]
+                                                if i.get("kind")
+                                                not in league_config.IMMATERIAL_AMBIGUITY_KINDS]
+                                            _r_quiet = [
+                                                i["detail"] for i in _chosen["config_ambiguities"]
+                                                if i.get("kind")
+                                                in league_config.IMMATERIAL_AMBIGUITY_KINDS]
+                                            if _r_loud:
+                                                st.warning(
+                                                    "The league configuration did not parse "
+                                                    "cleanly when this board was stored. The rows "
+                                                    "below were priced anyway, from defaults "
+                                                    "wherever the config was silent, so they may "
+                                                    "describe a different league than the one you "
+                                                    "are playing:\n\n"
+                                                    + "\n".join(f"- {d}" for d in _r_loud)
+                                                )
+                                            if _r_quiet:
+                                                st.caption(
+                                                    "\\* " + "  ".join(_r_quiet)
+                                                    + " -- disclosed for completeness; it changed "
+                                                      "no number on this stored board."
+                                                )
                                         elif _chosen["config_ambiguities"] is None:
                                             st.caption(
                                                 "This record predates the configuration check, so "

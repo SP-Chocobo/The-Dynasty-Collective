@@ -106,6 +106,65 @@ def draftable_slots(roster_positions: Optional[list[str]]) -> list[str]:
 #: silently fail to place, so it makes the config AMBIGUOUS.
 KNOWN_SLOTS = frozenset(FANTASY_POSITIONS) | frozenset(FLEX_SLOT_POSITIONS) | NON_PLAYING_SLOTS
 
+#: D10, THE OWNER'S RULING: "price it, but modulate how loudly the warning is to the impact that
+#: that missing data has on the decision ... telling on ourselves extra loud may be undercutting
+#: our authority when an asterisk may be enough."
+#:
+#: The refusal machinery `league_config` described is NOT built and this module no longer claims
+#: one (C-F4). The board is always priced. What changes is how loudly an unparsed slot is
+#: reported, and the three kinds below are THE MEASURED IMPACT rather than a judgement about
+#: severity -- which is the only way to scale a warning without inventing a threshold (`#56`).
+#:
+#: WHY THERE ARE EXACTLY THREE AND NOT A SPECTRUM. The consequence of dropping a slot label
+#: depends on one fact: whether that slot starts a player. The engine can answer it in two cases
+#: and not in the third, so the bands are what is knowable, not a scale someone chose:
+#:
+#:   NONPLAYING  the label normalises to BN/TAXI/IR. `slots_from_roster_positions` excludes those
+#:               ANYWAY, so the starting lineup the board was priced on is exactly the one the
+#:               league declares. The consequence is ZERO -- not small, zero -- and an asterisk
+#:               is the honest volume.
+#:   STARTER     it normalises to a position or flex slot the solver does know, so the engine can
+#:               say precisely which starting slot was lost and how many of them remain. Loud,
+#:               and specific about the damage.
+#:   UNKNOWN     it normalises to nothing. It MAY start a player, and if it does then every
+#:               replacement level and starter-demand figure is about a smaller lineup than the
+#:               real league. The engine cannot bound this, so it says so -- loudly, and says
+#:               that the bound is what is missing rather than implying a size.
+#:
+#: NEW KINDS RATHER THAN A NEW FIELD, deliberately: `config_ambiguities` crosses the snapshot
+#: boundary as (kind, detail) PAIRS, and a stored board written before today keeps the bare
+#: `unknown_slot` kind -- which lands in the loud set, the safe direction, and replays exactly
+#: as recorded.
+AMBIGUITY_UNKNOWN_SLOT = "unknown_slot"
+AMBIGUITY_UNKNOWN_SLOT_NONPLAYING = "unknown_slot_nonplaying"
+AMBIGUITY_UNKNOWN_SLOT_STARTER = "unknown_slot_starter"
+
+#: The kinds whose measured consequence is ZERO. A consumer scaling its presentation reads THIS
+#: rather than matching kind strings itself, so a kind added later is not silently loud-by-
+#: omission in one surface and quiet in another (`#126`).
+IMMATERIAL_AMBIGUITY_KINDS = frozenset({AMBIGUITY_UNKNOWN_SLOT_NONPLAYING})
+
+
+def normalised_slot(label: str) -> str:
+    """A slot label with case and separators removed, for asking "did they mean a known slot?".
+
+    Case, spaces, underscores, hyphens and dots only. NOT a spelling corrector and not an alias
+    table: `SUPER-FLEX` and `super_flex` are the same label as `SUPER_FLEX` typed differently,
+    while `RES` is not `IR` and this function must never claim it is. Inventing that equivalence
+    would be asserting knowledge about the vendor's vocabulary that nothing here measured.
+    """
+    out = (label or "").upper()
+    for junk in (" ", "_", "-", "."):
+        out = out.replace(junk, "")
+    return out
+
+
+#: The known vocabularies under the same normalisation, built once so a comparison cannot drift
+#: from the sets it is about.
+_NORMALISED_NONPLAYING = {normalised_slot(slot): slot for slot in NON_PLAYING_SLOTS}
+_NORMALISED_STARTING = {normalised_slot(slot): slot
+                        for slot in list(FANTASY_POSITIONS) + list(FLEX_SLOT_POSITIONS)}
+
 #: Keys whose ABSENCE changes what the engine concludes about a league -- not every key it might
 #: read. `compute_points_from_stats` iterates whatever it is given, so a missing category there is
 #: a smaller projection, not a misread league. These are different: each silently resolves to a
@@ -327,12 +386,49 @@ def ambiguities(league: Optional[dict]) -> list[dict]:
 
     unknown = sorted({slot for slot in slots if slot not in KNOWN_SLOTS})
     if unknown:
-        found.append({
-            "kind": "unknown_slot",
-            "detail": f"roster slot(s) {unknown} are in neither the position vocabulary, the "
-                      f"flex vocabulary, nor {sorted(NON_PLAYING_SLOTS)} -- the lineup solver "
-                      f"cannot place anyone in them",
-        })
+        # D10: SPLIT BY MEASURED CONSEQUENCE, not reported as one undifferentiated alarm. See the
+        # three AMBIGUITY_UNKNOWN_SLOT_* constants for why these are the only three bands.
+        parsed_starting = len(starting_slots(slots))
+        nonplaying, starters, unresolved = [], {}, []
+        for label in unknown:
+            key = normalised_slot(label)
+            if key in _NORMALISED_NONPLAYING:
+                nonplaying.append(label)
+            elif key in _NORMALISED_STARTING:
+                starters[label] = _NORMALISED_STARTING[key]
+            else:
+                unresolved.append(label)
+
+        if nonplaying:
+            found.append({
+                "kind": AMBIGUITY_UNKNOWN_SLOT_NONPLAYING,
+                "detail": f"roster slot(s) {sorted(nonplaying)} are spelled in a way this app does "
+                          f"not recognise, but each one normalises to a non-playing slot "
+                          f"({sorted(NON_PLAYING_SLOTS)}), which the lineup solver leaves out "
+                          f"anyway. The board was priced on the same {parsed_starting} starting "
+                          f"slots your league declares, so this costs nothing",
+            })
+        if starters:
+            named = ", ".join(f"{raw} (meaning {known})" for raw, known in sorted(starters.items()))
+            found.append({
+                "kind": AMBIGUITY_UNKNOWN_SLOT_STARTER,
+                "detail": f"roster slot(s) {named} name STARTING slots, spelled in a way this app "
+                          f"does not recognise, so they were dropped: the board was priced on "
+                          f"{parsed_starting} starting slots where your league declares "
+                          f"{parsed_starting + len(starters)}. Every replacement level and every "
+                          f"starter-demand figure below is about the smaller lineup",
+            })
+        if unresolved:
+            found.append({
+                "kind": AMBIGUITY_UNKNOWN_SLOT,
+                "detail": f"roster slot(s) {sorted(unresolved)} are in neither the position "
+                          f"vocabulary, the flex vocabulary, nor {sorted(NON_PLAYING_SLOTS)} -- "
+                          f"the lineup solver cannot place anyone in them. IF ANY OF THEM STARTS "
+                          f"A PLAYER, the board was priced on {parsed_starting} starting slots "
+                          f"where your league has up to {parsed_starting + len(unresolved)}, and "
+                          f"every replacement level is about a different league. This app cannot "
+                          f"tell which, so it cannot bound the error",
+            })
 
     if "BN" not in slots:
         # Best-ball leagues genuinely have no bench, and so does a roster_positions list that

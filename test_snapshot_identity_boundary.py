@@ -406,6 +406,13 @@ class EvidenceProjectionTests(unittest.TestCase):
             annotation = str(field.type)
             if "bool" in annotation:
                 return True                       # distinguishable from the False default
+            if "frozenset" in annotation:
+                # DISTINGUISHABLE AND ORDER-FREE. A one-element frozenset naming the field cannot
+                # be confused with another field's value, and unlike a list it cannot arrive
+                # "intact" after being reordered in transit. Added for `eligible_positions` at
+                # C-F3, under this test's own instruction to add a sentinel rather than exclude
+                # the field.
+                return frozenset({f"sentinel-{field.name}"})
             if "dict" in annotation:
                 return {"sentinel": field.name}
             if "str" in annotation:

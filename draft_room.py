@@ -3820,6 +3820,17 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
             eligible = {position}
         return 0 if (set(eligible) & needed_positions) else 1
 
+    # `player_id` IS NOT PART OF THIS FUNCTION'S CONTRACT, which the suite established the hard
+    # way: `test_feasibility_backstop` builds frames carrying `position` alone, six of its tests
+    # errored on a KeyError, and my adjacent-module run had not included the one module actually
+    # about this function. Without an id there is no way to reach `players_db`, so eligibility
+    # cannot be read and the primary bucket is the only fact available -- which is exactly the
+    # behaviour this function had before B-F4. The repair applies where the data allows it and
+    # degrades to the old reading where it does not, rather than requiring a column its callers
+    # were never asked to supply.
+    if "player_id" not in scored.columns:
+        return scored["position"].map(
+            lambda position: 0 if position in needed_positions else 1).astype(int)
     return pd.Series(
         [_fills_a_hole(pid, pos)
          for pid, pos in zip(scored["player_id"], scored["position"])],

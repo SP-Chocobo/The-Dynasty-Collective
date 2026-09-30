@@ -632,8 +632,21 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #   RENDER -- NO. The card already shows what this decides: the "Denies {team}" flag. The
         #     rank is the gate's input, not a fact about the player, and putting an opponent's
         #     internal board position on a card would invite reading it as a property of the man.
+        # 55 -> 56 (C-F3): eligible_positions. CONFIRMED AGAINST BOTH HALVES:
+        #   SCALE -- it is not a quantity at all. A frozenset of position labels carries no units
+        #     and nothing that could be misread as universal-value points, so it implies no scale
+        #     the card cannot support. It is the `#174` companion to a fact the board ALREADY
+        #     acted on: `need_bonus` priced these candidates against the slots they are eligible
+        #     for, and `position` -- one primary bucket -- was the only positional fact crossing
+        #     this boundary, so the position views could not filter on what the engine had used.
+        #   RENDER -- NO, not as its own row. The card names one position today and a set of
+        #     labels beside it invites reading a dual-eligible man as two players. Its consumer is
+        #     `filter_candidates_by_view`, which decides WHICH CARDS APPEAR rather than what one
+        #     card says, and a manager learns the same fact by finding him in the LB view. If a
+        #     card ever shows eligibility it should read as one line of prose ("can start at LB"),
+        #     which is a UI decision and is not made here.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 55,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 56,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")
