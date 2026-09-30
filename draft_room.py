@@ -1158,6 +1158,13 @@ def team_slots_filled(
         eligible = player_eligible_positions(info)
         if not eligible:
             continue
+        # A PICK WITH NO ROSTER BELONGS TO NO ROSTER (B-F6). `str(None)` is the string "None",
+        # which is a perfectly good dict key, so one such pick added a phantom roster here while
+        # `team_count` filtered the same pick out -- making `len(filled)` exceed `num_teams` and
+        # raising the foreign-roster-universe error on a history that was not foreign at all.
+        # ONE RULE about what a rosterless pick means, in both places (`#126`).
+        if pick.get("roster_id") is None:
+            continue
         rows.setdefault(str(pick.get("roster_id")), []).append(
             {"id": str(pick.get("player_id")), "eligible": eligible})
     return {roster: lo.slot_coverage(players, slots)["filled_labels"]

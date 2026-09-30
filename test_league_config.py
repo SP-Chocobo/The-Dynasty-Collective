@@ -183,12 +183,23 @@ class AmbiguityIsDerivedNotRememberedTests(unittest.TestCase):
         # reads `.get(TEAM_COUNT_KEY)`, so the key appears as a Name rather than a string constant.
         # A literal here would itself be the second home this whole item is about.
         module_tree = ast.parse((_HERE / "league_config.py").read_text())
-        reader = next(node for node in ast.walk(module_tree)
-                      if isinstance(node, ast.FunctionDef) and node.name == "team_count")
-        names = {node.id for node in ast.walk(reader) if isinstance(node, ast.Name)}
+        functions = {node.name: node for node in ast.walk(module_tree)
+                     if isinstance(node, ast.FunctionDef)}
+        # FOLLOWS THE DELEGATION RATHER THAN NAMING ONE FUNCTION. A-F5 moved the derivation into
+        # `team_count_with_basis` so the count and its basis come from one body (`#166`), and this
+        # check -- which named `team_count` directly -- failed on a refactor that did not weaken
+        # anything. Pinning BOTH halves is stronger than the original: the derivation must read the
+        # declared key, AND `team_count` must be that derivation rather than a second reader of it.
+        derivation = functions["team_count_with_basis"]
+        names = {node.id for node in ast.walk(derivation) if isinstance(node, ast.Name)}
         self.assertIn("TEAM_COUNT_KEY", names,
-                      "team_count does not read TEAM_COUNT_KEY, so the name the gate declares and "
-                      "the key the count comes from can drift apart")
+                      "the team-count derivation does not read TEAM_COUNT_KEY, so the name the "
+                      "gate declares and the key the count comes from can drift apart")
+        delegated = {node.func.id for node in ast.walk(functions["team_count"])
+                     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
+        self.assertIn("team_count_with_basis", delegated,
+                      "team_count no longer delegates to the one derivation, so there are two "
+                      "readers of the key again")
         self.assertNotIn(lc.TEAM_COUNT_KEY, keys_read("league_config.py"),
                          f"{lc.TEAM_COUNT_KEY!r} is spelled as a literal somewhere in this module, "
                          f"which is a second home for the very key TEAM_COUNT_KEY exists to name")

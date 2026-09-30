@@ -795,14 +795,18 @@ def _round_being_decided(pick_label, picks: list, league: Optional[dict] = None)
             return int(head)
     if not picks:
         return 1
-    teams = 0
-    if league:
-        teams = int(league.get("total_rosters") or 0)
-    if not teams:
-        teams = len({p.get("roster_id") for p in picks if p.get("roster_id") is not None})
-    if not teams:
+    # THE THIRD DERIVATION, retired: this spelled `n // teams + 1` itself over its own team count,
+    # beside `league_config.round_of` and `team_count` which each exist to be the only copy.
+    #
+    # THE BASIS IS LOAD-BEARING HERE, not decoration. `team_count` floors at 1, so routing this
+    # through it bare would turn "nothing said how many teams there are" into "a one-team league"
+    # and answer `len(picks) + 1` -- where this function has a better answer of its own in the
+    # round its picks already carry. That fallback is the one `round_of`'s docstring means when it
+    # returns None rather than guessing, and it is kept at its own site as that docstring says.
+    teams, basis = lc.team_count_with_basis(league, picks=picks)
+    if basis == lc.TEAM_BASIS_FLOOR:
         return max((p.get("round") or 1) for p in picks)
-    return len(picks) // teams + 1
+    return lc.round_of(len(picks), teams)
 
 
 def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[tuple[float, str]]:
@@ -1821,7 +1825,11 @@ def build_snapshot(
     # compute_draft_board's own derivation above), capped at POSITION_VIEW_DEPTH_CAP so a deep
     # position (WR/RB can run 30+ replacement rank in a real league) never balloons the
     # candidate set past what's actually useful to display or affordable to fully analyze.
-    num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
+    # THE SAME DERIVATION THE SCREEN AND THE ENGINE USE (A-F5/C-F2). This line spelled the
+    # pre-consolidation form -- and without `team_count`'s `None` filter, so a pick lacking a
+    # roster_id counted as a team here and did not there. It feeds `replacement_ranks` ->
+    # `position_depth` -> `narrow_candidates`, so it set every replacement level on this snapshot.
+    num_teams = lc.team_count(league, picks=picks)
     replacement_ranks = dr.replacement_ranks(
         league.get("roster_positions") or [], num_teams, picks, players_db)
     position_depth = {pos: position_view_depth(rank) for pos, rank in replacement_ranks.items()}

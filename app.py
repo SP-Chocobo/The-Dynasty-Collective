@@ -5259,7 +5259,10 @@ elif main_view == DRAFT_VIEW:
                 if current_index >= len(md["pick_order"]):
                     st.success("Mock draft complete.")
                 else:
-                    mock_target_round = current_index // settings["teams"] + 1
+                    # `round_of`, not a fifth copy of its arithmetic. Found while scoping
+                    # A-F5's test: this is the engine's own round LABEL, which is the first of
+                    # the three sites `round_of`'s docstring says it was built to replace.
+                    mock_target_round = league_config.round_of(current_index, settings["teams"])
                     mock_target_slot = current_index % settings["teams"] + 1
                     mock_pick_label = f"{mock_target_round}.{mock_target_slot:02d}"
 
@@ -5628,7 +5631,13 @@ elif main_view == DRAFT_VIEW:
                             is_live = target_index == current_index
                             owner_names_by_id = {str(k): v for k, v in roster_owner_names(snapshot).items()}
 
+                            # THE SEATS TRAVEL WITH THE LEAGUE (A-F5/C-F2). Without this key the
+                            # engine derived its own team count from `total_rosters` while this
+                            # screen derived it from the seats, so a draft with fewer seats than
+                            # the league has rosters priced the caption and every replacement
+                            # level against different numbers.
                             league_for_engine = {
+                                league_config.PICK_ORDER_KEY: round_1_order,
                                 "roster_positions": league.get("roster_positions"),
                                 "scoring_settings": league.get("scoring_settings"),
                                 "total_rosters": league.get("total_rosters"),

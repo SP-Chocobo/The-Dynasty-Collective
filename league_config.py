@@ -168,6 +168,54 @@ AMBIGUOUS = "ambiguous"
 CONFIRMED_KEY = "_config_confirmed"
 
 
+#: The draft's own seats, carried ON the league dict so the ENGINE can reach them.
+#:
+#: `team_count`'s order of authority put the seats first and then could not see them: the screen
+#: called it with `pick_order=` and the engine called it with `league` and `picks`, because
+#: `league_for_engine` carried no seats. Same function, different inputs, different rule -- so a
+#: 10-seat draft in a 12-roster league gave the caption 10 and every replacement level 12, which
+#: is the exact split the consolidation names as its purpose and asserts it has closed.
+#:
+#: A KEY RATHER THAN A PARAMETER because the seats have to cross four call layers to reach
+#: `replacement_ranks`, and every layer that has to pass them along is a layer that can forget to.
+#: The league dict already travels that whole distance.
+PICK_ORDER_KEY = "draft_pick_order"
+
+#: What `team_count` actually answered from -- returned WITH the number (`#166`), because two of
+#: its four rules are not team counts at all. `TEAM_BASIS_FLOOR` in particular means "nothing here
+#: said how many teams there are" and a caller with its own fallback must be able to tell that
+#: from a real count of one. `_round_being_decided` is such a caller: routed through a bare
+#: `team_count` it would read the floor as a one-team league and answer `len(picks) + 1` instead
+#: of using the round its own picks carry.
+TEAM_BASIS_SEATS = "draft_seats"
+TEAM_BASIS_DECLARED = "total_rosters"
+TEAM_BASIS_PICKS = "distinct_roster_ids"
+TEAM_BASIS_FLOOR = "no_basis_floor_of_one"
+
+
+def team_count_with_basis(league: Optional[dict] = None, *, pick_order=None,
+                          picks: Optional[list] = None) -> tuple[int, str]:
+    """(count, basis). THE derivation; `team_count` is this function's first element.
+
+    One body rather than two, so the count and the basis cannot disagree -- a companion computed
+    beside the number instead of with it is `#166`'s own failure mode."""
+    seats = pick_order
+    if seats is None and league:
+        seats = league.get(PICK_ORDER_KEY)
+    if seats:
+        distinct = {str(seat) for seat in seats if seat is not None}
+        if distinct:
+            return len(distinct), TEAM_BASIS_SEATS
+    declared = (league or {}).get(TEAM_COUNT_KEY)
+    if declared:
+        return int(declared), TEAM_BASIS_DECLARED
+    if picks:
+        drafting = {p.get("roster_id") for p in picks if p.get("roster_id") is not None}
+        if drafting:
+            return len(drafting), TEAM_BASIS_PICKS
+    return 1, TEAM_BASIS_FLOOR
+
+
 def team_count(league: Optional[dict] = None, *, pick_order=None,
                picks: Optional[list] = None) -> int:
     """How many teams are drafting -- ONE derivation, in a stated order of authority (`#126`).
@@ -181,8 +229,14 @@ def team_count(league: Optional[dict] = None, *, pick_order=None,
 
     THE ORDER IS THE ARGUMENT, not a preference:
 
-      1. `pick_order` -- the draft's OWN seats. A draft in progress has a definite number of chairs
-         and that is the number every per-turn quantity is about, whatever the league record says.
+      1. the draft's OWN seats -- the `pick_order` argument, or `PICK_ORDER_KEY` on the league
+         dict. A draft in progress has a definite number of chairs and that is the number every
+         per-turn quantity is about, whatever the league record says.
+
+         THE KEY IS WHY THIS RULE NOW REACHES THE ENGINE. Until it existed, only the screen ever
+         passed seats; the engine called this function with `league` and `picks` and could not
+         have passed them, so the two callers ran different rules and the paragraph below -- which
+         says they can no longer give two counts -- was false for exactly the input it names.
       2. `total_rosters` -- the league's own count, under the name the engine reads
          (TEAM_COUNT_KEY, MANDATE 2.2). Authoritative when no draft is in hand.
       3. the distinct roster ids among `picks` -- a floor, not a count: a roster that has not picked
@@ -193,18 +247,7 @@ def team_count(league: Optional[dict] = None, *, pick_order=None,
          one-team league puts every replacement level at its position's best player and that is a
          consequence worth leaving visible instead of papering over.
     """
-    if pick_order:
-        seats = {str(seat) for seat in pick_order if seat is not None}
-        if seats:
-            return len(seats)
-    declared = (league or {}).get(TEAM_COUNT_KEY)
-    if declared:
-        return int(declared)
-    if picks:
-        drafting = {p.get("roster_id") for p in picks if p.get("roster_id") is not None}
-        if drafting:
-            return len(drafting)
-    return 1
+    return team_count_with_basis(league, pick_order=pick_order, picks=picks)[0]
 
 
 def round_of(picks_completed: int, num_teams: Optional[int]) -> Optional[int]:

@@ -415,6 +415,82 @@ between two items that were filed separately.
 
 ---
 
+**RULED BY THE OWNER, AND THE RULING MOVED THE ITEM OFF BOTH ITS OPTIONS.** Asked to choose
+between (1) and (2), the owner challenged the framing instead:
+
+> *Shouldn't the grading criterion be the value of the depth as insurance against lost starter
+> production? ... It may mean the valuation should transition from starter-demand value to
+> depth/contingency value.* And: *if neither 1 nor 2 actually captures that cleanly, I'd rather call
+> that out than force the engine into one of the two because they're the presented choices.*
+
+He asked for that verified against what the machinery represents rather than argued. Verified, and
+**the criterion is already implemented.**
+
+### `depth_exposure` IS the contingency term, and it is live
+
+`draft_room.py:653-675`, reaching `team_acquisition_value` at `:4912`, one of the four
+team-specific terms named in the module's own composition line at `:35`:
+
+> *depth_exposure prices what a HOLE would cost: remove a starter, re-solve the lineup, and the
+> drop is what one backup at that position would be buying. ... depth_exposure prices insurance
+> against losing a starter you DO need.*
+
+It is DERIVED, not chosen -- the number comes from re-solving the lineup through
+`lineup_optimizer.depth_exposure`, bounded by construction (removing one player can cost the lineup
+at most that player's own value), and its bound is set equal to `NEED_BONUS_MAX` rather than
+invented. It is "only `measured` from round 9, once a bench exists for depth to be a meaningful
+question about" -- which is exactly the range this item is about.
+
+**MY FIRST ANSWER TO THIS CHALLENGE WAS WRONG AND IS CORRECTED HERE.** I replied that the owner's
+criterion needed an injury base-rate input the engine does not have, and filed the general form as
+out of scope on that ground. The engine does not need a base rate to price this, because
+`depth_exposure` does not ask "how likely is the starter to miss time" -- it asks "what does the
+lineup lose if he is gone", which needs no probability at all. The item I filed as blocked on a new
+input is neither blocked nor new. `#292`: the record wins.
+
+### Why that means NEITHER (1) NOR (2), as the owner suspected
+
+Both options treat the row as carrying ONE value, and this engine deliberately splits it by
+altitude. What goes to zero when league-wide starter demand is exhausted is `universal_value`'s
+replacement anchor -- the STARTER-DEMAND quantity. `depth_exposure` is a different altitude,
+computed against MY OWN roster, and nothing about league-wide demand exhaustion zeroes it.
+
+So **(2) is the more dangerous of the two, and it was my recommendation.** Marking the row ABSENT
+would suppress a row that still carries a live derived contingency price, and would assert "this
+engine has no basis for saying what another body is worth" while one of its four team terms is at
+that moment saying precisely that. Not the absence contract honoured -- the absence contract
+inverted, which is the mirror of `#193`.
+
+### D9(c) -- the answer, in the owner's own words
+
+The valuation TRANSITIONS rather than vanishing. At a position whose league-wide starter demand is
+exhausted:
+
+  * `universal_value`'s starter-demand basis is **absent** (`#187`), because that quantity genuinely
+    has nothing left to measure -- which is the true half of (2), applied to the term it is about
+    instead of to the whole row;
+  * `depth_exposure` **continues to price the row**, as the contingency value of a playable body
+    behind a starter, unchanged and already derived;
+  * and the row's own label says which of the two is speaking, so a person reading a small number
+    can tell "no starter demand left here" from "this body is worth little as insurance". `#166`:
+    the companion travels with the number.
+
+No new input, no new magnitude, no redefinition of the replacement equation.
+
+### THE ONE THING STILL TO MEASURE BEFORE THIS SHIPS
+
+Whether `depth_exposure` is actually NON-ZERO on those rows at rounds 18-20. The transition above is
+only real if the contingency term is live exactly where the starter-demand term dies. If it measures
+0.0 there, the row really does carry no basis and (2) comes back -- so this is the measurement that
+decides it, and it has not been run. `run_216_review_probe.py` already emits
+`depth_exposure_positive_rows` and `depth_exposure_max`, so the instrument exists.
+
+**Stated as an open question rather than resolved**, because asserting the transition without that
+measurement would be the same error as my first answer: a plausible claim about a term I had not
+looked at.
+
+**Cost of leaving it:** `#21` and D7(a) stay blocked. D7 continues to ship with a number and a test.
+
 ## D7 — 3.2: should the fieldability bound extend to flex-reachable groups? (needs a depth allowance)
 **RULED: (b) — extend it with a per-group depth allowance, recorded as a stated convention.
 SHIPPED, BUT NOT ADDITIVELY: the allowance the ruling describes was measured to be IMPOSSIBLE, and
@@ -697,3 +773,34 @@ mid-draft blackout is entirely in the other. But `#56`'s rule holds: this is a b
 no measurement behind it, so it is yours.
 
 Not urgent. It cannot fire on your league's config, whose every slot parses.
+
+---
+
+## D10 / `C-F4` -- RULED: price it, and scale the warning to the impact
+
+> *Price it, but modulate how loudly the warning is to the impact that that missing data has on the
+> decision ... telling on ourselves extra loud may be undercutting our authority when an asterisk
+> may be enough.*
+
+**RULED. The refusal is not built, and `league_config`'s contract stops describing one.** This is
+better than the split I proposed: mine still blacked out a board in one branch, and a manager on the
+clock is never served by that. The board is always priced.
+
+**One correction to the ruling's premise, which the ruling itself absorbs.** An unrecognised slot
+label is NOT necessarily deep depth -- it can be a starting slot, and that is the whole harmful
+case, because the label that got dropped may be the one the league actually starts and then every
+replacement level, slot share and demand figure is quietly about a different league. The owner's own
+rule handles it without needing that correction: volume keyed to impact makes exactly this case the
+loud one.
+
+**THE VOLUME IS MEASURED, NOT ESTIMATED**, which is what keeps it from becoming a third chosen
+magnitude. The board is priced twice -- once with the unparsed label dropped, once without it -- and
+the warning's prominence follows the difference:
+
+* **No starting-slot count moves** -> an asterisk on the caption. The label was bench-class or
+  decorative; saying more would spend the manager's trust on nothing, which is the ruling's point.
+* **A starting-slot count moves** -> a prominent warning naming the position whose demand changed
+  and by how much, because a replacement level moved and every price above it with it.
+
+Recorded here rather than left implicit: the asterisk case is a claim that the dropped label changed
+no price, and it is checked on each render rather than assumed once.

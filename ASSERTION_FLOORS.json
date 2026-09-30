@@ -9074,7 +9074,7 @@
       "asserts": {
         "assertEqual": 8,
         "assertFalse": 2,
-        "assertIn": 10,
+        "assertIn": 11,
         "assertIsNone": 3,
         "assertNotIn": 3,
         "assertTrue": 4
@@ -9139,7 +9139,7 @@
           "assertIn": 1
         },
         "test_the_team_count_key_is_the_one_the_VALUATION_path_reads": {
-          "assertIn": 2,
+          "assertIn": 3,
           "assertNotIn": 2
         },
         "test_two_literal_QB_slots_without_the_token_is_caught": {
@@ -10520,6 +10520,81 @@
         "test_the_ui_reads_the_vocabulary_rather_than_re_listing_it": {
           "assertIn": 1,
           "assertNotIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_one_league_one_team_count.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertEqual": 17,
+        "assertGreaterEqual": 1,
+        "assertIsInstance": 1,
+        "assertNotIn": 2,
+        "assertRaises": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "test_a_genuinely_foreign_history_is_STILL_refused": {
+          "assertRaises": 1
+        },
+        "test_a_label_still_answers_directly": {
+          "assertEqual": 1
+        },
+        "test_an_explicit_argument_still_beats_the_key": {
+          "assertEqual": 1
+        },
+        "test_each_rule_names_itself": {
+          "assertEqual": 1
+        },
+        "test_nothing_but_league_config_spells_the_round_arithmetic": {
+          "assertEqual": 1
+        },
+        "test_remaining_starter_demand_no_longer_raises": {
+          "assertIsInstance": 1,
+          "assertTrue": 1
+        },
+        "test_the_UI_surface_does_not_spell_the_round_arithmetic_either": {
+          "assertNotIn": 1
+        },
+        "test_the_count_and_the_basis_come_from_ONE_body": {
+          "assertEqual": 1
+        },
+        "test_the_floor_is_distinguishable_from_a_real_one_team_league": {
+          "assertEqual": 2
+        },
+        "test_the_inline_derivation_is_gone_from_the_tree": {
+          "assertEqual": 1
+        },
+        "test_the_module_set_is_not_empty": {
+          "assertGreaterEqual": 1
+        },
+        "test_the_phantom_roster_is_not_created": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "test_the_screen_and_the_engine_now_agree_on_the_split_input": {
+          "assertEqual": 2
+        },
+        "test_the_seats_reach_this_derivation_too": {
+          "assertEqual": 1
+        },
+        "test_the_two_functions_agree_on_what_a_rosterless_pick_MEANS": {
+          "assertEqual": 1
+        },
+        "test_with_a_real_count_the_arithmetic_is_round_of": {
+          "assertEqual": 1
+        },
+        "test_with_no_team_count_anywhere_the_recorded_round_wins": {
+          "assertEqual": 1
+        },
+        "test_without_the_key_the_two_would_still_split": {
+          "assertEqual": 2
         }
       },
       "disabled": {
