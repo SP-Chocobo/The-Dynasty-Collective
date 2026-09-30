@@ -663,3 +663,37 @@ These were heading for this file and did not need to. Recorded so you can object
 6. **The `bpa` magnitude invariant** — its test was failing on a coincidence (two four-player
    windows both spanning 33.0), not on a defect. Replaced with the property itself: within a
    position, bpa gaps equal projected-points gaps exactly, over 8161 pairs, worst deviation 0.0.
+
+---
+
+## D10 / `C-F4` — should an unrecognised roster slot REFUSE to price the board?
+
+**Raised by two independent v4 lenses. This is the only v4 finding I am not deciding myself.**
+
+`league_config.py` carries refusal machinery and a contract that describes it as binding:
+AMBIGUOUS is "the only blocking state", `admits_decision` says "ambiguity is enforced", and
+`decision_config` promises "the config, or a refusal. Never a degraded fallback."
+
+**None of it has a production caller.** `decision_config`, `admits_decision` and
+`confirmation_state` are read by nothing that ships. What runs instead: `ambiguities()` is read,
+stored as `config_ambiguities`, and rendered as a warning whose own text ends "The board below was
+priced anyway." An unknown slot code is silently dropped by `slots_from_roster_positions` exactly as
+`KNOWN_SLOTS`' comment warns it would be, and nothing refuses anything.
+
+I have repaired the false sentences — the contract now says what the code does. **What I will not
+decide for you is whether the refusal should exist**, because no requirement settles it and both
+answers are defensible:
+
+* **Refuse.** A manager never sees prices computed on a roster nobody could parse. The slot that
+  was dropped may be the one his league actually starts, and every replacement level, slot share
+  and demand number downstream of it is then quietly about a different league than his.
+* **Price anyway, warn loudly** (today's behaviour). Taking the board away mid-draft over one
+  unrecognised label is its own failure — he is on the clock, and a board with a caveat beats no
+  board. The warning already names the ambiguity.
+
+My own lean is **refuse only when the unknown label is a STARTING slot, price with the warning when
+it is a bench-class label** — because the harm is entirely in the starting-slot case and the
+mid-draft blackout is entirely in the other. But `#56`'s rule holds: this is a behaviour choice with
+no measurement behind it, so it is yours.
+
+Not urgent. It cannot fire on your league's config, whose every slot parses.

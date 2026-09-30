@@ -47,6 +47,15 @@ and the number replaced is recorded. Breaking one of two branches is not breakin
 -- the other branch still defends it, and a "caught" verdict would be about half the engine.
 `test_invariant_confirmation_anchors.py` pins the anchors so they cannot rot again in silence.
 
+AND ON 2026-09-30 THE PREFLIGHT WAS EXECUTED FOR EVERY ARM FOR THE FIRST TIME. Three arms cleared
+it; the two upside arms read MUTATION IS INERT, because this file's fixture built the default
+board only and they mutate the upside branch. `MUTATION IS INERT` is in `INCONCLUSIVE`, so `main`
+would have returned 2 and the run would have confirmed nothing -- the harness unable to reach a
+verdict, again, for the third distinct reason in its life, and again in work that was reasoned
+about but never run. The fixture now builds both branches. The lesson is not about upside mode:
+it is that reading this harness cannot establish that it works, and only the four preflight
+states can.
+
 HOW IT RUNS, and the two hazards it is built around:
 
   - PYTHONDONTWRITEBYTECODE=1 and __pycache__ cleared around every arm. A byte-length-
@@ -225,16 +234,28 @@ rbs = [str(x) for x in pool.loc[pool["position"] == "RB", "player_id"].head(3)]
 picks = [{"pick_no": i + 1, "round": i + 1, "roster_id": "1", "player_id": pid}
          for i, pid in enumerate(qbs + rbs)]
 left = pool[~pool["player_id"].astype(str).isin({p["player_id"] for p in picks})].copy()
-board = dr.compute_draft_board(merger, players_db, picks, my_roster_id="1", league=league,
-                               sleeper_projections=season,
-                               sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
-digest = hashlib.sha256(json.dumps(board, sort_keys=True, default=str).encode()).hexdigest()
-# BOTH CENSUSES, read off the board's own emitted flags rather than recomputed. `main` refuses to
-# judge any mutation unless both are non-uniform: a uniform column makes its mutation inert and a
-# verdict about it meaningless, which is how the third mutation went unjudged.
-feas = sum(1 for row in board if row.get("fills_required_slot"))
-unfield = sum(1 for row in board if row.get("cannot_be_fielded"))
-print(f"{digest} {feas} {len(board)} {unfield}")
+# BOTH BRANCHES OF compute_draft_board, because since D5 each has its OWN board sort and
+# therefore its own anchor. This fixture built the default board only, so the two upside arms
+# mutated a branch it never entered: the mutant's board came back byte-identical and both arms
+# read MUTATION IS INERT -- which is in INCONCLUSIVE, so `main` returned 2 and the harness could
+# reach no verdict at all. MEASURED 2026-09-30, on arms added by the same hand six days earlier
+# and never executed. The upside branch is forced rather than reached by round, because
+# `mode="auto"` picks it off `current_round >= upside_round` (15) and this fixture is a
+# seven-round draft by construction -- it must stay short for feasibility_first to bind.
+fields = []
+for mode in ("auto", "upside"):
+    board = dr.compute_draft_board(merger, players_db, picks, my_roster_id="1", league=league,
+                                   mode=mode, sleeper_projections=season,
+                                   sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+    digest = hashlib.sha256(json.dumps(board, sort_keys=True, default=str).encode()).hexdigest()
+    # BOTH CENSUSES, read off the board's own emitted flags rather than recomputed, and now per
+    # branch. `main` refuses to judge any mutation unless all four are non-uniform: a uniform
+    # column makes its mutation inert and a verdict about it meaningless, which is how the
+    # third mutation went unjudged and then how both upside arms did.
+    feas = sum(1 for row in board if row.get("fills_required_slot"))
+    unfield = sum(1 for row in board if row.get("cannot_be_fielded"))
+    fields.append(f"{digest} {feas} {len(board)} {unfield}")
+print(" ".join(fields))
 """
 
 
@@ -331,19 +352,24 @@ def main():
     # feasibility census; if it is uniform, feasibility_first is a no-op on this board and every
     # mutation of it would read INERT forever -- the harness passing itself while testing
     # nothing, one level up from #254. Fail loudly rather than drift back into that.
-    _digest, feas, total, unfield = ref_fp.split()
-    # BOTH BACKSTOPS, NOT ONE. The old guard checked feasibility alone, so the fieldability
-    # mutation sat behind an unchecked assumption: its column was uniformly 0 on the fixture, the
-    # mutation substituting a constant 0 was therefore a no-op, and the arm could only ever read
-    # MUTATION IS INERT. A guard that covers one of two invariants gives false confidence about
-    # the other -- the same shape as the docstring that once claimed four targets and had two.
-    for label, count in (("feasibility (fills_required_slot)", feas),
-                         ("fieldability (cannot_be_fielded)", unfield)):
-        if not 0 < int(count) < int(total):
-            print(f"FIXTURE NO LONGER BINDS: {label} is uniform at {count} of {total} rows. "
-                  f"That backstop is a no-op here, so no mutation of it can be judged. "
-                  f"Re-derive the roster state; do not relax this check.")
-            return 2
+    # BOTH BACKSTOPS ON BOTH BRANCHES. The guard checked feasibility alone once, so the
+    # fieldability mutation sat behind an unchecked assumption: its column was uniformly 0 on the
+    # fixture, the mutation substituting a constant 0 was therefore a no-op, and the arm could
+    # only ever read MUTATION IS INERT. Widening it to both backstops left the SAME hole one axis
+    # over -- both censuses were checked on the default board while two arms mutated the upside
+    # branch -- so it is now four quantities, one pair per branch. A guard that covers three of
+    # four gives false confidence about the fourth, which is the shape of every defect this file
+    # exists for.
+    parts = ref_fp.split()
+    boards = [parts[i:i + 4] for i in range(0, len(parts), 4)]
+    for branch, (_digest, feas, total, unfield) in zip(("balanced", "upside"), boards):
+        for label, count in (("feasibility (fills_required_slot)", feas),
+                             ("fieldability (cannot_be_fielded)", unfield)):
+            if not 0 < int(count) < int(total):
+                print(f"FIXTURE NO LONGER BINDS: on the {branch} board, {label} is uniform at "
+                      f"{count} of {total} rows. That backstop is a no-op there, so no mutation "
+                      f"of it can be judged. Re-derive the roster state; do not relax this check.")
+                return 2
     print(f"reference board: {_digest[:16]}  feasibility binds on {feas} of {total} rows, "
           f"fieldability on {unfield}\n")
 

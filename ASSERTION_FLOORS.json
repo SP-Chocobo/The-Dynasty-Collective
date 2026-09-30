@@ -8676,18 +8676,18 @@
       }
     },
     "test_invariant_confirmation_anchors.py": {
-      "test_methods": 19,
+      "test_methods": 20,
       "asserts": {
-        "assertEqual": 10,
+        "assertEqual": 11,
         "assertFalse": 1,
         "assertGreater": 2,
         "assertGreaterEqual": 2,
         "assertIn": 12,
         "assertLess": 2,
-        "assertNotEqual": 1,
+        "assertNotEqual": 2,
         "assertNotIn": 3,
         "assertRegex": 1,
-        "assertTrue": 4
+        "assertTrue": 5
       },
       "by_method": {
         "test_a_subprocess_failure_is_reported_as_not_built": {
@@ -8736,6 +8736,7 @@
           "assertEqual": 1
         },
         "test_the_fixture_exercises_BOTH_invariants": {
+          "assertEqual": 1,
           "assertGreater": 1,
           "assertLess": 1,
           "assertTrue": 1
@@ -8750,6 +8751,10 @@
         "test_the_scored_run_is_an_explicit_list_not_a_discover_sweep": {
           "assertIn": 1,
           "assertNotIn": 1
+        },
+        "test_the_two_branches_are_DIFFERENT_boards": {
+          "assertNotEqual": 1,
+          "assertTrue": 1
         },
         "test_the_two_first_run_failure_modes_are_both_named": {
           "assertIn": 2

@@ -178,9 +178,12 @@ class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unitte
         would compare against an empty string and every mutation would read as INERT."""
         ok, fingerprint, err = ic._board_fingerprint()
         self.assertTrue(ok, f"reference board failed to build: {err}")
-        # FOUR fields now: digest, feasibility census, total, fieldability census. The fourth
-        # exists because the fieldability mutation could not be judged without it.
-        self.assertRegex(fingerprint, r"^[0-9a-f]{64} \d+ \d+ \d+$")
+        # EIGHT fields now: four per branch of `compute_draft_board` -- digest, feasibility
+        # census, total, fieldability census -- because since D5 each branch carries its own
+        # board sort and two arms mutate the upside one. Building the default board alone made
+        # both of those arms INERT, which is INCONCLUSIVE, so the harness could reach no verdict.
+        self.assertRegex(fingerprint,
+                         r"^[0-9a-f]{64} \d+ \d+ \d+ [0-9a-f]{64} \d+ \d+ \d+$")
 
     def test_the_fixture_exercises_BOTH_invariants(self):
         """The guard that stops the harness passing itself while testing nothing -- for both
@@ -197,13 +200,35 @@ class AVerdictIsOnlyAFactAboutTheSuiteWhenTheMutantRanAndChangedSomething(unitte
         exists for, so both are asserted separately."""
         ok, fingerprint, _ = ic._board_fingerprint()
         self.assertTrue(ok)
-        _digest, feas, total, unfield = fingerprint.split()
-        for label, count in (("feasibility", feas), ("fieldability", unfield)):
-            with self.subTest(label):
-                self.assertGreater(int(count), 0,
-                                   f"{label} does not bind; no mutation of it can be judged")
-                self.assertLess(int(count), int(total),
-                                f"every row flagged for {label} is not a reordering")
+        parts = fingerprint.split()
+        boards = [parts[i:i + 4] for i in range(0, len(parts), 4)]
+        self.assertEqual(len(boards), 2, "the fixture no longer fingerprints both branches")
+        for branch, (_digest, feas, total, unfield) in zip(("balanced", "upside"), boards):
+            for label, count in (("feasibility", feas), ("fieldability", unfield)):
+                with self.subTest(branch=branch, backstop=label):
+                    self.assertGreater(int(count), 0,
+                                       f"{label} does not bind on the {branch} board; no "
+                                       f"mutation of it can be judged there")
+                    self.assertLess(int(count), int(total),
+                                    f"every row flagged for {label} on the {branch} board is "
+                                    f"not a reordering")
+
+    def test_the_two_branches_are_DIFFERENT_boards(self):
+        """The finding that forced the fixture to build both, as a standing check.
+
+        Both upside arms mutate the sort inside `compute_draft_board`'s upside branch. A fixture
+        that builds only the default board never enters it, so the mutant's board comes back
+        byte-identical and the arm reads MUTATION IS INERT -- a harness-broken state, not a
+        verdict. If the two digests are ever equal, either the fixture stopped forcing the
+        branch or the branches stopped differing, and in both cases the upside arms have
+        silently stopped being judgeable."""
+        ok, fingerprint, _ = ic._board_fingerprint()
+        self.assertTrue(ok)
+        parts = fingerprint.split()
+        self.assertNotEqual(
+            parts[0], parts[4],
+            "the balanced and upside boards fingerprint identically, so a mutation to the "
+            "upside sort cannot change anything the harness measures")
 
     def test_the_fingerprint_is_stable_across_calls(self):
         """The comparison is only meaningful if an UNCHANGED tree fingerprints identically.
