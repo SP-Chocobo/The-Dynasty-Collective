@@ -16,6 +16,56 @@ names what it LICENSES and what is still open inside it.
 | D7 | 3.2's bound on flex-reachable groups | **per-group depth allowance** (magnitude still owed) |
 | D8 | 3.3's constants on a dead 0–100 scale | **re-derive `RISK_ADJ` only** |
 
+## PRECEDENCE: measurement outranks a ruling that measurement shows cannot function
+
+**Owner instruction, 2026-09-30, recorded because it is a standing rule and not a one-off:**
+
+> *"I want a disclaimer on any decisions that I make, that if the findings of anything specifically
+> invalidate a decision i made as non-functional, I want you to proceed with the corrected direction
+> that the program and tests demand, not standing on my decisions as absolute. Or at the very least,
+> ask me for blessings, but at this stage in the mire, I'm not going to gainsay your recommendations
+> on how to proceed."*
+
+## What this does and does not license
+
+**It licenses** proceeding in the corrected direction when a ruling is measured to be
+**non-functional** — meaning the thing it asks for cannot be built, or building it would demonstrably
+break something the ruling was not about. The bar is a MEASUREMENT, recorded where the next reader
+finds it, not a preference of mine.
+
+**It does not license** substituting my taste for the owner's on a question that is genuinely a
+choice. `#56` routes chosen magnitudes to the owner precisely because measurement cannot settle them,
+and this rule does not repeal that. A ruling I merely disagree with stands.
+
+**Every exercise of it is logged in three places**: the ruling's own entry in this file, the commit
+that ships it, and a test that pins the corrected behaviour. A silent override is a violation of the
+rule, not a use of it.
+
+## Exercised twice before the rule was written, both retroactively covered
+
+* **D4.** Ruled (c), price the upside growth term at zero, on MY claim that it was never decisive.
+  The claim was wrong: the battery's "5 of 672" is about `mode="auto"`, and in explicit upside mode
+  growth changes the top-1 pick on 5 of 39 boards. (c) would have removed working behaviour on a
+  measurement about a different population. Shipped instead as a derived conversion at
+  `TIME_HORIZON_SLOPE` — the rate this engine already applies to that exact percentile pair.
+* **D7.** Ruled (b), an additive per-group depth allowance. Swept over 948 seat × group observations:
+  **no constant works.** The offence group needs up to 14 of slack while the IDP case must be caught
+  below 5, so by the time an additive allowance spares ordinary rosters it has gone blind to the
+  defect. Shipped as a multiplicative factor inside a measured safe window instead.
+
+Neither was a disagreement about what the owner wanted. In both cases the ruling's GOAL was adopted
+and only its MECHANISM changed, because the mechanism was measured not to reach the goal.
+
+## The metaphor, since the owner asked for one
+
+A ruling says *"fix the draught by putting a rug across the gap under the door."* If the gap turns
+out to be in the window, the rug is not a smaller version of the right answer — it is an answer to a
+different question. Fitting the rug anyway, because that is what was asked for, leaves the room cold
+and the instruction technically honoured. This rule says: seal the window, say plainly that is what
+you did and why, and leave the rug on the record as the thing that was asked for.
+
+---
+
 **One thing the picker did not settle, and it is named here rather than assumed:** D7(b) is an
 allowance the owner sets, and no magnitude was given with the answer. I will measure what each
 candidate allowance does to the battery's own rosters and bring back grounded options rather than
@@ -402,7 +452,25 @@ firing on a legitimate roster — which is `unfieldable_last`'s own standing tes
 slack must take and the WINDOW the value must sit in; the value inside the window is a convention,
 the way 1.3's tie-break is. Implemented as its own function, `flex_reachable_ceiling_groups`, kept
 separate from the certified dedicated bound so that the exact-arithmetic half and the
-chosen-convention half stay legible as different things. Mutation-checked 5/5. D7(a) remains the end
+chosen-convention half stay legible as different things. Mutation-checked 5/5.
+
+**AND VERIFIED ON REAL DRAFTS, because a sort key that never reaches a pick is not a guard.** The
+factor was chosen on a static sweep of stored rosters; a seven-arm battery then re-drafted every
+league where the bound can bind, plus the deepest offence rosters in the population — 1824 picks,
+`complete: true`, all at `7070339`:
+
+| arm | picks | findings |
+|---|---|---|
+| `LIGHT_IDP` — D7's target | 168 | **0**, from six seats over the bound |
+| `CAPTURE_owner_league` (+ `_balanced_full`) | 300 each | **0** |
+| `CAPTURE_fourth_and_forever` (+ `_balanced_full`) | 312 each | **0** |
+| `HEAVY_IDP` (+ `_balanced_full`) | 216 each | 1 each — the DEDICATED bound's known survivors |
+
+`LIGHT_IDP`'s IDP per seat went `[1,6,6,7,7,1,1,1,3,1,7,7]` → `[1,1,1,4,3,4,4,4,3,4,4,4]`: **six seats
+over the bound became none, and the cap is exactly 4**, which is `reach 1 × 3.0 + 1` and a number
+nothing else in the engine computes. Zero false positives on the four deepest arms. Evidence in
+`evidence/d7_flex_depth/`, including the stated caveat that the before/after spans A1–A3 and is
+therefore not a single-variable comparison. D7(a) remains the end
 state and is blocked behind `#50` — now written up as **D9**.
 The bound becomes `slots + 1 + allowance(group)`, and a test already pins that the backstop does not
 fire on an ordinary offence roster, so an allowance set too low fails loudly rather than quietly
