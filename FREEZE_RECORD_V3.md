@@ -12,6 +12,18 @@
 > `POST_AUDIT_PLAN.md` remains the numbered record and wins over any status flag anywhere (`#292`).
 > Written to be read cold.
 
+## PUBLISHED AND VERIFIED
+
+`v3-freeze` was pushed by the owner on 2026-09-30. The tag object is
+`1f3affa44a04350e31460c10f585a3f65bb9e5a7` and it dereferences to
+`eac74913a4cf29b6aae681b251649747b6b0d2c5` — this record's own commit — confirmed against the
+remote rather than assumed. Recorded here because v2's record could not answer the same question
+later without a `git tag -l`, which is the omission that produced the v2/v3 numbering error.
+
+The tag was cut in the cloud container and could not be pushed from there, so the owner created it
+locally at the same commit and pushed it. The published tag object is therefore theirs, not the one
+cut here; both point at `eac7491`, and the published one is the authority.
+
 ## The chronology, because a version number means nothing without it
 
 | | |
