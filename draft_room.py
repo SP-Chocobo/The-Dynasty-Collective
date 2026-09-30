@@ -3889,6 +3889,84 @@ def fieldable_ceiling_groups(ceilings: dict[str, int],
     return out
 
 
+#: D7 / MANDATE 3.2's second half. The slack a FLEX-reachable group is allowed before its depth
+#: counts as unfieldable, as a MULTIPLE of the slots it can reach rather than a constant added to
+#: them.
+#:
+#: WHY NOT THE ADDITIVE ALLOWANCE THE RULING ASKED FOR. D7(b) ruled `slots + 1 + allowance(group)`
+#: with the allowance chosen. Swept over the battery's own 53 arms -- 948 seat x group observations,
+#: 36 IDP-group and 912 offence-group -- NO CONSTANT WORKS, and the failure is structural rather
+#: than a matter of picking better:
+#:
+#:     allowance   IDP over-accumulations caught   ordinary offence seats flagged
+#:             0                26 of 26                        853 of 912
+#:             5                26 of 26                         59 of 912
+#:             8                23 of 26                         55 of 912
+#:            12                 0 of 26                         41 of 912
+#:
+#: The offence group needs up to 14 of slack (a 26-round draft into 9 reachable slots legitimately
+#: carries ~24 bodies), while the IDP_FLEX case must be caught below 5. The two ranges do not just
+#: overlap, they INVERT: by the time an additive allowance spares ordinary offence it has silenced
+#: the case 3.2 exists to catch. A bench-derived allowance never binds at all.
+#:
+#: THE RATIO SEPARATES THEM CLEANLY, because the two groups differ in the size of their reach and
+#: not only in their depth. Held-to-reach: the offence group tops out at 2.71 (reach 6-10), while
+#: the over-accumulations sit at 6.5 median (reach 1-2 -- one IDP_FLEX slot against six or seven
+#: bodies). Measured safe window for `held > reach * k + 1`: **k in [2.58, 2.99]** catches all 26
+#: over-accumulated seats and flags ZERO of 912 ordinary offence seats.
+#:
+#: 3.0 AND NOT THE WINDOW'S MIDPOINT, deliberately. At 3.0 the guard catches 25 of 26 and sits 0.45
+#: above the offence cutoff, against 0.24 at the midpoint. A backstop that misses one marginal
+#: over-accumulation is worth far more than one that fires on a legitimate roster -- which is
+#: `unfieldable_last`'s own standing test, "whether it binds on a roster that was never in danger".
+#:
+#: STILL A CHOSEN NUMBER (`#56`), and stated as one. What measurement provides is the window it has
+#: to live in and the shape it has to take; the value inside that window is a convention, the way
+#: 1.3's tie-break is. D7(a) -- deriving it from `#30`'s streaming baseline -- remains the end state
+#: and is blocked behind `#50`, now written up as D9.
+FLEX_GROUP_DEPTH_FACTOR = 3.0
+
+
+def flex_reachable_ceiling_groups(roster_positions: list[str], held_eligibilities) -> list[dict]:
+    """The joint bound for groups joined by a FLEX slot, which `fieldable_ceiling_groups` exempts.
+
+    `fieldable_ceiling` gives no ceiling to a position with flex reach, on the sound ground that a
+    spare there can start in a shared slot. That exemption is what lets a roster hold six IDP
+    against a single `IDP_FLEX` and be told nothing -- 3.2 measured six of twelve rosters doing it.
+
+    The group's reach is every slot admitting any member: dedicated slots at those positions plus
+    every flex slot that admits one of them. The bound is `reach * FLEX_GROUP_DEPTH_FACTOR + 1`, the
+    `+ 1` being the same single bye spare the dedicated bound uses. See that constant for why the
+    slack is multiplicative and why an additive one was measured to be impossible.
+
+    Returns the same shape `fieldable_ceiling_groups` does, so `unfieldable_last` treats both the
+    same way and neither knows which produced a group."""
+    slots = collections.Counter(roster_positions)
+    flex_slots = {slot: frozenset(eligible) for slot, eligible in FLEX_SLOT_POSITIONS.items()
+                  if slots.get(slot)}
+    if not flex_slots:
+        return []
+    out = []
+    for members in {frozenset(eligible) for eligible in flex_slots.values()}:
+        reach = sum(slots.get(position, 0) for position in members)
+        reach += sum(count for slot, admits in flex_slots.items()
+                     for count in [slots.get(slot, 0)] if admits & members)
+        if not reach:
+            continue
+        #: Counted on the same rule the dedicated bound uses: a player counts against this group
+        #: only when his WHOLE eligibility lies inside it. One who also reaches a position outside
+        #: the group can start there instead, so he saturates nothing here.
+        held = sum(1 for eligible in held_eligibilities
+                   if eligible and frozenset(eligible) <= members)
+        out.append({
+            "positions": members,
+            "slots": reach,
+            "ceiling": int(reach * FLEX_GROUP_DEPTH_FACTOR) + 1,
+            "held": held,
+        })
+    return out
+
+
 def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
                      pool_scope: str = "all"):
     """A sort key, the mirror image of `feasibility_first`: 1 for a candidate at a position this
@@ -3999,7 +4077,12 @@ def unfieldable_last(scored, picks, players_db, my_roster_id, roster_positions,
         # man reach anything WITHOUT a ceiling -- and bounds the group he does reach.
         held_eligibilities.append(player_eligible_positions(info))
     saturated = set()
-    for group in fieldable_ceiling_groups(ceilings, held_eligibilities):
+    #: D7: BOTH bounds, and they are deliberately separate functions rather than one widened. The
+    #: dedicated bound is exact arithmetic about slots that admit one position; the flex-reachable
+    #: one carries a chosen depth factor. Keeping them apart keeps that difference legible, and
+    #: means the certified dedicated half is untouched by the half that needed a convention.
+    for group in (fieldable_ceiling_groups(ceilings, held_eligibilities)
+                  + flex_reachable_ceiling_groups(roster_positions, held_eligibilities)):
         if group["held"] >= group["ceiling"]:
             saturated |= group["positions"]
     if not saturated:

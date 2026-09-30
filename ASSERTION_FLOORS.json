@@ -1113,6 +1113,61 @@
         "early_returns": 0
       }
     },
+    "test_a_flex_slot_is_not_an_unlimited_bench.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreater": 2,
+        "assertGreaterEqual": 2,
+        "assertLess": 3,
+        "assertLessEqual": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "test_a_player_who_reaches_outside_the_group_saturates_nothing": {
+          "assertEqual": 1
+        },
+        "test_a_roster_at_the_bound_is_left_alone": {
+          "assertLess": 1
+        },
+        "test_it_reaches_the_board_and_demotes": {
+          "assertEqual": 1
+        },
+        "test_not_one_ordinary_offence_seat_is_flagged": {
+          "assertEqual": 1
+        },
+        "test_six_idp_against_one_flex_slot_is_saturated": {
+          "assertEqual": 2,
+          "assertGreaterEqual": 1
+        },
+        "test_the_deepest_roster_the_battery_drafted_is_still_fine": {
+          "assertLess": 1
+        },
+        "test_the_factor_sits_inside_the_measured_safe_window": {
+          "assertGreaterEqual": 1,
+          "assertLessEqual": 1
+        },
+        "test_the_idp_over_accumulations_ARE_flagged": {
+          "assertTrue": 1
+        },
+        "test_the_population_is_the_one_the_factor_was_measured_on": {
+          "assertGreater": 1
+        },
+        "test_the_slack_scales_with_the_group_rather_than_being_added_to_it": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "test_twelve_offensive_players_on_a_fourteen_round_roster_are_fine": {
+          "assertLess": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 3,
+        "expected_failures": 0,
+        "skipTest_calls": 1,
+        "early_returns": 0
+      }
+    },
     "test_a_flex_view_exists_for_every_flex_slot.py": {
       "test_methods": 10,
       "asserts": {

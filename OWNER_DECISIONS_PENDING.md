@@ -291,8 +291,119 @@ recorded so the block is visible rather than implicit.
 
 ---
 
+## D9 / `#50` — the replacement equation, written up as D6 ruled. **Both conventions measured, and both of the item's own premises need correcting.**
+
+**This is the item `#21` and D7(a) are blocked behind.** D6 ruled that I measure `#50`'s two
+candidate conventions against real boards and put it here as its own decision, so that answering it
+once unblocks both. That is done, and the measurement moved the question.
+
+**The two conventions, as `POST_AUDIT_PLAN` states them.** A position whose league-wide starter
+demand is exhausted currently gets a replacement level anyway, and the value above it is a zero that
+means "nothing left to want here":
+  * **(1) Price an exhausted position against its PRE-DRAFT anchor** — already partly present via
+    `_fill_omitted_from_anchor`, so a change in *when* the anchor applies rather than a new idea.
+  * **(2) Make "no remaining demand" produce an ABSENT price rather than a zero** — the absence
+    contract's own answer. An unpriced row is ordered last (`#61`), which takes drained positions
+    OUT of contention instead of leaving them on top, and it makes the claim honest: with demand
+    met, this engine has no basis for saying what another body is worth.
+
+### Measured on the real capture, 12-team dynasty, one process
+
+**WHEN the anchor reaches each position** — `L` = `live_starter_demand`, `P` = `predraft_anchor`:
+
+| round | QB | RB | WR | TE | K | DEF |
+|---|---|---|---|---|---|---|
+| 12 | 27L / 0P | 37L / 0P | 65L / 0P | 29L / 0P | 15L / 0P | 7L / 0P |
+| 14 | 25L / 0P | 36L / 0P | 61L / 0P | 24L / 0P | **0L / 9P** | **0L / 1P** |
+| 16 | 22L / 0P | 33L / 0P | 51L / 0P | 19L / 0P | 0L / 7P | 0L / 0P |
+| 18 | 20L / 0P | **0L / 28P** | **0L / 43P** | 12L / 0P | 0L / 5P | 0L / 0P |
+| 20 | **17L / 0P** | 0L / 22P | 0L / 35P | **0L / 8P** | 0L / 2P | 0L / 0P |
+
+**CORRECTION 1 — the anchor never reaches QB.** Not at round 20, not at any round measured: 17
+priced QBs, none anchored. `#50`'s motivating evidence is a QB case — *"at chair 2's last pick the
+backstop bound correctly and found zero QBs on the board"* — and convention (1) is a change to when
+the anchor applies, so **(1) does not reach the position the item was opened about.** It reaches K
+and DEF first, then RB and WR, then TE. That does not make (1) wrong; it makes it a repair to
+kickers and flex depth, which is not how the item is written.
+
+**CORRECTION 2 — the zero is not the anchor's doing, and it is rare.** The item is framed around a
+price of zero for an exhausted position. Priced rows whose `bpa` is exactly 0.00:
+
+| round | rows at 0.00 | of priced | under `live_starter_demand` | under `predraft_anchor` |
+|---|---|---|---|---|
+| 14 | 9 | 156 | 6 | 3 |
+| 16 | 5 | 132 | 4 | 1 |
+| 18 | 5 | 108 | 2 | 3 |
+| 20 | 6 | 84 | 1 | 5 |
+
+Five to nine rows, and **a majority of them sit under live demand, not the anchor.** So a convention
+that changes what an exhausted position is priced against cannot be justified by "it removes the
+zeros" — most of the zeros are not exhaustion zeros. Whatever produces them is a separate question
+and is not this one.
+
+### What actually separates the two, on the measurement
+
+By round 18 the anchor governs **76 of 108** priced rows, and **10 of the top 20**. Convention (2)
+would make all 76 absent, leaving the 32 live-demand rows to order the board and pushing the rest
+last. That is a large, late, and very visible change — and it is the one that matches this repo's
+own absence contract. Convention (1) is smaller and changes the board earlier, at K and DEF.
+
+**What I am NOT doing: choosing.** `#50` is the replacement equation and the mandate routes it to the
+owner; both options are redefinitions rather than patches. What is now available that was not before
+is that the choice can be made on figures rather than on the item's description, and that two of that
+description's premises are known to be wrong.
+
+**Cost of leaving it:** `#21` stays blocked, and D7 stays on the chosen allowance (b) rather than the
+derived one (a). Neither is idle — D7(b) ships with a number and a test — but `#30`'s floor cannot be
+re-derived until this is answered.
+
+**One thing the measurement makes easier, and it is worth knowing before answering:** the positions
+the anchor reaches FIRST are K and DEF, which are exactly `#30`'s streamable positions. So if the
+answer is (1), D7(a)'s "derive the allowance from the streaming baseline" becomes reachable for the
+group D7 is actually aiming at, and the offence group stays untouched. That is a real interaction
+between two items that were filed separately.
+
+---
+
 ## D7 — 3.2: should the fieldability bound extend to flex-reachable groups? (needs a depth allowance)
-**RULED: (b) — extend it with a per-group depth allowance, recorded as a stated convention.**
+**RULED: (b) — extend it with a per-group depth allowance, recorded as a stated convention.
+SHIPPED, BUT NOT ADDITIVELY: the allowance the ruling describes was measured to be IMPOSSIBLE, and
+the repair had to change shape.**
+
+**What the sweep found.** (b) asks for `slots + 1 + allowance(group)` with the allowance chosen. I
+swept every candidate over the battery's own 53 arms — 948 seat × group observations, 36 IDP-group
+and 912 offence-group — and no constant works:
+
+| allowance | IDP over-accumulations caught | ordinary offence seats flagged |
+|---|---|---|
+| 0 | 26 of 26 | 853 of 912 |
+| 5 | 26 of 26 | 59 of 912 |
+| 8 | 23 of 26 | 55 of 912 |
+| 12 | **0 of 26** | 41 of 912 |
+
+The two ranges do not merely overlap, **they invert.** A 26-round draft into 9 reachable offensive
+slots legitimately carries about 24 bodies, so the offence group needs up to 14 of slack, while the
+IDP_FLEX case has to be caught below 5. By the time an additive constant spares ordinary offence it
+has already silenced the case 3.2 exists to catch. A bench-derived allowance never binds at all.
+
+**What works, and why.** The groups differ in the SIZE of their reach, not only in their depth.
+Held-to-reach tops out at 2.71 for offence (reach 6–10) against a 6.5 median for the
+over-accumulations (reach 1–2 — one `IDP_FLEX` slot against six or seven bodies). So the slack must
+be MULTIPLICATIVE. Measured safe window for `held > reach × k + 1`:
+
+> **k ∈ [2.58, 2.99]** catches all 26 over-accumulated seats and flags **zero of 912** ordinary
+> offence seats.
+
+`FLEX_GROUP_DEPTH_FACTOR = 3.0`, not the window's midpoint: it catches 25 of 26 and sits 0.45 above
+the offence cutoff rather than 0.24. Missing one marginal over-accumulation is worth far more than
+firing on a legitimate roster — which is `unfieldable_last`'s own standing test.
+
+**It is still a chosen number and is stated as one.** What measurement supplied is the SHAPE the
+slack must take and the WINDOW the value must sit in; the value inside the window is a convention,
+the way 1.3's tie-break is. Implemented as its own function, `flex_reachable_ceiling_groups`, kept
+separate from the certified dedicated bound so that the exact-arithmetic half and the
+chosen-convention half stay legible as different things. Mutation-checked 5/5. D7(a) remains the end
+state and is blocked behind `#50` — now written up as **D9**.
 The bound becomes `slots + 1 + allowance(group)`, and a test already pins that the backstop does not
 fire on an ordinary offence roster, so an allowance set too low fails loudly rather than quietly
 demoting legitimate bench depth.
