@@ -89,6 +89,8 @@ class TheVolumeFollowsTheConsequenceTests(unittest.TestCase):
         self.assertIn("9 starting slots", detail,
                       "the quiet message does not state the lineup it was priced on, so a reader "
                       "cannot check the claim that nothing moved")
+        self.assertIn("same 9", detail,
+                      "the quiet band must say the lineup is UNCHANGED, which is the whole claim")
 
     def test_a_misspelled_STARTING_slot_is_loud_AND_names_the_damage(self):
         kinds = _kinds(CLEAN + ["super-flex"])
@@ -105,6 +107,27 @@ class TheVolumeFollowsTheConsequenceTests(unittest.TestCase):
         self.assertIn("cannot bound", detail,
                       "the loudest case must say that the SIZE of the error is what is unknown, "
                       "rather than implying a size")
+
+    def test_the_COUNT_matches_the_SOLVER_and_not_a_literal(self):
+        """THE BUG THIS ITEM SHIPPED FIRST, pinned against the only authority for the number.
+
+        `parsed_starting` was `len(starting_slots(...))`, and that reader implements "slots that
+        start a player" as "not in NON_STARTING_SLOTS" -- so it counted the unrecognised label
+        ITSELF and every message claimed 10 starting slots where the solver had parsed 9. A
+        literal expectation would have to be rewritten every time the fixture changes and would
+        not say WHY the number is right. Asking the solver does both: it is the reader whose parse
+        the board is actually priced on."""
+        import lineup_optimizer as lo
+        for extra in ("Bn", "super-flex", "WIZARD"):
+            with self.subTest(extra=extra):
+                roster = CLEAN + [extra]
+                priced_on = len(lo.slots_from_roster_positions(roster))
+                details = " ".join(_kinds(roster).values())
+                self.assertIn(f"{priced_on} starting slots", details,
+                              f"the message does not report the {priced_on} starting slots the "
+                              f"solver actually parsed")
+                self.assertNotIn(f"{priced_on + 1} starting slots", details,
+                                 "the count includes the unrecognised label itself")
 
     def test_a_clean_league_raises_none_of_the_three(self):
         """NON-VACUITY. A gate that always fires teaches the reader to close it."""

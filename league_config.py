@@ -388,7 +388,16 @@ def ambiguities(league: Optional[dict]) -> list[dict]:
     if unknown:
         # D10: SPLIT BY MEASURED CONSEQUENCE, not reported as one undifferentiated alarm. See the
         # three AMBIGUITY_UNKNOWN_SLOT_* constants for why these are the only three bands.
-        parsed_starting = len(starting_slots(slots))
+        # THE COUNT THE BOARD WAS ACTUALLY PRICED ON, which is not what `starting_slots` answers.
+        # That reader implements Q1 -- "slots that start a player" -- as "not in
+        # NON_STARTING_SLOTS", so an UNRECOGNISED label counts as starting there, which is right
+        # for its own question and wrong for this one: it counted the very label being reported
+        # and claimed 10 where the solver had parsed 9. Caught by this item's own test.
+        #
+        # Composed from two readers already in this module rather than re-expressing
+        # `slots_from_roster_positions`' rule, which would be a second home for it (`#126`):
+        # restrict to the labels the app recognises, THEN ask Q1 of those.
+        parsed_starting = len(starting_slots([s for s in slots if s in KNOWN_SLOTS]))
         nonplaying, starters, unresolved = [], {}, []
         for label in unknown:
             key = normalised_slot(label)

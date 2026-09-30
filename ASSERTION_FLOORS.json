@@ -1890,6 +1890,69 @@
         "early_returns": 0
       }
     },
+    "test_a_warning_is_as_loud_as_its_consequence.py": {
+      "test_methods": 14,
+      "asserts": {
+        "assertEqual": 4,
+        "assertIn": 15,
+        "assertIsInstance": 1,
+        "assertNotIn": 7
+      },
+      "by_method": {
+        "BothSurfacesScaleThroughTheSameSetTests.test_a_stored_record_with_no_kind_is_treated_as_LOUD": {
+          "assertIn": 1
+        },
+        "BothSurfacesScaleThroughTheSameSetTests.test_the_UI_splits_on_the_shared_set_and_not_on_kind_strings": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "NormalisationDoesNotInventKnowledgeTests.test_a_separator_variant_of_a_flex_slot_resolves": {
+          "assertEqual": 1
+        },
+        "NormalisationDoesNotInventKnowledgeTests.test_an_industry_abbreviation_is_NOT_silently_equated": {
+          "assertNotIn": 1
+        },
+        "NormalisationDoesNotInventKnowledgeTests.test_case_and_separators_are_the_same_label": {
+          "assertEqual": 1
+        },
+        "TheBoardIsStillPricedTests.test_ambiguities_reports_rather_than_raising": {
+          "assertIsInstance": 1
+        },
+        "TheThreeBandsAreDistinctTests.test_only_the_zero_consequence_band_is_immaterial": {
+          "assertEqual": 1,
+          "assertNotIn": 2
+        },
+        "TheThreeBandsAreDistinctTests.test_the_kinds_are_three_different_strings": {
+          "assertEqual": 1
+        },
+        "TheVolumeFollowsTheConsequenceTests.test_a_clean_league_raises_none_of_the_three": {
+          "assertNotIn": 1
+        },
+        "TheVolumeFollowsTheConsequenceTests.test_a_misspelled_STARTING_slot_is_loud_AND_names_the_damage": {
+          "assertIn": 4
+        },
+        "TheVolumeFollowsTheConsequenceTests.test_a_misspelled_bench_slot_is_the_QUIET_band": {
+          "assertIn": 4,
+          "assertNotIn": 1
+        },
+        "TheVolumeFollowsTheConsequenceTests.test_an_UNRESOLVABLE_label_is_loud_and_says_it_cannot_bound_the_error": {
+          "assertIn": 2
+        },
+        "TheVolumeFollowsTheConsequenceTests.test_the_COUNT_matches_the_SOLVER_and_not_a_literal": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "TheVolumeFollowsTheConsequenceTests.test_the_bands_are_reported_SEPARATELY_when_both_occur": {
+          "assertIn": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_absence_kind.py": {
       "test_methods": 28,
       "asserts": {
