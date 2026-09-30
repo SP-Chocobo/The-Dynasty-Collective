@@ -13,7 +13,7 @@
     -1.0 — applied to nothing at all, and every kicker was priced as if he never missed.
 
 The 50+ bucket is deliberately NOT repaired here and the reason is measured, not assumed. See
-`TheFiftyPlusBucketIsNotDerivableAndSaysSo`.
+`TheMandatesOwnClaimForThisItemIsCorrected`.
 """
 from __future__ import annotations
 

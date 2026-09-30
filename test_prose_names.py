@@ -377,30 +377,44 @@ if __name__ == "__main__":
 class TheHistoryShieldsReachIsMeasuredNotAssumed(unittest.TestCase):
     """#52 phase 6 / `0.8`: the audit said this shield "exempts most of what it claims to check".
 
-    Measured, that is not what it does. Of 138 prose blocks quoting a constant's value, 53 (38%)
-    are exempted -- substantial, not most. Of those, 27 are exempted ONLY by an ordinary English
-    word in WEAK_MARKERS, most often a bare "was".
+    RE-MEASURED AT D-F3, AND THE OLD NUMBERS IN THIS DOCSTRING WERE NOT MEASURING PROSE. The
+    helper below read each file's RAW TEXT, so `QUOTED_VALUE` matched the constants' own
+    assignment lines and the comparison then checked a value against itself. Of the 28 matches it
+    found, 20 were code assignments and 8 prose; 19 reached the comparison and 18 of those were
+    tautologies. Exactly ONE prose quotation was ever actually checked -- while the class claimed
+    "all 18 quote the value the code actually has" and the freeze record rested on it.
 
-    AND EVERY ONE OF THEM IS CURRENTLY CORRECT. Of the 18 weak-exempt blocks that name a live
-    constant, all 18 quote the value the code actually has. So narrowing the vocabulary would have
-    produced 27 reports, every one false -- and a checker that cries wolf 27 times stops being
-    read. The allowance stays; this class makes its reach a checked quantity instead of an
-    unexamined one.
+    THE HONEST FIGURES, prose corpus only: 10 weak-exempt quotations, of which 2 name a live
+    constant in their own module and reach the comparison. Both agree with the code.
+
+    TWO IS A THIN POPULATION AND THAT IS THE FINDING, not a defect in this class. Most weak-exempt
+    quotations name another module's constant, which the `hasattr` skip below drops by design --
+    there is no import here that would make them checkable without guessing which module a bare
+    name belongs to. So this class does what it can and STATES ITS REACH, which is the whole
+    difference between a measured quantity and an assumed one (`0.9`). The over-breadth claim from
+    `0.8` remains unresolved by this check alone, and the paragraph-scoping repair in
+    `prose_names` is what actually narrowed the shield.
     """
 
     @staticmethod
     def _weak_exempt_blocks():
-        import importlib
-        import re
+        """PROSE ONLY, via `prose_names.prose_blocks()` (D-F3).
+
+        This read each file's RAW TEXT and ran `QUOTED_VALUE` over it, so it matched the
+        constants' own ASSIGNMENT LINES -- and then compared `getattr(module, name)` against the
+        value parsed out of that very line. For an assignment that is a value compared against
+        itself. Measured at the v4 pass: of 28 matches, 20 were code assignments and 8 prose; 19
+        reached the comparison and 18 of those were tautologies, so exactly ONE prose quotation
+        was ever checked. Worse, the non-vacuity guard was satisfied by the 20 code lines, so it
+        could not notice the prose check going vacuous.
+
+        `prose_blocks` yields comments and docstrings and nothing else, so every match here is
+        now a real quotation by construction rather than by hope."""
         rows = []
-        for path in sorted(pathlib.Path(".").glob("*.py")):
+        for path, _line, block in prose_names.prose_blocks():
             if path.name.startswith("test_"):
                 continue
-            text = path.read_text(errors="replace")
-            for match in prose_names.QUOTED_VALUE.finditer(text):
-                start = text.rfind("\n\n", 0, match.start()) + 1
-                end = text.find("\n\n", match.end())
-                block = text[start:end if end != -1 else len(text)]
+            for match in prose_names.QUOTED_VALUE.finditer(block):
                 if not prose_names.weak_sole_exemptions(block):
                     continue
                 name = match.group(1) or match.group(3)
@@ -445,3 +459,26 @@ class TheHistoryShieldsReachIsMeasuredNotAssumed(unittest.TestCase):
         self.assertTrue(self._weak_exempt_blocks(),
                         "no weakly-exempted block found -- either the vocabulary changed or this "
                         "check has stopped measuring anything")
+
+    def test_the_comparison_ACTUALLY_REACHES_a_prose_quotation(self):
+        """THE GUARD THE OLD VERSION LACKED, and the reason it could be 18/19 tautologies without
+        noticing. `test_the_weak_exempt_population_is_not_empty` above counts MATCHES; matches
+        that never reach `getattr` prove nothing. This counts the ones that do.
+
+        It asserts a floor of 1 rather than today's 2, deliberately: the population is small and
+        legitimately moves as prose is edited, so the floor says "at least one real comparison
+        happens" -- which is the property -- instead of pinning a number whose drift would be
+        read as a defect."""
+        import importlib
+        reached = 0
+        for module_name, name, _value in self._weak_exempt_blocks():
+            try:
+                module = importlib.import_module(module_name)
+            except Exception:
+                continue
+            if hasattr(module, name):
+                reached += 1
+        self.assertGreaterEqual(
+            reached, 1,
+            "no weak-exempt prose quotation reaches the value comparison, so the check above "
+            "passes while examining nothing -- which is how it came to be 18 tautologies out of 19")

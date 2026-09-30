@@ -29,7 +29,8 @@ THE NUMBER IS NOT SPENT UNDER THE NEW TOKEN, and this is the one place the displ
 deliberately NOT followed. `displacement_adj` crosses in every basis state because it is one
 quantity throughout. `worst_loss` is not: under `measured` it is what a backup would have to cover,
 and under `no_surplus` it is a starter's whole value, on a different scale and explicitly not a
-depth price. `ROSTER_PARTIAL` can override either, so under it the quantity stops being
+depth price. `EXPOSURE_ROSTER_PARTIAL` and `DISPLACEMENT_ROSTER_PARTIAL` can override either, so under
+either of them the quantity stops being
 identifiable -- and spending an unidentifiable number is how a starter's whole value would get
 charged as depth.
 

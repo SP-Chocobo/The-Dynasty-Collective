@@ -14,7 +14,7 @@ What is left is the one `#248` dismissed as unable to enter, and it is not inert
     F&F       29 slots  10 startable   26 draftable  ->  15 picks fill 15 of 26.    11 spare
 
 `draft_room.draftable_slots_per_team` counts every slot but IR and feeds
-`remaining_league_picks` -- its own docstring: "how many draft picks the league still has to
+`remaining_draft_capacity` -- its own docstring: "how many draft picks the league still has to
 spend, summed per team ... EXACT and BOUNDED, reaching exactly zero when every roster is full" --
 which feeds the bench-appetite rates. On the fixture that quantity is driven to zero by the
 final round; on F&F it never falls below 11 per team. Capacity reaches the engine independently

@@ -28,7 +28,11 @@ import draft_room as dr
 import draft_simulation
 import run_draft_battery as rdb
 
-CAPTURE = Path("data/fixtures/sleeper_capture.json")
+#: `rdb.CAPTURE_PATH`, not a hand-written path (D-F5). The literal here was the ONE real offender
+#: the guard in `test_assertion_floors` was missing, because that guard skipped any module
+#: mentioning the constant and this module mentions it in an unrelated assertion below. A moved
+#: fixture must be an error, not a silent skip of the four real-board tests gated on this.
+CAPTURE = rdb.CAPTURE_PATH
 
 
 def _params(func) -> set[str]:

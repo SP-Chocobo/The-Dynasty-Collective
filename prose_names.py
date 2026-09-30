@@ -86,6 +86,21 @@ HISTORICAL_MARKERS = (
     #: own test caught. The pattern anchors a marker to the start of a word, so neither fires
     #: mid-word.
     "mutat", "mutant", "planted",
+    #: EXPLICIT NON-EXISTENCE AND SUPERSESSION, the two idioms this repository actually writes and
+    #: the vocabulary did not carry. Found when the shield was scoped to the sentence (D-F2): five
+    #: of the nine names it newly exposed were in prose that says, in plain words, that the name
+    #: does not exist -- and the checker reported them as prose asserting that it does.
+    #:
+    #: `replac` AS A STEM, because the list held "replaced" while the prose writes "REPLACES", and
+    #: the matcher anchors at a word start, so the -d form never matched the -s form. Two renamed
+    #: test methods in `test_draft_strategy.py` were flagged for exactly that one letter.
+    #:
+    #: THESE ARE PHRASES, NOT THE WORD "no", deliberately. A bare "no" would shield roughly
+    #: anything; "there is no" and "needs no" are assertions with a subject, and the subject is
+    #: the name. This is completing the vocabulary for an existing idiom, not growing it until the
+    #: report reads zero -- the distinction this module's docstring draws, and the reason the
+    #: report still stands at four rather than nought after they were added.
+    "replac", "there is no", "needs no", "no separate",
 )
 
 #: A MARKER MUST BEGIN A WORD. Nothing else about how it is matched is a judgement call, and
@@ -368,14 +383,72 @@ def words(universe: str) -> frozenset[str]:
 #: which is calibration to this corpus rather than derivation from it, and this module's own
 #: docstring already records that an instrument at a high false-positive rate is worse than none.
 #: The CONSTANT check has the opposite profile and DOES read the markdown -- see below.
+#: PARAGRAPH-SCOPED, NOT BLOCK-SCOPED (D-F2). The rule this module states is "the name exists, or
+#: the prose says IT is history" -- and "it" is the name, so the shield must sit near the name. Applied to the whole block, what the code
+#: implemented was "the block contains a common English past-tense word", which is a different and
+#: far weaker rule: `HISTORICAL_MARKERS` includes "was", "were" and "arm", so one bare "was" in an
+#: unrelated sentence shielded every name beside it. MEASURED at the v4 pass: of 1,446 prose blocks
+#: naming something, 651 (45.0%) were never examined at all, 374 of 499 module docstrings (75%) were
+#: shielded, and 177 of the shielded blocks carried no marker other than "was". Three dead names
+#: were living in there.
+#:
+#: The vocabulary is NOT narrowed to fix this, deliberately. "was" belongs in it -- "the label was
+#: false" is exactly the prose a history shield exists for -- and trimming markers until the report
+#: reads zero is the calibration-to-corpus this module's own docstring refuses. Scope was the defect,
+#: not vocabulary.
+#: THE PARAGRAPH, NOT THE SENTENCE, and the difference was measured rather than guessed. Scoped to
+#: the sentence this exposed `ValidatedFlagIsUnconditional`, whose very next sentence reads "NO SUCH
+#: CLASS HAS EVER EXISTED" -- a marker already in the vocabulary, one sentence too far away. A
+#: correction and the thing it corrects are one thought and one paragraph; splitting them makes the
+#: shield refuse the clearest history prose in the repository.
+#:
+#: A paragraph is the right unit for a second reason: `prose_blocks` already emits each COMMENT line
+#: as its own block, so comments are line-scoped whatever happens here. The 45% over-shielding was
+#: almost entirely DOCSTRINGS, where one "was" in the opening line covered every name in forty
+#: lines of unrelated text -- 374 of 499 module docstrings. Paragraphs cut exactly that.
+_PARAGRAPH_SPLIT = re.compile(r"\n\s*\n")
+
+
+def _paragraph_around(text: str, position: int) -> str:
+    """The paragraph containing `position`, splitting on blank lines."""
+    start, end = 0, len(text)
+    for match in _PARAGRAPH_SPLIT.finditer(text):
+        if match.start() > position:
+            end = match.start()
+            break
+        start = match.end()
+    return text[start:end]
+
+
+#: THE CHECKER AND ITS OWN TEST MODULE ARE NOT PART OF THE CORPUS THEY CHECK, and this became
+#: load-bearing the moment the shield was scoped to the sentence. Both are the `#254` shape --
+#: an instrument reporting itself:
+#:
+#:   `test_prose_names.py` FABRICATES names that exist nowhere, on purpose, because that is the
+#:     only way to prove the checker catches one. Under a block-wide shield its fixtures happened
+#:     to sit beside a marker; scoped to the sentence they became findings, and `PANEL_ONLY` and
+#:     `TheConstructionIsStrandedOnPurposeTests` are fixtures, not rot.
+#:   `prose_names.py` QUOTES the English words that leaked through the old substring match --
+#:     `alarming`, `disarmed`, `harmless` -- to record why the matcher anchors to a word start.
+#:     A checker that cannot discuss its own false positives without reporting them is a checker
+#:     that cannot document itself.
+#:
+#: Named as an explicit pair rather than derived from a pattern, so a reader sees exactly what is
+#: unexamined; `invariant_confirmation` excludes its own anchors module for the same reason and
+#: records it the same way.
+SELF_REFERENTIAL = frozenset({"prose_names.py", "test_prose_names.py"})
+
+
 def dead_names() -> dict[str, list[str]]:
     """Backticked names that exist nowhere and are not marked as history, as {name: [sites]}."""
     universe = words(haystack())
     found: dict[str, list[str]] = {}
     for path, line, text in prose_blocks():
-        if is_history(text):
+        if path.name in SELF_REFERENTIAL:
             continue
         for match in re.finditer(r"`([A-Za-z_][A-Za-z0-9_]*)`", text):
+            if is_history(_paragraph_around(text, match.start())):
+                continue
             name = match.group(1)
             if len(name) < MIN_NAME_LENGTH or SHA.match(name):
                 continue

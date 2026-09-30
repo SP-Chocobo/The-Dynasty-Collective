@@ -211,18 +211,39 @@ def scan_module(path: Path) -> dict:
     # A method rename now surfaces as a drop, and that is the intended behaviour rather than a
     # side effect: a rename IS a substitution of names, the remedy is `--write`, and this
     # module's stated stance is that a floor moving is deliberate and visible in the diff.
+    # KEYED ON Class.method, NOT THE BARE METHOD NAME (D-F4). Two classes in one module sharing a
+    # test name -- `test_screen_context.py` has four such names, `test_decision_qualifiers.py` one
+    # -- collided here, and only the LAST one walked survived into the record. So weakening the
+    # unrecorded twin, netted against an addition anywhere else in the module, passed `drops()`:
+    # precisely the hole this per-method level was added to close. A qualified key cannot collide,
+    # and a module-level test function keeps its bare name because nothing can collide with it.
     by_method: dict[str, dict[str, int]] = {}
-    for node in ast.walk(tree):
-        if not (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and node.name.startswith("test")):
-            continue
+
+    def _counts(fn) -> Counter:
         inner: Counter[str] = Counter()
-        for child in ast.walk(node):
+        for child in ast.walk(fn):
             name = _is_assertion(child)
             if name:
                 inner[name] += 1
-        if inner:
-            by_method[node.name] = dict(sorted(inner.items()))
+        return inner
+
+    def _is_test(node) -> bool:
+        return (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name.startswith("test"))
+
+    _owned = set()
+    for cls in [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]:
+        for fn in cls.body:
+            if _is_test(fn):
+                _owned.add(id(fn))
+                inner = _counts(fn)
+                if inner:
+                    by_method[f"{cls.name}.{fn.name}"] = dict(sorted(inner.items()))
+    for node in ast.walk(tree):
+        if _is_test(node) and id(node) not in _owned:
+            inner = _counts(node)
+            if inner:
+                by_method[node.name] = dict(sorted(inner.items()))
     return {"test_methods": methods, "asserts": dict(sorted(asserts.items())),
             "by_method": {k: by_method[k] for k in sorted(by_method)},
             "disabled": _disablers_in(tree)}

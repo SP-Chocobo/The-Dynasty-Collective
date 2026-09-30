@@ -50,6 +50,12 @@ class _Sandbox(unittest.TestCase):
         return assertion_floors.drops(self.root, self.floors)
 
 
+#: THE KEYS ARE QUALIFIED `Class.method` SINCE D-F4, and these expectations moved with them. The
+#: bare method name collided: two classes in one module sharing a test name recorded only the last
+#: one walked, so weakening the unrecorded twin -- netted against an addition elsewhere in the
+#: module -- passed `drops()`. Five such names exist in this repository today
+#: (`test_screen_context.py` four, `test_decision_qualifiers.py` one). The qualified key is what
+#: closes that, and a message naming `T.test_b` rather than `test_b` is the visible half of it.
 class ALooseningIsCaughtTests(_Sandbox):
     def test_a_substituted_weaker_assertion_is_caught(self):
         """assertEqual -> assertIsNotNone. Test count unchanged, TOTAL assertion count unchanged,
@@ -65,7 +71,7 @@ class ALooseningIsCaughtTests(_Sandbox):
         self.assertEqual(sum(before["asserts"].values()), sum(after["asserts"].values()))
         found = self.check()
         self.assertIn("test_thing.py: self.assertEqual 2 -> 1", found)
-        self.assertIn("test_thing.py: test_a self.assertEqual 1 -> 0", found)
+        self.assertIn("test_thing.py: T.test_a self.assertEqual 1 -> 0", found)
 
     def test_a_deleted_assertion_is_caught(self):
         self.given(_STRONG)
@@ -76,7 +82,7 @@ class ALooseningIsCaughtTests(_Sandbox):
         # the repair, and a test that stopped requiring it would let the repair rot.
         found = self.check()
         self.assertIn("test_thing.py: self.assertIn 1 -> 0", found)
-        self.assertIn("test_thing.py: test_b self.assertIn 1 -> 0", found)
+        self.assertIn("test_thing.py: T.test_b self.assertIn 1 -> 0", found)
 
     def test_a_deleted_test_method_is_caught(self):
         self.given(_STRONG)
@@ -139,7 +145,7 @@ class LegitimateChangesDoNotDemandARegenerationTests(_Sandbox):
         self.given(_STRONG)
         found = self.check()
         self.assertIn("test_thing.py: self.assertIsNotNone 1 -> 0", found)
-        self.assertIn("test_thing.py: test_b self.assertIsNotNone 1 -> 0", found)
+        self.assertIn("test_thing.py: T.test_b self.assertIsNotNone 1 -> 0", found)
 
 
 class WhatIsCountedTests(_Sandbox):
@@ -381,7 +387,14 @@ class TheFixtureThatSixtySKIPSDependOnIsPresent(unittest.TestCase):
         offenders = []
         for q in sorted(Path(".").glob("test_*.py")):
             src = q.read_text()
-            if name not in src or "CAPTURE_PATH" in src:
+            # NO MODULE-WIDE ESCAPE (D-F5). This read `or "CAPTURE_PATH" in src`, so ANY module
+            # that mentioned the constant anywhere was skipped whole -- and
+            # `test_battery_pricing_path.py` both defines a literal capture path AND mentions
+            # `rdb.CAPTURE_PATH` in an unrelated assertion, so the one real offender was the one
+            # module the guard refused to look at, and it reported zero. A module using the
+            # constant properly has no reason to carry the filename as a string literal, so the
+            # per-node check below is sufficient on its own.
+            if name not in src:
                 continue
             tree = ast.parse(src)
             skip = docstring_constants(tree)

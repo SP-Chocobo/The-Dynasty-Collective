@@ -8,7 +8,7 @@ failure modes, and neither is loud:
   * THE SEAM GOES DECORATIVE. Someone inlines the arithmetic back into the loop "for clarity".
     The seam still exists, still has a docstring saying it is the only door, and no longer has
     any callers -- so every future arm silently measures production instead of its own model,
-    and reports a difference of zero as a finding. `test_the_seam_is_load_bearing` fails that.
+    and reports a difference of zero as a finding. `test_the_seam_is_load_bearing_not_decorative` fails that.
   * THE SEAM BECOMES A SWITCH. Someone gives it a module flag so production can "try" the other
     model. That is two take models in one engine (`#126`) and the thing the seam's own docstring
     forbids. `test_production_carries_exactly_one_take_model` fails that.
