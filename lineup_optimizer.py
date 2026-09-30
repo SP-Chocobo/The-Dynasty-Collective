@@ -321,8 +321,17 @@ EXPOSURE_ROSTER_PARTIAL = "roster_partially_priced"
 #: consumers saw meant "not measured", and every one of them read as "safe".
 EXPOSURE_BASIS_LABELS = {
     EXPOSURE_MEASURED: "measured against your own lineup",
-    EXPOSURE_ROSTER_PARTIAL: ("a ceiling -- a player you drafted could not be priced, so a spare "
-                              "who may cover this position was left out of the solve"),
+    #: CORRECTED AT THE v4 BLIND PASS, found independently by THREE lenses. This read "a ceiling
+    #: -- a player you drafted could not be priced ...", which described `worst_loss`, the number
+    #: computed INSIDE this module. The board never emits that number under this basis: `score_row`
+    #: prices `depth_exposure` only under MEASURED, so what a person actually reads beside this
+    #: label is 0.0. "A ceiling of 0.0" asserts there is no exposure at all -- the strongest
+    #: available claim -- about the position the engine knows LEAST about, and the true figure
+    #: measured under the same solve was 33.0. The label now describes the number it is attached to
+    #: and says the real one was withheld, which is what the sibling NO_SURPLUS label already does.
+    EXPOSURE_ROSTER_PARTIAL: ("not charged -- a player you drafted could not be priced, so a spare "
+                              "who may cover this position was left out of the solve and the "
+                              "exposure it measured is NOT the 0.0 shown here"),
     EXPOSURE_VACANT: "not measured -- you hold no starter at this position to insure",
     #: I-06/J-06, RULED: one token, and the LABEL is what was false. This read "not measured --
     #: you hold no backup here, so there is no surplus to value", and the first half of that is

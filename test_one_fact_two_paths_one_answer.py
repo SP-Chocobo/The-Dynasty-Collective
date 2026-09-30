@@ -184,9 +184,26 @@ class ThePenaltyScalesWithThePlayerTests(unittest.TestCase):
             self.assertLessEqual(dr.health_penalty("IR", None, points), 0.0)
 
     def test_an_absent_projection_is_absent_rather_than_free(self):
-        """`#187` at the one place D8 could have reopened the PUP hole."""
-        self.assertTrue(math.isnan(dr.health_penalty("IR", None, None)))
-        self.assertTrue(math.isnan(dr.health_penalty("IR", None, float("nan"))))
+        """`#187` at the one place D8 could have reopened the PUP hole -- RESTATED at the v4 blind
+        pass, which showed the original reading of it was wrong.
+
+        This asserted NaN, on the reasoning that 0.0 would read as "measured, this designation
+        costs nothing". Two lenses found what that cost: a row priced on the TRADE-VALUE branch has
+        a real `bpa` and no projection, so it reached here, took the NaN, and left the board with
+        its price DELETED and no `absence_kind` beside the blank. Charging NaN did not express
+        "unknown"; it discarded a price the engine had computed.
+
+        The distinction the original missed: `#187` forbids reporting an ABSENT MEASUREMENT as a
+        measured zero. There is no absent measurement here. The discount is a SHARE OF A
+        PROJECTION, and where no projection exists the share of it this designation costs is
+        genuinely nothing -- the row's price came from trade value, which this rate was never a
+        proportion of. So 0.0 is the measured answer, and the PUP hole this class guards stays shut
+        by the two assertions below it rather than by deleting a price."""
+        self.assertEqual(dr.health_penalty("IR", None, None), 0.0)
+        self.assertEqual(dr.health_penalty("IR", None, float("nan")), 0.0)
+        #: The hole itself, still shut: a designation with a projection is still charged for it.
+        self.assertLess(dr.health_penalty("IR", None, 100.0), 0.0)
+        self.assertLess(dr.health_penalty("PUP", None, 100.0), 0.0)
 
 
 class OnTheRealBoardTests(unittest.TestCase):

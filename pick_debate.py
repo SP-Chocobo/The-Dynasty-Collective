@@ -412,14 +412,32 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     # games are already out of the projection and no penalty was charged on top (see
     # draft_room.health_penalty) -- a chair told only "Out" would double-count it in its own head.
     if candidate.injury_status:
-        already_priced = candidate.availability_basis == pu.RULE_FLOOR
-        lines.append(
-            f"  Injury designation: {candidate.injury_status} -- "
-            + ("the games this designation is known to cost are ALREADY REMOVED from his "
-               "projection, so no further discount was applied on top"
-               if already_priced else
-               "a health discount is already inside the universal value below")
-        )
+        #: CORRECTED AT THE v4 BLIND PASS (found independently by two lenses). This branched TWO
+        #: ways on `availability_basis`, which is the basis of the PROJECTION HAIRCUT, and told
+        #: every candidate outside that one state that "a health discount is already inside the
+        #: universal value below". For a designation this engine deliberately does NOT price --
+        #: `Questionable`, ruled immaterial at `#191`, or anything unrecognised -- `health_penalty`
+        #: returns exactly 0.0 and `availability_factor` returns 1.0, so NO discount of any kind
+        #: exists and the sentence was simply false. Measured on a 12T_ppr opening board: 65 of 481
+        #: priced rows, and TEN OF THE 48 CANDIDATES in the narrowed snapshot at pick 1.01 --
+        #: McCaffrey, Nacua, Chase, Jeanty, Mahomes, Kittle, LaPorta, Warren, Kraft, Love.
+        #:
+        #: The wrong quantity was being consulted. `risk_adj` is on the same object and is the
+        #: number that says whether a discount was charged, so it is what decides the sentence now.
+        #: THREE states, because there are three (`#187`): already in the projection; charged on
+        #: top; and reported but deliberately not priced -- which a chair instructed never to
+        #: recompute cannot work out for itself, and which it most needs to hear, since its job is
+        #: to pressure-test exactly this.
+        _charged = candidate.risk_adj is not None and candidate.risk_adj != 0.0
+        if candidate.availability_basis == pu.RULE_FLOOR:
+            _health = ("the games this designation is known to cost are ALREADY REMOVED from his "
+                       "projection, so no further discount was applied on top")
+        elif _charged:
+            _health = "a health discount is already inside the universal value below"
+        else:
+            _health = ("NO discount was applied for it -- this engine does not price this "
+                       "designation, so his value below is the value of a fully fit player")
+        lines.append(f"  Injury designation: {candidate.injury_status} -- {_health}")
     # #183. AN UNPRICED ROW REACHES THIS FORMATTER. `universal_value` and
     # `team_acquisition_value` are both Optional, and the board's absence convention gives an
     # unpriced row `final_score = None`, which becomes a None TAV here. Printed straight into an

@@ -699,6 +699,11 @@ WITHHELD_REASON = (
 )
 
 
+#: The mark a surface shows for a quantity that does not exist. It lived in `app.py`, which this
+#: module cannot import (Streamlit), so the absence check below had nowhere to read it from -- which
+#: is part of why the check was missing. One home, here, on the boundary `app.py` already imports.
+ABSENT_FIGURE = "\u2014"
+
 def presentable_text(field: str, rendered: str) -> str:
     """`rendered` for a quantity that may be shown; WITHHELD_CARD_TEXT for one that may not.
 
@@ -712,7 +717,20 @@ def presentable_text(field: str, rendered: str) -> str:
     value exists. A withheld number is the opposite case -- it exists and is not trusted -- and
     #187 is about never collapsing the two. A reader told "not measured" about a withheld figure
     will assume the data was missing and reason around the gap.
+
+    AND THE SAME COLLAPSE RAN THE OTHER WAY, corrected at the v4 blind pass. This returned
+    WITHHELD_CARD_TEXT for any withheld FIELD, ignoring `rendered` entirely -- so a value that was
+    never computed was shown as "withheld", which this docstring defines as "it exists and is not
+    trusted". At the user's last pick `estimate_survival` returns absent with basis
+    `no_next_pick`, and `opportunity_cost` and `expected_value_of_waiting` are then None for EVERY
+    candidate: measured at 48 of 48. The survival card beside them correctly said "no next pick"
+    while these two said "withheld", of a number the engine had ruled does not arise.
+
+    So the absence is checked FIRST. A withheld field that holds no value renders as the absence
+    mark, because withholding is a judgement about a number and there is no number to judge.
     """
+    if rendered is None or rendered == ABSENT_FIGURE:
+        return rendered
     return WITHHELD_CARD_TEXT if field in withheld_fields() else rendered
 
 # Checked top-down; the first threshold this score meets or exceeds wins.

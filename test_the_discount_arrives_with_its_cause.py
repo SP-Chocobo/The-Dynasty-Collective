@@ -78,10 +78,26 @@ class TheChairsAreToldTheCauseOfTheDiscount(unittest.TestCase):
         self.assertIn("ALREADY REMOVED", text)
 
     def test_a_designation_priced_by_the_PENALTY_says_the_discount_is_in_the_value(self):
+        #: `risk_adj` is what the sentence is ABOUT, and at the v4 blind pass this fixture omitted
+        #: it -- so the test passed while the code branched on `availability_basis`, a neighbouring
+        #: quantity's basis. Ten of 48 real candidates were being told a discount existed when
+        #: `risk_adj` was 0.0. The fixture now supplies the charge the sentence claims.
         text = pd._format_candidate(
-            _with(injury_status="Out", availability_basis=pu.NO_DESIGNATION), None)
+            _with(injury_status="Out", availability_basis=pu.NO_DESIGNATION, risk_adj=-10.0), None)
         self.assertIn("Out", text)
         self.assertIn("health discount is already inside", text)
+
+    def test_a_designation_this_engine_does_NOT_price_says_so(self):
+        """The arm the v4 blind pass found false. `Questionable` is ruled immaterial (`#191`) and
+        `health_penalty` returns exactly 0.0 for it, so telling a chair a discount is "already
+        inside the universal value" is a fabricated claim -- to the one consumer instructed never
+        to recompute, whose job is to pressure-test health."""
+        text = pd._format_candidate(
+            _with(injury_status="Questionable", availability_basis=pu.IMMATERIAL, risk_adj=0.0),
+            None)
+        self.assertIn("Questionable", text)
+        self.assertIn("NO discount was applied", text)
+        self.assertNotIn("already inside", text)
 
     def test_the_two_regimes_do_not_read_the_same(self):
         """They are different claims about the same designation, and `health_penalty` really does

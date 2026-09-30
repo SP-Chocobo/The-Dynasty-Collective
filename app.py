@@ -1528,7 +1528,10 @@ def render_debate_chip(context: "screen_context.ScreenContext", key: str) -> Non
 #: him as 16 here and 17 there. design_system.figure states the screen's rule once and this
 #: routes every figure on this surface through it; it returns None for an absent or non-finite
 #: value, which is where the dash comes from rather than from a separate `is not None` test.
-ABSENT_FIGURE = "—"
+#: ONE HOME (`#126`). This was a literal here and `pick_synthesis.presentable_text` could not read
+#: it, so it had no way to tell an absent figure from a withheld one -- the collapse the v4 blind
+#: pass found. Bound from the boundary module rather than spelled twice.
+ABSENT_FIGURE = pick_synthesis.ABSENT_FIGURE
 
 
 def _figure(value, digits: int = 0, *, signed: bool = False) -> str:

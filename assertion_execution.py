@@ -128,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
         # stating which of those two it is, so `--check` refuses an entry whose reason is blank.
         existing = {}
         try:
-            existing = dict(store_io.read(RECORD_PATH).get("silent_tests", {}))
+            existing = dict(store_io.read(RECORD_PATH, {}).get("silent_tests", {}))
         except Exception:
             pass
         store_io.write(RECORD_PATH, {
@@ -148,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         try:
-            recorded = dict(store_io.read(RECORD_PATH).get("silent_tests", {}))
+            recorded = dict(store_io.read(RECORD_PATH, {}).get("silent_tests", {}))
         except Exception:
             print(f"{RECORD_PATH} is missing or damaged -- this check is holding NOTHING. "
                   f"Run --write.")

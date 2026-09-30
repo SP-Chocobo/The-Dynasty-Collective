@@ -534,11 +534,28 @@ def health_penalty(status: Optional[str], availability_basis: Optional[str],
     if rate is None:
         return 0.0
     if projected_points is None or projected_points != projected_points:
-        #: No projection, so no proportion of it exists to charge. NaN and not 0.0 (`#187`): 0.0
-        #: would read as "measured, and this designation costs nothing", the strongest claim off
-        #: the weakest evidence. The one production caller already returns NaN for an unpriced row,
-        #: so this is the same verdict reached one layer in rather than a new state.
-        return float("nan")
+        #: No projection, so no proportion of it exists to charge.
+        #:
+        #: CORRECTED AT THE v4 BLIND PASS (found independently by two lenses). This returned NaN,
+        #: on the stated ground that "the one production caller already returns NaN for an unpriced
+        #: row, so this is the same verdict reached one layer in rather than a new state." THAT WAS
+        #: FALSE, and it made a new state: a row priced on the TRADE-VALUE branch has a real `bpa`
+        #: and `_points` of NaN. `score_row`'s gate is `pd.isna(bpa)`, which such a row passes, so
+        #: it reached here, took the NaN, and left the board with `bpa` set, `universal_value` and
+        #: `final_score` absent, and -- the actual damage -- `absence_kind` NONE. A blank with no
+        #: reason beside it is the absence contract's own failure, and `pick_debate` then told a
+        #: person "the engine could not value this player at all" about a row it valued at bpa 15.0.
+        #: Measured on the real capture: Harold Landry (PUP, bpa 2.0) and DeShon Elliott (IR, bpa
+        #: 15.0), reachable from any board built without season projections. At v2 this line was
+        #: `RISK_ADJ.get(status, 0.0)` and no priced row could be unpriced by a designation.
+        #:
+        #: 0.0 IS THE HONEST ANSWER HERE, and the reasoning that rejected it confused two questions.
+        #: `#187` forbids reporting an ABSENT MEASUREMENT as a measured zero. This is not that: the
+        #: discount is a SHARE of a projection, and where there is no projection the share of it
+        #: that this designation costs is genuinely nothing -- there is no quantity for the rate to
+        #: reduce. The row is priced off trade value, which the health rate was never a proportion
+        #: of. Charging NaN does not express "unknown"; it DELETES a price the engine computed.
+        return 0.0
     return rate * projected_points
 
 

@@ -172,9 +172,19 @@ class TheBasisSaysTheRosterWasNotWholeTests(unittest.TestCase):
 class TheNumberIsNotSpentUnderItTests(unittest.TestCase):
     def test_the_token_has_words_of_its_own(self):
         words = lo.EXPOSURE_BASIS_LABELS[lo.EXPOSURE_ROSTER_PARTIAL]
-        self.assertIn("ceiling", words,
-                      "the label must say which way the number is wrong -- displacement's is a "
-                      "FLOOR and this one is not")
+        #: RESTATED at the v4 blind pass, where three lenses found the same thing. This required
+        #: the word "ceiling", and "ceiling" described `worst_loss` -- a number the BOARD never
+        #: emits under this token, because `score_row` prices depth only under MEASURED. What a
+        #: person reads beside this label is 0.0, and "a ceiling of 0.0" asserts no exposure at all
+        #: about the position the engine knows least about. The label must now say that the number
+        #: shown is NOT the measured one, which is the job the word "ceiling" was doing wrongly.
+        self.assertIn("not charged", words)
+        self.assertIn("NOT the 0.0", words,
+                      "the label must say the figure beside it is not the exposure that was "
+                      "measured -- otherwise 0.0 reads as 'no exposure here'")
+        self.assertNotIn("a ceiling", words,
+                         "'a ceiling' describes worst_loss, which never reaches the board under "
+                         "this token")
 
     def test_the_board_prices_worst_loss_ONLY_under_measured(self):
         """Read from the source because the consumer is inside a long per-row closure. The gate is
