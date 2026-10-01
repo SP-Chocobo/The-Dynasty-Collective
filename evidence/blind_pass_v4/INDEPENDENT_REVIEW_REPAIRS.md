@@ -780,6 +780,61 @@ not survive checking, and each is already established above:
 Filed against the document rather than the code because `#292` makes the record the thing that wins,
 and this is the file a future reader will consult to decide the class is closed.
 
+### 18. MEDIUM — `risk_adj` has five states, not three, and the other two are the ones that reach a person wrongly
+
+**File / identifier:** `pick_debate._format_candidate`'s health branch
+
+This is finding 3 completed. The repair's comment says "THREE states, because there are three
+(`#187`)". `risk_adj` arriving on a `CandidateSnapshot` has five, and the two the enumeration omits
+are **absence** states — exactly what `#187` governs:
+
+| state | how it arises | which branch takes it | correct? |
+|---|---|---|---|
+| a real negative | charged | "already inside the value" | yes |
+| `0.0`, basis `RULE_FLOOR` | already in the projection | "already REMOVED" | yes |
+| `0.0`, no rate for the status | `#191` immaterial | "does not price it" | yes |
+| **`NaN`** | `score_row`: `if pd.isna(bpa): risk_adj = float("nan")` — an **unpriced row** | **"already inside the value"** | **no** |
+| **`None`** | **upside mode never emits the column**, by design | **"does not price it"** | **no** |
+
+`_charged = risk_adj is not None and risk_adj != 0.0` puts `NaN` in the charged branch (`NaN is not
+None` and `NaN != 0.0` are both true) and `None` in the not-priced branch.
+
+**Both measured on real boards, both person-facing.**
+
+*The `NaN` state.* 75 rows of a 970-row balanced 12T_ppr board are unpriced and carry a designation
+(46 `IR`, 20 `Questionable`, 4 `NA`, 2 `PUP`, 2 `Sus`, 1 `DNR`), `risk_adj` NaN on every one.
+`pick_synthesis`' own `#183` comment says such a row reaches this formatter. What it is told:
+
+```
+Will Mallory  IR  risk_adj=nan  universal_value=nan
+  -> IR -- a health discount is already inside the universal value below
+```
+
+There is no universal value. (Not a regression — the pre-repair `availability_basis` branch said
+the same thing for these rows — but the repair re-derived the sentence from `risk_adj` and declared
+the enumeration complete while that authority distinguishes this case perfectly well.)
+
+*The `None` / upside state.* On an upside board the column is absent for every row, so every
+designation falls into the not-priced branch. `draft_room` is explicit that this is by design:
+"the per-position decomposition terms (time_horizon_adj, risk_adj) stay absent because
+`upside_score` genuinely never computes them". That makes "NO discount was applied" true and
+"**this engine does not price this designation**" false — the absence is a property of the mode, not
+of the designation. The upside board carries 70 rows the engine does price (63 `IR`, 7 `PUP`).
+At pick 1.01 the narrowed 48 happened to be all `Questionable`, where the sentence is accidentally
+true; on a drained board it is not:
+
+```
+drained UPSIDE board, snapshot at 13.01, 6 candidates:
+  Jayden Higgins  IR  risk_adj=None  rate=-0.23529411764705882
+    -> IR -- NO discount was applied for it -- this engine does not price this designation,
+            so his value below is the value of a fully fit player
+```
+
+**How established.** `evidence/blind_pass_v4/probes/probe_risk_adj_the_fourth_and_fifth_states.py`.
+The picks draining the board are built in production's shape
+(`{pick_no, round, roster_id, player_id}`) so round detection and mode resolution are not silently
+changed by the input, and `mode` is passed explicitly rather than left to `auto`.
+
 ---
 
 *(review in progress — a mutation pass over the repairs is still running; its results and the summary are appended below)*
