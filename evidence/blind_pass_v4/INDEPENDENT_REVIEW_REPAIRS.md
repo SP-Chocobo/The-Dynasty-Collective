@@ -245,6 +245,257 @@ candidate tuple:
 T.J. Watt appears in the LB view, which is the finding's own example. Non-vacuous and uneven — the
 shape a real repair has. (`probe_cf3_eligibility_and_views.py`.)
 
+### 5. MEDIUM — `D-F2`'s own restraint test fails: `dead_names()` now reports **0**, which is the figure the finding was raised to discredit
+
+**File / identifier:** `prose_names.HISTORICAL_MARKERS` (the four markers added in this range) and
+`prose_names.SELF_REFERENTIAL`
+
+**What it claims.** The comment justifying the four new markers (`replac`, `there is no`,
+`needs no`, `no separate`):
+
+> This is completing the vocabulary for an existing idiom, **not growing it until the report reads
+> zero** — the distinction this module's docstring draws, and the reason **the report still stands
+> at four rather than nought** after they were added.
+
+And `TRIAGE_V4` on why D-F2 blocks: *"the instrument certifies '0 dead names' **at the freeze**.
+The v3 freeze record already quotes that zero and it is wrong."*
+
+**What the code does.** `prose_names.dead_names()` on the freeze candidate returns `{}` — **zero**.
+The "four" the comment names are exactly the four that `SELF_REFERENTIAL`, added in the same
+change, suppresses: `PANEL_ONLY`, `TheConstructionIsStrandedOnPurposeTests`,
+`ValidatedFlagIsUnconditional` and `disarmed`, all four inside `prose_names.py` /
+`test_prose_names.py`. So the two halves of one change cancel, and the instrument once again
+certifies the zero D-F2 was raised against — by a different route, with nothing in the range
+recording that the number went back to zero.
+
+**The substance is sound; the sentence is not.** The three names D-F2 found behind the old shield
+are `fgmiss_0_19`, `test_KNOWN_SENSITIVITY_the_round_boundary_is_decided_by_float_noise` and
+`test_the_forfeit_depth_and_the_take_probability_table_stay_coupled`. All three sit in prose that
+is genuinely historical — `"There is no \`fgmiss_0_19\`"` (`player_universe.py`), `"REPLACES
+\`test_…\`, which …"` (`test_draft_strategy.py` ×2) — so the four markers really are completing an
+existing idiom, not papering over rot. The defect is the stated evidence for that restraint: the
+number offered as proof the vocabulary was not grown until the report read zero is contradicted by
+the report, which reads zero. `#133`.
+
+**How established.** `evidence/blind_pass_v4/probes/probe_df2_prose_shield_scope.py` plus a
+runtime-only swap of `HISTORICAL_MARKERS` (no file edited; `git status --short` clean throughout):
+
+```
+shipped                     : dead_names() = 0  []
+without the 4 new markers   : dead_names() = 3  ['fgmiss_0_19',
+                              'test_KNOWN_SENSITIVITY_the_round_boundary_is_decided_by_float_noise',
+                              'test_the_forfeit_depth_and_the_take_probability_table_stay_coupled']
+restored                    : dead_names() = 0
+
+names the SELF_REFERENTIAL exclusion suppresses: 4
+  `PANEL_ONLY`, `TheConstructionIsStrandedOnPurposeTests`,
+  `ValidatedFlagIsUnconditional`, `disarmed`
+```
+
+---
+
+### 6. LOW–MEDIUM — "Paragraphs cut exactly that" overstates: the bare-`was` class survives at paragraph scope
+
+**File / identifier:** `prose_names.dead_names` / `_paragraph_around`
+
+**What it claims.** "MEASURED at the v4 pass: of 1,446 prose blocks naming something, 651 (45.0%)
+were never examined at all … and 177 of the shielded blocks carried no marker other than 'was'. …
+The 45% over-shielding was almost entirely DOCSTRINGS … **Paragraphs cut exactly that.**"
+
+**What the code does.** Paragraph scoping cuts roughly half the available over-shield and leaves
+the named class intact. Measured over the same corpus, excluding the two `SELF_REFERENTIAL` files,
+with the module's own `is_history` / `_paragraph_around`:
+
+| scope | name occurrences shielded (of 2,832) | naming blocks with ≥1 name shielded (of 1,538) |
+|---|---|---|
+| block (pre-repair) | 1,818 (64.2%) | 728 (47.3%) |
+| **paragraph (shipped)** | **1,291 (45.6%)** | **620 (40.3%)** |
+| sentence | 824 (29.1%) | — |
+
+467 name occurrences are shielded by a marker in the paragraph but not in the sentence naming the
+name, and **245 of them are shielded by nothing but a bare "was"/"were"** (a further 39 by nothing
+but `arm`, the marker this module's own docstring records as its leakiest). Examples:
+
+```
+app.py:1769            `count`, `value`   -- shielded by "was", different sentence
+assertion_floors.py:1  `return`, `DISABLERS`, `drops`  -- module docstring, "was" in another
+                                                          paragraph-mate sentence
+basis_semantics.py:1   `partial`, `rule_floor`
+```
+
+This is deliberately **not** reported as a request to narrow to sentence scope: the change's own
+reasoning for choosing the paragraph (`ValidatedFlagIsUnconditional`, whose next sentence carries
+the marker) is sound, and the mandate's caution about two readers that should stay separate
+applies. The defect is the claim's scope: the mechanism the comment names as *the* defect — "one
+bare 'was' in an unrelated sentence shielded every name beside it" — is still live on 245 name
+occurrences, and the write-up says it was cut exactly.
+
+(Module docstrings specifically: 229 name something; block scope shielded 208 (91%), paragraph
+scope still shields ≥1 name in 151 (66%), and only 78 have every name examined. I could not
+reproduce the write-up's 1,446 / 499 denominators with `prose_blocks()` + `ast.get_docstring`; mine
+are 1,566 naming blocks and 229 module docstrings. **Unverified** which definition produces theirs.)
+
+---
+
+### 7. LOW — inside the consolidated `team_count`, the seats rule normalises roster ids and the picks rule does not
+
+**File / identifier:** `league_config.team_count_with_basis` vs `draft_room.team_slots_filled`
+
+**What it claims.** `team_count`'s docstring: "ONE derivation, in a stated order of authority".
+B-F6's comment: "ONE RULE about what a rosterless pick means, in both places (`#126`)". The new
+test asserts the census and the count "still read the same history differently" is closed.
+
+**What the code does.** The seats rule coerces (`{str(seat) for seat in seats if seat is not
+None}`); the picks rule does not (`{p.get("roster_id") for p in picks if … is not None}`).
+`team_slots_filled` keys on `str(pick.get("roster_id"))`. So a history mixing `0` and `"0"` — and
+Sleeper's own `roster_id` is an integer, while several app paths stringify it — is **two teams** to
+`team_count` and **one roster** to `team_slots_filled`:
+
+```
+roster_id 0 vs '0' : team_slots_filled keys = ['0'] (len 1)   team_count = 2   DISAGREE
+```
+
+Low because `TEAM_BASIS_DECLARED` outranks the picks rule whenever `total_rosters` is present, so
+production boards rarely reach it; and over-counting `num_teams` cannot trip the
+foreign-roster-universe guard (which fires on `len(filled) > num_teams`). But it is the same
+`#126` split the repair claims to have closed, one rule inward.
+
+**How established.** `evidence/blind_pass_v4/probes/probe_bf6_rosterless_agreement.py`.
+
+---
+
+### 8. LOW — the B-F6 agreement test pins a fixture coincidence, not an invariant
+
+**File / identifier:**
+`test_one_league_one_team_count.ARosterlessPickBelongsToNoRosterTests.test_the_two_functions_agree_on_what_a_rosterless_pick_MEANS`
+
+It asserts `len(team_slots_filled(picks, …)) == team_count(picks=picks)` with the message "the
+census and the count still read the same history differently". That equality is not a property of
+the two functions: `team_slots_filled` also skips any pick whose player the pool cannot resolve to
+an eligible position, which `team_count` counts. Measured:
+
+```
+a roster whose only pick is a player the pool does not know
+   team_slots_filled keys = ['1'] (len 1)   team_count = 2   DISAGREE
+```
+
+So the test passes on its own two-pick fixture and would fail for a reason that has nothing to do
+with rosterless picks. The repair it guards **is** sound and was verified separately: the phantom
+`"None"` roster is gone, `remaining_starter_demand` no longer raises on the mixed history, and a
+genuinely foreign history (two real rosters, one team) is still refused with `ValueError`.
+
+---
+
+### 9. LOW — the `ABSENT_FIGURE` "ONE HOME" claim is not kept, and the absence check is string equality on the mark
+
+**File / identifier:** `pick_synthesis.ABSENT_FIGURE` / `pick_synthesis.presentable_text` /
+`draft_history_ui.ABSENT`
+
+The repair's claim: *"ONE HOME (`#126`). This was a literal here and `pick_synthesis.
+presentable_text` could not read it … Bound from the boundary module rather than spelled twice."*
+`app.py` was rebound. `draft_history_ui.ABSENT = "—"` — the other Python surface that calls
+`presentable_text`, and the one whose docstring says "the same one the Draft Room's cards use" —
+remains an independently-spelled literal. `presentable_text`'s new absence check is
+`rendered == ABSENT_FIGURE`, i.e. string equality against the mark, so the replay surface's
+absence detection works only because two hand-spelled literals happen to be the same codepoint
+today. Verified identical (`'—' == '—'` → True), so this is **currently inert**; it is a #126
+claim not kept rather than a live defect.
+
+**Verified sound in the same pass:** the repair's own mechanism fires. `survival_is_presentable()`
+is `False` on the freeze candidate, so `withheld_fields()` is non-empty
+(`{expected_value_of_waiting, opportunity_cost, survival_probability}`) — the guard is not
+vacuous — and `design_system.figure(None)` → `None` → `_figure` → `"—"`, so:
+
+```
+presentable_text('opportunity_cost', '—')    -> '—'        (absence wins, as claimed)
+presentable_text('opportunity_cost', '0.0')  -> 'withheld' (a measured zero is still withheld)
+presentable_text('opportunity_cost', '12.3') -> 'withheld'
+```
+
+---
+
+### 10. LOW — the UI arm of the round-arithmetic check uses the instrument the same module rejects five lines earlier
+
+**File / identifier:**
+`test_one_league_one_team_count.NoModuleSpellsItsOwnTeamCountTests.test_the_UI_surface_does_not_spell_the_round_arithmetic_either`
+
+Its sibling `test_nothing_but_league_config_spells_the_round_arithmetic` carries the reasoning
+explicitly: *"READ AS CODE, NOT AS TEXT. A substring scan … reported offenders that were prose
+about the fix. `ast` sees only the arithmetic."* The UI arm then asserts
+`assertNotIn('// settings["teams"] + 1', ui_source.text())` — a substring. The same arithmetic
+spelled `// settings['teams'] + 1`, or against a local (`// teams + 1`), passes. `ui_source.units()`
+returns per-module source, so an `ast.parse` per unit was available, as the sibling does for the
+engine modules.
+
+---
+
+### 11. LOW — `EXPOSURE_ROSTER_PARTIAL`'s new label describes "the 0.0 shown here", which the Draft Room board does not show
+
+**File / identifier:** `lineup_optimizer.EXPOSURE_BASIS_LABELS[EXPOSURE_ROSTER_PARTIAL]` and
+`draft_board_ui`'s focus-sentence block
+
+The new label reads "… and the exposure it measured is NOT the 0.0 shown here", on the stated
+ground that "`score_row` prices `depth_exposure` only under MEASURED, so what a person actually
+reads beside this label is 0.0". The first half is confirmed — `score_row` sets
+`depth_exposure_value = 0.0` for every non-`EXPOSURE_MEASURED` basis. The claim holds on
+`pick_debate._depth_term`, which prints `" + depth_exposure +0.0, which is NOT a measurement:
+<label>"`. It does **not** hold on the board the Draft Room renders: the only consumer of
+`depthBasisLabels` is inside
+
+```js
+if (num(c.depthExposure) && c.depthExposure > 0) { … termBasisLabel("depthBasisLabels", …) … }
+```
+
+so at `depthExposure == 0.0` neither the number nor the label is emitted at all. (That gate is
+itself the `#187` shape — `> 0` cannot distinguish a measured zero from an absence — but it is
+**pre-existing**, not introduced by this range.) The narrowed claim is true of one of the two
+surfaces that read this table.
+
+---
+
+## Attacked and found sound (continued)
+
+### `D-F4` — the qualified floor key really does close the collision
+
+Built the collision the repair describes and netted it out so only the per-method level could
+catch it: two classes in one module both defining `test_same_name`, the **first** twin losing an
+`assertEqual` while `Second.test_other` gains one, so the module total is 4 before and 4 after.
+
+```
+by_method keys: 'First.test_same_name' {'assertEqual': 2}
+                'Second.test_same_name' {'assertEqual': 1}
+                'Second.test_other' {'assertIn': 1}
+module TOTAL asserts before/after: 4 / 4
+drops() reports: ['test_twins.py: First.test_same_name self.assertEqual 2 -> 1']
+VERDICT: COLLISION CLOSED
+```
+
+`ASSERTION_FLOORS.json` was regenerated with qualified keys (`test_screen_context.py`: 66 of 66
+qualified). Scanning the real tree for shapes the qualified key does not disambiguate: no test
+method lives in a nested class, none lives outside its class's `body`, and the only duplicated
+class name in any `test_*.py` is `test_version_boundary.py:_Merger` (a fixture, not a test class).
+
+**One gap worth a line, not a finding in itself:** `test_assertion_floors.py` contains no fixture
+with two classes sharing a test name. Every module it writes is a single `class T`, and the diff's
+change to that file is only re-keying `test_a` → `T.test_a` — which passes under any scheme that
+includes a class name, correct or not. The collision this ratchet was repaired to close is not
+exercised by the ratchet's own tests. (`probe_df4_floor_key_collision.py` is the missing case.)
+
+### `D-F3` — the self-comparing shield test was genuinely fixed
+
+`_weak_exempt_blocks` now iterates `prose_names.prose_blocks()` instead of raw file text, so
+`QUOTED_VALUE` can no longer match a constant's own assignment line and compare it with itself, and
+a new `test_the_comparison_ACTUALLY_REACHES_a_prose_quotation` counts comparisons that reach
+`getattr` rather than matches — which is the guard whose absence let 18 of 19 be tautologies. The
+replacement docstring states its own thin reach (2 checkable quotations) rather than claiming the
+old "all 18".
+
+### `E-F5`'s exception arm, and `D-F5`'s widened guard
+
+The exception arm does warn (see finding 1). `D-F5`'s `or "CAPTURE_PATH" in src` module-wide escape
+is genuinely removed, so a module that both defines a literal capture path and mentions
+`rdb.CAPTURE_PATH` is no longer skipped whole.
+
 ---
 
 *(review in progress — further findings appended below as they are established)*
