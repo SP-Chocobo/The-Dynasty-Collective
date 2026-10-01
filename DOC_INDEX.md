@@ -7,9 +7,9 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 42 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 43 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 44 | says what kind of document it is before making claims. |
-| UNDECLARED | 125 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 124 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -47,6 +47,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 ## SUPERSEDED
 
 - `FREEZE_CHECKLIST.md`
+- `FREEZE_RECORD_V4.md`
 - `ROADMAP_TO_FREEZE.md`
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`
@@ -141,7 +142,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `.claude/skills/close-register-item/SKILL.md`
 - `FREEZE_RECORD.md`
 - `FREEZE_RECORD_V3.md`
-- `FREEZE_RECORD_V4.md`
 - `OWNER_DECISIONS_PENDING.md`
 - `README.md`
 - `REPAIR_HANDOFF.md`
