@@ -507,3 +507,285 @@ iteration, so it describes the **upside** board under the label "reference board
 `.md` makes the index stale and `test_doc_index.test_doc_index_is_not_stale` reads it. That is
 `doc_index`'s own note working as designed: *"a brand-new document is INVISIBLE HERE UNTIL IT IS
 STAGED … Regenerate AFTER `git add`, not before."*
+
+---
+
+# ADDENDUM — the two battery report builders, gone after harder
+
+A second pass over `run_draft_battery._battery_report` and `run_vds_battery._report` alone,
+field by field, asking of each: can it fire, is its denominator the population under test, does
+it mean its name, and does the guard policing it see the shape production produces. Probes:
+`probes/probe_battery_duplicate_arms.py`, `probes/probe_battery_report_builder.py`,
+`probes/probe_vds_report_builder.py`.
+
+The common root is one change. `audit_trajectory` was repaired to copy the trajectory's whole
+config onto each arm as **`provenance`** (mode, pool_scope, opponent_noise, sleeper_basis,
+priced_from, upside_rule, upside_from_round, picks_by_mode, pick_order) — the right repair, for
+the right reason. Three of the findings below are what that key did on arrival, and two are
+fields that still quote a module constant while the per-arm truth now sits on the row.
+
+## A1. PROVED — `duplicate_arms` lost its only live finding when `provenance` joined the arm row, and `BATTERY_REPORT.json` publishes `independent_formats: 53` where the answer is 52
+
+**Instrument** `draft_battery.duplicate_arms` + `_FINGERPRINT_EXCLUDES`, consumed by
+`run_draft_battery._battery_report`.
+
+**What it claims.** *"Arms of the matrix whose ENTIRE measured content is identical to another
+arm's. … a report claiming N formats of coverage when some of them reproduce another arm byte
+for byte … inflates the denominator under every rate this battery produces and makes a
+duplicated finding look like independent corroboration."* `_FINGERPRINT_EXCLUDES` exists so a
+field describing the **run** rather than the arm's content cannot make two identical arms
+fingerprint apart — its comment records both occasions that was learned (`seconds`, then
+`produced_at_commit`/`carried_forward`: *"they describe the RUN, not the arm's content"*).
+
+**What it does.** `provenance` is a run descriptor by that same definition and is **not**
+excluded.
+
+**The demonstration.** In the committed report, `12T_ppr` and `12T_ppr_mode_balanced` share a
+**byte-identical 112-pick sequence**, and:
+
+```
+12T_ppr vs 12T_ppr_mode_balanced: the ONLY keys that differ are ['label', 'provenance', 'seconds']
+    provenance.mode:              'auto'  vs  'balanced'
+    provenance.upside_from_round: 15      vs  None
+```
+
+`label` and `seconds` are already excluded. One process, one code version, toggling the single
+thing under test:
+
+```
+as shipped   excludes=['carried_forward', 'label', 'produced_at_commit', 'seconds']
+             duplicate_arms -> []
++ provenance excludes=[... 'provenance' ...]
+             duplicate_arms -> [{'label': '12T_ppr_mode_balanced', 'duplicates': '12T_ppr'}]
+restored     duplicate_arms -> []
+```
+
+**It is a regression, and the record shows the moment.** Every committed report before this one
+flagged the pair:
+
+| report | formats / independent | rows with `provenance` | duplicates |
+|---|---|---:|---|
+| 2026-09-08 vendor_only | 33 / 24 | 0/33 | 9 |
+| 2026-09-08 scoring_aware | 33 / 32 | 0/33 | `12T_ppr_mode_balanced == 12T_ppr` |
+| 2026-09-12 full | 33 / 32 | 0/33 | `12T_ppr_mode_balanced == 12T_ppr` |
+| 2026-09-13 gate1 | 34 / 33 | 0/34 | `12T_ppr_mode_balanced == 12T_ppr` |
+| 2026-09-17 gate1 | 34 / 33 | 0/34 | `12T_ppr_mode_balanced == 12T_ppr` |
+| **current** | **53 / 53** | **53/53** | **[]** |
+
+The detector's own docstring quotes the 2026-09-12 measurement as the evidence on which a
+matrix-trim ruling was **reversed** (`#258`). That measurement can no longer be reproduced by
+the instrument that made it.
+
+**Why the guard did not catch it.** `test_report_fields_mean_their_names.DuplicateArmsSurvivesAResume`
+is the test written for this exact field, and it hand-builds a **five-key** arm —
+`{label, seconds, findings, teams, shape}` — against a real row of **eighteen**. No case in it
+carries `provenance`, so both behavioural cases pass whatever `provenance` does:
+
+```
+DuplicateArmsSurvivesAResume: ran=3 failures=0 errors=0
+...while duplicate_arms over the real 53 rows -> []
+```
+
+Its third case, `test_the_run_stamps_are_excluded_from_the_fingerprint`, asserts a **hand-list**
+of four field names are in the frozenset. That is `#126` turned on the tooling: "which fields
+describe the run" is derivable (they are the keys `audit_trajectory` adds that are not
+measurements, plus the two `main` stamps on), and it is typed by hand instead — so a fifth run
+descriptor arrives and nothing fails.
+
+## A2. PROVED — `picks_by_mode` is recorded on every arm and read by nothing, and half the `auto` arms never entered the upside branch
+
+**Instrument** `run_draft_battery._battery_report` (the field it does not aggregate) and the
+console summary.
+
+`simulate_full_draft` records `picks_by_mode` deliberately: *"WHICH VALUATION produced each
+pick, for the same reason priced_from exists (`#222`). mode='auto' is not one valuation:
+compute_draft_board's upside branch zeroes every team-specific term, so a trajectory can be half
+roster-aware and half roster-blind with nothing in the record saying so."*
+
+Measured on the committed 53-arm run:
+
+```
+picks across the run: balanced=8664  upside=672   (report `picks`=9336)
+upside share: 7.2%
+arms with ANY upside pick: 18 of 53
+
+arms running mode='auto' (the SHIPPED default): 34
+of those, arms that made ZERO upside picks     : 17
+```
+
+All seventeen for one structural reason — the draft is shorter than the rule's trigger:
+
+```
+8T_standard  10T_ppr  12T_ppr  14T_ppr  12T_ppr_TEP_dynasty  12T_ppr_redraft
+12T_ppr_TEP_redraft  LIGHT_IDP  … rounds=14, upside_from_round=15  -> unreachable
+12T_ppr_SHORT_DRAFT                rounds=8,  upside_from_round=15  -> unreachable
+```
+
+`vds_battery.FORMATS` already states this property, for one arm: *"`12T_ppr_SHORT_DRAFT`: 8
+rounds, so the round-triggered upside rule NEVER fires."* It holds for every 14-round arm in the
+format matrix, which is half the `auto` population, and **no field of the report says so**:
+
+```
+report builders that read `picks_by_mode`: NONE
+```
+
+This is the `streaming_floor_exercised: false` shape — *"a flag nobody checks is a comment"* —
+with the flag correctly written and never aggregated, never printed, never asserted. The one
+test that touches `picks_by_mode` checks the **function** (`ds._picks_by_mode`) against the
+engine's boundary; nothing reads it across a report.
+
+It is also the mechanism behind A1: `12T_ppr` is a 14-round `auto` arm, so `auto` **is**
+`balanced` there, which is why its draft is byte-identical to `12T_ppr_mode_balanced`.
+
+## A3. PROVED — `constant_axes` is structurally blind to the axes `provenance` records, and two of them are constant across all 53 arms
+
+`format_axes_exercised`'s `constant_axes` is `#241`'s repair, and its lesson was *"an axis that
+fails to vary is also a coverage hole … a constant axis should announce itself the way a
+duplicate arm does."* It ranges over `advertised_format_axes(league)` =
+`league_format_hint(league)` + `roster_shape_axes(league)` — **purely league-derived**. The
+per-arm parameters `run_battery` forwards are not among them:
+
+```
+constant_axes = []   axes_source=arms  arms=53
+axes it ranges over (9): draftable_rounds has_defense has_idp_slot has_kicker
+                         has_superflex_slot scoring starting_slots superflex te_premium
+
+provenance.mode               {'auto': 34, 'balanced': 18, 'upside': 1}
+provenance.upside_rule        {'round': 53}            <-- CONSTANT across every arm
+provenance.opponent_noise     {'None': 53}             <-- CONSTANT across every arm
+provenance.pool_scope         {'all': 53}              <-- CONSTANT across every arm
+provenance.priced_from        {'vendor+sleeper': 53}   <-- CONSTANT (correct, and disclosed in `universe`)
+provenance.sleeper_basis      {'season_sum': 53}       <-- CONSTANT (same)
+provenance.upside_from_round  {'15': 34, 'None': 18, '1': 1}
+```
+
+`upside_rule` and `opponent_noise` are real strategy axes the arm loop forwards and the VDS
+battery sweeps; in the format battery they never vary, and the detector built to announce a
+constant axis reports `[]`. The data to derive this is on every row — the distribution above was
+computed from `provenance` alone.
+
+## A4. PROVED — `formats` and `independent_formats` are arm counts; the run has 53 arms over 34 distinct leagues
+
+```
+console: "53 formats (53 independent), 9336 picks, 2 structural findings"
+
+arms in the matrix        : 53
+DISTINCT leagues in it    : 34
+arms sharing a league with another arm: 36 in 18 groups
+    ['12T_ppr', '12T_ppr_mode_balanced', '12T_ppr_mode_upside']
+    ['8T_ppr_SF', '8T_ppr_SF_balanced_full']   … (18 groups in all)
+```
+
+`_battery_report`'s comment is accurate — *"`formats` is how many arms RAN"* — but the field
+name and the console line both read "formats", and that number is the denominator under every
+rate the battery produces. A reader taking "53 formats" at face value overstates format coverage
+by 56%. The repository already has a module for exactly this (`#222`'s
+`test_report_fields_mean_their_names`, *"eight report fields whose values were not the quantity
+their names promised"*); `formats` is a ninth and is not in it. Severity: low — the number is
+right for what it counts, the name is the defect (`#133`).
+
+## A5. PROVED — `run_vds_battery` reports the absence of a control as the presence of an effect
+
+**Instrument** `run_vds_battery._report`, the `inert` / `controls` block, and `main`'s console
+branch.
+
+`controls` is keyed off each format's control arm. A format with no control arm in `results` is
+`continue`d, so no arm in it can be judged inert — and `main` then prints the positive claim:
+
+```python
+else:
+    print("\nNo inert arms: every strategy changed the draft in every format.")
+```
+
+Demonstrated on the committed run's own 36 arms:
+
+```
+all 36 arms          INERT_ARMS = ['12T_ppr_SHORT_DRAFT__crossing',
+                                   '12T_ppr_SHORT_DRAFT__sharp_balanced',
+                                   '12T_ppr__crossing', '12T_ppr__sharp_balanced']
+                     inert_arm_count=4  effective_arms=32
+
+the SAME arms, controls dropped (30 arms, which still CONTAIN all four inert arms):
+                     INERT_ARMS = []
+                     inert_arm_count=0  effective_arms=30
+-> main() would print: "No inert arms: every strategy changed the draft in every format."
+```
+
+The four arms the full run proves inert are still in that set. `--only` is a documented mode
+(*"a deliberate partial run to its own file"*) and nothing stops it naming non-control arms; the
+same holds for any `results` set a control is missing from. The function went to real trouble to
+fix the *denominator* for partial runs (`per_format_ran` replacing `len(STRATEGIES)`, with its
+own comment about the mid-run file being *"what a reader usually holds"*) and then let the inert
+detector answer "none" where the honest answer is "not determinable for these formats".
+
+Same shape, same block, one level down: with `format`/`strategy` stripped from the rows — the
+shape a `--resume` carries from any report written before `audit_trajectory` stamped them — the
+label-based readers keep working and the inert detector goes silent:
+
+```
+INERT_ARMS                 = []
+findings_by_strategy keys  = [crossing, noisy_k3, noisy_k8, sharp_auto, sharp_balanced, sharp_upside]
+STRATEGY_SPECIFIC_FINDINGS = {'12T_ppr_K_DEF': ['noisy_k8'], … }
+```
+
+Two readers of "which strategy is this arm" inside one function: `inert` reads
+`row["strategy"]`/`row["format"]`, every findings block reads `row["label"].partition("__")`.
+They agree on today's rows (checked: 0 disagreements) and fail differently when one source is
+absent — which is `ONE_QUESTION_TWO_READERS.md`'s class, inside a report builder repaired for a
+finding of that class.
+
+## A6. PROVED — `seed`, `top_k_swept`, `strategies` and `formats` in the VDS report describe the code, not the run
+
+```
+as shipped: seed=20260922  top_k_swept=[3, 8]
+constants changed, THE SAME ARMS re-reported: seed=11111111  top_k_swept=[99, 100]
+arms identical? True
+```
+
+`strategies` and `formats` are likewise `dict(vds_battery.STRATEGIES)` and
+`dict(vds_battery.FORMATS)`. On a resumed run — the documented way a multi-hour battery finishes
+— arms produced under an older table are described by today's. `commits_present` is the
+disclosure and it is real; but the per-arm truth is now **on the row**:
+`provenance.opponent_noise` carries each noisy arm's own `top_k`, `seed` and `sharp_seats`,
+because `audit_trajectory` copies the whole config. The report quotes the module constants
+instead. (The committed VDS run predates that repair — 0 of 36 rows carry `provenance` — so this
+is a claim about the next run, not that one.)
+
+## A7. PROVED (known defect, now also shown untested) — the `sharp_seats` exclusion has no test, and the key it needs is on the row
+
+Finding 4 above established the exclusion cannot fire. Two further facts:
+
+```
+test modules mentioning `sharp_seats` at all: NONE
+the strategies the exclusion exists for: ['noisy_k3', 'noisy_k8']
+the guard's fixture strategies:          ['sharp_auto', 'sharp_upside', 'crossing']
+```
+
+`TheVDSReportDoesNotCreditInertArms` — the class written for this block — uses three
+non-noisy strategies and a five-key arm, so no case in the suite reaches the noise branch. And
+the value the guard wants now exists at `row["provenance"]["opponent_noise"]["sharp_seats"]`.
+The data is one path away; the guard reads a top-level key that has never existed.
+
+## What the two builders got right, established the same way
+
+* **The resume join.** `commit`, `commits_present` and `carried_forward` are present in both
+  reports under the same three names (`#126`), and `--only` with `--resume` is **refused** in
+  both, with the reason stated — *"a resume that DESTROYS results is worse than no resume."*
+* **`format_axes_exercised` prefers the arm over the matrix.** `axes_source: "arms"` on the
+  committed run, with `arms_whose_league_changed_under_the_same_label: []` reported rather than
+  resolved — the right shape, and the reason `12T_ppr_K_DEF` changing under a fixed label is now
+  visible.
+* **`run_draft_battery` refuses to run** on a rulebook that prices no player at a position with
+  stat lines (`#213`), and `build_players_db` raises rather than letting the vendor
+  reconstruction become the default (`#222`). Both are loud, both are the right direction.
+* **`universe` carries the exercise flags and they are true** on the committed run:
+  `streaming_floor_exercised=True`, `weekly_projection_weeks=18`,
+  `priced_from=vendor+sleeper`, `sleeper_basis=season_sum`, and
+  `season_projections_supplied=5346` travelling beside `season_projections_priceable=840` so the
+  6.4× overstatement cannot recur.
+* **VDS `findings_total` and `findings_total_effective` are both reported**, neither replacing
+  the other, with the reason stated. `by_strategy_effective` is seeded with every strategy that
+  ran at zero, because *"an absent key and a zero are different claims"* — the right instinct,
+  and the one the console loop then drops by iterating `vds_battery.STRATEGIES` instead of
+  `strategies_that_ran`, so a strategy that never ran prints `0` beside one that ran and found
+  nothing.
