@@ -198,7 +198,7 @@ silently. **No engine file, no test, no fixture and no part of the harness was a
 | — | **baseline** (scored modules, clean tree) | — | **GREEN** | **1351.0s** |
 | 1 | feasibility_first never binds | 2 | **caught** | 437.4s |
 | 2 | board order ignores feasibility | 1 | **caught** | 440.6s |
-| 3 | board order ignores fieldability | 1 | pending | pending |
+| 3 | board order ignores fieldability | 1 | **caught** | 440.5s |
 | 4 | upside board order ignores feasibility | 1 | pending | pending |
 | 5 | upside board order ignores fieldability | 1 | pending | pending |
 
