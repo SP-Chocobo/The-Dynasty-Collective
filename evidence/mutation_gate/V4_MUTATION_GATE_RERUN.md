@@ -194,7 +194,7 @@ silently. **No engine file, no test, no fixture and no part of the harness was a
 
 | # | Invariant | Sites | Verdict | Runtime |
 |---|---|---|---|---|
-| — | `test_invariant_confirmation_anchors` (clean-tree precondition) | — | **passes** | 52.5s |
+| — | `test_invariant_confirmation_anchors` (clean-tree precondition) | — | **passes** | 54.0s (run 2; 52.5s in run 1) |
 | — | **baseline** (scored modules, clean tree) | — | pending | pending |
 | 1 | feasibility_first never binds | 2 | pending | pending |
 | 2 | board order ignores feasibility | 1 | pending | pending |
