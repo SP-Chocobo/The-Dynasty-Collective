@@ -95,24 +95,36 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
     #     runs are routinely killed -- a finding present under every strategy that RAN was
     #     reported as strategy-specific because fewer strategies ran than exist.
     #
-    # Also skipped: arms whose `sharp_seats` is empty. `noisy_k3`/`noisy_k8` contain no engine
-    # seat at all, so a finding there is a property of uniform random draws and belongs on no
-    # strategy's ledger.
+    # (3) ARMS WITH NO ENGINE SEAT WERE NEVER ACTUALLY SKIPPED, THOUGH THIS COMMENT SAID THEY
+    #     WERE (V4-I1). `noisy_k3`/`noisy_k8` set `sharp_seats: []` -- no seat uses the engine --
+    #     so a finding there is a property of uniform random draws and belongs on no strategy's
+    #     ledger. But the test read `row["sharp_seats"]`, and that is NOT WHERE THE VALUE LIVES:
+    #     it lives at `opponent_noise.sharp_seats` in the matrix, and the serialized result row
+    #     carries no such key at all. So the read always returned its truthy default and the
+    #     guard COULD NOT FIRE; `by_strategy_effective` never had the guard in the first place.
+    #     Measured when it was found: `noisy_k8` held 16 of the run's 19 findings, every one of
+    #     them credited to it as a strategy property.
+    #
+    #     DERIVED FROM THE MATRIX, WHICH IS THE ONE HOME FOR THE RULE (`#126`). The matrix is
+    #     available here and already holds the truth, so nothing is read off a row that was never
+    #     asked to carry it (`#166`) and no arm has to be re-drafted to be judged correctly.
     inert_labels = set(inert)
+    no_engine = {arm["label"] for arm in vds_battery.vds_matrix()
+                 if not (arm.get("opponent_noise") or {}).get("sharp_seats", ["present"])}
     # Every strategy that ran appears, at zero if it produced nothing under an effective arm --
     # an absent key and a zero are different claims, and a reader comparing this against
     # `findings_by_strategy` needs the same key set in both.
     by_strategy_effective: dict[str, int] = collections.Counter(
         {row["label"].partition("__")[2]: 0 for row in results})
     for row in results:
-        if row["label"] in inert_labels:
+        if row["label"] in inert_labels or row["label"] in no_engine:
             continue
         by_strategy_effective[row["label"].partition("__")[2]] += len(row.get("findings", []))
     per_format_strategies: dict[str, set] = collections.defaultdict(set)
     per_format_ran: dict[str, set] = collections.defaultdict(set)
     for row in results:
         fmt, _, strategy = row["label"].partition("__")
-        if row["label"] in inert_labels or not row.get("sharp_seats", ["present"]):
+        if row["label"] in inert_labels or row["label"] in no_engine:
             continue
         per_format_ran[fmt].add(strategy)
         if row.get("findings"):
@@ -149,6 +161,15 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
         "findings_total_effective": sum(len(r.get("findings", [])) for r in results
                                         if r["label"] not in set(inert)),
         "findings_by_strategy_effective": dict(by_strategy_effective),
+        # THE NO-ENGINE ARMS, NAMED AND COUNTED RATHER THAN QUIETLY DROPPED. Their findings are
+        # real and stay in `findings_total`; what they are not is evidence about a STRATEGY, so
+        # they are off the per-strategy ledger and disclosed here instead. A reader who wants the
+        # engine's own record reads `findings_by_strategy_effective`; a reader asking what the
+        # run produced reads `findings_total`. Neither number is silent about the other.
+        "NO_ENGINE_ARMS": sorted(no_engine & {r["label"] for r in results}),
+        "no_engine_arm_count": len(no_engine & {r["label"] for r in results}),
+        "findings_in_no_engine_arms": sum(len(r.get("findings", [])) for r in results
+                                          if r["label"] in no_engine),
         "strategies_that_ran": sorted({r["label"].partition("__")[2] for r in results}),
         "STRATEGY_SPECIFIC_FINDINGS": strategy_specific,
         # THE JOIN DISCLOSURE THE FORMAT BATTERY HAS AND THIS ONE DID NOT. `resume_join` treated
