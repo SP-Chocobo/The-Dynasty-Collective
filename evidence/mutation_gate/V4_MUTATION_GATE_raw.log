@@ -2,3 +2,21 @@ reference board: 427c40010c69c32c  feasibility binds on 619 of 964 rows, fieldab
 
 test_invariant_confirmation_anchors: passes on the clean tree (74.0s)
 baseline: running the scored modules on the clean tree (a verdict is meaningless unless this is green)...
+SUITE IS ALREADY RED ON THE CLEAN TREE (711.6s) -- every mutation would score 'caught' on a failure that has nothing to do with it. Fix the tree first; no mutation is applied.
+........................................................................................................................................................................................................................................................................................................................................................................................................../home/user/The-Dynasty-Collective/test_board_renders_absence.py:94: ResourceWarning: unclosed file <_io.TextIOWrapper name='draft_board_ui.py' mode='r' encoding='utf-8'>
+  source = open("draft_board_ui.py", encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................F
+======================================================================
+FAIL: test_doc_index_is_not_stale (test_doc_index.TheIndexMatchesTheTree.test_doc_index_is_not_stale)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/test_doc_index.py", line 21, in test_doc_index_is_not_stale
+    self.assertEqual(doc_index.main(["--check"]), 0,
+AssertionError: 1 != 0 : DOC_INDEX.md is stale -- run `python3 doc_index.py`
+
+----------------------------------------------------------------------
+Ran 1407 tests in 707.859s
+
+FAILED (failures=1)
+
