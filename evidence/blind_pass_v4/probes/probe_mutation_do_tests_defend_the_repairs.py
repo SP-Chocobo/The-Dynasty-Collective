@@ -134,8 +134,9 @@ def run(modules):
 
 def restore(path):
     subprocess.run(["git", "checkout", "--", path], check=True)
-    dirty = subprocess.run(["git", "status", "--short"], capture_output=True, text=True).stdout
-    assert not dirty.strip(), f"tree not clean after restoring {path}:\n{dirty}"
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
+                           capture_output=True, text=True).stdout
+    assert not dirty.strip(), f"TRACKED FILES NOT CLEAN after restoring {path}:\n{dirty}"
 
 
 print("CONTROL: the clean tree, on the union of every module named below")
@@ -156,8 +157,8 @@ for label, path, find, repl, modules in ARMS:
     finally:
         restore(path)
     caught = verdict.startswith("FAILED")
-    print(f"[{'DEFENDED' if caught else 'UNDEFENDED'}] {label}")
-    print(f"    reverted in {path};  {' '.join(modules)}")
-    print(f"    -> {verdict}")
+    print(f"[{'DEFENDED' if caught else 'UNDEFENDED'}] {label}", flush=True)
+    print(f"    reverted in {path};  {' '.join(modules)}", flush=True)
+    print(f"    -> {verdict}", flush=True)
     if failures:
-        print(f"    -> first failures: {failures[:4]}")
+        print(f"    -> first failures: {failures[:4]}", flush=True)

@@ -714,6 +714,40 @@ mutating"). Checked rather than assumed: a fresh `git worktree` at `7984b1d` run
 is green apart from the expected failure, with two honest fixture skips (a thin-bpa trajectory
 subject and a projection-only contested row, both of which say so).
 
+### `D-F1` — `assertion_execution` really could not reach a verdict, and now can
+
+Verified by calling both forms rather than by reading the diff. `store_io.read(path, default)` takes
+a **required** `default`, so the pre-range one-argument call raised, was swallowed by the bare
+`except Exception`, and the two paths degraded silently:
+
+```
+pre-range form   store_io.read(path)      -> TypeError: read() missing 1 required
+                                            positional argument: 'default'
+repaired form    store_io.read(path, {})  -> keys ['_comment', 'silent_tests'],
+                                            silent_tests n = 14
+```
+
+So `--check` printed "this check is holding NOTHING" and returned 2 on every invocation, and
+`--write` reset `existing` to `{}` and dropped every reason already recorded. After the repair the
+record reads back with its 14 entries. (I did not run `--check` end to end — it executes the suite
+and exceeded a 2-minute budget — so the verification here is of the seam, not of the exit code.)
+
+### `D-F5` — the module-wide escape is gone, and the guard is thin but not vacuous
+
+`test_modules_gate_on_the_harness_constant_rather_than_a_literal_path` no longer skips a module for
+mentioning `CAPTURE_PATH`, and `test_battery_pricing_path.py`'s hand-written literal is now
+`rdb.CAPTURE_PATH`. Checked that the guard still has something to look at, since a zero over an
+empty population is the failure this repo names: **2** test modules' source contains
+`sleeper_capture.json` and reach the AST check (`test_241_format_axes.py`,
+`test_slot_vocabulary.py`), both mentioning it only in a docstring, so the offender list is
+legitimately empty rather than unreachable. Thin, and nothing asserts the subject count.
+
+### `run_roster_proof_capacity_cut`'s corrected citation is correct
+
+`remaining_league_picks` → `remaining_draft_capacity`: the function exists at
+`draft_room.py:1287` and does call `draftable_slots_per_team`, so the renamed citation points at
+real code.
+
 ---
 
 *(review in progress — a mutation pass over the repairs is still running; its results and the summary are appended below)*
