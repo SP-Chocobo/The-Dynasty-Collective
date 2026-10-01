@@ -109,6 +109,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/MANDATE.md`
 - `evidence/blind_pass/wave4/MY_VERIFICATION.md`
 - `evidence/blind_pass_v4/FINDINGS_V4.md`
+- `evidence/blind_pass_v4/INDEPENDENT_REVIEW_INSTRUMENTS.md`
 - `evidence/d9_replacement_equation/D9_RULING.md`
 - `evidence/design_35/PREREGISTRATION_CPRIME.md`
 - `evidence/design_35/PREREGISTRATION_VDS_READING.md`
