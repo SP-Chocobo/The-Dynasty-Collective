@@ -496,6 +496,68 @@ The exception arm does warn (see finding 1). `D-F5`'s `or "CAPTURE_PATH" in src`
 is genuinely removed, so a module that both defines a literal capture path and mentions
 `rdb.CAPTURE_PATH` is no longer skipped whole.
 
+### 12. MEDIUM — `A-F1`'s narrowed claim is true, and the wide version is still asserted in two other places, one of them owner-facing
+
+**Files / identifiers:** `draft_room`'s `availability_factor`/`health_penatly` seam comment
+(narrowed — correct), versus `test_one_fact_two_paths_one_answer`'s **module docstring** and
+`OWNER_DECISIONS_PENDING.md`'s D8 section (both still wide).
+
+**The narrowed claim is sound.** `draft_room` now says "THE TWO PATHS AGREE EXACTLY **AT A FULL
+SLATE** (`gp == SEASON_GAMES`)". Measured, the gap at `gp == SEASON_GAMES` is exactly zero for every
+priced designation, and the test method was correctly renamed and re-derived from `pu.SEASON_GAMES`
+rather than the literal `17.0`:
+
+```
+NARROWED CLAIM -- exact agreement at gp == SEASON_GAMES:
+   Doubtful   gap = +0.0000000000  HOLDS
+   IR         gap = -0.0000000000  HOLDS
+   Out        gap = -0.0000000000  HOLDS
+   PUP        gap = -0.0000000000  HOLDS
+```
+
+**But the wide version survives in two places the repair did not touch.**
+
+1. `test_one_fact_two_paths_one_answer.py`'s **module docstring**: *"THE CHECK THAT SAYS THE
+   DERIVATION IS RIGHT AND NOT MERELY TIDIER -- the two paths now agree EXACTLY"*, followed by
+   *"gp known — points cut to 13/17"*. The `13/17` is the gp=17 arm specifically. The module whose
+   own method was renamed `…_AT_A_FULL_SLATE` to scope this claim still states it unscoped twelve
+   lines above, so the module contradicts itself.
+2. `OWNER_DECISIONS_PENDING.md` (D8 section): *"**The check that says the derivation is right rather
+   than merely tidier: the two paths now agree exactly.**"* followed by a table with `13/17` and
+   *"Measured, both arms in one process: gap **0.000** at every designation and projection tested."*
+   This is an owner-facing document and `#292` says the record wins.
+
+**Input on which the wide version is false.** `gp = 16`, the value the A-F1 finding says the feed
+reports for most IR players. At 173 projected points the two paths differ by **8.27** universal-value
+points for IR and PUP, **10.18** for `Out`; at `gp = 13` the haircut path stops cutting entirely
+(`availability_factor` → 1.0) and the gap is **40.71**. In fairness, `draft_room`'s own scoped
+comment reports the worst case on the real capture as 2.25 points (Jordyn Tyson), which is a smaller
+number because real projections at those rows are smaller — the two are not in conflict; what is in
+conflict is "gap 0.000 at every designation and projection tested".
+
+**How established.** `evidence/blind_pass_v4/probes/probe_af1_two_paths_scope.py`, which reproduces
+the module's own two-path helper and sweeps `gp`. (It also shows `Doubtful` returning
+`unrecognised_designation` from `availability_factor` at every `gp` — that is `A-F4`, which
+`TRIAGE_V4` records as deliberately not repaired, so it is consistent with the record, not a new
+finding.)
+
+---
+
+### 13. LOW — the test added for the new health sentence exercises only the one cause for which it is true
+
+**File / identifier:**
+`test_the_discount_arrives_with_its_cause.test_a_designation_this_engine_does_NOT_price_says_so`
+
+The new test asserts the third branch fires with `injury_status="Questionable"`,
+`availability_basis=pu.IMMATERIAL`, `risk_adj=0.0`. `Questionable` is cause **B** —
+`HEALTH_DISCOUNT_RATE` has no rate for it — which is the only one of the three fall-through causes
+the sentence correctly describes (see finding 3). Causes C and D, where the sentence is false about
+a designation the engine prices at −0.2353, are not exercised. The sibling fix in the same file is
+the right shape — `test_a_designation_priced_by_the_PENALTY_says_the_discount_is_in_the_value` now
+supplies `risk_adj=-10.0` because, as its own new comment says, the fixture previously omitted the
+quantity the sentence is about — and the same reasoning applied one step further would have caught
+this.
+
 ---
 
 *(review in progress — further findings appended below as they are established)*
