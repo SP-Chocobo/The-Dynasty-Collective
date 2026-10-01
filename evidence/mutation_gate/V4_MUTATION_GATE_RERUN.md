@@ -123,6 +123,73 @@ upside sort at `draft_room.py:4781` (five keys) and the balanced sort at `draft_
 2-site arm. `test_invariant_confirmation_anchors` passing on the clean tree is a separate
 precondition the harness enforces itself; its result is recorded below.
 
+## Run 1 was ABORTED by the baseline arm, and I caused it
+
+**`SUITE IS ALREADY RED ON THE CLEAN TREE (532.5s)`.** The harness refused to apply a single
+mutation and returned 2. Recorded verbatim because it is one of the named findings — but it is
+a finding about *this container's run protocol*, not about the engine, and the cause was mine.
+
+The baseline failed on exactly ONE test out of 1421:
+
+```
+FAIL: test_doc_index (test_doc_index.TheIndexMatchesTheTree.test_doc_index_is_not_stale)
+  File "/home/user/The-Dynasty-Collective/test_doc_index.py", line 21, in test_doc_index_is_not_stale
+    self.assertEqual(doc_index.main(["--check"]), 0,
+AssertionError: 1 != 0 : DOC_INDEX.md is stale -- run `python3 doc_index.py`
+
+Ran 1421 tests in 528.739s
+FAILED (failures=1)
+```
+
+`doc_index.py:103` builds the index from **git-tracked** markdown:
+`TRACKED_DOCS = ["git", "ls-files", "-z", "*.md"]`. To honour "push often, as each arm reports",
+I committed `evidence/mutation_gate/V4_MUTATION_GATE_RERUN.md` *while the baseline was running*.
+That commit made the file git-tracked, which put it in the index's input set and made
+`DOC_INDEX.md` stale under the suite's own staleness check.
+
+The staleness was measured, not guessed. Regenerating the index and diffing against the
+committed copy gives exactly three changes, all of them this one file:
+
+```
+< `python3 doc_index.py` regenerates this. 239 markdown documents.
+> `python3 doc_index.py` regenerates this. 240 markdown documents.
+< | DECLARED | 43 | says what kind of document it is before making claims. |
+> | DECLARED | 44 | says what kind of document it is before making claims. |
+>  - `evidence/mutation_gate/V4_MUTATION_GATE_RERUN.md`
+```
+
+Nothing in that diff touches the engine, `draft_room.py`, or any invariant. 1420 of 1421 tests
+passed, with the 30 board-execution tests live.
+
+### Why this is worth more than the 532.5s it cost
+
+Had the same commit landed during a MUTANT arm instead of the baseline, the harness would have
+seen `rc != 0` and scored that arm **`caught`** — on a stale generated index that has nothing to
+do with the mutation. That is precisely the `#254` failure mode this harness exists to prevent,
+and the mechanism it was built around: *"the first run after the anchors module was excluded
+scored all three mutations 'caught' on a stale assertion floor ... Three verdicts, none about
+the engine, produced by a harness built specifically to stop that happening."* A stale
+`DOC_INDEX.md` is the same defect with a different generated file.
+
+**The baseline arm is what caught it**, which is the baseline doing exactly the job its own
+comment claims: *"a 'caught' verdict ... says nothing whatever unless the same run is GREEN
+without it."* The harness was right to refuse, and the instruction to push often is — applied
+naively to this harness — unsafe. The two are reconcilable, and the boundary was measured:
+
+| Action on a tracked `.md` during a run | `doc_index.py --check` |
+|---|---|
+| **Adding** a new one (what I did) | rc=1 — **stale, poisons the run** |
+| **Editing** one already tracked | rc=0 — current, safe |
+
+So run 2 is launched with both evidence files already tracked and `DOC_INDEX.md` regenerated to
+match. Verdicts are then written by *editing* those tracked files, which is safe, and no new
+`.md` is added until the run is over. Push-often is preserved without putting a verdict at risk.
+
+`python3 doc_index.py` was run to regenerate the index. That is the action the failing test
+itself prescribes, it is routine hygiene in this repo (cf. `b0919f2`, "Regenerate DOC_INDEX
+after merging the four review branches"), and it is disclosed here rather than folded in
+silently. **No engine file, no test, no fixture and no part of the harness was altered.**
+
 ## Verdict table
 
 | # | Invariant | Sites | Verdict | Runtime |
