@@ -37,6 +37,77 @@ def _arm_line(audited: dict) -> str:
             f"{audited.get('seconds', '?')}s")
 
 
+def _arm_configuration(results: list[dict]) -> dict:
+    """What the ARMS were produced under, as opposed to what this module's tables say now (A6).
+
+    `audit_trajectory` copies each trajectory's whole config onto the row as `provenance`, so a
+    noisy arm's own `top_k`, `seed` and `sharp_seats` are on the row. The report quoted
+    `vds_battery.VDS_SEED` and `vds_battery.VDS_TOP_K` instead, which are the same numbers on a
+    single-process run and a different thing entirely on a resumed one.
+
+    THE PAYLOAD IS `arms_whose_config_DISAGREES_with_the_module_tables`. A histogram of recorded
+    seeds is mildly useful; a NAMED LIST of arms produced under a strategy config this code no
+    longer has is the finding, and it is the one a resumed run needs. Empty is the healthy state.
+
+    ABSENCE, NOT AN EMPTY ANSWER (`#187`). Rows produced before that repair carry no `provenance`
+    at all, and this returns `source: "absent"` with the populations as None rather than
+    clean-looking empties. The committed 36-arm run is NOT one of those: 36 of 36 carry it, which is
+    checked rather than assumed -- the review's "0 of 36" describes an earlier report.
+    """
+    rows = [r for r in (results or []) if isinstance(r.get("provenance"), dict)]
+    if not rows:
+        return {"source": "absent", "arms_carrying_provenance": 0,
+                "seeds": None, "top_k": None, "sharp_seats": None,
+                "arms_whose_config_DISAGREES_with_the_module_tables": None}
+
+    def census(extract) -> dict[str, int]:
+        out: dict[str, int] = {}
+        for row in rows:
+            key = str(extract(row))
+            out[key] = out.get(key, 0) + 1
+        return dict(sorted(out.items()))
+
+    def noise(row, key):
+        #: "absent" rather than None, so a strategy that sets NO noise is one observed value of the
+        #: axis instead of a hole in the histogram -- the same convention the format battery's
+        #: configured census uses.
+        cfg = row["provenance"].get("opponent_noise")
+        return (cfg or {}).get(key, "absent") if isinstance(cfg, dict) else "absent"
+
+    disagrees = []
+    for row in rows:
+        declared = vds_battery.STRATEGIES.get(row.get("strategy"))
+        if declared is None:
+            # A strategy this code no longer declares AT ALL is the strongest form of the same
+            # finding, so it is reported here rather than skipped for want of something to compare.
+            disagrees.append(f"{row.get('label')}: strategy {row.get('strategy')!r} is not in "
+                             f"this code's STRATEGIES table")
+            continue
+        for key in ("mode", "upside_rule"):
+            if row["provenance"].get(key) != declared.get(key):
+                disagrees.append(f"{row.get('label')}: {key} recorded "
+                                 f"{row['provenance'].get(key)!r}, table says {declared.get(key)!r}")
+        recorded_noise = row["provenance"].get("opponent_noise")
+        if bool(recorded_noise) != bool(declared.get("opponent_noise")):
+            disagrees.append(f"{row.get('label')}: opponent_noise recorded "
+                             f"{'set' if recorded_noise else 'absent'}, table says the opposite")
+        elif isinstance(recorded_noise, dict) and isinstance(declared.get("opponent_noise"), dict):
+            for key in ("top_k", "seed"):
+                if recorded_noise.get(key) != declared["opponent_noise"].get(key):
+                    disagrees.append(
+                        f"{row.get('label')}: opponent_noise.{key} recorded "
+                        f"{recorded_noise.get(key)!r}, table says "
+                        f"{declared['opponent_noise'].get(key)!r}")
+    return {
+        "source": "arms",
+        "arms_carrying_provenance": len(rows),
+        "seeds": census(lambda r: noise(r, "seed")),
+        "top_k": census(lambda r: noise(r, "top_k")),
+        "sharp_seats": census(lambda r: noise(r, "sharp_seats")),
+        "arms_whose_config_DISAGREES_with_the_module_tables": sorted(disagrees),
+    }
+
+
 def _report(universe: dict, results: list[dict], started: float, *, complete: bool) -> dict:
     by_strategy: dict[str, int] = collections.Counter()
     by_format: dict[str, int] = collections.Counter()
@@ -156,20 +227,29 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
         "complete": complete,
         "seconds": round(time.time() - started, 1),
         "universe": universe,
-        #: THESE FOUR DESCRIBE THE CODE AT REPORT TIME, NOT THE ARMS (A6). `strategies`,
-        #: `formats`, `seed` and `top_k_swept` are read from the module's tables when the report
-        #: is written, so on a RESUMED run -- the documented way a multi-hour battery finishes --
-        #: arms produced under an older table are described by today's. Demonstrated by changing
+        #: THESE FOUR DESCRIBE THE CODE AT REPORT TIME, NOT THE ARMS (A6), and `ARM_CONFIGURATION`
+        #: below is the half that describes the arms. `strategies`, `formats`, `seed` and
+        #: `top_k_swept` are read from the module's tables when the report is written, so on a
+        #: RESUMED run -- the documented way a multi-hour battery finishes -- arms produced under an
+        #: older table were described by today's with nothing saying so. Demonstrated by changing
         #: the constants and re-reporting the identical arms: the figures moved, the arms did not.
-        #: `commits_present` is the real disclosure and is kept; the per-arm truth now also rides
-        #: on the row, in `provenance.opponent_noise`, for runs produced after that repair. The
-        #: committed 36-arm run predates it (0 of 36 rows carry `provenance`), so this is a
-        #: caveat about the NEXT resumed run rather than a defect in that one.
+        #:
+        #: KEPT UNDER THESE NAMES RATHER THAN REPLACED, because they are not wrong about what they
+        #: name: they are this code's tables, which is what a reader comparing two runs of the
+        #: battery needs. What was wrong was that no OTHER number said what the arms were produced
+        #: under. `ARM_CONFIGURATION` reads that off each row's own `provenance`, names the arms
+        #: whose recorded config disagrees with today's table, and reports its own absence for rows
+        #: that predate the repair which put it there. Measured on the committed 36-arm run: 36 of
+        #: 36 rows DO carry it, 0 disagree with these tables, 24 arms ran with no opponent noise and
+        #: the 12 noisy ones split 6 at top_k=3 and 6 at top_k=8. The review that found this stated
+        #: "0 of 36" -- true of an earlier VDS report, not of the one in evidence/batteries, and
+        #: corrected here rather than repeated.
         "strategies": {name: dict(cfg) for name, cfg in vds_battery.STRATEGIES.items()},
         "control_strategy": vds_battery.CONTROL_STRATEGY,
         "formats": dict(vds_battery.FORMATS),
         "seed": vds_battery.VDS_SEED,
         "top_k_swept": list(vds_battery.VDS_TOP_K),
+        "ARM_CONFIGURATION": _arm_configuration(results),
         "arms_run": len(results),
         "INERT_ARMS": sorted(inert),
         #: Formats whose control arm is absent from this result set, so inertness is UNDETERMINED

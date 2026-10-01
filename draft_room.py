@@ -3852,11 +3852,13 @@ def feasibility_first(scored, picks, players_db, my_roster_id, roster_positions,
     # the same degradation `player_eligible_positions` already applies, and an empty eligibility
     # set must not silently promote everybody.
     def _fills_a_hole(player_id, position) -> int:
-        info = players_db.get(str(player_id)) if players_db else None
-        eligible = player_eligible_positions(info) if info else None
-        if not eligible:
-            eligible = {position}
-        return 0 if (set(eligible) & needed_positions) else 1
+        #: THROUGH THE ONE HOME (review finding 16). This composed eligibility with a primary-bucket
+        #: fallback locally, and its comment claimed to apply "the same degradation
+        #: `player_eligible_positions` already applies" -- it applied a different one, falling back
+        #: whenever the set was EMPTY rather than whenever the RECORD was missing, which promoted a
+        #: startable-nowhere row into the hole its raw label named.
+        eligible = pu.eligible_positions_for(player_id, position, players_db)
+        return 0 if (eligible & needed_positions) else 1
 
     # `player_id` IS NOT PART OF THIS FUNCTION'S CONTRACT, which the suite established the hard
     # way: `test_feasibility_backstop` builds frames carrying `position` alone, six of its tests

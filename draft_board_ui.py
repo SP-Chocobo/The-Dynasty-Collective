@@ -409,7 +409,15 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
     # `position` remains the fallback for a snapshot written before the field existed, so a
     # stored board replays exactly as it did when it was recorded.
     def _startable_at(candidate, positions) -> bool:
-        return bool((candidate.eligible_positions or {candidate.position}) & set(positions))
+        #: `is None`, NOT falsiness (review finding 16, `#187`). The snapshot already composed this
+        #: through `player_universe.eligible_positions_for`, so an EMPTY set here is that function's
+        #: answer -- this man starts nowhere -- and `or {candidate.position}` overrode it with the
+        #: raw label, putting him back in the view for the position `#172` says not to trust. None
+        #: is the other thing entirely: a snapshot that never carried the field, where the row's own
+        #: label is all there is.
+        eligible = (candidate.eligible_positions if candidate.eligible_positions is not None
+                    else ({candidate.position} if candidate.position else frozenset()))
+        return bool(set(eligible) & set(positions))
 
     if view in FLEX_SLOT_POSITIONS:
         return [c for c in candidates if _startable_at(c, FLEX_SLOT_POSITIONS[view])]

@@ -254,6 +254,39 @@ def player_eligible_positions(info: dict) -> set[str]:
     return {primary} if primary else set()
 
 
+def eligible_positions_for(player_id, position, players_db) -> frozenset[str]:
+    """Where a BOARD ROW can be started: `player_eligible_positions` for a row the pool knows,
+    the row's own primary bucket for one it does not.
+
+    ONE HOME FOR THE COMPOSED RULE (`B-F4`/`C-F3`, review finding 16). `B-F4` and `C-F3` made
+    three surfaces ask eligibility instead of reading the raw label -- the right repair -- but each
+    wrapped this composition in its own local expression: `feasibility_first._fills_a_hole`,
+    `pick_synthesis.snapshot_eligibility`, and `draft_board_ui.filter_candidates_by_view`. Three
+    spellings of one rule is the defect those repairs were closing, one layer up (`#126`), and the
+    document's own method says to decide which reader OWNS the question and make the others call it.
+
+    AND ALL THREE GOT IT WRONG THE SAME WAY, which is what a shared home prevents. Each tested
+    `if not eligible:` / `eligible or {position}`, and an empty set reaches that branch from TWO
+    places: no record in the pool, and a record whose `fantasy_positions` contain nothing
+    startable. `player_eligible_positions`' docstring is explicit that the second is an ANSWER --
+    Sleeper saying this man starts nowhere -- and that resurrecting the raw `position` overrides it
+    with the very field `#172` says not to trust. So the fallback here is on the RECORD's absence
+    (`info is None`), never on the answer's emptiness (`#187`).
+
+    Measured on the committed capture: the population is ONE row of 6,595 -- Bradley Sowell,
+    `position: TE`, `fantasy_positions: ["OL"]` -- and `build_players_db_from_capture` filters him
+    out before any board is built, so this was latent on the universe production receives (0 of
+    6,594 rows startable nowhere). Repaired anyway, because the next capture is not this one and
+    the three sites each claimed to apply "the same degradation `player_eligible_positions`
+    already applies" while applying a different one.
+    """
+    info = (players_db or {}).get(str(player_id)) if players_db else None
+    if info is not None:
+        #: EMPTY IS THE ANSWER HERE, not a miss. Returned as-is.
+        return frozenset(player_eligible_positions(info))
+    return frozenset({position} if position else ())
+
+
 #: MANDATE 2.3: THE LEAGUE'S MISS RULE AND THE VENDOR'S MISS STATS ARE DIFFERENT VOCABULARIES.
 #: `score_projection` is a dot product over the stat keys present, so a scoring category with no
 #: matching stat key silently contributes nothing -- and the captured league scores a GENERIC

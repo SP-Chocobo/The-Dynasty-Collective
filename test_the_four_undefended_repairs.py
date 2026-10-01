@@ -57,9 +57,13 @@ class BuildSnapshotFillsEligibilityAndNotMerelyDeclaresIt(unittest.TestCase):
         names = {f.name for f in dataclasses.fields(ps.CandidateSnapshot)}
         self.assertIn("eligible_positions", names)
         default = {f.name: f.default for f in dataclasses.fields(ps.CandidateSnapshot)}
-        self.assertEqual(frozenset(), default["eligible_positions"],
-                         "the default is what a reverted producer yields; if this changes, the "
-                         "reasoning in this module needs rechecking")
+        self.assertIsNone(default["eligible_positions"],
+                          "the default is what a reverted producer yields, and it must be ABSENT "
+                          "rather than an empty set: `frozenset()` is also what the producer "
+                          "returns for a man who starts nowhere, and a consumer that cannot tell "
+                          "those apart falls back to the raw `position` for both (`#187`)")
+        self.assertNotEqual(frozenset(), default["eligible_positions"],
+                            "non-vacuity for the line above -- an empty set is a VALUE here")
 
 
 class TheDraftRoomPutsTheDraftsSeatsOnTheLeague(unittest.TestCase):

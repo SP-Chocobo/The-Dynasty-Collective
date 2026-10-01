@@ -23,6 +23,59 @@ from test_source_scan import code_text
 
 _HERE = Path(__file__).parent
 
+#: The call shapes that turn a filename into something READ. `"app.py"` reaching any of these is
+#: a disk read of the UI hull; `"app.py"` anywhere else is a label, a dispatch key or prose.
+_PATH_BUILDERS = frozenset({"with_name", "joinpath", "with_suffix",
+                            "open", "read_text", "read_bytes", "Path"})
+
+
+def offends(code: str) -> bool:
+    """Whether this module's CODE uses "app.py" to build a path it reads (`#52` phase 7.4, `D-F5`).
+
+    ONE HOME FOR THE RULE. It was spelled twice -- once in `_offends`, once inside the scan -- and
+    `_offends`'s own docstring claimed they were "the same expression the scan below uses, so this
+    cannot drift". They were two copies, which is the thing that can drift (`#126`, `#133`).
+
+    NO MODULE-WIDE ESCAPE. The rule read `(… "app.py" in code) and "ui_source" not in code`, so
+    ANY module naming `ui_source` anywhere was skipped WHOLE, including for a direct `app.py` read
+    elsewhere in the same file -- 52 of 230 test modules, against 2 named exemptions. `D-F5`
+    repaired the identical construct in the capture-path guard and its comment states the cost:
+    the one real offender was the one module the guard refused to look at, and it reported zero.
+    A planted read in `test_positional_depth_coverage.py` (which imports `ui_source`) was not
+    reported; the same plant in a module that does not mention `ui_source` was.
+
+    WHY THE SUBSTRING TEST COULD NOT SIMPLY LOSE THE ESCAPE, which is where this differs from its
+    twin. There, "a module using the constant properly has no reason to carry the filename as a
+    string literal" held. Here it does not: three modules carry `"app.py"` as a LABEL and read
+    through `ui_source` correctly -- `live_calls(tree, unit="app.py")`, `compile(..., "app.py",
+    "exec")`, and `if module == "app.py":` dispatching TO `ui_source`. Dropping the escape under a
+    substring rule would have reported all three. So the rule asks what the literal is USED FOR:
+    an operand of `/`, or an argument to a path builder. Measured over the real corpus: the three
+    label uses go clean, and the two modules that genuinely build an `app.py` path are exactly the
+    two already in `ALLOWED` -- so the allowlist still catches something (`#254`).
+
+    STILL BLIND TO: a filename assembled from pieces (`"app" + ".py"`) or read through a name this
+    file does not know. `SilentVacuityTests` is what covers the underlying property -- that a
+    guard keeps guarding after its subject moves -- and it does that behaviourally.
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            if any(isinstance(side, ast.Constant) and side.value == "app.py"
+                   for side in (node.left, node.right)):
+                return True
+        if isinstance(node, ast.Call):
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name in _PATH_BUILDERS and any(
+                    isinstance(a, ast.Constant) and a.value == "app.py"
+                    for a in list(node.args) + [k.value for k in node.keywords]):
+                return True
+    return False
+
 #: A minimal two-module UI surface: a hull plus one extracted view. `FORBIDDEN` is the kind of
 #: thing an `assertNotIn` polices -- here, a raw secret read that must never appear in the UI.
 FORBIDDEN = 'os.environ["ANTHROPIC_API_KEY"]'
@@ -326,13 +379,13 @@ class NoTestReadsAppPyDirectlyTests(unittest.TestCase):
 
     @staticmethod
     def _offends(body: str) -> bool:
-        """The widened rule, run against a synthetic module -- the same expression the scan
-        below uses, so this cannot drift away from what it is checking."""
+        """The rule, run against a synthetic module. Calls `offends` rather than restating it, so
+        the synthetic cases below and the real scan cannot diverge -- they did, and the divergence
+        was the module-wide escape living in only one of the two copies."""
         root = Path(tempfile.mkdtemp())
         path = root / "test_synthetic.py"
         path.write_text(body)
-        code = code_text(path)
-        return ('"app.py"' in code or "'app.py'" in code) and "ui_source" not in code
+        return offends(code_text(path))
 
     def test_the_widened_rule_catches_the_idiom_the_per_line_scan_missed(self):
         """The measurement behind the widening, pinned rather than left in a commit message.
@@ -395,8 +448,7 @@ class NoTestReadsAppPyDirectlyTests(unittest.TestCase):
         for path in sorted(_HERE.glob("test_*.py")):
             if path.name in self.ALLOWED:
                 continue
-            code = code_text(path)
-            if ('"app.py"' in code or "'app.py'" in code) and "ui_source" not in code:
+            if offends(code_text(path)):
                 offenders.append(path.name)
         self.assertEqual(offenders, [],
                          "read the UI surface through ui_source.text() instead -- an app.py "

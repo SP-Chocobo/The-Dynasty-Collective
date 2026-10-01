@@ -269,7 +269,14 @@ def team_count_with_basis(league: Optional[dict] = None, *, pick_order=None,
     if declared:
         return int(declared), TEAM_BASIS_DECLARED
     if picks:
-        drafting = {p.get("roster_id") for p in picks if p.get("roster_id") is not None}
+        # COERCED, LIKE THE SEATS RULE FOUR LINES UP. B-F6 made the two readers agree that a
+        # rosterless pick is `None`; they still disagreed on TYPE, because this rule alone compared
+        # raw values while the seats rule above and `draft_room.team_slots_filled` both key on
+        # `str(...)`. Sleeper's own `roster_id` is an integer and several app paths stringify it, so
+        # a history mixing `0` and `"0"` was TWO teams here and ONE roster to the census -- the same
+        # `#126` split B-F6 claims to have closed, one rule inward. Low because TEAM_BASIS_DECLARED
+        # outranks this rule whenever `total_rosters` is present, which production boards have.
+        drafting = {str(p.get("roster_id")) for p in picks if p.get("roster_id") is not None}
         if drafting:
             return len(drafting), TEAM_BASIS_PICKS
     return 1, TEAM_BASIS_FLOOR

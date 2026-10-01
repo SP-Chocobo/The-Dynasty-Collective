@@ -212,6 +212,10 @@ def _battery_report(universe: dict, results: list, started: float, *, complete: 
         "format_axes": draft_battery.format_axes_exercised(
             matrix, {r["label"] for r in results}, results=results),
         "duplicate_arms": dupes,
+        # A2: WHICH VALUATION PRODUCED THESE PICKS. `picks_by_mode` was recorded on every arm by
+        # `simulate_full_draft` and read by no report builder, so a run where half the `auto` arms
+        # never entered the upside branch published nothing saying so.
+        "valuation_mix": draft_battery.valuation_mix(results),
         "picks": sum(r["picks"] for r in results),
         "total_findings": sum(len(r["findings"]) for r in results),
         "seconds": round(time.time() - started, 1),
@@ -519,6 +523,29 @@ def main(argv: list[str] | None = None) -> int:
         only = ", ".join(report["format_axes"]["axes"][axis])
         print(f"  CONSTANT AXIS: every arm resolves {axis}={only} -- this run varies that axis "
               f"in NAME only, so it is not evidence about the {axis} branch")
+    # A3: the configured half, disclosed rather than gated -- see the decision recorded above
+    # `draft_battery.roster_shape_axes`. Printed separately from the axes above because they are
+    # different populations and one name over two denominators is `#174`.
+    for key in (report["format_axes"].get("constant_configured") or []):
+        only = ", ".join(report["format_axes"]["configured_axes"][key])
+        print(f"  CONSTANT CONFIGURATION: every arm ran {key}={only} -- disclosed, not a coverage "
+              f"hole, but this run is not evidence about any other setting of it")
+    # A2: an upside branch the arm's own round count puts out of reach is not a measured null.
+    mix = report.get("valuation_mix") or {}
+    if mix.get("source") == "arms":
+        share = mix.get("upside_share")
+        print(f"  VALUATION MIX: balanced {mix['picks']['balanced']} / upside "
+              f"{mix['picks']['upside']} picks"
+              + (f" ({share:.1%} upside)" if share is not None else " (share unknown)")
+              + f", {mix['arms_with_any_upside_pick']} of {mix['arms']} arms made any upside pick")
+        for label in mix.get("auto_arms_whose_upside_rule_is_UNREACHABLE") or []:
+            print(f"  UPSIDE UNREACHABLE: {label} runs mode=auto, but its upside rule triggers "
+                  f"after the last round it drafts -- the branch cannot fire, so this arm is not "
+                  f"evidence about the upside valuation")
+        if mix.get("arms_with_an_unknown_split"):
+            print(f"  SPLIT UNKNOWN on {len(mix['arms_with_an_unknown_split'])} arm(s) "
+                  f"(crossing rule: nothing records the effective mode per pick) -- excluded from "
+                  f"the sums above rather than counted as zero upside")
     return 1 if total_findings else 0
 
 

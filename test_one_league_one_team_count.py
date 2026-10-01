@@ -184,11 +184,46 @@ class ARosterlessPickBelongsToNoRosterTests(unittest.TestCase):
         self.assertEqual(set(filled), {"1"})
 
     def test_the_two_functions_agree_on_what_a_rosterless_pick_MEANS(self):
-        """The actual defect was not either rule; it was that they disagreed (`#126`)."""
+        """The actual defect was not either rule; it was that they disagreed (`#126`).
+
+        ASKS THE QUESTION, NOT FOR GENERAL EQUALITY. This asserted
+        `len(team_slots_filled(...)) == team_count(picks=...)`, which is not a property of the two
+        functions: the census ALSO skips a pick whose player the pool cannot resolve to an eligible
+        position, and the count does not, so the equality held on this two-pick fixture and would
+        have failed for a reason with nothing to do with rosterless picks. Measured: a roster whose
+        only pick is a player the pool does not know gives census 1 against count 2.
+        """
         picks = [{"player_id": "1", "roster_id": "1"}, {"player_id": "2", "roster_id": None}]
-        self.assertEqual(len(dr.team_slots_filled(picks, self.PLAYERS, self.ROSTER)),
-                         lc.team_count(picks=picks),
-                         "the census and the count still read the same history differently")
+        self.assertNotIn("None", dr.team_slots_filled(picks, self.PLAYERS, self.ROSTER),
+                         "the census still invents a roster for a rosterless pick")
+        self.assertEqual(1, lc.team_count(picks=picks),
+                         "the count still counts a rosterless pick as a team")
+
+    def test_a_pick_whose_PLAYER_IS_UNKNOWN_is_why_general_equality_is_not_the_property(self):
+        """The control for the test above, and the measurement that retired its old assertion.
+
+        Not a defect in either function -- the census is about slots that got FILLED and an
+        unresolvable player fills none, while the count is about who is DRAFTING and he was
+        drafted by someone. Pinned so the equality is not reinstated by someone reading the two
+        numbers as the same question."""
+        picks = [{"player_id": "1", "roster_id": "1"}, {"player_id": "9999", "roster_id": "2"}]
+        self.assertEqual(1, len(dr.team_slots_filled(picks, self.PLAYERS, self.ROSTER)))
+        self.assertEqual(2, lc.team_count(picks=picks))
+
+    def test_the_two_rules_read_a_roster_id_AS_THE_SAME_TYPE(self):
+        """The residue B-F6 left (review finding 7). `0` and `"0"` are one roster to the census
+        and were two teams to the count, because the picks rule was the only one of the three not
+        keying on `str(...)`. Sleeper hands integers; several app paths stringify."""
+        picks = [{"player_id": "1", "roster_id": 0}, {"player_id": "2", "roster_id": "0"}]
+        self.assertEqual(1, len(dr.team_slots_filled(picks, self.PLAYERS, self.ROSTER)),
+                         "non-vacuity: the census must see ONE roster for this history")
+        self.assertEqual(1, lc.team_count(picks=picks),
+                         "the picks rule counts `0` and `\"0\"` as two teams")
+
+    def test_the_seats_rule_was_ALREADY_type_insensitive(self):
+        """Why the repair went in the picks rule rather than anywhere else: the authority it was
+        supposed to match already behaved this way, in the same function."""
+        self.assertEqual(1, lc.team_count(pick_order=[0, "0"]))
 
     def test_remaining_starter_demand_no_longer_raises(self):
         """End to end, because the consequence was a crash and not a discrepancy."""

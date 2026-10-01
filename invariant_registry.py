@@ -40,6 +40,7 @@ entries that would rot first are the ones added for completeness.
 """
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 from typing import Callable
 
@@ -196,6 +197,25 @@ def _take_model_consumers() -> list[str]:
     A THIRD consumer is the event to catch. Each one either goes through this model or
     reimplements it, and the second took years to notice because the model's own docstring
     already claimed to be its only home.
+
+    COUNTS THE RAW SHAPE AS WELL AS THE MODEL, because the population above says "call sites of
+    the take model" and counting only the conforming entry points under-counts that (`#133`):
+    a reimplementation calls `_take_weight` and normalises it some other way -- which is exactly
+    what the consumer `#206` found had been doing -- and a census over the conforming names alone
+    does not move when one appears. `_take_weight` sites are reported with a `raw:` prefix so the
+    two kinds cannot be read as one number (`#245`). Measured: 2, and both are the normaliser's
+    own halves -- one inside `_take_probability` where the division happens, one inside the mass
+    function that produces the denominator it divides by. A THIRD is the event to catch.
+
+    AN UNNORMALISED CALL IS REPORTED AS A BREACH, not as a member. `_take_probability` returns a
+    WEIGHT rather than a probability when `total_weight` is omitted -- its own docstring says
+    "nothing should call this without one" -- so a call with fewer than three arguments and no
+    `total_weight` keyword is the 23.49-mass defect reappearing, and it is prefixed `UNNORMALISED:`
+    so it reads as a finding in the census list rather than as one more site. Measured: 0.
+
+    WHAT IT STILL CANNOT SEE: a consumer that reimplements the rank curve from scratch, touching
+    neither name. `test_draft_strategy.PositionalForfeitsTests` pins the BEHAVIOUR (the takes sum
+    to the pick count on a fully priced board), and that is what covers it; this counts the wiring.
     """
     import ast
     import pathlib
@@ -213,7 +233,12 @@ def _take_model_consumers() -> list[str]:
                 continue
             func = node.func
             name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
-            if name in names:
+            if name == "_take_weight":
+                out.append(f"raw:{path.name}:{node.lineno}")
+            elif name == "_take_probability" and len(node.args) < 3 and not any(
+                    k.arg == "total_weight" for k in node.keywords):
+                out.append(f"UNNORMALISED:{path.name}:{node.lineno}")
+            elif name in names:
                 out.append(f"{path.name}:{node.lineno}:{name}")
     return sorted(out)
 
@@ -253,6 +278,41 @@ def _active_multi_eligible_players() -> list[str]:
     return sorted(out)
 
 
+@functools.lru_cache(maxsize=4)
+def _the_one_homes_span() -> tuple[int, int]:
+    """`_merge_across_eligibility`'s own line span in `draft_room.py`, or `(0, -1)` if unreadable.
+
+    CACHED because the enumerator below asks this once per `merge_player` call site and the
+    registry guard runs the enumerator on every invocation -- re-parsing a 6,000-line module nine
+    times to answer one question is not the "cheap and deterministic" this file requires of its
+    enumerators. Derived from the AST rather than a line range written down here, for the usual
+    reason: a number copied beside the code it describes is a second home for it (`#126`).
+    """
+    import ast
+    import pathlib
+    try:
+        tree = ast.parse(pathlib.Path("draft_room.py").read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError, OSError):
+        return (0, -1)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_merge_across_eligibility":
+            return (node.lineno, node.end_lineno or node.lineno)
+    return (0, -1)
+
+
+def _inside_the_one_home(path, lineno: int) -> bool:
+    """Whether this call sits inside `_merge_across_eligibility`'s own body.
+
+    The two `merge_player` calls in there are the one home DOING its job, so counting them as
+    bypasses of itself would make the census report its own compliance as a breach.
+    """
+    import pathlib
+    if pathlib.Path(path).name != "draft_room.py":
+        return False
+    start, end = _the_one_homes_span()
+    return start <= lineno <= end
+
+
 def _vendor_record_resolutions() -> list[str]:
     """Call sites of `_merge_across_eligibility` -- every place a player is resolved onto a
     vendor record, and therefore every place that has to decide what a CONTESTED result means.
@@ -262,6 +322,30 @@ def _vendor_record_resolutions() -> list[str]:
     back to the merger and got the price anyway, and the contest itself evaporated as soon as
     either player was drafted, because it was counted over available rows. A fourth resolution
     site is the event to catch -- each one either honours the refusal or quietly reopens it.
+
+    COUNTS THE DIRECT `merge_player` CALLS TOO, prefixed `direct:`, because the population above
+    says "sites that resolve a player onto a vendor record" and the conforming name was only ever
+    one route to that (`#133`). The whole defect this invariant exists for WAS a direct call, so a
+    census blind to them could not have moved when it appeared. Judged, 7 of them, none a live
+    breach -- but each is a site that would have to decide, so each is counted:
+
+      * `data_merger.py` x2 -- inside the merger itself, the implementation the rest call.
+      * `app.py` x2, the trade pad -- free text with no position hint at all, so there is no
+        eligible set to widen across and the one home could not be used even in principle.
+      * `app.py` x2, the free-agent table -- Sleeper rows carrying a single `position`.
+      * `app.py` x1, `positional_depth` -- the roster depth chart.
+
+    THE DEPTH CHART IS A RECORDED DECISION, NOT AN OVERSIGHT (2026-10-01). It resolves on the
+    row's primary bucket, so a two-way player is priced only at his first-listed position, where
+    the board prices him across every position he can be started at (`#172`). Left as it is, for a
+    reason that is about the question rather than the effort: that cell means "the value of this
+    team's DB room", and pricing it from a man's WIDE RECEIVER row would answer a different
+    question than the one the cell asks. Blast radius if the other reading is preferred: the
+    committed capture has 178 multi-position players, 39 resolving to a vendor row, and exactly
+    ONE who gains a match from widening -- Travis Hunter, whose trade value is therefore absent
+    from one display cell. Nothing says anything untrue; a cell shows no number where one could
+    be argued for. OVERTURNABLE: if the owner reads the cell as the man's value rather than the
+    room's, the repair is to resolve through `_merge_across_eligibility` here too.
     """
     import ast
     import pathlib
@@ -280,6 +364,8 @@ def _vendor_record_resolutions() -> list[str]:
             name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
             if name == "_merge_across_eligibility":
                 out.append(f"{path.name}:{node.lineno}")
+            elif name == "merge_player" and not _inside_the_one_home(path, node.lineno):
+                out.append(f"direct:{path.name}:{node.lineno}")
     return sorted(out)
 
 
@@ -472,12 +558,17 @@ REGISTRY: tuple[Invariant, ...] = (
         claim="An opponent makes ONE pick, so their take probabilities are mutually exclusive "
               "and normalise to 1.0 across their board; summed over positions and intervening "
               "picks, expected_taken cannot exceed the pick count.",
-        population="Call sites of the take model. `#206` normalised it and converted ONE of two "
-                   "consumers; the other summed the raw table over a top-5 window with a "
-                   "per-position cap, and returned 22.80 takes from 20 picks. A third consumer "
-                   "either goes through this model or quietly reimplements it.",
+        population="Call sites of the take model, AND of the raw shape underneath it. `#206` "
+                   "normalised the model and converted ONE of two consumers; the other summed the "
+                   "raw table over a top-5 window with a per-position cap, and returned 22.80 "
+                   "takes from 20 picks. A third consumer either goes through this model or "
+                   "quietly reimplements it -- and a reimplementation calls `_take_weight`, not "
+                   "the model, so counting only the conforming names could not have moved when "
+                   "the second consumer appeared. The 6 are 4 model call sites plus the 2 halves "
+                   "of the normaliser itself; `raw:` and `UNNORMALISED:` prefixes keep the kinds "
+                   "from reading as one number.",
         members=_take_model_consumers,
-        census=4,
+        census=6,
         pinned_by=(
             "test_draft_strategy.PositionalForfeitsTests"
             ".test_expected_taken_cannot_exceed_the_picks_available_to_take_them",
@@ -493,11 +584,15 @@ REGISTRY: tuple[Invariant, ...] = (
               "contest is a property of WHO THEY ARE, so it is counted over the identified "
               "universe rather than the available subset, and the refusal is recorded so it can "
               "propagate past the frame it was made on.",
-        population="Sites that resolve a player onto a vendor record. Each must decide what a "
-                   "contested result means; the roster path decided differently from the pool "
-                   "and handed a drafted player the very number the board refused him.",
+        population="Sites that resolve a player onto a vendor record, BY EITHER ROUTE. Each must "
+                   "decide what a contested result means; the roster path decided differently "
+                   "from the pool and handed a drafted player the very number the board refused "
+                   "him -- and it did that through a DIRECT `merge_player` call, which a census "
+                   "over the conforming name alone could not see. The 10 are 3 calls to the one "
+                   "home plus 7 direct resolutions, each judged in the enumerator's own "
+                   "docstring; none is a live breach and one is a recorded decision.",
         members=_vendor_record_resolutions,
-        census=3,
+        census=10,
         pinned_by=(
             "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
             ".test_the_contest_survives_one_of_the_pair_being_DRAFTED",

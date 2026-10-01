@@ -162,6 +162,7 @@ import draft_room as dr
 import draft_strategy as ds
 import league_config as lc
 import lineup_optimizer as lo
+import player_universe as pu
 from content_hash import fingerprint
 from data_merger import DataMerger, name_key, normalize_name
 
@@ -1643,10 +1644,19 @@ class CandidateSnapshot:
     #: him with LB slots in the assignment. `#174`'s exact shape: the number crossed, its
     #: companion did not.
     #:
-    #: Defaulted to empty rather than required, so every existing construction site and every
+    #: Defaulted to ABSENT rather than required, so every existing construction site and every
     #: stored board written before this field keep working; consumers fall back to `position`,
     #: which is what they did before this existed.
-    eligible_positions: frozenset = frozenset()
+    #:
+    #: `None`, NOT `frozenset()` (review finding 16, `#187`). The default was an empty set for the
+    #: compatibility reason above, and that made the default indistinguishable from the PRODUCER's
+    #: empty answer -- `player_eligible_positions` returning nothing for a man Sleeper says starts
+    #: nowhere. One of those means "nobody filled this in, read the label"; the other means "the
+    #: label is wrong, do not read it". A consumer handed `frozenset()` cannot tell them apart, so
+    #: the view filter's fallback had to fire on both, which resurrected the raw `position` in
+    #: exactly the case `#172` exists to prevent. The compatibility intent is unchanged and better
+    #: served: an older stored board carries no value, which is now sayable.
+    eligible_positions: Optional[frozenset] = None
     #: MANDATE 2.5: INJURY STATUS NEVER CROSSED THIS BOUNDARY, while the DISCOUNT IT CAUSES DID.
     #: `risk_adj` is carried above, and part of what it is made of is `availability_factor`'s cut
     #: for a designation Sleeper reported. So a chair received the penalty and had no way to see
@@ -1824,10 +1834,14 @@ def snapshot_eligibility(row: dict, players_db: Optional[dict]) -> frozenset:
     THE FALLBACK IS THE ROW'S OWN LABEL AND NOTHING ELSE. A frame may carry `position` without a
     `player_id` the pool knows; that row is placed on its primary bucket rather than dropped, and
     an empty eligibility would silently remove it from every view.
+
+    THE COMPOSITION LIVES IN `player_universe.eligible_positions_for` AND NOT HERE (review finding
+    16). This was one of three local spellings of it, and all three fell back on an EMPTY set
+    rather than on a MISSING RECORD -- which are different things (`#187`), and the difference is
+    exactly what `player_eligible_positions` refuses to blur. This function stays as the snapshot's
+    named entry point, because `R19` is why it is at module scope at all.
     """
-    info = (players_db or {}).get(str(row.get("player_id")))
-    eligible = dr.player_eligible_positions(info) if info else None
-    return frozenset(eligible or ({row["position"]} if row.get("position") else ()))
+    return pu.eligible_positions_for(row.get("player_id"), row.get("position"), players_db)
 
 
 def build_snapshot(

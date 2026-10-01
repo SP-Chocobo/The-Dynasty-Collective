@@ -925,9 +925,22 @@ _FINGERPRINT_EXCLUDES = frozenset({"label", "seconds", "produced_at_commit", "ca
 #: on all 53. `#241`'s lesson -- "an axis that fails to vary is also a coverage hole" -- is
 #: therefore enforced on the league half of the matrix and not on the configured half.
 #:
-#: Stated rather than widened, because widening it means deciding which provenance keys are AXES
-#: and which are incidental, and that is a definition this battery does not have yet. An empty
-#: `constant_axes` means "no advertised LEAGUE axis is inert", never "nothing is inert".
+#: WIDENED, AND THE DEFINITION THAT BLOCKED IT WAS NOT NEEDED (A3, decided 2026-10-01). The reason
+#: given for stating this rather than closing it was that widening means "deciding which provenance
+#: keys are AXES and which are incidental". That decision dissolves once the two populations are
+#: reported SEPARATELY instead of merged: `constant_axes` keeps ranging over the advertised LEAGUE
+#: axes and keeps gating through `UNCOVERED_AXES`, and `configured_axes` / `constant_configured`
+#: report the per-arm configuration as a DISCLOSURE. No key has to be called an axis or an
+#: incidental for both numbers to be true, and merging them would have been the `#174` error --
+#: one name over two denominators.
+#:
+#: CONFIGURED CONSTANTS ARE DISCLOSED, NOT GATED, and that is the substantive decision here. A
+#: constant league axis is a coverage hole: the matrix advertised a dimension it did not cross. A
+#: constant configured key is often the point -- one `seed` across every arm is what makes the run
+#: reproducible -- so failing on it would turn a register of coverage holes into a register of
+#: deliberate settings. What was actually wrong was silence: the 53-arm run published
+#: `constant_axes: []` and said NOTHING about `upside_rule` being `round` on all 53 arms or
+#: `opponent_noise` being absent on all 53. It now says both, and a reader can judge them.
 def roster_shape_axes(league: dict) -> dict:
     """The ROSTER-SHAPE dimensions of a league, derived from its own `roster_positions`.
 
@@ -1084,6 +1097,112 @@ def format_axes_exercised(matrix: list[dict], labels=None, results=None) -> dict
         # would describe, and quoting its numbers as coverage of today's matrix is the defect.
         "arms_whose_league_changed_under_the_same_label": drifted,
         "axes_source": ("arms" if recorded else "matrix"),
+        # THE CONFIGURED HALF OF THE MATRIX (A3). Everything above is derived from each arm's
+        # LEAGUE; these two are derived from each arm's own `provenance`, which is the whole config
+        # `audit_trajectory` copies onto the row. Reported under names that say which is which, and
+        # NOT gated through `UNCOVERED_AXES` -- see the decision recorded above `roster_shape_axes`.
+        **_configured_axis_census(results, labels),
+    }
+
+
+def _configured_axis_census(results, labels) -> dict:
+    """`{configured_axes, constant_configured, configured_source}` over the arms' own provenance.
+
+    ABSENCE IS SAYABLE (`#187`). An older report whose arms carry no `provenance` -- the committed
+    VDS run is exactly that, 0 of 36 rows -- gets `None` for both populations and
+    `configured_source: "absent"`, never an empty dict that reads as "nothing is constant". The
+    first version of this returned `{}` and would have published a clean-looking disclosure over a
+    report it could not see into.
+
+    A KEY MISSING FROM AN ARM IS A VALUE, recorded as the string "absent". That is how
+    `opponent_noise` is constant across all 53 arms of the format battery: not one of them sets it,
+    so the axis has exactly one observed value and saying "no value" would lose the finding.
+    """
+    rows = [r for r in (results or [])
+            if labels is None or r.get("label") in labels]
+    with_provenance = [r for r in rows if isinstance(r.get("provenance"), dict)]
+    if not with_provenance:
+        #: THE SAME KEYS EITHER WAY. A report whose shape depends on what it found makes every
+        #: consumer write `.get()` and guess what a missing key meant; the values carry the
+        #: absence, the schema does not.
+        return {"configured_axes": None, "constant_configured": None,
+                "configured_source": "absent", "arms_carrying_provenance": 0}
+    keys = sorted({k for r in with_provenance for k in r["provenance"]})
+    census: dict[str, dict[str, int]] = {}
+    for key in keys:
+        seen: dict[str, int] = {}
+        for r in with_provenance:
+            # str() for the same reason the league half does it: JSON object keys are strings, and
+            # a dict keyed half by bool and half by str sorts unstably.
+            value = str(r["provenance"].get(key, "absent")) if key in r["provenance"] else "absent"
+            seen[value] = seen.get(value, 0) + 1
+        census[key] = dict(sorted(seen.items()))
+    return {
+        "configured_axes": census,
+        # Same single-arm rule as `constant_axes`: with one arm everything is trivially constant
+        # and saying so is noise rather than news.
+        "constant_configured": (sorted(k for k, v in census.items() if len(v) == 1)
+                                if len(with_provenance) > 1 else []),
+        "configured_source": "arms",
+        "arms_carrying_provenance": len(with_provenance),
+    }
+
+
+def valuation_mix(results: list[dict]) -> dict:
+    """Which VALUATION actually produced this run's picks, and which arms never reached upside.
+
+    A FLAG NOBODY CHECKS IS A COMMENT (A2). `simulate_full_draft` records `picks_by_mode` on every
+    arm for a stated reason -- *"mode='auto' is not one valuation: compute_draft_board's upside
+    branch zeroes every team-specific term, so a trajectory can be half roster-aware and half
+    roster-blind with nothing in the record saying so"* -- and no report builder read it, nothing
+    printed it, and nothing asserted it. Measured on the committed 53-arm run: balanced 8,664 picks
+    against upside 672 (7.2%), with 18 of 53 arms making any upside pick at all, and 17 of the 34
+    `auto` arms -- the SHIPPED default -- making none.
+
+    AND THE REASON ALL SEVENTEEN MADE NONE IS STRUCTURAL, so it is derived here rather than left to
+    a reader: the draft is shorter than the rule's trigger. `upside_from_round` is 15 and those arms
+    draft 14 rounds (8 for `12T_ppr_SHORT_DRAFT`), so the round-triggered branch is UNREACHABLE, not
+    merely unused. `vds_battery.FORMATS` already states this property for one arm; it holds for every
+    14-round arm in the format matrix, which is half the `auto` population.
+
+    UNKNOWN IS ITS OWN BUCKET (`#187`). `_picks_by_mode` returns None under the crossing rule,
+    because nothing records the effective mode per pick and a plausible number would be a guess.
+    Those arms count in `arms_with_an_unknown_split` and are excluded from the pick sums rather than
+    read as zero -- the alternative being a 0% upside share that means "we did not measure".
+    """
+    rows = [r for r in (results or []) if isinstance(r.get("provenance"), dict)]
+    if not rows:
+        return {"source": "absent", "picks": None, "arms": None}
+    splits = {r["label"]: r["provenance"].get("picks_by_mode") for r in rows}
+    known = {label: v for label, v in splits.items() if isinstance(v, dict)}
+    picks = {"balanced": sum(v.get("balanced", 0) for v in known.values()),
+             "upside": sum(v.get("upside", 0) for v in known.values())}
+    total = picks["balanced"] + picks["upside"]
+    unreachable = sorted(
+        r["label"] for r in rows
+        if r["provenance"].get("mode") == "auto"
+        and (splits.get(r["label"]) or {}).get("upside") == 0
+        # THE RULE'S OWN TRIGGER AGAINST THE ARM'S OWN ROUND COUNT, both off the row. Not a
+        # constant quoted from this module: the arm records both, which is the point of provenance.
+        and (r["provenance"].get("upside_from_round") or 0)
+            > int((r.get("format_axes") or {}).get("draftable_rounds") or 0) > 0)
+    return {
+        "source": "arms",
+        "arms": len(rows),
+        "picks": picks,
+        # The share the artifact's reader actually wants, over the arms that KNOW their split.
+        "upside_share": (round(picks["upside"] / total, 4) if total else None),
+        "arms_with_any_upside_pick": sum(1 for v in known.values() if v.get("upside", 0) > 0),
+        "arms_with_an_unknown_split": sorted(label for label, v in splits.items()
+                                             if not isinstance(v, dict)),
+        "auto_arms": sum(1 for r in rows if r["provenance"].get("mode") == "auto"),
+        "auto_arms_that_never_entered_upside": sorted(
+            r["label"] for r in rows if r["provenance"].get("mode") == "auto"
+            and (splits.get(r["label"]) or {}).get("upside") == 0),
+        # NAMED, because "never fired" and "could not fire" are different findings. An auto arm
+        # that merely happened to make no upside pick is a measurement; one whose trigger round is
+        # past the end of its draft is a configuration that cannot produce the branch at all.
+        "auto_arms_whose_upside_rule_is_UNREACHABLE": unreachable,
     }
 
 
