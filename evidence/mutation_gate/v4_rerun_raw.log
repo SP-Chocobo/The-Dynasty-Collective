@@ -1,0 +1,15 @@
+reference board: 427c40010c69c32c  feasibility binds on 619 of 964 rows, fieldability on 131
+  branch digests: 9f5cc3af014e8e9a 427c40010c69c32c
+
+test_invariant_confirmation_anchors: passes on the clean tree (54.0s)
+baseline: running the scored modules on the clean tree (a verdict is meaningless unless this is green)...
+baseline: green (1351.0s)
+
+feasibility_first never binds: caught  (437.4s, 2 site(s) mutated)
+board order ignores feasibility: caught  (440.6s, 1 site(s) mutated)
+board order ignores fieldability: caught  (440.5s, 1 site(s) mutated)
+upside board order ignores feasibility: caught  (438.9s, 1 site(s) mutated)
+upside board order ignores fieldability: caught  (443.7s, 1 site(s) mutated)
+
+sources restored cleanly: yes
+-> evidence/invariant_confirmation.json
