@@ -1,0 +1,17 @@
+gate starting at 12:57:16 on 740482f
+reference board (balanced): 9f5cc3af014e8e9a  feasibility binds on 619 of 964 rows, fieldability on 131
+  branch digests: 9f5cc3af014e8e9a 427c40010c69c32c
+
+test_invariant_confirmation_anchors: passes on the clean tree (61.4s)
+baseline: running the scored modules on the clean tree (a verdict is meaningless unless this is green)...
+baseline: green (1573.9s)
+
+feasibility_first never binds: caught  (509.4s, 2 site(s) mutated)
+board order ignores feasibility: caught  (496.5s, 1 site(s) mutated)
+board order ignores fieldability: caught  (488.0s, 1 site(s) mutated)
+upside board order ignores feasibility: caught  (494.2s, 1 site(s) mutated)
+upside board order ignores fieldability: caught  (500.5s, 1 site(s) mutated)
+
+sources restored cleanly: yes
+-> evidence/invariant_confirmation.json
+GATE rc=0

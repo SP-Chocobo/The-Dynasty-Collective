@@ -137,6 +137,19 @@ errors had one shape — reasoning about a term from its own prose instead of it
   empty. Both upside arms — the two that were inert for their whole prior existence — cleared a
   preflight whose two branch digests differ (`9f5cc3af014e8e9a` balanced, `427c40010c69c32c`
   upside) and were then caught.
+
+  **AND THAT VERDICT WAS SUPERSEDED IN TURN.** The production-hardening pass changed the engine
+  again, so `7e54821` became another verdict about code that no longer exists. The gate was re-run
+  a third time, on the tree this record freezes: anchors precondition green in 61.4s, **baseline
+  green in 1,573.9s**, and all five arms caught in 509.4s, 496.5s, 488.0s, 494.2s and 500.5s.
+  `sources restored cleanly: yes`. The fixture binds on 619 of 964 rows (feasibility) and 131
+  (fieldability), and the two branch digests still differ, so neither upside arm could read inert.
+
+  **THREE FURTHER ARMS COVER WHAT THIS HARNESS STRUCTURALLY CANNOT.** The hardening pass changed
+  behaviour in three places, and none of them is a board invariant, so all three would have read
+  `MUTATION IS INERT` here — see the explanation at the end of this section. They are scored by
+  `evidence/mutation_gate/behaviour_arms.py` and all three are caught. **The tree therefore stands
+  at 8 of 8 mutation arms caught, 0 survived, 0 inconclusive.**
 * **`A-F1`'s two paths still diverge below a full slate**, by design, up to 2.25 points measured.
   What is pinned is the direction and the bound.
 * **`depth_exposure` does not price contingency for a demand-exhausted position** — 0 of 703 such
@@ -148,44 +161,124 @@ errors had one shape — reasoning about a term from its own prose instead of it
   (fingerprint memo ~20.7%, pool memo ~7%). A speed change during a freeze is the thing this
   process exists to prevent, so it is recorded and left.
 
-### Open instrument defects, each with its measured consequence
+### Instrument defects found by the independent reviews — repaired
 
-Found by the independent reviews, reproduced here, and NOT repaired — stated instead, because
-none of them currently makes the app or an artifact say something untrue:
+Every item the reviews raised against the instruments is closed in code, not stated. The owner's
+instruction was that this build be as close to production as it can be, so "latent, nothing says
+anything untrue today" stopped being a sufficient disposition.
 
-* **`assertion_execution --check` cannot tell 359 measurements from zero.** It returns the same
-  green line either way. Its sibling `assertion_floors` closed this exact hole and documented it.
-* **`invariant_registry` has three more enumerators with the inverted shape** found at I1
-  (`_take_model_consumers`, `_vendor_record_resolutions`, and the figure census now repaired).
-  Each counts call sites of the CONFORMING function, so a reimplementation moves no census.
-  `_surfaces_consulting_the_withholding_policy` states that limit in its own docstring and is the
-  model the others should follow.
-* **`test_ui_source`'s app.py-read guard carries a module-wide escape** that `D-F5`'s repair
-  removed from its twin — 52 of 230 modules exempted whole. Latent: no live offender today.
-* **`prose_names` can still be fooled at block scope on four quotations**, all in probe and test
-  files. The markdown corpus is clean at paragraph scope (75 of 75 shielded in their own
-  paragraph). The summary line that invited a much larger claim is repaired.
-* **`constant_axes` sees only league-derived axes** (A3) and **the VDS report's `seed`,
-  `top_k_swept`, `strategies` and `formats` describe the code at report time, not the arms** (A6).
-  Both scoped in prose at the point of use; neither is false about the committed runs.
-* **`invariant_confirmation`'s summary line prints the UPSIDE digest under the label "reference
-  board".** The loop variables `_digest`, `feas`, `total` and `unfield` leak from the
-  branch-checking loop, so the line beneath it shows the last iteration's values. The censuses are
-  identical on both branches by construction, so no NUMBER is wrong -- only the label. Found by
-  the gate re-run itself, and deliberately not repaired: fixing it would edit the harness that had
-  just certified this tree, and the whole reason that re-run exists is that a gate must describe
-  the code being frozen.
-* **`picks_by_mode` is recorded on every arm and read by nothing**, and half the `auto` arms never
-  entered the upside branch at all (A2).
+* **`assertion_execution --check` could not tell 359 measurements from zero** — proved by making
+  `pandas` unimportable, which errors every test, which empties the silent list, which read as a
+  clean pass. Now: errored tests are reported before the comparison (the module docstring always
+  promised "the error is the finding"); `--write` records the swept population and `--check` fails
+  a full sweep that runs fewer tests than the record was written over; the success line prints the
+  RECORD's size where it printed this run's hit count under the word "known"; the damaged-record
+  path reads through `store_io.read_state`, because `read` is fail-soft and the `try/except` that
+  stood there could not fire; and `--write` refuses a partial sweep, which would have written a
+  smaller record and called it a correction.
+* **`prose_names.misquoted_constants` was shielded at BLOCK scope** where its neighbour had moved
+  to paragraph scope, so one history marker anywhere in a long docstring exempted every quotation
+  in it. Now paragraph-scoped, and the walk has ONE home that `misquoted_constants`, the census and
+  the mutation test's oracle all read — the oracle re-derived it, disagreed by four quotations, and
+  reported the repair as a regression. Measured: 58 quotations compared where 54 were, none wrong.
+* **The eligibility repair had no test of its own, and that was found by asking what the mutation
+  gate could catch.** The composed rule was verified by hand against the real row and by reading the
+  three call sites; neither is a test, and neither runs again. Eleven tests now cover it — seven on
+  the producer side (`test_one_eligibility_reader`) and four on the consumer side
+  (`test_one_eligibility_vocabulary_everywhere`), including the pair that IS the repair: an absent
+  field replays on its label, an empty answer appears in no view. The gap existed because the
+  repair's three former call sites had each re-expressed the rule and each got it wrong the same
+  way, which is the kind of agreement an untested rule produces.
+* **Two `invariant_registry` enumerators counted only the CONFORMING function**, so a
+  reimplementation moved no census — against population texts that say "call sites of the take
+  model" and "sites that resolve a player onto a vendor record". Both now count what their own text
+  claims, with the two kinds prefixed so they cannot be read as one number: the take model reports
+  its raw-shape consumers and flags any unnormalised call, and the vendor census reports the direct
+  `merge_player` resolutions with a verdict on each.
+* **`test_ui_source`'s guard exempted 52 of 230 modules whole** — any module naming `ui_source`
+  anywhere, which is the construct `D-F5` removed from its twin. The escape is gone. It could not
+  simply be deleted, because three modules carry `"app.py"` as a label or a dispatch key and read
+  through `ui_source` correctly, so the rule now asks what the literal is USED FOR: an operand of
+  `/`, or an argument to a path builder. The rule also had two spellings claiming to be one.
+* **`constant_axes` was blind to the configured half of the matrix** (A3). The definition said to
+  be missing — which provenance keys are axes — was not needed: the two populations are reported
+  separately, so no key has to be called an axis for both numbers to be true. Configured constants
+  are DISCLOSED, not gated, because one `seed` across every arm is the point of a reproducible run,
+  while a constant league axis is a coverage hole. The 53-arm run published `constant_axes: []` and
+  said nothing about `upside_rule=round` on all 53 arms; it now says it.
+* **The VDS report's `seed`, `top_k_swept`, `strategies` and `formats` described the code at report
+  time** (A6). They keep those names — they are this code's tables, which is what comparing two runs
+  needs — and `ARM_CONFIGURATION` now reads each arm's own `provenance`, naming the arms whose
+  recorded config disagrees with today's tables. That named list is the payload, and a resumed run
+  is where it matters. Measured on the committed 36-arm run: 36 of 36 arms carry `provenance`, 0
+  disagree, 24 ran with no opponent noise and the 12 noisy ones split 6/6 across `top_k`. The review
+  reported "0 of 36" — true of an earlier VDS report, not of the one this freeze rests on, and
+  corrected rather than repeated.
+* **`picks_by_mode` was recorded on every arm and read by nothing** (A2), while half the `auto`
+  arms — the shipped default — never entered the upside branch. The report now carries
+  `valuation_mix`, and it separates "never fired" from "could not fire": an arm whose upside rule
+  triggers after the last round it drafts is named as UNREACHABLE, derived from the arm's own
+  recorded trigger against its own round count. Arms whose split is unknown under the crossing rule
+  are their own bucket, not zero upside.
+* **`invariant_confirmation` printed the UPSIDE digest under the label "reference board"** — loop
+  variables leaking from the branch loop. Repaired. It was deliberately left alone last cycle
+  because fixing it would edit the harness that had just certified the tree; the gate is being
+  re-run against these repairs, so that reason has expired.
 
-### Repairs this cycle that are still only partly done
+### Repairs from earlier this cycle, now finished
 
-* **`B-F6`** — the two readers agree a rosterless pick is `None`, and disagree on TYPE:
-  `team_count`'s picks rule does not coerce `roster_id` while its seats rule and
-  `team_slots_filled` both do, so `0` and `"0"` are two teams to one and one roster to the other.
-* **`B-F4`/`C-F3`** — eligibility is now asked on both sides, and the composed rule is spelled at
-  three sites, all three added by that repair. One of them is now hoisted and named
-  (`snapshot_eligibility`); the other two still re-express it locally.
+* **`B-F6`** — the two readers agreed a rosterless pick is `None` and disagreed on TYPE.
+  `team_count`'s picks rule now coerces `roster_id` the way its own seats rule four lines up and
+  `team_slots_filled` always did, so `0` and `"0"` are one team rather than two. Its agreement test
+  asserted `len(census) == count`, which is not a property of the two functions — the census also
+  skips a pick whose player the pool cannot resolve — so it has been replaced by tests that ask the
+  question, plus the control that measures why general equality is the wrong assertion.
+* **`B-F4`/`C-F3`** — the composed rule "eligibility, with the primary bucket as a fallback" was
+  spelled at three sites, all three added by that repair, and all three fell back on an EMPTY SET
+  where `player_eligible_positions` is explicit that empty is an ANSWER: Sleeper saying this man
+  starts nowhere. One home now owns it (`player_universe.eligible_positions_for`), falling back on
+  the RECORD's absence and never on the answer's emptiness. The snapshot field's default moved from
+  `frozenset()` to `None` for the same reason — an empty default was indistinguishable from the
+  producer's empty answer, which is what forced the view filter to resurrect the raw `position` for
+  both. Population on the committed capture: one row of 6,595, filtered out before any board is
+  built, so this was latent; the next capture is not this one.
+
+### Decisions recorded in the course of these repairs
+
+Each is written down at the point of use, and each is the owner's to overturn.
+
+* **The roster depth chart stays on the primary bucket.** Widening the vendor census surfaced seven
+  direct `merge_player` sites. Six need no change (two are the merger's own internals, two are free
+  text with no position to widen across, two are single-position Sleeper rows). The seventh,
+  `app.py`'s `positional_depth`, prices a two-way player at his first-listed position only where
+  the board prices him across all of them. Left as it is because of what the cell ASKS: it means
+  "the value of this team's DB room", and pricing it from a man's wide receiver row answers a
+  different question. Blast radius if the other reading is preferred: one player on the committed
+  capture (Travis Hunter), one display cell with no number in it, nothing untrue.
+* **Configured constants are disclosed, not gated** — above, under `constant_axes`.
+* **The 25.9% per-pick cost stays stated, not optimised.** The owner's call: no performance
+  requirement exists, and a speed change during a freeze is what the process exists to prevent.
+
+### Why the behaviour-changing repairs got their own three arms
+
+The v4 gate (`invariant_confirmation`) decides whether a mutation is INERT by comparing a BOARD
+fingerprint, and its own docstring says that is deliberate: comparing whole boards needs no
+per-mutation knowledge, so a later arm inherits the guard. That is right for board invariants and
+cannot judge the three repairs of this pass that change behaviour — the `team_count` coercion is
+unreachable whenever `total_rosters` is present, which every board fixture has; the eligibility row
+is filtered out of the pool before any board is built; and the snapshot default touches no board at
+all. All three would have read `MUTATION IS INERT`, which is in that harness's `INCONCLUSIVE` set,
+so the gate would have exited 2 — passing nothing while looking rigorous.
+
+So they are scored by a separate three-arm check, each arm carrying its own witness. That is the
+bespoke cost `#126` warns about and it is unavoidable here: a non-board invariant cannot be
+witnessed by a board. Each arm proves three things in order, and needs all three to mean anything —
+the anchor applied at exactly one site, the mutated code answers the governed question differently
+(without which a `caught` verdict can come from a mutation that changed nothing, `#245`), and the
+named test module fails. Scope stated rather than implied: each arm runs the DESIGNATED module, not
+the full suite, so the claim is "a named test defends this repair", not "no other test depends on
+it". The full suite is run separately against the same tree, and the five-arm board gate re-runs on
+the frozen commit because a gate must describe the code being frozen.
 
 ## 6. Out of scope, named rather than argued later
 
@@ -203,11 +296,18 @@ one's reasoning.
 | gate | result |
 |---|---|
 | blind pass, five lenses | 26 findings, all 34 IDs dispositioned |
-| full suite | **4,152 tests OK** at `7e54821` (2 skipped, 1 expected failure) |
+| full suite | **4,155 tests OK** at `5ed19aa` (2 skipped, 1 expected failure, 1,645.8s) |
 | 53-arm format battery | **complete** — 9,336 picks, 2 findings, both `unfieldable_depth` on IDP groups |
 | 36-arm VDS battery | **complete, the full matrix for the first time** — 6,264 picks, 11.0h of summed arm compute |
-| mutation gate, end to end | **PASSED** — baseline green 1,718.8s, **5 of 5 arms caught**, tree restored clean |
+| board mutation gate | **PASSED on the frozen tree** — baseline green 1,573.9s, **5 of 5 arms caught**, sources restored cleanly |
+| behaviour mutation arms | **PASSED** — **3 of 3 caught**, 0 survived, 0 inconclusive, every witness verified on the clean tree first |
 | four independent reviews | delivered, merged with history, every branch fetched |
+| every §5 item | **closed in code**, not stated — see section 5 |
+
+The two mutation rows are one claim in two halves and both halves are needed: 5 arms over the
+board invariants, 3 over the behaviour this pass changed, **8 of 8 caught**. The suite row is the
+run that licensed the push of the repairs; the board gate's own baseline is a second full run, on
+the later tree that added the tests, and it was green too.
 
 ### The VDS, read the only way it can be read
 
