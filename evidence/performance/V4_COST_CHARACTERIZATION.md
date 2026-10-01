@@ -213,5 +213,65 @@ regression in this code path. **This retires the engine as the explanation for t
 
 ---
 
-*Sections 4 (per-pick cost over a full draft, v3 vs v4), 5 (the inherent/accidental split) and 6
-(what could not be attributed) land as the serial full-draft A/B completes.*
+## 4. The whole draft, v3 against v4 — the quantity actually in dispute
+
+A board build is not a per-pick cost: `DataMerger.merge_player` is memoized per merger instance,
+so the first board of an arm pays a cold name resolution every later board gets free. The 1.12
+and 6.03 figures are both per-pick rates over whole arms, so this is measured the same way.
+
+Probe: `probes/draft_cost_curve.py`, arm **`12T_ppr`** (12 teams, 14 rounds, 168 picks) taken
+from the battery's own matrix by label. The two arms ran **back to back, alone on the box**, one
+process each, 03:25:45→03:33:36 then 03:33:36→03:41:25 UTC. Every pick is timed by wrapping the
+production `pick_synthesis.build_snapshot`, never by reconstructing what it ought to cost.
+
+| | v3 (`eac7491`) | v4 (HEAD) | v4 / v3 |
+|---|---:|---:|---:|
+| `n` picks | 168 | 168 | — |
+| total seconds | **467.1** | **470.0** | — |
+| **s/pick** | **2.7804** | **2.7976** | **1.0062x** |
+| first board (cold merge memo) | 11.404 | 11.001 | 0.96x |
+| `n` warm picks | 167 | 167 | — |
+| warm mean | 2.7285 | 2.7481 | 1.007x |
+| warm median | 2.706 | 2.667 | 0.986x |
+| warm min / max | 0.712 / 5.370 | 0.716 / 5.483 | — |
+| first-quarter mean | 2.906 | 2.906 | 1.000x |
+| last-quarter mean | 2.180 | 2.212 | 1.015x |
+
+**The measured v3→v4 change is 1.0062x — 0.6%. The figure under investigation is 5.4x.**
+
+Paired per-pick comparison, `n_paired_warm_picks=167`:
+
+```
+picks where v4 is slower than v3      104 / 167  (62.3%)
+paired delta (v4 - v3)  mean  +0.0196 s/pick
+                        median +0.0243 s/pick
+                        stdev   0.0994 s/pick
+```
+
+So there **is** a real, consistent regression and it is **+0.020 s/pick, about +0.7%**. A
+consistent sign on 62% of picks with a mean an order of magnitude below the per-pick spread is
+what a few thousand extra dict lookups per board look like, and it is the right size for the
+three things the diff actually adds (B-F4's eligibility read, `eligible_positions` per candidate,
+`team_count` consolidation). Over the battery's 9,336 picks it is **~183 seconds**, against a
+serial total of roughly 26,000.
+
+**Both commits drafted the identical trajectory** — `n_picks_differing = 0 of 168`. That is worth
+stating because `health_penalty` returning `0.0` instead of `NaN` is a behaviour change in this
+diff; on this arm it moved no pick, so the timing comparison is between two runs doing the same
+work, not two different drafts.
+
+### What a pick actually costs, and why the spread is bimodal
+
+Of v4's 167 warm picks: **43 cost under 1.5 s (mean 1.011 s)** and **124 cost 1.5 s or more
+(mean 3.351 s)**. The split is structural, not noise. `draft_strategy._build_opponent_boards`
+runs one `compute_draft_board` per unique roster_id — 12 extra boards — and the survival,
+forfeit and rival-premium machinery that needs them is computed over the picks between this turn
+and MY NEXT ONE. At a snake turn boundary a seat picks twice in a row, the gap ahead is zero, and
+that whole apparatus short-circuits. **The cheap picks are the turn-boundary ones.** A per-pick
+average over an arm is therefore an average over two populations, and the mix depends on team
+count and round count — which is one reason per-arm cost varies 5x at the same pick count.
+
+---
+
+*Sections 5 (the inherent/accidental split) and 6 (what could not be attributed) land as the
+mid-draft profile, the ablations and the contention measurement complete.*
