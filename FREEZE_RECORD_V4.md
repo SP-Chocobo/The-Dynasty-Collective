@@ -1,14 +1,15 @@
 # v4 FREEZE RECORD — what it rests on, what it does not claim, and what stays open
 
-> **CANDIDATE, NOT A FREEZE. ONE GATE IS STILL RUNNING.** Both batteries are complete and the
-> full suite is green at `7e54821`, but the mutation gate's passing verdict was measured at
-> `7984b1d` and twelve repairs postdate it. It is being re-run on the engine this record is about;
-> until that lands, the two `<<PENDING>>` markers are numbers this file must not carry.
+> **EVERY GATE IS GREEN ON THE ENGINE THIS RECORD DESCRIBES.** The blind pass is dispositioned,
+> both batteries ran to their full matrices, the suite is green at 4,152 tests, four independent
+> reviews were run AFTER all of that and their findings are repaired or stated below, and the
+> mutation gate passes — re-run on `7e54821` rather than inherited from `7984b1d`, because twelve
+> repairs landed in between and a verdict about superseded source is evidence about nothing.
 >
 > `v2`'s record was written once as a freeze, reversed, and rewritten as a candidate because a
 > battery had not run. The ordering that episode established — a finding sends work back BEFORE
-> the tag, never after — is inherited here rather than re-earned. **No tag is cut against this
-> file while a `<<PENDING>>` remains in it.**
+> the tag, never after — is why this file was a candidate for the last three hours and is not one
+> now. **The tag is the owner's to push.**
 
 `POST_AUDIT_PLAN.md` remains the numbered record and wins over any status flag anywhere (`#292`).
 Written to be read cold.
@@ -130,7 +131,12 @@ errors had one shape — reasoning about a term from its own prose instead of it
 
   **IT CERTIFIES AN ENGINE THAT HAS SINCE CHANGED.** Twelve repairs landed after that run. A
   verdict about code that no longer exists is not evidence about this freeze, which is why the
-  gate is re-run on the repaired engine before the tag. `<<PENDING: the re-run's verdict table>>`
+  gate was re-run on the repaired engine before the tag. **IT PASSES AT `7e54821`**: anchors
+  precondition green in 54.0s, baseline green in 1,351.0s, and all five arms caught in 437.4s,
+  440.6s, 440.5s, 438.9s and 443.7s. `sources restored cleanly: yes`, `sources_dirty_after`
+  empty. Both upside arms — the two that were inert for their whole prior existence — cleared a
+  preflight whose two branch digests differ (`9f5cc3af014e8e9a` balanced, `427c40010c69c32c`
+  upside) and were then caught.
 * **`A-F1`'s two paths still diverge below a full slate**, by design, up to 2.25 points measured.
   What is pinned is the direction and the bound.
 * **`depth_exposure` does not price contingency for a demand-exhausted position** — 0 of 703 such
@@ -162,6 +168,13 @@ none of them currently makes the app or an artifact say something untrue:
 * **`constant_axes` sees only league-derived axes** (A3) and **the VDS report's `seed`,
   `top_k_swept`, `strategies` and `formats` describe the code at report time, not the arms** (A6).
   Both scoped in prose at the point of use; neither is false about the committed runs.
+* **`invariant_confirmation`'s summary line prints the UPSIDE digest under the label "reference
+  board".** The loop variables `_digest`, `feas`, `total` and `unfield` leak from the
+  branch-checking loop, so the line beneath it shows the last iteration's values. The censuses are
+  identical on both branches by construction, so no NUMBER is wrong -- only the label. Found by
+  the gate re-run itself, and deliberately not repaired: fixing it would edit the harness that had
+  just certified this tree, and the whole reason that re-run exists is that a gate must describe
+  the code being frozen.
 * **`picks_by_mode` is recorded on every arm and read by nothing**, and half the `auto` arms never
   entered the upside branch at all (A2).
 
@@ -224,8 +237,11 @@ the two that read `MUTATION IS INERT` for their entire prior existence, because 
 one board and they mutated the branch it never built. Both cleared preflight — the mutant builds a
 board AND differs from the reference — before either suite ran.
 
-**THIS VERDICT IS ABOUT `7984b1d` AND THE REPAIRS BELOW POSTDATE IT.** `<<PENDING: re-run on the
-repaired engine>>`
+**THAT VERDICT WAS ABOUT `7984b1d`, AND THE REPAIRS BELOW POSTDATE IT — SO IT WAS RE-RUN.**
+The gate passes again on `7e54821`, the tree this record describes: baseline green 1,351.0s,
+five of five caught, tree restored clean. The re-run also reproduced run 1's preflight
+bit-identically before starting, and aborted its own first attempt on a red baseline it had
+caused itself rather than report a verdict over it.
 
 ### On the VDS specifically
 
