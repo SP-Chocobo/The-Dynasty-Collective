@@ -558,6 +558,79 @@ supplies `risk_adj=-10.0` because, as its own new comment says, the fixture prev
 quantity the sentence is about — and the same reasoning applied one step further would have caught
 this.
 
+### 14. LOW — `invariant_confirmation`'s "four quantities, one pair per branch" is two quantities counted twice
+
+**File / identifier:** `invariant_confirmation.main`'s fixture-binds guard and
+`_FINGERPRINT_SCRIPT`
+
+**What it claims.**
+
+> Widening it to both backstops left the SAME hole one axis over — both censuses were checked on
+> the default board while two arms mutated the upside branch — **so it is now four quantities, one
+> pair per branch. A guard that covers three of four gives false confidence about the fourth.**
+
+**What the code does.** The fixture now builds both boards, which is the necessary half of the
+repair and it is correct. But `fills_required_slot` and `cannot_be_fielded` are produced by
+`feasibility_first` and `unfieldable_last`, neither of which reads the mode — so both censuses are
+identical on the two branches **by construction**. Measured, running the module's own
+`_FINGERPRINT_SCRIPT` verbatim:
+
+```
+217c138c…  619 964 131   427c4001…  619 964 131
+ARG mode= auto    EMITTED mode= balanced   priced= 478
+ARG mode= upside  EMITTED mode= upside     priced= 478
+```
+
+Two different digests (so a mutation of either branch's sort does move the fingerprint — the real
+content of the repair), and **the same `619 / 964 / 131` twice**. The second pair restates the
+first; it cannot fail while the first passes. The guard is two quantities, not four, and the
+comment's "three of four" hazard is not a hazard this guard can be in.
+
+**Also unforced: only one of the two branches is pinned.** The loop is
+`for mode in ("auto", "upside")` while the guard labels the pair `("balanced", "upside")`. The
+upside arm is forced, as the comment says. The balanced arm is **assumed**: `compute_draft_board`
+resolves `mode="auto"` to upside whenever no priced row carries a positive `_vor`, so "the first
+board is the balanced branch" is a property of this fixture's pool rather than of the call.
+Measured, it holds today — `EMITTED mode= balanced` above — but nothing in the harness asserts the
+emitted mode, and the quantities the guard does check are mode-independent, so if the pool ever
+flipped, both arms would build the upside board and the guard would pass.
+
+**Severity is LOW and the reason matters.** The consequence is not a false "defended" verdict: an
+inert mutation reads `MUTATION IS INERT`, which is in `INCONCLUSIVE`, so `main` returns 2 and the
+harness refuses a verdict loudly. What is lost is the diagnosis — the same silent-inconclusive the
+2026-09-30 execution cost, arriving without the guard naming why.
+
+**How established.** `evidence/blind_pass_v4/probes/probe_invariant_fixture_branches.py`, which
+runs the module's own fixture string with one added line printing each board's emitted `mode`.
+
+---
+
+### 15. LOW — the same guard pairs with `zip` and never checks that there are two boards
+
+**File / identifier:** `invariant_confirmation.main`
+
+```python
+parts = ref_fp.split()
+boards = [parts[i:i + 4] for i in range(0, len(parts), 4)]
+for branch, (_digest, feas, total, unfield) in zip(("balanced", "upside"), boards):
+```
+
+`zip` truncates to the shorter sequence, and nothing asserts `len(boards) == 2`. Demonstrated:
+
+```
+fingerprint carries 2 board(s) -> guard checks ['balanced', 'upside']   both
+fingerprint carries 1 board(s) -> guard checks ['balanced']   UPSIDE PAIR SILENTLY SKIPPED
+```
+
+That is the shape the repair's own comment names ("a guard that covers three of four gives false
+confidence about the fourth") in the guard written to close it. LOW for the same reason as finding
+14 — an unjudged mutation still returns 2.
+
+Related, cosmetic: the summary line below the loop,
+`print(f"reference board: {_digest[:16]} … feasibility binds on {feas} of {total} rows …")`, reads
+the loop variables after the loop, so it reports the **upside** board's digest and censuses under
+the name "reference board".
+
 ---
 
 *(review in progress — further findings appended below as they are established)*
