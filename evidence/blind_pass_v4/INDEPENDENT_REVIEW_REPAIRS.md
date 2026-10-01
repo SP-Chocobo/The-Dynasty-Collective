@@ -631,6 +631,89 @@ Related, cosmetic: the summary line below the loop,
 the loop variables after the loop, so it reports the **upside** board's digest and censuses under
 the name "reference board".
 
+### 16. LOW (latent) — all three new eligibility call sites resurrect the raw `position` in exactly the case MANDATE 2.6 removed it, and one of them says it does not
+
+**Files / identifiers:** `draft_room.feasibility_first._fills_a_hole`,
+`pick_synthesis.build_snapshot._eligibility`, `draft_board_ui.filter_candidates_by_view._startable_at`
+
+**What it claims.** `feasibility_first`'s new comment:
+
+> The primary bucket remains the FALLBACK, for a candidate the pool has no record of: **that is the
+> same degradation `player_eligible_positions` already applies**, and an empty eligibility set must
+> not silently promote everybody.
+
+**What the code does.** It is not the same degradation. `player_universe.
+player_eligible_positions` already applies a primary-bucket fallback, and its own docstring states
+exactly when it must not:
+
+> TWO EMPTY SETS THAT MEAN DIFFERENT THINGS. … `fantasy_positions` PRESENT and containing nothing
+> startable is an ANSWER — Sleeper saying this player is not startable anywhere — and resurrecting
+> the raw `position` overrides it with the very field `#172` says not to trust. Measured on the
+> committed capture, this is ONE row of 6,595: Bradley Sowell, `position: TE`,
+> `fantasy_positions: ["OL"]`.
+
+All three new sites test `not eligible` / `or`, which cannot tell that empty **answer** from a
+missing record — even though each already tested for the missing record separately
+(`info = players_db.get(...)`; `eligible = player_eligible_positions(info) if info else None`). So
+the `or` arm catches both, and for the `#172` row it reinstates `{position}`. Fed that row
+directly:
+
+```
+1269  Bradley Sowell  position='TE'  fantasy_positions=['OL']  -> player_eligible_positions set()
+
+site 1  feasibility_first : open slot TE, _feasible = [0]  -> PROMOTED for the TE hole
+site 2  _eligibility      : eligible_positions written onto the snapshot = {'TE'}
+site 3  the TE view       : shows the row  -> RESURRECTED the raw position
+```
+
+**Why LOW, and the measurement that makes it LOW.** The row is filtered out of the pool before any
+board is built. Censused over the universe production receives:
+
+```
+raw capture rows                                     : 6595, of which startable NOWHERE: 1
+build_players_db_from_capture rows                   : 6594, of which startable NOWHERE: 0
+raw rows with `fantasy_positions` ABSENT or empty    : 0
+```
+
+So on this universe the `or {position}` arm cannot fire for a row that is in `players_db` at all —
+every admitted row has a non-empty eligibility set — and the fallback the comment describes ("a
+candidate the pool has no record of") is served entirely by the `if info else None` test that
+precedes it. This is a latent breach of the same shape `compute_draft_board`'s own `#112` comment
+calls out: "A latent breach, not a live one — which is exactly the kind that survives a green
+suite." It becomes live the moment the pool admission widens or a second `OL`-style row arrives.
+
+**And a `#126` observation in its own right:** "every position this man can be started at, falling
+back to his primary bucket" is now spelled in **three** places, all three added in this range, by a
+repair whose stated purpose was that "the two halves of one comparison read two different
+vocabularies". They are not byte-identical either — `_eligibility` returns `frozenset()` when
+`row["position"]` is missing while `_fills_a_hole` returns `{None}` — though no row in this universe
+reaches that difference.
+
+**How established.** `evidence/blind_pass_v4/probes/probe_bf4_cf3_resurrect_the_raw_position.py`,
+with the census derived from `FANTASY_POSITIONS` rather than hand-listed.
+
 ---
 
-*(review in progress — further findings appended below as they are established)*
+## The suite on the freeze candidate
+
+`python3 -m unittest discover -v`, clean tree at `7984b1d`, whole run redirected to a file and
+grepped (not `| tail`):
+
+```
+Ran 4128 tests in 1221.133s
+FAILED (failures=1, skipped=2, expected failures=1)
+FAIL: test_doc_index_is_not_stale (test_doc_index.TheIndexMatchesTheTree)
+      AssertionError: 1 != 0 : DOC_INDEX.md is stale -- run `python3 doc_index.py`
+```
+
+**That one failure is mine, not the candidate's.** I created
+`evidence/blind_pass_v4/INDEPENDENT_REVIEW_REPAIRS.md` while the run was in flight, which is the
+hazard `engine-measurement` warns about ("never run a full background suite across a tree you are
+mutating"). Checked rather than assumed: a fresh `git worktree` at `7984b1d` runs
+`test_doc_index` 10 tests, **OK**, printing `DOC_INDEX.md current`. So the freeze candidate's suite
+is green apart from the expected failure, with two honest fixture skips (a thin-bpa trajectory
+subject and a projection-only contested row, both of which say so).
+
+---
+
+*(review in progress — a mutation pass over the repairs is still running; its results and the summary are appended below)*
