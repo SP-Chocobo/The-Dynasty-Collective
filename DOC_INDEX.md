@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 235 markdown documents.
+`python3 doc_index.py` regenerates this. 239 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -8,8 +8,8 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 42 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 41 | says what kind of document it is before making claims. |
-| UNDECLARED | 122 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| DECLARED | 43 | says what kind of document it is before making claims. |
+| UNDECLARED | 124 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -119,6 +119,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/fieldability_joint_bound/RULING.md`
 - `evidence/kdst_streaming/ROOT_CAUSE.md`
 - `evidence/mutation_gate/V4_MUTATION_GATE.md`
+- `evidence/performance/V4_COST_CHARACTERIZATION.md`
 - `evidence/roster_proof/PRE_REGISTRATION_205.md`
 - `evidence/roster_shape/FIX_216_fable.md`
 - `evidence/roster_shape/ff_rulebook/BRIEF_NEXT_SESSION.md`
@@ -180,8 +181,10 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/wave5/PASS_J.md`
 - `evidence/blind_pass/wave6/PASS_K.md`
 - `evidence/blind_pass/wave6/PASS_L.md`
+- `evidence/blind_pass_v4/INDEPENDENT_REVIEW_REPAIRS.md`
 - `evidence/blind_pass_v4/MANDATE_V4.md`
 - `evidence/blind_pass_v4/TRIAGE_V4.md`
+- `evidence/blind_pass_v4/V4_I1_REVIEW_PENDING.md`
 - `evidence/capture_provenance/README.md`
 - `evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md`
 - `evidence/d7_flex_depth/D7_VERIFICATION.md`
