@@ -195,7 +195,7 @@ silently. **No engine file, no test, no fixture and no part of the harness was a
 | # | Invariant | Sites | Verdict | Runtime |
 |---|---|---|---|---|
 | — | `test_invariant_confirmation_anchors` (clean-tree precondition) | — | **passes** | 54.0s (run 2; 52.5s in run 1) |
-| — | **baseline** (scored modules, clean tree) | — | pending | pending |
+| — | **baseline** (scored modules, clean tree) | — | **GREEN** | **1351.0s** |
 | 1 | feasibility_first never binds | 2 | pending | pending |
 | 2 | board order ignores feasibility | 1 | pending | pending |
 | 3 | board order ignores fieldability | 1 | pending | pending |
@@ -203,6 +203,22 @@ silently. **No engine file, no test, no fixture and no part of the harness was a
 | 5 | upside board order ignores fieldability | 1 | pending | pending |
 
 Total wall time: pending.
+
+### The baseline, stated plainly
+
+**The baseline arm was GREEN on the clean tree, in 1351.0s.** No mutation had been applied at
+that point. This is the precondition every verdict below depends on: a `caught` verdict means
+`rc != 0` with a mutant in the tree, which says nothing at all unless the same run is green
+without one.
+
+Baseline runtime is **not stable** in this container and that is worth recording against the
+~1800s-per-suite budget: run 1's baseline ran all 1421 tests in 528.7s before failing its last
+test, while run 2's green baseline took **1351.0s** — a 2.6x spread on the same tree and the
+same module list. I did not establish the cause; the honest statement is that it was measured
+twice and differed, so a single suite in this container should be budgeted at up to ~1400s
+rather than the 528.7s run 1 might suggest. The harness prints no test count for a green
+baseline (`main` reports only `base_secs` on success), so 1421 is the count measured in run 1,
+not one re-read from run 2.
 
 ## What counts as a pass
 
