@@ -747,6 +747,39 @@ legitimately empty rather than unreachable. Thin, and nothing asserts the subjec
 `draft_room.py:1287` and does call `draftable_slots_per_team`, so the renamed citation points at
 real code.
 
+### 17. LOW–MEDIUM — `ONE_QUESTION_TWO_READERS.md` says "All five repaired in this cycle", and two of the five still have a reader that disagrees
+
+**File:** `evidence/semantic_duplication/ONE_QUESTION_TWO_READERS.md` (installed by `7984b1d`)
+
+The write-up is a good document and its method section is the right method. Three of its claims do
+not survive checking, and each is already established above:
+
+1. **`B-F6` — "what does a pick with no roster mean"** is listed as repaired. The two readers now
+   agree on `None`, which was the finding. They still disagree on type: `team_count`'s picks rule
+   does not coerce while its own seats rule does and `team_slots_filled` does, so `roster_id` `0`
+   and `"0"` are two teams to one and one roster to the other (finding 7, measured).
+
+2. **`B-F4` / `C-F3` — "which positions can this candidate start at"** is listed as repaired, and
+   the question is now asked of eligibility on both sides, which was the finding. But the composed
+   rule — eligibility with a primary-bucket fallback — is now spelled in **three** places, all
+   three added by this repair, and all three apply the fallback in the one case
+   `player_eligible_positions`' docstring says it must not (finding 16, latent on this universe).
+   Step 3 of the document's own method is "decide which reader OWNS the question, and make the
+   others call it"; the owning reader exists and all three sites wrap it in a locally re-expressed
+   fallback instead.
+
+3. **`D10` is held up as the exemplar** — "found by the test written for D10 itself, which asked
+   what the solver means by 'starting slot' instead of asserting a literal … and it would have
+   failed on the first run". True of the left-hand number. The same message carries a second number,
+   `parsed_starting + len(starters)`, pinned against no authority at all, and it is wrong whenever
+   an unrecognised starting label repeats (finding 2, measured: "declares 10" where
+   `starting_slots` says 12). The document's transferable lesson — "an expectation derived from the
+   authority catches a disagreement between readers; a literal expectation cannot" — is correct, and
+   the exemplar it cites applies it to one of the two numbers it reports.
+
+Filed against the document rather than the code because `#292` makes the record the thing that wins,
+and this is the file a future reader will consult to decide the class is closed.
+
 ---
 
 *(review in progress — a mutation pass over the repairs is still running; its results and the summary are appended below)*
