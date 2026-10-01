@@ -8025,6 +8025,77 @@
         "early_returns": 0
       }
     },
+    "test_fact_exposure.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 13,
+        "assertGreater": 1,
+        "assertGreaterEqual": 1,
+        "assertIn": 2,
+        "assertNotIn": 1,
+        "assertTrue": 5
+      },
+      "by_method": {
+        "ReadIsNotEmittedTests.test_emitted_and_withheld_partition_the_read_set": {
+          "assertEqual": 2
+        },
+        "ReadIsNotEmittedTests.test_every_recorded_crossing_is_a_quantity_the_engine_produces": {
+          "assertEqual": 1
+        },
+        "ReadIsNotEmittedTests.test_the_withheld_family_is_read_but_not_emitted": {
+          "assertIn": 1,
+          "assertNotIn": 1,
+          "assertTrue": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_a_name_the_engine_does_not_produce_is_reported_as_a_DISAGREEMENT": {
+          "assertTrue": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_a_newly_crossing_quantity_is_reported": {
+          "assertTrue": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_a_prompt_path_that_reads_nothing_does_not_report_a_widening": {
+          "assertEqual": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_a_quantity_crossing_through_a_getattr_is_reported": {
+          "assertTrue": 1
+        },
+        "TheRealBoundaryTests.test_the_boundary_has_not_widened": {
+          "assertEqual": 1
+        },
+        "TheRealBoundaryTests.test_the_other_provider_module_is_named_rather_than_silently_omitted": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "TheRealBoundaryTests.test_the_reachable_population_has_not_COLLAPSED": {
+          "assertGreaterEqual": 1
+        },
+        "TheRealBoundaryTests.test_the_scan_actually_finds_reads_in_the_real_prompt_path": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
+        "TheScanSeesBothAccessShapesTests.test_a_function_the_roots_cannot_reach_is_not_counted": {
+          "assertEqual": 2
+        },
+        "TheScanSeesBothAccessShapesTests.test_a_getattr_read_is_counted": {
+          "assertEqual": 1
+        },
+        "TheScanSeesBothAccessShapesTests.test_a_read_on_an_UNRELATED_object_is_not_counted": {
+          "assertEqual": 1
+        },
+        "TheScanSeesBothAccessShapesTests.test_a_read_through_a_called_formatter_is_followed": {
+          "assertEqual": 2
+        },
+        "TheScanSeesBothAccessShapesTests.test_an_attribute_read_is_counted": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_failure_mode_boundary.py": {
       "test_methods": 27,
       "asserts": {
