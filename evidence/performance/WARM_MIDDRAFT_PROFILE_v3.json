@@ -1,0 +1,378 @@
+{
+ "tag": "v3",
+ "label": "12T_ppr",
+ "at_pick": 150,
+ "seconds": 7.534639596939087,
+ "live": {
+  "depth_measured": 3,
+  "depth_other": 4,
+  "displacement_nonzero": 7,
+  "displacement_zero": 0,
+  "n_candidates": 7
+ },
+ "warm": true,
+ "n_picks_replayed": 150,
+ "profiled": true,
+ "rows": [
+  {
+   "cumul": 7.534137187000001,
+   "tottime": 0.002628558,
+   "ncalls": 1,
+   "where": "pick_synthesis.py:1759(build_snapshot)"
+  },
+  {
+   "cumul": 7.396093273000001,
+   "tottime": 0.00684065,
+   "ncalls": 7,
+   "where": "draft_room.py:4120(compute_draft_board)"
+  },
+  {
+   "cumul": 6.388648552,
+   "tottime": 0.0006877130000000001,
+   "ncalls": 1,
+   "where": "draft_strategy.py:1115(pick_analysis)"
+  },
+  {
+   "cumul": 5.3109888640000005,
+   "tottime": 0.002396796,
+   "ncalls": 1,
+   "where": "draft_strategy.py:792(_build_opponent_boards)"
+  },
+  {
+   "cumul": 2.842067317,
+   "tottime": 0.0036079880000000003,
+   "ncalls": 21,
+   "where": "draft_room.py:3151(anchor_cache_key)"
+  },
+  {
+   "cumul": 2.699678763,
+   "tottime": 0.000300192,
+   "ncalls": 21,
+   "where": "frame.py:12202(apply)"
+  },
+  {
+   "cumul": 2.698659455,
+   "tottime": 0.009781199,
+   "ncalls": 21,
+   "where": "apply.py:963(apply)"
+  },
+  {
+   "cumul": 2.6886254280000004,
+   "tottime": 0.000147154,
+   "ncalls": 21,
+   "where": "apply.py:1165(apply_standard)"
+  },
+  {
+   "cumul": 2.2997506910000003,
+   "tottime": 0.024122661,
+   "ncalls": 22,
+   "where": "draft_room.py:3082(_players_db_fingerprint)"
+  },
+  {
+   "cumul": 2.153658031,
+   "tottime": 0.13729596600000002,
+   "ncalls": 145090,
+   "where": "draft_room.py:3129(<genexpr>)"
+  },
+  {
+   "cumul": 2.009258891,
+   "tottime": 0.027561437,
+   "ncalls": 21,
+   "where": "apply.py:1174(apply_series_generator)"
+  },
+  {
+   "cumul": 1.9561012500000001,
+   "tottime": 0.305479875,
+   "ncalls": 290136,
+   "where": "~:0(<method 'join' of 'str' objects>)"
+  },
+  {
+   "cumul": 1.887041865,
+   "tottime": 0.00011098700000000001,
+   "ncalls": 14,
+   "where": "draft_room.py:3384(roster_points_lookup)"
+  },
+  {
+   "cumul": 1.7179541710000001,
+   "tottime": 0.613200327,
+   "ncalls": 1595748,
+   "where": "draft_room.py:3130(<genexpr>)"
+  },
+  {
+   "cumul": 1.61448523,
+   "tottime": 0.078309607,
+   "ncalls": 5740,
+   "where": "draft_room.py:4743(score_row)"
+  },
+  {
+   "cumul": 1.3536256070000001,
+   "tottime": 0.09131454800000001,
+   "ncalls": 12611,
+   "where": "series.py:369(__init__)"
+  },
+  {
+   "cumul": 1.134369961,
+   "tottime": 0.021384116,
+   "ncalls": 5754,
+   "where": "series.py:521(_init_dict)"
+  },
+  {
+   "cumul": 1.104753844,
+   "tottime": 0.654204125,
+   "ncalls": 1450680,
+   "where": "draft_room.py:3137(_canonical_player_value)"
+  },
+  {
+   "cumul": 0.955503045,
+   "tottime": 9.621e-05,
+   "ncalls": 14,
+   "where": "draft_room.py:3355(_fill_omitted_from_anchor)"
+  },
+  {
+   "cumul": 0.9553524320000001,
+   "tottime": 2.0775e-05,
+   "ncalls": 7,
+   "where": "draft_room.py:4374(<lambda>)"
+  },
+  {
+   "cumul": 0.9553316570000001,
+   "tottime": 4.7807000000000005e-05,
+   "ncalls": 7,
+   "where": "draft_room.py:4293(_anchor)"
+  },
+  {
+   "cumul": 0.95528385,
+   "tottime": 7.730700000000001e-05,
+   "ncalls": 7,
+   "where": "draft_room.py:3182(predraft_replacement_anchor)"
+  },
+  {
+   "cumul": 0.6868289190000001,
+   "tottime": 0.000426573,
+   "ncalls": 21,
+   "where": "frame.py:702(__init__)"
+  },
+  {
+   "cumul": 0.6792193830000001,
+   "tottime": 0.00022434400000000002,
+   "ncalls": 21,
+   "where": "apply.py:1204(wrap_results)"
+  },
+  {
+   "cumul": 0.674073472,
+   "tottime": 2.9416e-05,
+   "ncalls": 7,
+   "where": "apply.py:1443(wrap_results_for_axis)"
+  },
+  {
+   "cumul": 0.674030341,
+   "tottime": 0.00015970400000000001,
+   "ncalls": 7,
+   "where": "apply.py:1464(infer_to_same_shape)"
+  },
+  {
+   "cumul": 0.66570384,
+   "tottime": 0.000472897,
+   "ncalls": 7,
+   "where": "construction.py:375(dict_to_mgr)"
+  },
+  {
+   "cumul": 0.626267341,
+   "tottime": 0.000141493,
+   "ncalls": 14,
+   "where": "construction.py:96(arrays_to_mgr)"
+  },
+  {
+   "cumul": 0.614287792,
+   "tottime": 0.11559090000000001,
+   "ncalls": 7,
+   "where": "draft_room.py:1584(build_available_pool)"
+  },
+  {
+   "cumul": 0.614174491,
+   "tottime": 0.081953569,
+   "ncalls": 6898,
+   "where": "base.py:486(__new__)"
+  },
+  {
+   "cumul": 0.605644203,
+   "tottime": 0.16097407400000002,
+   "ncalls": 14314,
+   "where": "construction.py:531(sanitize_array)"
+  },
+  {
+   "cumul": 0.590706339,
+   "tottime": 0.42406888200000004,
+   "ncalls": 3085811,
+   "where": "~:0(<built-in method builtins.isinstance>)"
+  },
+  {
+   "cumul": 0.5539076270000001,
+   "tottime": 0.016848687,
+   "ncalls": 19663,
+   "where": "base.py:7919(ensure_index)"
+  },
+  {
+   "cumul": 0.46290010600000003,
+   "tottime": 0.018477949,
+   "ncalls": 14,
+   "where": "construction.py:553(_homogenize)"
+  },
+  {
+   "cumul": 0.45620687400000004,
+   "tottime": 0.154424425,
+   "ncalls": 7,
+   "where": "draft_room.py:2856(_records_with_normalized_nan)"
+  },
+  {
+   "cumul": 0.42425033100000004,
+   "tottime": 0.019614533,
+   "ncalls": 11634,
+   "where": "generic.py:6548(copy)"
+  },
+  {
+   "cumul": 0.420268364,
+   "tottime": 0.000882437,
+   "ncalls": 21,
+   "where": "draft_room.py:3066(_merger_content_fingerprint)"
+  },
+  {
+   "cumul": 0.41406884600000005,
+   "tottime": 0.0011510440000000002,
+   "ncalls": 126,
+   "where": "hashing.py:84(hash_pandas_object)"
+  },
+  {
+   "cumul": 0.41364341000000004,
+   "tottime": 0.0056795050000000005,
+   "ncalls": 5740,
+   "where": "series.py:5299(reindex)"
+  },
+  {
+   "cumul": 0.407963905,
+   "tottime": 0.016437721000000002,
+   "ncalls": 5740,
+   "where": "generic.py:5189(reindex)"
+  },
+  {
+   "cumul": 0.405421597,
+   "tottime": 0.007389358,
+   "ncalls": 63,
+   "where": "hashing.py:48(combine_hash_arrays)"
+  },
+  {
+   "cumul": 0.397396291,
+   "tottime": 0.001090692,
+   "ncalls": 1470,
+   "where": "hashing.py:184(<genexpr>)"
+  },
+  {
+   "cumul": 0.38302531,
+   "tottime": 0.0034639450000000004,
+   "ncalls": 1407,
+   "where": "hashing.py:164(<genexpr>)"
+  },
+  {
+   "cumul": 0.36711449900000004,
+   "tottime": 0.019218633000000002,
+   "ncalls": 31148,
+   "where": "~:0(<built-in method builtins.all>)"
+  },
+  {
+   "cumul": 0.36671563300000004,
+   "tottime": 0.36671563300000004,
+   "ncalls": 1305780,
+   "where": "~:0(<built-in method builtins.repr>)"
+  },
+  {
+   "cumul": 0.32829780000000003,
+   "tottime": 0.006139643,
+   "ncalls": 2877,
+   "where": "hashing.py:244(hash_array)"
+  },
+  {
+   "cumul": 0.317530009,
+   "tottime": 0.052652090000000006,
+   "ncalls": 2184,
+   "where": "hashing.py:299(_hash_ndarray)"
+  },
+  {
+   "cumul": 0.286531021,
+   "tottime": 0.0035876930000000003,
+   "ncalls": 14,
+   "where": "draft_room.py:1916(replacement_levels)"
+  },
+  {
+   "cumul": 0.27818818500000003,
+   "tottime": 0.047777153,
+   "ncalls": 11964,
+   "where": "base.py:5584(equals)"
+  },
+  {
+   "cumul": 0.276175371,
+   "tottime": 0.06866150800000001,
+   "ncalls": 42029,
+   "where": "series.py:945(__getitem__)"
+  },
+  {
+   "cumul": 0.270845098,
+   "tottime": 0.024296455,
+   "ncalls": 11642,
+   "where": "managers.py:739(copy)"
+  },
+  {
+   "cumul": 0.25898581600000004,
+   "tottime": 0.001365694,
+   "ncalls": 693,
+   "where": "_mixins.py:201(_hash_pandas_object)"
+  },
+  {
+   "cumul": 0.206576801,
+   "tottime": 0.052256399,
+   "ncalls": 12174,
+   "where": "managers.py:399(apply)"
+  },
+  {
+   "cumul": 0.19776443500000002,
+   "tottime": 0.008363571,
+   "ncalls": 11480,
+   "where": "generic.py:5452(<genexpr>)"
+  },
+  {
+   "cumul": 0.18846859700000002,
+   "tottime": 0.053047194000000006,
+   "ncalls": 42042,
+   "where": "generic.py:6196(__setattr__)"
+  },
+  {
+   "cumul": 0.183145532,
+   "tottime": 0.010745624,
+   "ncalls": 5740,
+   "where": "base.py:5686(identical)"
+  },
+  {
+   "cumul": 0.16573479700000002,
+   "tottime": 7.211e-05,
+   "ncalls": 7,
+   "where": "frame.py:2125(to_dict)"
+  },
+  {
+   "cumul": 0.165662687,
+   "tottime": 0.021209492,
+   "ncalls": 7,
+   "where": "to_dict.py:97(to_dict)"
+  },
+  {
+   "cumul": 0.16512573400000002,
+   "tottime": 0.000313636,
+   "ncalls": 7,
+   "where": "draft_room.py:2890(_attach_waiting_cost)"
+  },
+  {
+   "cumul": 0.164483875,
+   "tottime": 0.027507828,
+   "ncalls": 20251,
+   "where": "player_universe.py:312(score_projection)"
+  }
+ ]
+}

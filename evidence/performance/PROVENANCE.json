@@ -1,0 +1,220 @@
+{
+ "shards": [
+  {
+   "file": "shard_0.json",
+   "formats": 12,
+   "picks": 2116,
+   "report_seconds": 10855.3,
+   "sum_arm_seconds": 10855.4,
+   "s_per_pick_from_report": 5.13,
+   "s_per_pick_from_arms": 5.13,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 12,
+   "complete": false,
+   "commits_present": [
+    "dd4ade7"
+   ]
+  },
+  {
+   "file": "shard_0b.json",
+   "formats": 6,
+   "picks": 1152,
+   "report_seconds": 8464.1,
+   "sum_arm_seconds": 8464.0,
+   "s_per_pick_from_report": 7.347,
+   "s_per_pick_from_arms": 7.347,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 6,
+   "complete": true,
+   "commits_present": [
+    "3afca52"
+   ]
+  },
+  {
+   "file": "shard_1.json",
+   "formats": 11,
+   "picks": 1828,
+   "report_seconds": 10391.5,
+   "sum_arm_seconds": 10391.4,
+   "s_per_pick_from_report": 5.685,
+   "s_per_pick_from_arms": 5.685,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 11,
+   "complete": false,
+   "commits_present": [
+    "dd4ade7"
+   ]
+  },
+  {
+   "file": "shard_1b.json",
+   "formats": 7,
+   "picks": 1260,
+   "report_seconds": 8416.2,
+   "sum_arm_seconds": 8416.2,
+   "s_per_pick_from_report": 6.68,
+   "s_per_pick_from_arms": 6.68,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 7,
+   "complete": true,
+   "commits_present": [
+    "3afca52"
+   ]
+  },
+  {
+   "file": "shard_2.json",
+   "formats": 11,
+   "picks": 1912,
+   "report_seconds": 10600.1,
+   "sum_arm_seconds": 10600.0,
+   "s_per_pick_from_report": 5.544,
+   "s_per_pick_from_arms": 5.544,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 11,
+   "complete": false,
+   "commits_present": [
+    "dd4ade7"
+   ]
+  },
+  {
+   "file": "shard_2b.json",
+   "formats": 6,
+   "picks": 1068,
+   "report_seconds": 7570.7,
+   "sum_arm_seconds": 7570.7,
+   "s_per_pick_from_report": 7.089,
+   "s_per_pick_from_arms": 7.089,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 6,
+   "complete": true,
+   "commits_present": [
+    "3afca52"
+   ]
+  }
+ ],
+ "history": [
+  {
+   "file": "BATTERY_2026-09-08_baseline_vendor_only_1e869ce.json",
+   "formats": 33,
+   "picks": 5340,
+   "report_seconds": 14081.2,
+   "sum_arm_seconds": 14081.5,
+   "s_per_pick_from_report": 2.637,
+   "s_per_pick_from_arms": 2.637,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 33,
+   "complete": null,
+   "commits_present": null
+  },
+  {
+   "file": "BATTERY_2026-09-08_scoring_aware_5a53057.json",
+   "formats": 33,
+   "picks": 5340,
+   "report_seconds": 14512.3,
+   "sum_arm_seconds": 14512.4,
+   "s_per_pick_from_report": 2.718,
+   "s_per_pick_from_arms": 2.718,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 33,
+   "complete": null,
+   "commits_present": null
+  },
+  {
+   "file": "BATTERY_2026-09-12_scoring_aware_full_99f9f76.json",
+   "formats": 33,
+   "picks": 5340,
+   "report_seconds": 23556.4,
+   "sum_arm_seconds": 23555.9,
+   "s_per_pick_from_report": 4.411,
+   "s_per_pick_from_arms": 4.411,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 33,
+   "complete": true,
+   "commits_present": [
+    "4a5aad5"
+   ]
+  },
+  {
+   "file": "BATTERY_2026-09-13_gate1_1770ef2.json",
+   "formats": 34,
+   "picks": 5652,
+   "report_seconds": 19220.8,
+   "sum_arm_seconds": 19857.6,
+   "s_per_pick_from_report": 3.401,
+   "s_per_pick_from_arms": 3.513,
+   "n_arms_carried_forward": 2,
+   "n_arms_in_report": 34,
+   "complete": true,
+   "commits_present": [
+    "1770ef2",
+    "466c010"
+   ]
+  },
+  {
+   "file": "BATTERY_2026-09-17_gate1_15fcf2c.json",
+   "formats": 34,
+   "picks": 5652,
+   "report_seconds": 14460.7,
+   "sum_arm_seconds": 14460.7,
+   "s_per_pick_from_report": 2.559,
+   "s_per_pick_from_arms": 2.559,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 34,
+   "complete": true,
+   "commits_present": [
+    "15fcf2c"
+   ]
+  },
+  {
+   "file": "SMOKE_capture_ff.json",
+   "formats": 1,
+   "picks": 312,
+   "report_seconds": 1109.1,
+   "sum_arm_seconds": 1109.1,
+   "s_per_pick_from_report": 3.555,
+   "s_per_pick_from_arms": 3.555,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 1,
+   "complete": true,
+   "commits_present": [
+    "9ebf451"
+   ]
+  },
+  {
+   "file": "v2_acting_now.json",
+   "formats": 36,
+   "picks": 6144,
+   "report_seconds": 3222.3,
+   "sum_arm_seconds": 14404.2,
+   "s_per_pick_from_report": 0.524,
+   "s_per_pick_from_arms": 2.344,
+   "n_arms_carried_forward": 29,
+   "n_arms_in_report": 36,
+   "complete": true,
+   "commits_present": [
+    "93d503c",
+    "c7d18f2",
+    "eb2f1d0"
+   ]
+  },
+  {
+   "file": "v2_pace_wired.json",
+   "formats": 24,
+   "picks": 3828,
+   "report_seconds": 8842.4,
+   "sum_arm_seconds": 8841.9,
+   "s_per_pick_from_report": 2.31,
+   "s_per_pick_from_arms": 2.31,
+   "n_arms_carried_forward": 0,
+   "n_arms_in_report": 24,
+   "complete": false,
+   "commits_present": [
+    "3c3fcbe"
+   ]
+  }
+ ],
+ "sum_shard_wall_clock": 56297.9,
+ "n_picks": 9336,
+ "s_per_pick_sum": 6.030194944301628,
+ "elapsed_estimate": 19319.4,
+ "s_per_pick_elapsed": 2.069344473007712
+}
