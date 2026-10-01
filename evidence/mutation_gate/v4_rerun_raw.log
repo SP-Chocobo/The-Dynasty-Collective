@@ -1,0 +1,5 @@
+reference board: 427c40010c69c32c  feasibility binds on 619 of 964 rows, fieldability on 131
+  branch digests: 9f5cc3af014e8e9a 427c40010c69c32c
+
+test_invariant_confirmation_anchors: passes on the clean tree (52.5s)
+baseline: running the scored modules on the clean tree (a verdict is meaningless unless this is green)...
