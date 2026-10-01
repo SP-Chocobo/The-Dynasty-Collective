@@ -11,7 +11,7 @@ the reusable part.
 
 ## THE RULING IS THE BEHAVIOUR THE ENGINE ALREADY HAS
 
-`_fill_omitted_from_anchor` (`draft_room.py:3379`) fills positions `replacement_levels` omitted for
+`_fill_omitted_from_anchor` in `draft_room.py` fills positions `replacement_levels` omitted for
 exhausted demand from the pre-draft anchor, and stamps `replacement_basis = predraft_anchor` so the
 row says which kind of claim its price rests on. That is convention (1), verbatim, already running.
 

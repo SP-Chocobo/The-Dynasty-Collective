@@ -3,6 +3,13 @@
 Five Fable passes against `v3-freeze` (`eac7491`), worktree-isolated, split lenses, mandate in
 `MANDATE_V4.md`. **26 findings: 1 HIGH, 11 MEDIUM, 14 LOW.**
 
+**EVERY `file.py:NNN` BELOW IS AS OF `eac7491`, AND THE REPAIRS HAVE MOVED SOME OF THEM.** The
+WHERE fields are the lenses' own, recorded against the frozen tree they read; this file is their
+report and is not rewritten to track later commits. Several now land on a blank line or on the
+repaired form of the code they describe. **The NAME in each finding is authoritative, not the
+number** — names are grep-able and policed by `prose_names`, line numbers rot silently. Resolve a
+citation by its identifier, and read the line number as "roughly here, at `eac7491`".
+
 **Every pass reported opening none of the denied files.** Three noted the same near-miss —
 `git diff --stat` and `git log --oneline` print evidence/ path names and commit subjects that name
 repairs. Two disclosed it unprompted as a partial contamination of the blind condition. That is the

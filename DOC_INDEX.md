@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 233 markdown documents.
+`python3 doc_index.py` regenerates this. 234 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 41 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 39 | says what kind of document it is before making claims. |
-| UNDECLARED | 123 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| SUPERSEDED | 42 | still valid or partly valid, but something later changed what it means. |
+| DECLARED | 40 | says what kind of document it is before making claims. |
+| UNDECLARED | 122 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -47,6 +47,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 ## SUPERSEDED
 
 - `FREEZE_CHECKLIST.md`
+- `ROADMAP_TO_FREEZE.md`
 - `evidence/CERTIFICATION_DESIGN.md`
 - `evidence/DESIGN_34_UNPRICED_SUPERFLEX_QB.md`
 - `evidence/backtest/README.md`
@@ -107,6 +108,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/batteries/VDS_PREREGISTRATION.md`
 - `evidence/blind_pass/MANDATE.md`
 - `evidence/blind_pass/wave4/MY_VERIFICATION.md`
+- `evidence/blind_pass_v4/FINDINGS_V4.md`
 - `evidence/d9_replacement_equation/D9_RULING.md`
 - `evidence/design_35/PREREGISTRATION_CPRIME.md`
 - `evidence/design_35/PREREGISTRATION_VDS_READING.md`
@@ -139,7 +141,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `README.md`
 - `REPAIR_HANDOFF.md`
 - `REPAIR_MANDATE_V2.md`
-- `ROADMAP_TO_FREEZE.md`
 - `WARPATH.md`
 - `data/baseline/external/dynastyprocess/ATTRIBUTION.md`
 - `data/baseline/external/espn/ATTRIBUTION.md`
@@ -177,7 +178,6 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/blind_pass/wave5/PASS_J.md`
 - `evidence/blind_pass/wave6/PASS_K.md`
 - `evidence/blind_pass/wave6/PASS_L.md`
-- `evidence/blind_pass_v4/FINDINGS_V4.md`
 - `evidence/blind_pass_v4/MANDATE_V4.md`
 - `evidence/blind_pass_v4/TRIAGE_V4.md`
 - `evidence/capture_provenance/README.md`
@@ -248,6 +248,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/roster_shape/shared_slot/bench/BENCH_MONOCULTURE.md`
 - `evidence/roster_shape/shared_slot/bench/MECHANISM.md`
 - `evidence/rulebook_ground_truth/README.md`
+- `evidence/semantic_duplication/ONE_QUESTION_TWO_READERS.md`
 - `evidence/smoke_seats/V2_MECHANISM.md`
 - `evidence/smoke_seats/V2_REGRESSION.md`
 - `evidence/take_model/README.md`

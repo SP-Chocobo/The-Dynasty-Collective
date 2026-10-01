@@ -421,7 +421,7 @@ three errors I made reaching it: `evidence/d9_replacement_equation/D9_RULING.md`
 
 The short form:
 
-* `_fill_omitted_from_anchor` (`draft_room.py:3379`) already fills exhausted-demand positions from
+* `_fill_omitted_from_anchor` in `draft_room.py` already fills exhausted-demand positions from
   the pre-draft anchor and stamps `replacement_basis = predraft_anchor`. By round 18 the anchor
   governs 76 of 108 priced rows. The item read as a proposal and was a description.
 * **The anchor never reaches QB, by design.** The fill declines any position `startable_floors`

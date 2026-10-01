@@ -7,6 +7,15 @@ engine and its support testing layers."*
 This file exists to make "done" a **specific, checkable state** rather than a feeling, and to name
 in advance the things that will NOT reopen it. Its whole purpose is to be closable.
 
+> **SUPERSEDED AS A ROADMAP — KEPT AS THE DATED RECORD OF ITS OWN CYCLE (read 2026-10-01).**
+> Its finish line has been reached and passed. `v3-freeze` was cut at `eac7491` and published
+> (tag `1f3affa`); the cycle in flight is **v4**, whose gate is `V4_GATE_CRITERIA.md` and whose
+> numbered record is `POST_AUDIT_PLAN.md` (`#292`: the record wins over any status flag). Every
+> status below — including "the upcoming tag is `v3-freeze`" and the HEAD distance in the table —
+> is **as of 2026-09-29** and is not maintained. This file was itself corrected once for trusting a
+> stale status flag, so it is scoped here rather than quietly refreshed: the numbers are a record of
+> what was true that day, not a claim about today.
+
 ---
 
 ## The finish line already exists, and it is one tag: `v3-freeze`
