@@ -909,4 +909,153 @@ dominant fixture error in this repository, applied to tests rather than to probe
 
 ---
 
-*(review in progress — a mutation pass over the repairs is still running; its results and the summary are appended below)*
+## Summary — the findings in severity order
+
+Findings are numbered in the order they were established; this is the order to read them in. Nothing
+below is a repair; nothing in the tree was changed except transiently and restored.
+
+**HIGH**
+
+| # | one line |
+|---|---|
+| **19** | Four of twelve repairs are defended by no test: reverting `C-F3`'s producer half, `A-F5`'s `app.py` line, `A-F1`'s absence check, or `D-F2`'s paragraph scoping each leaves the suite green |
+| **1** | `E-F5`'s new guard reads `coverage["error"]`, a key `_sum_weeks` never writes, so the ordinary outright failure (an unreachable Sleeper) is still silent and vendor-priced |
+| **3** | The `health_penalty` and `pick_debate` repairs converge: the two rows `health_penalty`'s own comment names are told "this engine does not price this designation" about PUP and IR |
+
+**MEDIUM**
+
+| # | one line |
+|---|---|
+| **18** | `risk_adj` has five states, not the three the repair enumerates; `NaN` (an unpriced row) takes the "charged" branch and `None` (upside mode) takes the "not priced" one |
+| **5** | `D-F2`'s own restraint test fails: `dead_names()` reports **0**, the figure `TRIAGE_V4` says D-F2 blocks the freeze for, reached by the exclusion added in the same change |
+| **12** | `A-F1`'s narrowed claim is true; the wide version is still asserted in `test_one_fact_two_paths_one_answer`'s module docstring and in `OWNER_DECISIONS_PENDING.md` |
+| **2** | The D10 ambiguity messages state a declared starting-slot count from a deduped label set, so a repeated unrecognised label is under-reported ("declares 10" where it is 12) |
+| **17** | `ONE_QUESTION_TWO_READERS.md` says "All five repaired"; two still have a reader that disagrees, and the D10 exemplar pins one of the two numbers in its own message |
+
+**LOW–MEDIUM**
+
+| # | one line |
+|---|---|
+| **6** | "Paragraphs cut exactly that" cut about half; 245 name occurrences are still shielded by nothing but a bare "was"/"were" elsewhere in the paragraph |
+
+**LOW**
+
+| # | one line |
+|---|---|
+| **16** | All three new eligibility sites resurrect the raw `position` in the one case MANDATE 2.6 removed it, and `feasibility_first`'s comment says they do not. **Latent**: 1 such row in the raw capture, 0 after pool admission |
+| **4** | `health_penalty`'s repair is sound; "reachable from any board built without season projections" is 0 of 961 on 12T_ppr, and `compute_draft_board` still says that branch has zero rows |
+| **7** | Inside the consolidated `team_count`, the seats rule coerces roster ids to `str` and the picks rule does not, so `0` and `"0"` are two teams to one reader and one roster to `team_slots_filled` |
+| **8** | The B-F6 agreement test pins a fixture coincidence that breaks on an unresolvable player rather than on a rosterless pick |
+| **9** | `ABSENT_FIGURE`'s "ONE HOME" claim left `draft_history_ui.ABSENT` a third literal, which `presentable_text` now compares by string equality. Currently inert |
+| **10** | The UI arm of the round-arithmetic check uses the substring instrument its own sibling rejects five lines earlier |
+| **11** | `EXPOSURE_ROSTER_PARTIAL`'s "the 0.0 shown here" is shown by `pick_debate` and gated out of the Draft Room board by `depthExposure > 0` |
+| **13** | The test added for the new health sentence uses `Questionable`, the one fall-through cause for which that sentence is true |
+| **14** | `invariant_confirmation`'s "four quantities, one pair per branch" is two quantities counted twice (`619 964 131` on both branches) |
+
+**NOTE, not a finding:** 15 (the bare `zip` in `invariant_confirmation`'s guard, pinned by a test in
+the same range).
+
+**A correction to my own work is recorded in place rather than dropped:** findings 14 and 15 were
+first written with a consequence they do not have, because
+`test_invariant_confirmation_anchors.test_the_two_branches_are_DIFFERENT_boards` and its
+`assertEqual(len(boards), 2)` pin exactly what I claimed was unguarded. The correction is inside
+finding 14.
+
+## What I attacked and found sound
+
+Each of these was a hypothesis I expected to confirm and could not. What was run is named with it.
+
+* **`B-F4`'s main path is live, not a guard that cannot fire.** The `"player_id" not in
+  scored.columns` fallback could have made the repair inert in production. Spied the production
+  `feasibility_first` across a `build_snapshot`: 13 calls, `player_id` present on every one, 1,850-row
+  frame.
+* **`C-F3` works and its census is not uniform.** 84-candidate HEAVY_IDP snapshot, 0 fallbacks, set
+  sizes `{1: 73, 2: 11}`, LB view 12 → 23 with T.J. Watt newly visible, DL/DB/WR/TE unchanged.
+* **`health_penalty`'s substance.** Harold Landry (PUP, bpa 2.0) and DeShon Elliott (IR, bpa 15.0)
+  now emit `universal_value` and `final_score` instead of NaN with no `absence_kind`.
+* **`A-F1`'s narrowed claim.** Gap exactly 0 at `gp == SEASON_GAMES` for all four priced
+  designations, and the renamed test derives the slate from `pu.SEASON_GAMES` rather than `17.0`.
+* **`D-F4`'s qualified floor key really closes the collision.** Built two classes sharing a test
+  name, weakened the first twin, netted it out (module total 4 before and 4 after) — `drops()` named
+  `First.test_same_name`. Floors file regenerated with qualified keys (66 of 66 in
+  `test_screen_context.py`); no residual collision shape in the tree (no test method in a nested
+  class, none outside its class's `body`, and the only duplicated class name in any `test_*.py` is a
+  fixture). *One gap:* `test_assertion_floors.py` itself contains no two-classes-one-name fixture.
+* **`D-F3`.** `_weak_exempt_blocks` now iterates `prose_blocks()`, so `QUOTED_VALUE` cannot match an
+  assignment line and compare it with itself, and the new test counts comparisons that reach
+  `getattr` rather than matches.
+* **`D-F1`.** Verified at the seam: `store_io.read(path)` raises `TypeError` (its `default` is
+  required), so `--check` printed "holding NOTHING" and returned 2 every time and `--write` dropped
+  every recorded reason. The repaired call reads the record's 14 entries back.
+* **`D-F5`.** The module-wide `CAPTURE_PATH` escape is gone, the one real offender now uses
+  `rdb.CAPTURE_PATH`, and the guard is thin but not vacuous — 2 modules' source still reaches the AST
+  check.
+* **`B-F6`'s core.** No phantom `"None"` roster, `remaining_starter_demand` no longer raises on the
+  mixed history, and a genuinely foreign history (two real rosters, one team) is still refused with
+  `ValueError`.
+* **`presentable_text`'s mechanism is not vacuous.** `survival_is_presentable()` is `False`, so
+  `withheld_fields()` is non-empty, and `design_system.figure(None)` → `None` → `"—"`, so the new
+  branch really is reachable; a measured `"0.0"` on a withheld field still renders "withheld".
+* **`test_the_magnitudes_are_unchanged_by_this_experiment`** (D-F6) now pins literals
+  (`-4/17`, `-1/17`, `-0.5/17`), a membership check, and `SEASON_GAMES == 17` separately — the right
+  structure for a claim about magnitudes.
+* **`test_league_config`'s delegation check** follows `team_count` → `team_count_with_basis` instead of
+  naming one function, which is stronger than what it replaced.
+* **`run_roster_proof_capacity_cut`'s corrected citation** points at real code
+  (`remaining_draft_capacity` exists and calls `draftable_slots_per_team`).
+* **The mock-draft surfaces do not need `PICK_ORDER_KEY`.** Both other `build_snapshot` call sites in
+  `app.py` pass `md["league"]`, whose `total_rosters` equals the seat count by construction, so no
+  split is possible there.
+
+## What I ran
+
+* `pip install -r requirements.txt` — the container had no project dependencies.
+* `python3 -m unittest discover -v` on the clean candidate: **4128 tests, 1221.133s**, one failure,
+  and that failure (`test_doc_index_is_not_stale`) was mine — I created this file mid-run. Verified
+  in a fresh worktree at `7984b1d`: `test_doc_index` 10 tests **OK**, `DOC_INDEX.md current`.
+* Real-engine boards and snapshots on four league shapes — `build_mock_league(12T_ppr)`, `HEAVY_IDP`,
+  `LIGHT_IDP`, and a drained upside board — always from the repo root, always with
+  `build_players_db_from_capture` (6,594 rows, never the 764-row vendor reconstruction),
+  `season_projections_from_capture` + `SLEEPER_BASIS_SEASON_SUM` where a season price was wanted,
+  and `merger.set_league_format(db.league_format_hint(league))` before every format. `n` is printed
+  for every population.
+* Spies on the production `health_penalty` and `feasibility_first`, tagged from the **arguments**
+  rather than call order.
+* A 12-arm mutation pass in a separate worktree, under `PYTHONDONTWRITEBYTECODE=1` with
+  `__pycache__` cleared per arm, each arm restored and the tracked tree asserted clean.
+
+Probes, all re-runnable from the repository root with `PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1`:
+
+```
+evidence/blind_pass_v4/probes/
+  probe_ef5_failed_fetch_is_silent.py              finding 1
+  probe_cf4_duplicate_unknown_slot.py              finding 2
+  probe_risk_adj_zero_has_four_causes.py           finding 3
+  probe_cf3_eligibility_and_views.py               findings 3, and B-F4/C-F3 sound
+  probe_a2_trade_value_branch_scope.py             finding 4
+  probe_df2_prose_shield_scope.py                  findings 5, 6
+  probe_bf6_rosterless_agreement.py                findings 7, 8
+  probe_af1_two_paths_scope.py                     finding 12
+  probe_invariant_fixture_branches.py              findings 14, 15
+  probe_bf4_cf3_resurrect_the_raw_position.py      finding 16
+  probe_risk_adj_the_fourth_and_fifth_states.py    finding 18
+  probe_mutation_do_tests_defend_the_repairs.py    finding 19
+  probe_board_absence_census.py                    board-level absence census
+  mutation_pass_output.txt                          finding 19, raw output
+```
+
+## What I could not establish
+
+* The write-up's prose-corpus denominators. D-F2's comment cites "1,446 prose blocks naming
+  something" and "499 module docstrings"; `prose_blocks()` plus `ast.get_docstring` gives me 1,566
+  and 229. **Unverified** which definition produces theirs; the direction of my conclusions in
+  finding 6 does not depend on it, since every number there is computed the same way for both scopes.
+* `assertion_execution.py --check` end to end. It executes the suite and exceeded a two-minute
+  budget; finding `D-F1`-sound is verified at the seam (both forms of `store_io.read` called
+  directly), not by the command's exit code.
+* Whether `A-F4`, `B-F5`, `C-F7`, `C-F8`, `D-F7`, `E-F7`, `E-F3` and the `C-F4` prose half were
+  repaired. `TRIAGE_V4`'s `07bb6f9` correction says they were not, and spot-checking two of them
+  (`availability_factor` still returns `unrecognised_designation` for `Doubtful`;
+  `admits_decision`'s docstring) agrees with that correction, so the record is self-consistent. I did
+  not audit all eight.
+
