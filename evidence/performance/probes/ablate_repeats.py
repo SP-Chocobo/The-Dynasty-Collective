@@ -29,7 +29,13 @@ recorded; if an ablation changes the board it is not a no-op and the timings are
 That check is the thing that distinguishes this from "disabling it made it faster".
 
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:evidence/performance/probes \
-      python3 evidence/performance/probes/ablate_repeats.py <arm_label> <tag>
+      python3 evidence/performance/probes/ablate_repeats.py <arm_label> <tag> \
+        [<traj.json> <at_pick>]
+
+With a trajectory and a pick index, the board is built at that MID-DRAFT state instead of the
+opening one, replayed from a draft that really happened -- which is the only state where
+`depth_exposure` is `measured` and `displacement_adj` is non-zero. Without them it is the
+opening board, where the pool is at its largest and the pool figure is therefore an UPPER bound.
 
 Run from the REPO ROOT of the commit being measured, ALONE on the box.
 """
@@ -51,9 +57,16 @@ OUT = os.environ.get(
 REAL_POOL = dr.build_available_pool
 REAL_FP = dr._players_db_fingerprint
 
-# OFF, pool, fingerprint, both, fingerprint, pool, both, OFF -- first is the cold build.
-PLAN = [(False, False), (True, False), (False, True), (True, True),
-        (False, True), (True, False), (True, True), (False, False)]
+#: `mode="auto"` reads `round` off the picks to resolve upside-vs-balanced, so a pick record
+#: missing it silently selects the other valuation (#222). Schema-validated, not value-validated.
+REQUIRED_PICK_FIELDS = {"pick_no", "round", "roster_id", "player_id"}
+
+#: Build 0 is always the cold one and is always BASELINE, so it is the build that pays the cold
+#: `_merge_memo` fill and is excluded from every ratio. After it, three full rotations of all
+#: four arms in the same order: every arm gets n=3 at comparable cache warmth, and no arm sits
+#: systematically earlier (warmer-trending) than another. A plan with n=1 on the baseline makes
+#: the headline a difference against a single sample.
+PLAN = [(False, False)] + [(False, False), (True, False), (False, True), (True, True)] * 3
 
 
 def main():
@@ -65,7 +78,28 @@ def main():
     pick_order = kw.pop("pick_order")
     merger_, pdb_, league = kw.pop("merger"), kw.pop("players_db"), kw.pop("league")
     mode = entry.get("mode", "auto")
+    num_teams = entry["teams"]
     counts = {}
+
+    picks, at = [], 0
+    if len(sys.argv) > 4:
+        at = int(sys.argv[4])
+        src = json.load(open(sys.argv[3]))
+        taken = src["picks"][:at]
+        if len(taken) != at:
+            raise RuntimeError(f"trajectory holds {len(src['picks'])} picks, asked for {at}")
+        picks = [{"pick_no": i + 1, "round": i // num_teams + 1,
+                  "roster_id": str(p["roster"]), "player_id": str(p["player"])}
+                 for i, p in enumerate(taken)]
+        missing = REQUIRED_PICK_FIELDS - set(picks[0])
+        assert not missing, f"pick records are missing {missing}; mode='auto' reads `round`"
+        unknown = [p["player_id"] for p in picks if str(p["player_id"]) not in pdb_]
+        assert not unknown, f"{len(unknown)} replayed picks are outside this board's universe"
+    seat = str(pick_order[at])
+    round_no = at // num_teams + 1
+    pick_label = f"{round_no}.{(at % num_teams) + 1:02d}"
+    print(f"STATE n_picks_replayed={len(picks)} at_index={at} round={round_no} "
+          f"pick_label={pick_label} seat={seat}", flush=True)
 
     def run(pool_memo_on, fp_memo_on):
         pool_memo, fp_memo = {}, {}
@@ -101,8 +135,8 @@ def main():
         dr._players_db_fingerprint = fp_spy
         try:
             t = time.time()
-            snap = ps.build_snapshot(merger_, pdb_, [], pick_order, 0, str(pick_order[0]),
-                                     league, pick_label="1.01", mode=mode,
+            snap = ps.build_snapshot(merger_, pdb_, picks, pick_order, at, seat,
+                                     league, pick_label=pick_label, mode=mode,
                                      upside_rule=entry.get("upside_rule", dr.UPSIDE_RULE_ROUND),
                                      **kw)
             el = time.time() - t
@@ -118,11 +152,15 @@ def main():
     for i, (pm, fm) in enumerate(PLAN):
         el, snap, c = run(pm, fm)
         ids = [cd.player_id for cd in snap.candidates]
+        nm = sum(1 for cd in snap.candidates
+                 if getattr(cd, "depth_basis", None) == "measured")
         rows.append({"i": i, "pool_memo": pm, "fp_memo": fm, "seconds": el,
-                     "n_candidates": len(snap.candidates), "top5": ids[:5], **c})
+                     "n_candidates": len(snap.candidates), "top5": ids[:5],
+                     "n_depth_measured": nm, **c})
         print(f"{i:2d} {str(pm):>9} {str(fm):>7} {el:8.3f} "
               f"{c['pool_calls']:10d} {c['pool_builds']:11d} {c['fp_calls']:8d} "
-              f"{c['fp_computes']:11d} {len(snap.candidates):6d}", flush=True)
+              f"{c['fp_computes']:11d} {len(snap.candidates):6d}"
+              f"  depth_measured={nm}", flush=True)
 
     warm = rows[1:]
 
@@ -154,10 +192,11 @@ def main():
                            if ok else
                            "A BUILD DIFFERED -- an ablation changed the answer, so these "
                            "timings compare two different computations and must not be quoted"))
-    json.dump({"tag": tag, "label": label, "rows": rows, "behaviour_identical": ok,
+    json.dump({"tag": tag, "label": label, "at_pick": at, "n_picks_replayed": len(picks),
+               "rows": rows, "behaviour_identical": ok,
                "means": {"baseline": base, "pool_memo": pool, "fp_memo": fp, "both": both}},
-              open(f"{OUT}/ABLATE_{tag}_{label}.json", "w"), indent=1)
-    print(f"\nWROTE {OUT}/ABLATE_{tag}_{label}.json", flush=True)
+              open(f"{OUT}/ABLATE_{tag}_{label}_at{at}.json", "w"), indent=1)
+    print(f"\nWROTE {OUT}/ABLATE_{tag}_{label}_at{at}.json", flush=True)
 
 
 if __name__ == "__main__":

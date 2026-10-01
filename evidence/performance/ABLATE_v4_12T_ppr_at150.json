@@ -1,0 +1,262 @@
+{
+ "tag": "v4",
+ "label": "12T_ppr",
+ "at_pick": 150,
+ "n_picks_replayed": 150,
+ "rows": [
+  {
+   "i": 0,
+   "pool_memo": false,
+   "fp_memo": false,
+   "seconds": 9.060768842697144,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 9,
+   "pool_builds": 9,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 1,
+   "pool_memo": false,
+   "fp_memo": false,
+   "seconds": 2.7659847736358643,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 7,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 2,
+   "pool_memo": true,
+   "fp_memo": false,
+   "seconds": 2.5504262447357178,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 1,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 3,
+   "pool_memo": false,
+   "fp_memo": true,
+   "seconds": 2.201784133911133,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 7,
+   "fp_calls": 22,
+   "fp_computes": 1
+  },
+  {
+   "i": 4,
+   "pool_memo": true,
+   "fp_memo": true,
+   "seconds": 2.0668811798095703,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 1,
+   "fp_calls": 22,
+   "fp_computes": 1
+  },
+  {
+   "i": 5,
+   "pool_memo": false,
+   "fp_memo": false,
+   "seconds": 2.719204902648926,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 7,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 6,
+   "pool_memo": true,
+   "fp_memo": false,
+   "seconds": 2.5563979148864746,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 1,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 7,
+   "pool_memo": false,
+   "fp_memo": true,
+   "seconds": 2.1630144119262695,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 7,
+   "fp_calls": 22,
+   "fp_computes": 1
+  },
+  {
+   "i": 8,
+   "pool_memo": true,
+   "fp_memo": true,
+   "seconds": 2.0884878635406494,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 1,
+   "fp_calls": 22,
+   "fp_computes": 1
+  },
+  {
+   "i": 9,
+   "pool_memo": false,
+   "fp_memo": false,
+   "seconds": 2.8236114978790283,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 7,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 10,
+   "pool_memo": true,
+   "fp_memo": false,
+   "seconds": 2.6008079051971436,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 1,
+   "fp_calls": 22,
+   "fp_computes": 22
+  },
+  {
+   "i": 11,
+   "pool_memo": false,
+   "fp_memo": true,
+   "seconds": 2.2204489707946777,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 7,
+   "fp_calls": 22,
+   "fp_computes": 1
+  },
+  {
+   "i": 12,
+   "pool_memo": true,
+   "fp_memo": true,
+   "seconds": 1.999763011932373,
+   "n_candidates": 7,
+   "top5": [
+    "8111",
+    "7600",
+    "11783",
+    "11618",
+    "12484"
+   ],
+   "n_depth_measured": 3,
+   "pool_calls": 7,
+   "pool_builds": 1,
+   "fp_calls": 22,
+   "fp_computes": 1
+  }
+ ],
+ "behaviour_identical": true,
+ "means": {
+  "baseline": 2.7696003913879395,
+  "pool_memo": 2.569210688273112,
+  "fp_memo": 2.195082505544027,
+  "both": 2.0517106850941977
+ }
+}

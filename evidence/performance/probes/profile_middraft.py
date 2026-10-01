@@ -16,7 +16,14 @@ real mid/late-round state, replayed from a trajectory an actual draft produced.
 
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:evidence/performance/probes \
       python3 evidence/performance/probes/profile_middraft.py <arm> <tag> <traj.json> <at_pick> \
-        [--no-profile]
+        [--no-profile] [--warm]
+
+`--warm` builds the board ONCE un-profiled and then profiles a SECOND build. This matters more
+than it sounds. `DataMerger.merge_player` is memoized per merger instance, so a single board
+built in a fresh process pays a cold name resolution -- 3,980 `_resolve` calls through
+`difflib` -- that no pick after the first in a real draft pays. Profiling one cold board
+attributes ~21 s to `_resolve` and tells you almost nothing about what the other 167 picks of
+an arm cost. With `--warm` the profiled build sees the memo the way pick 2 onward does.
 
 `traj.json` is a CURVE_*.json written by draft_cost_curve.py. THE SAME trajectory file is used
 for both commits, so both arms price the identical board state -- a state replayed from each
@@ -51,8 +58,9 @@ REQUIRED_PICK_FIELDS = {"pick_no", "round", "roster_id", "player_id"}
 def main():
     label, tag, traj_path, at = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
     do_profile = "--no-profile" not in sys.argv
+    warm = "--warm" in sys.argv
     os.makedirs(OUT, exist_ok=True)
-    suffix = f"{tag}_{label}_at{at}"
+    suffix = f"{tag}_{label}_at{at}" + ("_warm" if "--warm" in sys.argv else "")
 
     merger, players_db, season, universe = pf.fixture()
     entry = pf.arm(label)
@@ -84,6 +92,16 @@ def main():
           f"n_replayed_ids_not_in_pool={len(unknown)}", flush=True)
     assert not unknown, f"{len(unknown)} replayed picks are outside this board's universe"
 
+    if warm:
+        # Un-profiled, un-timed throwaway: fills `_merge_memo` so the profiled build below
+        # sees the cache state every pick after the first one sees.
+        t_cold = time.time()
+        ps.build_snapshot(merger_, pdb_, picks, pick_order, at, roster_id, league,
+                          pick_label=pick_label, mode=mode,
+                          upside_rule=entry.get("upside_rule", dr.UPSIDE_RULE_ROUND), **kw)
+        print(f"WARMUP build (discarded) seconds={time.time()-t_cold:.3f} "
+              f"-- merge memo now warm", flush=True)
+
     prof = cProfile.Profile() if do_profile else None
     t0 = time.time()
     if prof: prof.enable()
@@ -112,6 +130,7 @@ def main():
           f"displacement_zero={live['displacement_zero']}", flush=True)
 
     out = {"tag": tag, "label": label, "at_pick": at, "seconds": el, "live": live,
+           "warm": warm,
            "n_picks_replayed": len(picks), "profiled": do_profile}
     if prof:
         prof.dump_stats(f"{OUT}/PROFMID_{suffix}.prof")

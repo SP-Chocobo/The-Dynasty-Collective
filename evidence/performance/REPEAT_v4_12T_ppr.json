@@ -1,0 +1,30 @@
+{
+ "tag": "v4",
+ "label": "12T_ppr",
+ "seconds": 11.198208093643188,
+ "n_candidates": 48,
+ "compute_draft_board": {
+  "n_calls": 1,
+  "n_distinct": 1,
+  "n_repeat": 0,
+  "max_for_one": 1
+ },
+ "build_available_pool": {
+  "n_calls": 14,
+  "n_distinct": 1,
+  "n_repeat": 13,
+  "max_for_one": 14
+ },
+ "merge_player": {
+  "n_calls": 56742,
+  "n_distinct": 3980,
+  "n_repeat": 52762,
+  "max_for_one": 266
+ },
+ "_resolve": {
+  "n_calls": 3980,
+  "n_distinct": 3980,
+  "n_repeat": 0,
+  "max_for_one": 1
+ }
+}
