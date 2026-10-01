@@ -581,55 +581,54 @@ ARG mode= auto    EMITTED mode= balanced   priced= 478
 ARG mode= upside  EMITTED mode= upside     priced= 478
 ```
 
-Two different digests (so a mutation of either branch's sort does move the fingerprint — the real
-content of the repair), and **the same `619 / 964 / 131` twice**. The second pair restates the
-first; it cannot fail while the first passes. The guard is two quantities, not four, and the
-comment's "three of four" hazard is not a hazard this guard can be in.
+Two different digests — so a mutation of either branch's sort does move the fingerprint, which is
+the real content of the repair — and **the same `619 / 964 / 131` twice**. The second pair restates
+the first; it cannot fail while the first passes. The guard is two quantities, not four, and the
+"three of four" hazard the comment names is not one this guard can be in.
 
-**Also unforced: only one of the two branches is pinned.** The loop is
+**Also worth noting, though it is pinned elsewhere:** the loop is
 `for mode in ("auto", "upside")` while the guard labels the pair `("balanced", "upside")`. The
-upside arm is forced, as the comment says. The balanced arm is **assumed**: `compute_draft_board`
-resolves `mode="auto"` to upside whenever no priced row carries a positive `_vor`, so "the first
-board is the balanced branch" is a property of this fixture's pool rather than of the call.
-Measured, it holds today — `EMITTED mode= balanced` above — but nothing in the harness asserts the
-emitted mode, and the quantities the guard does check are mode-independent, so if the pool ever
-flipped, both arms would build the upside board and the guard would pass.
+upside arm is forced; the balanced arm is **assumed**, since `compute_draft_board` resolves
+`mode="auto"` to upside whenever no priced row carries a positive `_vor`. Measured, it holds today
+(`EMITTED mode= balanced` above) and nothing in `invariant_confirmation` itself asserts it.
 
-**Severity is LOW and the reason matters.** The consequence is not a false "defended" verdict: an
-inert mutation reads `MUTATION IS INERT`, which is in `INCONCLUSIVE`, so `main` returns 2 and the
-harness refuses a verdict loudly. What is lost is the diagnosis — the same silent-inconclusive the
-2026-09-30 execution cost, arriving without the guard naming why.
+**CORRECTION TO MY OWN FIRST READING, recorded rather than quietly dropped.** I initially filed the
+consequence as "if the pool ever flipped, both arms would build the upside board and the guard would
+pass". That is wrong, and the thing that makes it wrong is in the range:
+`test_invariant_confirmation_anchors.AVerdictIsOnlyAFactAboutTheSuite…` now carries
+`test_the_two_branches_are_DIFFERENT_boards`, which asserts `parts[0] != parts[4]` with the message
+"the balanced and upside boards fingerprint identically, so a mutation to the upside sort cannot
+change anything the harness measures". A both-arms-upside flip fails the suite. What remains is only
+the descriptive defect: the comment's count of independent quantities is wrong. `#133`, nothing more.
 
-**How established.** `evidence/blind_pass_v4/probes/probe_invariant_fixture_branches.py`, which
-runs the module's own fixture string with one added line printing each board's emitted `mode`.
+**How established.** `evidence/blind_pass_v4/probes/probe_invariant_fixture_branches.py`, which runs
+the module's own fixture string with one added line printing each board's emitted `mode`.
 
 ---
 
-### 15. LOW — the same guard pairs with `zip` and never checks that there are two boards
+### 15. NOTE (not a finding) — the production guard pairs with a bare `zip`, but the pairing is pinned by a test
 
-**File / identifier:** `invariant_confirmation.main`
+`invariant_confirmation.main` reads
 
 ```python
-parts = ref_fp.split()
 boards = [parts[i:i + 4] for i in range(0, len(parts), 4)]
 for branch, (_digest, feas, total, unfield) in zip(("balanced", "upside"), boards):
 ```
 
-`zip` truncates to the shorter sequence, and nothing asserts `len(boards) == 2`. Demonstrated:
+`zip` truncates, and the production guard itself never checks `len(boards) == 2`; demonstrated on
+the guard's own expression, a one-board fingerprint line leaves the upside pair silently unchecked.
+I was going to file that. **It is defended**: the same range added
+`self.assertEqual(len(boards), 2, "the fixture no longer fingerprints both branches")` and tightened
+the fingerprint regex to `^[0-9a-f]{64} \d+ \d+ \d+ [0-9a-f]{64} \d+ \d+ \d+$` in
+`test_invariant_confirmation_anchors.py`, so a regression to one board fails the suite before the
+guard is ever reached. Recorded as a shape to know about, not as a defect.
 
-```
-fingerprint carries 2 board(s) -> guard checks ['balanced', 'upside']   both
-fingerprint carries 1 board(s) -> guard checks ['balanced']   UPSIDE PAIR SILENTLY SKIPPED
-```
-
-That is the shape the repair's own comment names ("a guard that covers three of four gives false
-confidence about the fourth") in the guard written to close it. LOW for the same reason as finding
-14 — an unjudged mutation still returns 2.
-
-Related, cosmetic: the summary line below the loop,
+Genuinely cosmetic, and real: the summary line below the loop,
 `print(f"reference board: {_digest[:16]} … feasibility binds on {feas} of {total} rows …")`, reads
 the loop variables after the loop, so it reports the **upside** board's digest and censuses under
 the name "reference board".
+
+---
 
 ### 16. LOW (latent) — all three new eligibility call sites resurrect the raw `position` in exactly the case MANDATE 2.6 removed it, and one of them says it does not
 
