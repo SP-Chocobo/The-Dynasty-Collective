@@ -6,3 +6,4 @@ baseline: running the scored modules on the clean tree (a verdict is meaningless
 baseline: green (1351.0s)
 
 feasibility_first never binds: caught  (437.4s, 2 site(s) mutated)
+board order ignores feasibility: caught  (440.6s, 1 site(s) mutated)
