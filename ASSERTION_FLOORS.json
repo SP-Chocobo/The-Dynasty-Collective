@@ -3825,6 +3825,64 @@
         "early_returns": 0
       }
     },
+    "test_boundary_census.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 8,
+        "assertGreater": 3,
+        "assertIn": 4,
+        "assertTrue": 4
+      },
+      "by_method": {
+        "TheRatchetCatchesAWideningTests.test_FEWER_calls_are_NOT_reported": {
+          "assertEqual": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_MORE_calls_to_a_registered_reach_are_reported": {
+          "assertIn": 2,
+          "assertTrue": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_a_brand_new_reach_is_reported_as_new": {
+          "assertIn": 2,
+          "assertTrue": 1
+        },
+        "TheRatchetCatchesAWideningTests.test_an_empty_hull_passes_because_zero_is_the_goal": {
+          "assertEqual": 1
+        },
+        "TheRealHullMatchesItsCensusTests.test_every_census_key_names_an_owner_and_a_function": {
+          "assertTrue": 2
+        },
+        "TheRealHullMatchesItsCensusTests.test_the_census_is_not_empty": {
+          "assertGreater": 2
+        },
+        "TheRealHullMatchesItsCensusTests.test_the_hull_has_not_widened": {
+          "assertEqual": 1
+        },
+        "TheRealHullMatchesItsCensusTests.test_the_scan_actually_finds_reaches_in_the_real_hull": {
+          "assertGreater": 1
+        },
+        "TheScanSeesBothShapesTests.test_a_NON_data_module_is_not_counted": {
+          "assertEqual": 1
+        },
+        "TheScanSeesBothShapesTests.test_a_from_import_call_is_counted": {
+          "assertEqual": 1
+        },
+        "TheScanSeesBothShapesTests.test_a_module_level_call_is_counted": {
+          "assertEqual": 1
+        },
+        "TheScanSeesBothShapesTests.test_an_INSTANCE_method_call_is_counted": {
+          "assertEqual": 1
+        },
+        "TheScanSeesBothShapesTests.test_an_aliased_module_is_followed": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_bpa_unit.py": {
       "test_methods": 11,
       "asserts": {
