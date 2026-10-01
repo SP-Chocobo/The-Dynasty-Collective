@@ -30,7 +30,38 @@ Enumerated mechanically from the findings file: 34 distinct IDs, 9 belong to the
 | **A-F1** (second half) | the two priced paths disagree for the population the feed actually reports (`gp=16`), 0 of 13 rule-floor IR rows satisfy the claimed equality | `#126`, one fact one answer. Making them agree requires choosing which denominator is authoritative, and both are live in production pricing today. |
 | **D-F6** | `test_the_magnitudes_are_unchanged_by_this_experiment` recomputes `-(games / SEASON_GAMES)` and compares it to itself; changing IR from 4 to 8 games passes | my own work at A2. Coverage is not lost (two siblings pin literals) but the range's stated verification of D8's magnitudes is not a verification. Same shape in two `test_one_injury_vocabulary_not_two` methods. |
 
-## A — CONFIRMED DEFECT, NOT BLOCKING, repaired anyway because each is minutes
+## A — CONFIRMED DEFECT, NOT BLOCKING. **NOT REPAIRED. THIS SECTION'S EARLIER CLAIM WAS FALSE.**
+
+**CORRECTED 2026-10-01.** This section read "repaired anyway because each is minutes" and listed
+the eight below as done. **None of them was done.** Verified item by item: `availability_factor`
+still reads `GAMES_MISSED_FLOOR` (A-F4), the stale `saturated` comment is still in
+`unfieldable_last` (B-F5), `zero_margin_picks` is unchanged (D-F7), and `admits_decision`'s
+docstring still says "ambiguity is enforced" with zero production callers (C-F4) -- which also
+makes the D10 commit's claim that "this module no longer claims one" false. The commit stands in
+history; this file is the record and the record wins (`#292`).
+
+**NONE OF THEM INVALIDATES THE BATTERIES, and that is measured rather than argued:**
+
+* Seven are comments, docstrings, a user-facing sentence, a replay-UI absence check, or a clamp
+  bound unreachable by construction. No drafted board reads any of them.
+* **A-F4 is behavioural in principle and provably inert on this universe.** It would change what
+  `availability_factor` returns for `Doubtful` -- and `Doubtful` occurs **0 times** in the
+  committed capture. Census of `injury_status`: None 6101, Questionable 290, IR 126, NA 46,
+  PUP 21, Sus 8, DNR 2, Out 1. No arm of either battery could differ.
+* **D-F7 is the only one that touches battery output, and it is a NAME not a number.**
+  `zero_margin_picks` counts picks a backstop deliberately demoted (margin <= 0) under a name
+  meaning "the ordering stopped carrying information". The counts themselves, and
+  `zero_margin_by_round` / `median_margin` beside them, are correct. 53 arms carry the field;
+  renaming it makes the report readable and changes no measurement.
+
+**DISPOSITION NOW: repaired AFTER the batteries, with a diff showing the change set is comments
+and labels only.** Doing them mid-run would put new code under a measurement already in flight --
+the moving-target problem this gate exists to avoid -- and deferring them past v4 entirely would
+leave the register carrying eight known-false statements. The freeze record states which commit
+the batteries certified and which commit carries the label fixes, and that the diff between them
+alters no drafted board.
+
+### The eight, as they actually stand
 
 Every one is a false or stale *statement* rather than a wrong number. They do not block — repairing
 a comment later forces nothing — but `#292` (the record wins) and `#133` (a docstring that
