@@ -515,6 +515,44 @@ HEALTH_DISCOUNT_RATE = {
     for designation, games in pu.GAMES_MISSED_PRICED.items()
 }
 
+#: WHY A HEALTH PENALTY IS ZERO -- the companion `health_penalty` never had (`#166`, `#174`).
+#:
+#: `health_penalty` returns 0.0 from FOUR causes and only ONE of them means the designation was
+#: not priced. `pick_debate` branched on `risk_adj == 0.0` and therefore told the chair "this
+#: engine does not price this designation" about rows it discounts at HEALTH_DISCOUNT_RATE --
+#: measured on a HEAVY_IDP board built without season projections: DeShon Elliott (IR, bpa 15.0)
+#: and Harold Landry (PUP, bpa 2.0), both priced on the trade-value fallback, both told the
+#: engine ignores their designation. Two repairs that were each correct alone produced that
+#: sentence together: one made the absent-projection branch return 0.0 instead of NaN, the other
+#: gave 0.0 the meaning "unpriced".
+#:
+#: THE NUMBER TRAVELS WITH THE RULE THAT PRODUCED IT, which is this repo's answer everywhere
+#: else -- `replacement_basis`, `depth_basis`, `horizon_basis`, `denial_basis`. A consumer asks
+#: which basis fired instead of inferring one from a float that four paths can produce.
+HEALTH_BASIS_IN_PROJECTION = "already_in_projection"   #: the rule floor already removed the games
+HEALTH_BASIS_UNPRICED = "designation_not_priced"       #: no rate exists -- the only unpriced case
+HEALTH_BASIS_NO_PROJECTION = "no_projection_to_scale"  #: priced off trade value; no share to take
+HEALTH_BASIS_CHARGED = "charged"                       #: a real, non-zero discount was applied
+
+
+def health_basis(status, availability_basis, projected_points) -> str:
+    """Which of `health_penalty`'s four paths produced its number.
+
+    DERIVED BY ASKING THE SAME QUESTIONS IN THE SAME ORDER, not by re-deciding them: every
+    branch here mirrors one in `health_penalty` below, and `test_a_zero_discount_has_four_causes`
+    pins the pairing over the whole of HEALTH_DISCOUNT_RATE so the two cannot drift. A second
+    function that re-expresses the rule would be a second source of truth (`#126`) -- which is
+    the defect class this companion exists to close.
+    """
+    if availability_basis == pu.RULE_FLOOR:
+        return HEALTH_BASIS_IN_PROJECTION
+    if HEALTH_DISCOUNT_RATE.get(status) is None:
+        return HEALTH_BASIS_UNPRICED
+    if projected_points is None or projected_points != projected_points:
+        return HEALTH_BASIS_NO_PROJECTION
+    return HEALTH_BASIS_CHARGED
+
+
 def health_penalty(status: Optional[str], availability_basis: Optional[str],
                    projected_points: Optional[float]) -> float:
     """The health term of universal_value -- and ZERO where the input already carries it (#191).
@@ -2870,7 +2908,7 @@ BALANCED_BOARD_COLUMNS = [
 
 UPSIDE_BOARD_COLUMNS = [
     "player_id", "name", "position", "team", "injury_status", "bpa", "bpa_source",
-    "time_horizon_adj", "risk_adj", "universal_value",
+    "time_horizon_adj", "risk_adj", "risk_basis", "universal_value",
     "need_bonus", "depth_exposure", "depth_basis",
     "displacement_adj", "displacement_basis",
     "confidence", "final_score", "mode", "projected_points",
@@ -4843,8 +4881,15 @@ def compute_draft_board(
         # whether an unpriced row should carry one is a decision, not a defect.
         if pd.isna(bpa):
             risk_adj = float("nan")
+            #: An unpriced row has no health verdict either -- absence, not a measured basis
+            #: (`#187`). None, never a string that reads like one of the four.
+            risk_basis = None
         else:
             risk_adj = health_penalty(row.get("injury_status"), row.get("availability_basis"),
+                                      row.get("_points"))
+            #: COMPUTED BESIDE THE NUMBER, FROM THE SAME THREE INPUTS. A consumer that infers
+            #: the cause from `risk_adj == 0.0` gets it wrong three times out of four (`#166`).
+            risk_basis = health_basis(row.get("injury_status"), row.get("availability_basis"),
                                       row.get("_points"))
         if is_dynasty and not pd.isna(risk_adj):
             # Trajectory-aware scaling (experiment "D" -- see this constant's own docstring
@@ -4960,6 +5005,7 @@ def compute_draft_board(
         return pd.Series({
             "time_horizon_adj": round(time_horizon_adj, 2),
             "risk_adj": risk_adj,
+            "risk_basis": risk_basis,
             "universal_value": universal_value,
             "need_bonus": need_bonus,
             "depth_exposure": depth_exposure_value,

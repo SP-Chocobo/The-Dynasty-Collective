@@ -106,6 +106,35 @@ class TheRefusalCarriesItsReasonTests(unittest.TestCase):
         self.assertEqual((None, None), sc.priceable_season_projections({}))
         self.assertEqual((None, None), sc.priceable_season_projections(None))
 
+    def test_an_unreachable_sleeper_warns_even_though_nothing_raised(self):
+        """E-F5's REAL failure path, which the first repair missed.
+
+        `get_weekly_projections` FAILS SOFT -- it catches `SleeperAPIError` and returns `{}` per
+        week -- so an unreachable Sleeper raises nothing, `sync_league` writes no `coverage.error`,
+        and a guard that tests for that key never fires. The first repair tested exactly that key
+        and the board was silently vendor-priced.
+
+        THE COVERAGE RECORD IS BUILT BY `_sum_weeks` ITSELF, not hand-written here: a fixture that
+        asserts the shape it wants is the defect this whole cycle was about. The transport is the
+        only thing replaced."""
+        class Unreachable(sc.SleeperClient):
+            def _weekly_stat_lines(self, *a, **k):
+                raise sc.SleeperAPIError("Failed to reach Sleeper API: ConnectionError")
+
+        totals, coverage = Unreachable().get_season_projections("2026", "regular", weeks=18)
+
+        self.assertEqual({}, totals, "the soft-fail path should yield no totals")
+        self.assertNotIn("error", coverage,
+                         "if this key appears, the soft-fail path has changed and this test is "
+                         "no longer about the branch it was written for")
+        self.assertFalse(sc.season_sum_is_complete(coverage))
+
+        projections, reason = sc.priceable_season_projections(
+            {"season_projections": totals, "season_projection_coverage": coverage})
+        self.assertIsNone(projections)
+        self.assertIsNotNone(reason, "an unreachable Sleeper must not price silently")
+        self.assertIn("NOT scored under your league's own rules", reason)
+
 
 class EveryPricingCallSiteAsksTests(unittest.TestCase):
     """`app.py` passed the raw sums at four call sites -- the live board, two Mock Draft paths and

@@ -1612,6 +1612,12 @@ class CandidateSnapshot:
     #: adjustment", which is a different and much stronger claim.
     time_horizon_adj: Optional[float] = None
     risk_adj: Optional[float] = None
+    #: WHICH of `health_penalty`'s four paths produced `risk_adj` (`#166`). Carried because the
+    #: number alone cannot be read: 0.0 arrives from four causes and only one of them means the
+    #: designation is unpriced. `pick_debate` told the chair the wrong one of the four until this
+    #: crossed the boundary. Defaulted to None so a snapshot built before this field replays as
+    #: "no verdict recorded" rather than inventing one -- absence, not a measured basis (`#187`).
+    risk_basis: Optional[str] = None
     #: #112. Which KIND of absence left this row unpriced -- see draft_room.ABSENCE_KINDS. None
     #: on a priced row. The register names three kinds with three different answers to the
     #: ordering question, and only one of them ("below every source's cutoff") is evidence of
@@ -1915,6 +1921,7 @@ def build_snapshot(
             # says so at the emission site, and this mirrors it rather than restating it).
             "time_horizon_adj": row.get("time_horizon_adj"),
             "risk_adj": row.get("risk_adj"),
+            "risk_basis": row.get("risk_basis"),
             # MANDATE 2.5: WHAT risk_adj IS PARTLY MADE OF. Carried with its basis and never
             # defaulted -- an absent status is "nothing was reported", which is not "healthy", and
             # the basis is the only thing that separates them.

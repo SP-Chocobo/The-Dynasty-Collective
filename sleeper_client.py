@@ -1035,11 +1035,35 @@ def priceable_season_projections(snapshot: Optional[dict]) -> tuple[Optional[dic
         # NOTHING EVER SYNCED there is no coverage record, nothing was attempted, and a
         # vendor-priced board is the correct and unremarkable pre-sync state -- warning there
         # would train the reader to ignore the warning that matters.
-        if (coverage or {}).get("error"):
+        #
+        # ASK THE AUTHORITY, NOT FOR AN `error` KEY (E-F5, reopened and re-closed). The first
+        # repair tested `coverage["error"]`, which `sync_league` writes only when
+        # `get_season_projections` RAISES. It does not raise on the ordinary outright failure:
+        # `get_weekly_projections` FAILS SOFT by its own docstring, catching `SleeperAPIError`
+        # and returning `{}` per week, so an unreachable Sleeper appends every week to
+        # `weeks_failed` and `_sum_weeks` builds a coverage record with NO `error` key at all.
+        # Measured on this tree, driving the real `_sum_weeks` with a raising transport: 7
+        # coverage keys, none of them `error`, 18 weeks failed, and the guard returned no
+        # refusal -- a silently vendor-priced board, which is the exact defect E-F5 claims to
+        # have closed, still reachable through the sibling branch.
+        #
+        # `season_sum_is_complete` is the module's one answer to "did this fetch finish" and is
+        # what the priced path below already asks (`#126`). A record that exists and is not
+        # complete is a failure whether or not anyone caught an exception over it.
+        if coverage and not season_sum_is_complete(coverage):
+            error = (coverage or {}).get("error")
+            failed = (coverage or {}).get("weeks_failed") or []
+            if error:
+                detail = f"the projection fetch failed outright ({error})"
+            elif failed:
+                detail = (f"every week requested failed to answer ({len(failed)} of them)"
+                          if not ((coverage or {}).get("weeks_answered") or []) else
+                          f"week(s) {', '.join(str(w) for w in failed)} did not answer")
+            else:
+                detail = "the coverage record does not describe a whole season"
             return None, (
-                f"This board is NOT scored under your league's own rules: the projection fetch "
-                f"failed outright ({(coverage or {}).get('error')}), so no week answered and "
-                f"there are no season totals to price from. The board falls back to the vendor's "
+                f"This board is NOT scored under your league's own rules: {detail}, so there "
+                f"are no season totals to price from. The board falls back to the vendor's "
                 f"complete season projection. Re-sync this league to restore league scoring."
             )
         return None, None

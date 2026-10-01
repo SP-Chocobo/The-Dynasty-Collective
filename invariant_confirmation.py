@@ -352,14 +352,30 @@ def main():
     # feasibility census; if it is uniform, feasibility_first is a no-op on this board and every
     # mutation of it would read INERT forever -- the harness passing itself while testing
     # nothing, one level up from #254. Fail loudly rather than drift back into that.
-    # BOTH BACKSTOPS ON BOTH BRANCHES. The guard checked feasibility alone once, so the
-    # fieldability mutation sat behind an unchecked assumption: its column was uniformly 0 on the
-    # fixture, the mutation substituting a constant 0 was therefore a no-op, and the arm could
-    # only ever read MUTATION IS INERT. Widening it to both backstops left the SAME hole one axis
-    # over -- both censuses were checked on the default board while two arms mutated the upside
-    # branch -- so it is now four quantities, one pair per branch. A guard that covers three of
-    # four gives false confidence about the fourth, which is the shape of every defect this file
-    # exists for.
+    # BOTH BACKSTOPS, AND WHAT THAT IS AND IS NOT WORTH. The guard checked feasibility alone
+    # once, so the fieldability mutation sat behind an unchecked assumption: its column was
+    # uniformly 0 on the fixture, the mutation substituting a constant 0 was therefore a no-op,
+    # and the arm could only ever read MUTATION IS INERT. Widening it to both backstops fixed
+    # that.
+    #
+    # IT IS TWO QUANTITIES, NOT FOUR, AND AN EARLIER VERSION OF THIS COMMENT CLAIMED FOUR.
+    # `feasibility_first` and `unfieldable_last` never read `mode` -- grep them -- so each
+    # census is identical on both branches BY CONSTRUCTION, and the upside pair cannot fail
+    # while the balanced pair passes. It is checked per branch anyway, because the day a
+    # backstop does start reading the mode this guard should already be looking; what is not
+    # true is that four independent quantities are being covered. Stating the redundancy is
+    # cheaper than discovering later that the reassurance was double-counted (`#133`).
+    #
+    # WHAT THE SECOND BOARD ACTUALLY BUYS is the DIGEST, not the census: the two digests differ,
+    # so a mutation of either branch's sort moves the fingerprint. That is the whole repair --
+    # two arms mutate the upside branch, and before this the fixture only ever built one board,
+    # so both read MUTATION IS INERT for their entire existence.
+    #
+    # THE BALANCED ARM IS ASSUMED, NOT FORCED. The loop below asks for `mode="auto"` and labels
+    # what comes back "balanced"; `compute_draft_board` resolves auto to UPSIDE whenever no
+    # priced row carries a positive `_vor`. It emits balanced on today's fixture and nothing
+    # here asserts it, so a fixture drift could silently check the upside board twice under two
+    # names. The emitted mode is printed below so the reader can see which board they got.
     parts = ref_fp.split()
     boards = [parts[i:i + 4] for i in range(0, len(parts), 4)]
     for branch, (_digest, feas, total, unfield) in zip(("balanced", "upside"), boards):
@@ -371,7 +387,11 @@ def main():
                       f"of it can be judged. Re-derive the roster state; do not relax this check.")
                 return 2
     print(f"reference board: {_digest[:16]}  feasibility binds on {feas} of {total} rows, "
-          f"fieldability on {unfield}\n")
+          f"fieldability on {unfield}")
+    # The digests, because they are what the second board is for -- identical digests would mean
+    # the upside arms are back to mutating a branch the fixture never built.
+    print(f"  branch digests: {' '.join(b[0][:16] for b in boards)}"
+          f"{'  <-- IDENTICAL, the upside arms cannot bind' if len({b[0] for b in boards}) < 2 else ''}\n")
 
     # THE HARNESS'S OWN SELF-TEST RUNS HERE, ON THE CLEAN TREE, AND NOWHERE ELSE.
     # `test_invariant_confirmation_anchors.py` reads draft_room.py FROM DISK and counts anchor

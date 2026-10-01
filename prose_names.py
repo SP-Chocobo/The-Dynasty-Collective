@@ -97,9 +97,23 @@ HISTORICAL_MARKERS = (
     #:
     #: THESE ARE PHRASES, NOT THE WORD "no", deliberately. A bare "no" would shield roughly
     #: anything; "there is no" and "needs no" are assertions with a subject, and the subject is
-    #: the name. This is completing the vocabulary for an existing idiom, not growing it until the
-    #: report reads zero -- the distinction this module's docstring draws, and the reason the
-    #: report still stands at four rather than nought after they were added.
+    #: the name. This is completing the vocabulary for an existing idiom rather than growing it
+    #: until the report reads zero -- the distinction this module's docstring draws.
+    #:
+    #: THE EVIDENCE FOR THAT RESTRAINT IS THE THREE NAMES, NOT THE TOTAL, AND AN EARLIER VERSION
+    #: OF THIS COMMENT GOT IT WRONG. It said "the report still stands at four rather than nought
+    #: after they were added". IT STANDS AT ZERO. The four it pointed to are exactly the four
+    #: that `SELF_REFERENTIAL` -- added in the same change -- suppresses, so the two halves of
+    #: one commit cancel and the total says nothing about this list. Measured, by swapping each
+    #: suppression out at runtime: shipped 0; without `SELF_REFERENTIAL` 4, every one of them
+    #: inside this module or its test; without these four markers 3.
+    #:
+    #: Those 3 are the real evidence, and they are what a reader should check: `fgmiss_0_19` in
+    #: `player_universe.py` ("There is no `fgmiss_0_19`") and two renamed methods in
+    #: `test_draft_strategy.py` ("REPLACES `test_...`, which ..."). All three sit in prose that
+    #: is genuinely historical, which is what makes these markers idiom completion and not
+    #: papering over rot. Citing a total that two independent suppressions produce is the `#133`
+    #: shape, in the commit that repaired `#133`'s own instrument.
     "replac", "there is no", "needs no", "no separate",
 )
 
@@ -293,6 +307,21 @@ def markdown_blocks() -> tuple[tuple[Path, int, str], ...]:
 #: doc_index hit when it classified its own output.
 NOT_ITS_OWN_CORPUS = frozenset({"test_prose_names.py"})
 
+#: A TRANSCRIPT IS NOT A PLACE A NAME LIVES (V4-I2). The haystack takes markdown's FENCED CODE,
+#: on the reasoning that a fence holds real source while the prose around it is commentary. An
+#: evidence document breaks that: its fences hold QUOTED INSTRUMENT OUTPUT, so a report that
+#: lists the names this checker called dead puts every one of them into the corpus, and each then
+#: vouches for itself. Found when four independent review branches were merged and
+#: `test_the_haystack_excludes_the_prose_itself` went red: `ValidatedFlagIsUnconditional` and
+#: `TheConstructionIsStrandedOnPurposeTests` reached the haystack from a fenced block in
+#: `INDEPENDENT_REVIEW_REPAIRS.md` quoting this module's own report.
+#:
+#: This is the hole the docstring below says was closed -- "that memo, being in the haystack,
+#: vouches for the old name everywhere" -- reopened through the one channel the closure left
+#: open. Evidence is a RECORD OF WHAT WAS OBSERVED, never a definition, so none of it is a place
+#: a name can legitimately live.
+TRANSCRIPTS_NOT_DEFINITIONS = ("evidence/",)
+
 
 @functools.lru_cache(maxsize=1)
 def haystack() -> str:
@@ -326,6 +355,8 @@ def haystack() -> str:
     for path in _tracked("*.js", "*.html", "*.json", "*.css", "*.toml", "*.yml", "*.yaml"):
         parts.append(path.read_text(encoding="utf-8", errors="replace"))
     for path in _tracked("*.md"):
+        if any(seg in path.as_posix() for seg in TRANSCRIPTS_NOT_DEFINITIONS):
+            continue                                # quoted output, not source -- see above
         parts.append(markdown_split(path)[1])       # FENCED CODE ONLY -- see the docstring
 
     # A TRACKED MODULE'S OWN STEM IS A NAME IN THE SYSTEM, and nothing above guarantees it
@@ -510,6 +541,27 @@ def misquoted_constants() -> list[tuple[str, str, float, float]]:
     return out
 
 
+def _quotation_census() -> tuple[int, int]:
+    """(quotations of a single-homed constant, how many the history shield suppressed).
+
+    What `misquoted_constants` actually EXAMINED, which is the only honest denominator for its
+    verdict. Derived by walking the same blocks with the same matcher, so it cannot drift from
+    the check it describes -- a census computed a second way is a second definition (`#126`).
+    """
+    real = numeric_constants()
+    checkable = shielded = 0
+    for blocks in (prose_blocks(), markdown_blocks()):
+        for _path, _line, text in blocks:
+            for match in QUOTED_VALUE.finditer(text):
+                name = match.group(1) or match.group(3)
+                if name not in real:
+                    continue
+                checkable += 1
+                if is_history(text):
+                    shielded += 1
+    return checkable, shielded
+
+
 def main() -> int:
     dead = dead_names()
     for name, sites in sorted(dead.items()):
@@ -519,10 +571,19 @@ def main() -> int:
     wrong = misquoted_constants()
     for site, name, real, quoted in wrong:
         print(f"{site:52s} {name} is {real} but the prose says {quoted}")
-    print(f"{len(wrong)} constant value(s) quoted wrongly, "
-          f"over {len(numeric_constants())} single-homed constants, read from "
-          f"{len(prose_blocks())} comments and docstrings "
-          f"and {len(markdown_blocks())} markdown paragraphs")
+    # THE CHECKABLE POPULATION, NOT THE SCANNED ONE. This line used to report the constants
+    # defined and the blocks read -- 112 and ~18,000 -- and neither is the number of claims this
+    # run actually verified. A reader (including the one who wrote this) quoted those denominators
+    # as evidence the corpus was clean, when the quantity examined was two orders of magnitude
+    # smaller. A rate over the wrong population is the `#245` shape: an instrument whose summary
+    # invites a conclusion its measurement does not support.
+    checkable, shielded = _quotation_census()
+    print(f"{len(wrong)} constant value(s) quoted wrongly, over {checkable} quotation(s) of a "
+          f"single-homed constant ({shielded} of them shielded as history, so {checkable - shielded} "
+          f"were actually compared)")
+    print(f"    scanned to find them: {len(numeric_constants())} single-homed constants, "
+          f"{len(prose_blocks())} comments and docstrings, "
+          f"{len(markdown_blocks())} markdown paragraphs")
     return 1 if (dead or wrong) else 0
 
 

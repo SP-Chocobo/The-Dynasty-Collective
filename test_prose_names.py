@@ -257,14 +257,49 @@ class MarkdownProseDoesNotVouchForItself(unittest.TestCase):
                         "every word of markdown prose is in the haystack -- the strip is inert")
 
     def test_a_name_inside_a_fenced_block_still_vouches(self):
-        """The other direction. A fenced block is a QUOTATION of code, not a claim, so it belongs
-        in the haystack -- and if it stopped arriving, real names would start reading dead."""
-        fenced = set()
+        """The other direction. A fenced block is a QUOTATION OF CODE, not a claim, so it belongs
+        in the haystack -- and if it stopped arriving, real names would start reading dead.
+
+        EXCEPT WHERE THE FENCE QUOTES AN INSTRUMENT INSTEAD OF SOURCE (V4-I2). An evidence
+        document's fences hold recorded OUTPUT, so a report listing the names this checker called
+        dead puts every one of them into the corpus and each vouches for itself. Found by merging
+        four review branches: `ValidatedFlagIsUnconditional` and
+        `TheConstructionIsStrandedOnPurposeTests` reached the haystack from a fenced block in
+        `INDEPENDENT_REVIEW_REPAIRS.md` quoting this module's own report. Both halves are pinned
+        below, because dropping either one is a defect: keep everything and a transcript vouches,
+        drop everything and real names read dead."""
+        definitions, transcripts = set(), set()
         for path in prose_names._tracked("*.md"):
-            fenced |= prose_names.words(prose_names.markdown_split(path)[1])
+            fenced = prose_names.words(prose_names.markdown_split(path)[1])
+            is_transcript = any(seg in path.as_posix()
+                                for seg in prose_names.TRANSCRIPTS_NOT_DEFINITIONS)
+            (transcripts if is_transcript else definitions).update(fenced)
         universe = prose_names.words(prose_names.haystack())
-        self.assertGreater(len(fenced), 500, "no markdown fenced code reached the haystack")
-        self.assertTrue(fenced <= universe)
+
+        # NON-VACUITY ON BOTH SIDES: neither population may be empty, or one half asserts nothing.
+        self.assertGreater(len(definitions), 500, "no markdown fenced code reached the haystack")
+        self.assertGreater(len(transcripts), 50, "no transcript fences exist; the split is inert")
+
+        self.assertTrue(definitions <= universe,
+                        "fenced code outside the transcripts must still vouch")
+        # THE EXCLUSION DOES SOMETHING, measured rather than assumed: the universe is strictly
+        # smaller than it would be with transcript fences folded in. Comparing fence sets alone
+        # would not show this -- an ordinary word like "applied" appears in a transcript fence AND
+        # in real source, so set difference over fences proves nothing either way.
+        self.assertTrue(transcripts - universe,
+                        "no transcript word is absent from the universe, so excluding them "
+                        "changed nothing and this guard is inert")
+
+        # THE REGRESSION, by name. These two reached the haystack from a fenced block quoting
+        # this module's own report, and `test_the_haystack_excludes_the_prose_itself` went red.
+        # They exist in the repository ONLY inside prose and inside that quotation.
+        for name in ("ValidatedFlagIsUnconditional", "TheConstructionIsStrandedOnPurposeTests"):
+            self.assertIn(name, transcripts,
+                          f"{name} is no longer quoted in any transcript; this regression test "
+                          f"has lost its subject and needs a live one")
+            self.assertNotIn(name, universe,
+                             f"{name} exists only in prose and in quoted output, so reaching the "
+                             f"haystack means it is vouching for itself")
 
 
 class TheConstantCheckReadsTheDocumentsToo(unittest.TestCase):

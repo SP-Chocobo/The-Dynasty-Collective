@@ -63,6 +63,7 @@ from llm_engine import (
     UNAVAILABLE_REPORT, _report_for_handoff, is_failed_call,
 )
 import pick_synthesis as ps
+import draft_room as dr
 import player_universe as pu
 from pick_synthesis import (ABSENCE_KIND_LABELS,
                             CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
@@ -424,19 +425,37 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         #:
         #: The wrong quantity was being consulted. `risk_adj` is on the same object and is the
         #: number that says whether a discount was charged, so it is what decides the sentence now.
-        #: THREE states, because there are three (`#187`): already in the projection; charged on
-        #: top; and reported but deliberately not priced -- which a chair instructed never to
-        #: recompute cannot work out for itself, and which it most needs to hear, since its job is
-        #: to pressure-test exactly this.
-        _charged = candidate.risk_adj is not None and candidate.risk_adj != 0.0
-        if candidate.availability_basis == pu.RULE_FLOOR:
+        #: FOUR states, because there are four, and an earlier version of this block said THREE
+        #: and read them off `risk_adj == 0.0` (`#174`).
+        #:
+        #: `health_penalty` returns 0.0 from four causes and only ONE of them means the engine
+        #: does not price the designation. Branching on the float collapsed the other three into
+        #: that one, so the chair was told "this engine does not price this designation" about
+        #: rows discounted at HEALTH_DISCOUNT_RATE -- measured on a HEAVY_IDP board built without
+        #: season projections, DeShon Elliott (IR, bpa 15.0) and Harold Landry (PUP, bpa 2.0).
+        #: Two repairs that were each right alone produced that sentence together: one made the
+        #: absent-projection branch return 0.0 rather than NaN, the other gave 0.0 the meaning
+        #: "unpriced".
+        #:
+        #: ASKED OF THE BOARD, NOT INFERRED HERE. `risk_basis` is stamped beside `risk_adj` by
+        #: the one site that computes it, so this formatter reads a verdict instead of
+        #: reconstructing one (`#166`). A missing basis falls through to saying nothing about the
+        #: designation beyond naming it -- silence, never a guess.
+        _basis = getattr(candidate, "risk_basis", None)
+        if _basis == dr.HEALTH_BASIS_IN_PROJECTION or candidate.availability_basis == pu.RULE_FLOOR:
             _health = ("the games this designation is known to cost are ALREADY REMOVED from his "
                        "projection, so no further discount was applied on top")
-        elif _charged:
+        elif _basis == dr.HEALTH_BASIS_CHARGED:
             _health = "a health discount is already inside the universal value below"
-        else:
+        elif _basis == dr.HEALTH_BASIS_NO_PROJECTION:
+            _health = ("this engine DOES price this designation, but his row is priced off trade "
+                       "value with no projection for the discount to be a share of, so no "
+                       "discount appears in the value below")
+        elif _basis == dr.HEALTH_BASIS_UNPRICED:
             _health = ("NO discount was applied for it -- this engine does not price this "
                        "designation, so his value below is the value of a fully fit player")
+        else:
+            _health = "the board recorded no health verdict for it"
         lines.append(f"  Injury designation: {candidate.injury_status} -- {_health}")
     # #183. AN UNPRICED ROW REACHES THIS FORMATTER. `universal_value` and
     # `team_acquisition_value` are both Optional, and the board's absence convention gives an
