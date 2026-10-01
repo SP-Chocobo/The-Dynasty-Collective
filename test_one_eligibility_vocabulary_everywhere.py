@@ -134,6 +134,44 @@ class EligibilityCrossesTheSnapshotBoundaryTests(unittest.TestCase):
         self.assertIn("Old Record", self._names("DL"))
         self.assertNotIn("Old Record", self._names("LB"))
 
+    #: THE PAIR BELOW IS THE REPAIR. Both of these reach the view filter as a falsy
+    #: `eligible_positions`, and they mean opposite things: `legacy` carries NO value because
+    #: nothing filled the field in, and `nowhere` carries an EMPTY ONE because
+    #: `player_eligible_positions` answered "this man starts nowhere". While the field defaulted to
+    #: `frozenset()` the filter could not tell them apart, so its `or {candidate.position}` had to
+    #: fire for both -- which put a man the feed says is startable nowhere back into the view for
+    #: the raw label `#172` says not to trust. The default is now `None` and the filter tests `is
+    #: None`, so the two cases separate (review finding 16, `#187`).
+    def test_an_EMPTY_eligibility_is_an_ANSWER_and_shows_in_no_view(self):
+        nowhere = self._candidate("13", "Startable Nowhere", "TE", frozenset())
+        for view in ("TE", "FLEX", "SUPER_FLEX"):
+            with self.subTest(view=view):
+                self.assertNotIn("Startable Nowhere", self._names(view, (nowhere,)),
+                                 "an empty eligibility was read as missing data and the raw "
+                                 "`position` was resurrected -- the #172 breach")
+
+    def test_the_SAME_candidate_with_a_real_eligibility_DOES_show(self):
+        """NON-VACUITY for the test above. A filter that showed nobody would satisfy it."""
+        somewhere = self._candidate("14", "Startable Somewhere", "TE", {"TE"})
+        self.assertIn("Startable Somewhere", self._names("TE", (somewhere,)))
+
+    def test_an_ABSENT_field_and_an_EMPTY_one_do_not_behave_alike(self):
+        """The two halves in one assertion, because the defect was precisely that they agreed.
+        `legacy` has no value and replays on its label; `nowhere` has an empty answer and does
+        not. If these ever match again, the distinction has collapsed."""
+        nowhere = self._candidate("13", "Startable Nowhere", "DL", frozenset())
+        self.assertIn("Old Record", self._names("DL", (self.legacy,)))
+        self.assertNotIn("Startable Nowhere", self._names("DL", (nowhere,)))
+
+    def test_the_default_is_ABSENCE_so_the_filter_can_tell_them_apart(self):
+        """Pins the mechanism the two tests above depend on. A default of `frozenset()` makes the
+        distinction unexpressible no matter how the filter is written."""
+        default = {f.name: f.default for f in dataclasses.fields(ps.CandidateSnapshot)}
+        self.assertIsNone(default["eligible_positions"])
+        self.assertIsNone(self.legacy.eligible_positions,
+                          "a candidate built without the field must carry absence, not an empty "
+                          "set -- the filter's `is None` branch is unreachable otherwise")
+
     def test_a_flex_view_admits_anyone_eligible_for_that_slot(self):
         """Flex views were already eligibility-shaped through `FLEX_SLOT_POSITIONS`; they must now
         read the candidate's eligibility too, or the two halves disagree again."""

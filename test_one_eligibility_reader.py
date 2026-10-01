@@ -167,5 +167,79 @@ class TheCaptureIsWhereThisWasMeasuredTests(unittest.TestCase):
                 self.fail(f"{pid} is eligible at {sorted(outside)}, which no roster slot uses")
 
 
+class TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests(unittest.TestCase):
+    """`eligible_positions_for` -- "eligibility, or the row's own label when the pool has no record".
+
+    WHY THIS CLASS EXISTS, STATED PLAINLY: the repair that gave this rule one home shipped with no
+    test of its own. It was verified by hand against the real row and by reading the three call
+    sites, and neither is a test -- a hand check does not run again, and the mutation gate had no
+    arm that could survive. The three sites it replaced had each re-expressed the composition
+    (`B-F4`/`C-F3`, review finding 16) and each had gotten it wrong the same way, which is exactly
+    the kind of agreement an untested rule produces.
+
+    THE DISTINCTION UNDER TEST is the one `player_eligible_positions` already draws and these
+    callers were erasing: `fantasy_positions` ABSENT is missing data, and the row's primary bucket
+    is the honest degradation; `fantasy_positions` PRESENT and startable nowhere is an ANSWER, and
+    substituting the raw `position` overrides Sleeper with the field `#172` says not to trust
+    (`#187`: absence is not a value).
+    """
+
+    #: The real shape, from the committed capture: `position: TE`, `fantasy_positions: ["OL"]`.
+    #: One row of 6,595, and `build_players_db_from_capture` filters him out before any board is
+    #: built -- so this is pinned on the FIXTURE rather than asserted of production, because the
+    #: population production receives is 0 of 6,594 and a test over it would be vacuous.
+    STARTABLE_NOWHERE = {"first_name": "Bradley", "last_name": "Sowell",
+                         "position": "TE", "fantasy_positions": ["OL"]}
+
+    def test_a_row_the_feed_says_starts_NOWHERE_stays_nowhere(self):
+        """THE POINT. The mutation this refuses is `... or ({position} if position else ())`,
+        which is what all three call sites did before the rule had one home."""
+        db = {"1269": self.STARTABLE_NOWHERE}
+        self.assertEqual(frozenset(),
+                         pu.eligible_positions_for("1269", "TE", db),
+                         "the raw `position` was resurrected for a man the feed says is startable "
+                         "nowhere -- the #172 breach, reinstated by the fallback")
+
+    def test_the_underlying_reader_AGREES_so_this_is_not_a_second_opinion(self):
+        """Non-vacuity of the row itself. If `player_eligible_positions` returned anything for it,
+        the test above would pass without the composition being right."""
+        self.assertEqual(set(), pu.player_eligible_positions(self.STARTABLE_NOWHERE))
+
+    def test_a_row_the_pool_does_NOT_KNOW_falls_back_to_its_own_label(self):
+        """The other half, and the reason the fallback exists at all: a frame may carry `position`
+        without a `player_id` the pool knows, and dropping it would remove it from every view."""
+        db = {"1269": self.STARTABLE_NOWHERE}
+        self.assertEqual(frozenset({"TE"}), pu.eligible_positions_for("nobody", "TE", db))
+
+    def test_no_pool_at_all_falls_back_the_same_way(self):
+        """`feasibility_first` is called with `players_db=None` by tests that build frames carrying
+        `position` alone -- six of them errored on a KeyError when the first version of `B-F4`
+        required an id. The degradation has to survive an absent pool, not just an absent row."""
+        self.assertEqual(frozenset({"TE"}), pu.eligible_positions_for("1269", "TE", None))
+
+    def test_a_row_with_neither_a_record_nor_a_label_claims_nothing(self):
+        """No guessing when there is nothing to guess from -- and `frozenset()` here is an
+        ABSENCE of any claim, which is why the view filter keys off `None` on the snapshot rather
+        than off emptiness."""
+        self.assertEqual(frozenset(), pu.eligible_positions_for(None, None, None))
+
+    def test_a_MULTI_position_row_keeps_every_position_it_can_start_at(self):
+        """The case `#172` was filed for, through the composed rule rather than the reader alone:
+        Travis Hunter, `fantasy_positions: ["DB", "WR"]`, whose primary bucket is DB."""
+        db = {"x": {"first_name": "Travis", "last_name": "Hunter",
+                    "position": "DB", "fantasy_positions": ["DB", "WR"]}}
+        self.assertEqual(frozenset({"DB", "WR"}), pu.eligible_positions_for("x", "DB", db))
+
+    def test_the_three_former_sites_no_longer_spell_the_composition(self):
+        """`#126`, mechanically. The repair is only done while the other readers keep calling it,
+        and `or {position}` reappearing at any of them is the regression."""
+        for name, needle in (("draft_room.py", "eligible_positions_for"),
+                             ("pick_synthesis.py", "eligible_positions_for"),
+                             ("draft_board_ui.py", "eligible_positions is not None")):
+            with self.subTest(name):
+                self.assertIn(needle, Path(name).read_text(encoding="utf-8"),
+                              f"{name} stopped reading the one home for this rule")
+
+
 if __name__ == "__main__":
     unittest.main()
