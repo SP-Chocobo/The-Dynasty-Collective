@@ -9,3 +9,7 @@ feasibility_first never binds: caught  (437.4s, 2 site(s) mutated)
 board order ignores feasibility: caught  (440.6s, 1 site(s) mutated)
 board order ignores fieldability: caught  (440.5s, 1 site(s) mutated)
 upside board order ignores feasibility: caught  (438.9s, 1 site(s) mutated)
+upside board order ignores fieldability: caught  (443.7s, 1 site(s) mutated)
+
+sources restored cleanly: yes
+-> evidence/invariant_confirmation.json

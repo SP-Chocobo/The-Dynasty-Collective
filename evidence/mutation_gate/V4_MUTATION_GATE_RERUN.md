@@ -1,8 +1,12 @@
 # v4 mutation gate — re-run on the REPAIRED engine
 
-**Status: IN PROGRESS.** This file is written as each arm reports, not at the end, so a
-container reclamation cannot take an established verdict with it. Any row below reading
-`pending` has not been measured yet; no row is written from an estimate.
+**Status: COMPLETE. THE GATE PASSES.** Baseline green on the clean tree and all five arms
+`caught`, on the repaired engine at `7e54821`. No arm read `MUTATION IS INERT`,
+`ANCHOR FAILED`, `MUTANT CANNOT BUILD A BOARD`, `MUTANT DOES NOT PARSE` or `*** SURVIVED ***`.
+
+Every number here was measured in this run and taken from this run's own stdout
+(`v4_rerun_raw.log`, committed beside this file). Nothing is an estimate. This file was written
+arm by arm as each verdict landed, not assembled at the end.
 
 ## Why this run exists
 
@@ -88,7 +92,27 @@ reference board: 427c40010c69c32c  feasibility binds on 619 of 964 rows, fieldab
 | Digests differ? | **YES** — no `<-- IDENTICAL, the upside arms cannot bind` warning |
 | feasibility (`fills_required_slot`) | 619 of 964 rows |
 | fieldability (`cannot_be_fielded`) | 131 of 964 rows |
-| Per-branch censuses | pending — measured on the restored clean tree after the run |
+| Balanced-branch census | feasibility 619 of 964 rows, fieldability 131 of 964 |
+| Upside-branch census | feasibility 619 of 964 rows, fieldability 131 of 964 |
+
+The harness prints only ONE census line, because `_digest`, `feas`, `total` and `unfield` leak
+out of its `for branch in ("balanced", "upside")` loop and therefore hold the LAST iteration —
+the upside board. The per-branch figures above were measured separately, after the run, by
+calling the harness's own `_board_fingerprint()` on the restored clean tree (`git diff` on
+`draft_room.py` empty, verified in the same breath) and splitting its four-field-per-branch
+output. Raw line:
+
+```
+9f5cc3af014e8e9afdf7013d851213e65fc2f074c1c1a24066d0ea02fea5f6e9 619 964 131
+427c40010c69c32c7ca9c35dc8b5a07c6dc43554251c7432c153a5a6d0d9d423 619 964 131
+```
+
+**The two censuses are identical and the two digests differ, and that is the correct result
+rather than a surprise.** The harness's own comment says so: `feasibility_first` and
+`unfieldable_last` never read `mode`, so each census is identical on both branches *by
+construction*, and it is checked per branch anyway against the day a backstop does start
+reading the mode. What the second board actually buys is the **digest** — and the digests
+differ, which is the only reason arms 4 and 5 can bind at all.
 
 **`FIXTURE NO LONGER BINDS` was NOT emitted.** That check was not relaxed, touched, or
 inspected for leniency; it passed on its own terms. It is a four-way check — both censuses on
@@ -200,9 +224,100 @@ silently. **No engine file, no test, no fixture and no part of the harness was a
 | 2 | board order ignores feasibility | 1 | **caught** | 440.6s |
 | 3 | board order ignores fieldability | 1 | **caught** | 440.5s |
 | 4 | upside board order ignores feasibility | 1 | **caught** | 438.9s |
-| 5 | upside board order ignores fieldability | 1 | pending | pending |
+| 5 | upside board order ignores fieldability | 1 | **caught** | 443.7s |
 
-Total wall time: pending.
+**Harness exit state:** `sources restored cleanly: yes`, and `evidence/invariant_confirmation.json`
+records `sources_dirty_after: ""`. All five verdicts are in `CONCLUSIVE`, none in `INCONCLUSIVE`,
+and none begins with `***`, so the harness returned **0**.
+
+### Total wall time
+
+| Component | Measured |
+|---|---|
+| Anchors self-test (clean tree) | 54.0s |
+| Baseline (clean tree, green) | 1351.0s |
+| Five mutation arms | 437.4 + 440.6 + 440.5 + 438.9 + 443.7 = 2201.1s |
+| **Accounted by the harness's own timings** | **3606.1s** |
+| **Total wall clock, run 2** | **3627–3683s (60.4–61.4 min)** |
+
+The total is given as a bracket rather than a single figure because I did not timestamp the
+launch to the second, and I will not state a precision I did not measure. The bounds are real:
+the run ended at `08:11:35.9` (mtime of `v4_rerun_raw.log`), and it started after `07:10:13`
+(the commit made once run 1 was confirmed stopped at 0 gate processes) and at or before
+`07:11:09` (the keepalive heartbeat sample that already saw 3 gate processes). The ~21–77s
+between the bracket and the 3606.1s accounted above is the six `_board_fingerprint()`
+subprocesses — one reference board plus one preflight per arm — which the harness does not
+time individually.
+
+Run 1, aborted, cost a further 532.5s baseline plus its own 52.5s anchors run.
+
+### Per-arm notes
+
+Every arm was `caught`, so **no invariant is left undefended and there is no "what a reader
+should conclude" paragraph to write for a surviving arm.** What each arm establishes:
+
+1. **feasibility_first never binds** — `caught`, 2 sites. The only arm that mutates two sites,
+   because `scored["fills_required_slot"] = scored["_feasible"] == 0` appears in both branches
+   (`:4749`, `:5044`). Forcing `_feasible = 1` in both means the #164 blocker family's backstop
+   can never bind anywhere. Mutating one site only would have broken half the engine while the
+   other half went on defending the invariant, and `caught` would then have been a statement
+   about half the engine. The live mutant was inspected on disk mid-arm and carried each site's
+   own indentation — 8 spaces in the upside branch, 4 in the balanced one.
+2. **board order ignores feasibility** — `caught`, balanced sort at `:5052`.
+3. **board order ignores fieldability** — `caught`, balanced sort at `:5052`. This arm could
+   once only ever read `MUTATION IS INERT`: the old fixture held six RBs, RB is flex-reachable
+   and so exempt from any ceiling, `_unfieldable` was uniformly 0, and substituting a constant 0
+   gave a byte-identical board. The current fixture holds three QBs against one dedicated QB
+   slot, and fieldability was measured binding on 131 of 964 rows, so the column is genuinely
+   non-uniform and this verdict is about the suite.
+4. **upside board order ignores feasibility** — `caught`, upside sort at `:4781`.
+5. **upside board order ignores fieldability** — `caught`, upside sort at `:4781`.
+
+Arms 2–5 all substitute a **constant column** rather than dropping a sort key, keeping keys and
+directions at equal length (four each on the balanced branch, five each on the upside branch).
+That construction is why the mutants run at all: the first version of arm 2 dropped `_feasible`
+from `by` and left `ascending` at three entries, so pandas raised before a board existed and
+every board-touching test errored — scored `caught` while testing nothing (`#254`).
+
+### Arms 4 and 5: the headline result
+
+**These are the two arms that read `MUTATION IS INERT` for their entire existence until this
+cycle, and they are not inert now. Both are `caught`.**
+
+They mutate the upside branch's own sort line, and the fixture used to build the balanced board
+only — so the mutant's board came back byte-identical, which is `MUTATION IS INERT`, which is in
+`INCONCLUSIVE`, so `main` returned 2 and the harness reached no verdict at all. Three
+independent measurements say that is over:
+
+1. The preflight digests **differ** (`9f5cc3af014e8e9a` balanced, `427c40010c69c32c` upside), so
+   the fixture genuinely builds the upside branch and a mutation of its sort moves the
+   fingerprint. The harness prints no `<-- IDENTICAL, the upside arms cannot bind` warning.
+2. Each arm's own preflight passed — neither `MUTANT CANNOT BUILD A BOARD` nor
+   `MUTATION IS INERT` was emitted, so the mutant both ran and changed the board.
+3. The live mutants were inspected on disk mid-arm. Arm 4 substituted `_nofeas=1` and arm 5
+   `_nofield=0` at `:4781`, at the upside branch's own 8-space indentation, five keys against
+   five directions.
+
+So feasibility and fieldability are both defended on the upside branch — the branch `#154`
+tier 3 calls the one where it matters most, because upside scoring zeroes every roster-aware
+term and there is no other roster awareness to fall back on. Arm 5 in particular is the
+nine-defense roster on that branch, and the suite refuses it.
+
+### An operational hazard for whoever re-runs this
+
+`~/.claude/stop-hook-git-check.sh` fired **five times** during this run, each time reporting
+uncommitted changes and asking for them to be committed and pushed. On every occasion the sole
+uncommitted change was `draft_room.py` holding the live mutant. It was declined every time, and
+no commit in this branch contains a mutated `draft_room.py`.
+
+That hook is precisely the automation `invariant_confirmation.py:69` warns against in capitals:
+*"DO NOT RUN THIS WITH ANY AUTOMATION THAT COMMITS WHATEVER IS ON DISK ... the result is a
+plausible-looking commit that ships a board with no fieldability backstop: the nine-defense
+roster, pushed. This happened in the session that added the baseline arm below."* It has now
+fired mid-arm in two separate sessions. Evidence was pushed throughout by staging **explicit
+paths** (`git add evidence/mutation_gate/...`), never `-A` and never `draft_room.py`, which is
+the discipline that file prescribes. `git diff --name-only -- draft_room.py` was checked
+immediately before every single commit.
 
 ### The baseline, stated plainly
 
@@ -219,6 +334,32 @@ twice and differed, so a single suite in this container should be budgeted at up
 rather than the 528.7s run 1 might suggest. The harness prints no test count for a green
 baseline (`main` reports only `base_secs` on success), so 1421 is the count measured in run 1,
 not one re-read from run 2.
+
+## Conclusion
+
+**The v4 mutation gate PASSES on the repaired engine at `7e54821`.** Baseline green on the clean
+tree in 1351.0s; all five arms `caught`; no inconclusive verdict; sources restored cleanly;
+`draft_room.py` verified byte-identical to `HEAD` afterwards (sha256
+`76e4e612979ff2d4701a25db740eed32cef51fe102d6c5112e2f773c8e7cbf36` for both the working file and
+`git show HEAD:draft_room.py`).
+
+What a reader should conclude, and the limits of it:
+
+- The twelve repairs since `7984b1d` did **not** move any mutation anchor, did **not** break the
+  harness's self-test, and did **not** leave the suite red. The previous gate verdict is no
+  longer the one the freeze rests on — this one is, and it is about the source actually in the
+  tree.
+- The four load-bearing board-ordering invariants are defended on **both** branches of
+  `compute_draft_board`, which this harness could not previously establish for the upside branch
+  at all.
+- This remains a gate over **two built targets** (`feasibility_first` and the board sorts), not
+  four. `narrow_candidates` and the absence contract still have **no mutation here**; the
+  harness's own docstring says so, and this run does not change it. A reader should not take
+  "all five arms caught" as mutation coverage of the absence contract.
+- `MUTATION IS INERT` is now absent from every arm, but that is a property of the current
+  fixture, not a permanent one. It was the fixture that made arms 3, 4 and 5 unjudgeable in the
+  past, and `FIXTURE NO LONGER BINDS` plus the differing-digest line are the only things
+  standing between a future edit and a silently vacuous gate.
 
 ## What counts as a pass
 
