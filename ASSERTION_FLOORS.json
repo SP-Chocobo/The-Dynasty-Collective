@@ -1113,6 +1113,51 @@
         "early_returns": 0
       }
     },
+    "test_a_finding_lands_on_the_right_ledger.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 6,
+        "assertGreater": 1,
+        "assertIn": 2,
+        "assertLess": 1,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "AFindingFromANoEngineArmIsOffEveryStrategyLedger.test_a_row_claiming_sharp_seats_does_not_overrule_the_matrix": {
+          "assertEqual": 2
+        },
+        "AFindingFromANoEngineArmIsOffEveryStrategyLedger.test_every_strategy_that_ran_still_has_a_key": {
+          "assertIn": 1
+        },
+        "AFindingFromANoEngineArmIsOffEveryStrategyLedger.test_the_engine_strategy_is_still_credited": {
+          "assertEqual": 1
+        },
+        "AFindingFromANoEngineArmIsOffEveryStrategyLedger.test_the_finding_is_not_hidden_only_re_addressed": {
+          "assertEqual": 2,
+          "assertIn": 1
+        },
+        "AFindingFromANoEngineArmIsOffEveryStrategyLedger.test_the_no_engine_strategy_is_credited_zero": {
+          "assertEqual": 1
+        },
+        "AFindingFromANoEngineArmIsOffEveryStrategyLedger.test_the_no_engine_strategy_is_not_called_strategy_specific": {
+          "assertNotIn": 1
+        },
+        "TheGuardHasSomethingToGuard.test_some_arms_do_use_the_engine": {
+          "assertGreater": 1,
+          "assertLess": 1
+        },
+        "TheGuardHasSomethingToGuard.test_the_matrix_declares_arms_with_no_engine_seat": {
+          "assertTrue": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_a_flex_slot_is_not_an_unlimited_bench.py": {
       "test_methods": 11,
       "asserts": {
@@ -1377,19 +1422,19 @@
       }
     },
     "test_a_partial_season_is_not_a_season.py": {
-      "test_methods": 30,
+      "test_methods": 31,
       "asserts": {
-        "assertEqual": 10,
-        "assertFalse": 7,
+        "assertEqual": 11,
+        "assertFalse": 8,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 22,
+        "assertIn": 23,
         "assertIs": 1,
-        "assertIsNone": 13,
-        "assertIsNotNone": 2,
+        "assertIsNone": 14,
+        "assertIsNotNone": 3,
         "assertLess": 2,
         "assertNotEqual": 1,
-        "assertNotIn": 2,
+        "assertNotIn": 3,
         "assertTrue": 5
       },
       "by_method": {
@@ -1479,6 +1524,14 @@
         "TheRefusalCarriesItsReasonTests.test_a_truncated_sum_is_refused_and_the_weeks_are_named": {
           "assertIn": 4,
           "assertIsNone": 1
+        },
+        "TheRefusalCarriesItsReasonTests.test_an_unreachable_sleeper_warns_even_though_nothing_raised": {
+          "assertEqual": 1,
+          "assertFalse": 1,
+          "assertIn": 1,
+          "assertIsNone": 1,
+          "assertIsNotNone": 1,
+          "assertNotIn": 1
         },
         "TheRefusalCarriesItsReasonTests.test_no_sums_is_silence_not_a_refusal": {
           "assertEqual": 2
@@ -1944,6 +1997,46 @@
         },
         "TheVolumeFollowsTheConsequenceTests.test_the_bands_are_reported_SEPARATELY_when_both_occur": {
           "assertIn": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_a_zero_discount_has_four_causes.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertAlmostEqual": 1,
+        "assertEqual": 7,
+        "assertGreater": 1,
+        "assertIn": 2,
+        "assertIsNone": 1,
+        "assertIsNotNone": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "TheBasisNamesWhichPathProducedTheNumber.test_a_priced_designation_with_no_projection_is_not_called_unpriced": {
+          "assertEqual": 1
+        },
+        "TheBasisNamesWhichPathProducedTheNumber.test_a_zero_penalty_does_not_mean_the_designation_is_unpriced": {
+          "assertGreater": 1,
+          "assertIn": 2
+        },
+        "TheBasisNamesWhichPathProducedTheNumber.test_each_basis_is_consistent_with_HEALTH_DISCOUNT_RATE_itself": {
+          "assertAlmostEqual": 1,
+          "assertEqual": 4,
+          "assertIsNone": 1,
+          "assertIsNotNone": 2,
+          "assertTrue": 1
+        },
+        "TheBasisNamesWhichPathProducedTheNumber.test_every_basis_is_reachable": {
+          "assertEqual": 1
+        },
+        "TheBasisNamesWhichPathProducedTheNumber.test_the_basis_agrees_with_the_penalty_on_every_case": {
+          "assertEqual": 1
         }
       },
       "disabled": {
@@ -7774,6 +7867,106 @@
         "early_returns": 0
       }
     },
+    "test_engine_baseline.py": {
+      "test_methods": 24,
+      "asserts": {
+        "assertEqual": 23,
+        "assertGreater": 2,
+        "assertIn": 5,
+        "assertIsNone": 2,
+        "assertIsNotNone": 2,
+        "assertLess": 1,
+        "assertNotEqual": 1,
+        "assertTrue": 4
+      },
+      "by_method": {
+        "AMissingBaselineHoldsNothingTests.test_check_refuses_when_no_baseline_exists_AND_DOES_NOT_PAY_FOR_A_CAPTURE": {
+          "assertEqual": 1,
+          "assertLess": 1
+        },
+        "AMissingBaselineHoldsNothingTests.test_the_baseline_path_is_under_evidence": {
+          "assertIn": 1
+        },
+        "AbsenceSurvivesSerialisationTests.test_a_frozenset_serialises_SORTED_so_set_order_cannot_fake_a_diff": {
+          "assertEqual": 2
+        },
+        "AbsenceSurvivesSerialisationTests.test_nan_is_marked_and_is_not_none": {
+          "assertEqual": 1,
+          "assertIsNotNone": 1
+        },
+        "AbsenceSurvivesSerialisationTests.test_none_stays_none": {
+          "assertIsNone": 1
+        },
+        "AbsenceSurvivesSerialisationTests.test_the_whole_record_round_trips_through_json": {
+          "assertEqual": 3,
+          "assertIsNone": 1
+        },
+        "AbsenceSurvivesSerialisationTests.test_zero_stays_zero_and_is_not_confused_with_absence": {
+          "assertEqual": 1,
+          "assertIsNotNone": 1
+        },
+        "PickHistoryCarriesProductionsShapeTests.test_an_empty_history_is_empty_rather_than_invented": {
+          "assertEqual": 1
+        },
+        "PickHistoryCarriesProductionsShapeTests.test_every_pick_carries_the_four_required_fields": {
+          "assertEqual": 2
+        },
+        "PickHistoryCarriesProductionsShapeTests.test_the_round_advances_with_the_pick_number": {
+          "assertEqual": 3
+        },
+        "TheCaptureStatesAreDerivedTests.test_a_short_draft_and_a_long_one_get_DIFFERENT_indices": {
+          "assertNotEqual": 1
+        },
+        "TheCaptureStatesAreDerivedTests.test_every_state_is_a_turn_belonging_to_the_captured_seat": {
+          "assertEqual": 1
+        },
+        "TheCaptureStatesAreDerivedTests.test_mid_and_late_prefer_a_turn_with_PICKS_AHEAD_of_it": {
+          "assertGreater": 1
+        },
+        "TheCaptureStatesAreDerivedTests.test_the_opening_state_is_the_first_turn": {
+          "assertEqual": 1
+        },
+        "TheCaptureStatesAreDerivedTests.test_the_three_states_are_distinct_and_ordered": {
+          "assertEqual": 2
+        },
+        "TheDiffNamesWhatMovedTests.test_NONE_becoming_ZERO_is_a_difference": {
+          "assertTrue": 1
+        },
+        "TheDiffNamesWhatMovedTests.test_a_changed_list_LENGTH_is_reported": {
+          "assertTrue": 1
+        },
+        "TheDiffNamesWhatMovedTests.test_a_changed_number_is_reported_WITH_ITS_PATH": {
+          "assertEqual": 1,
+          "assertIn": 3
+        },
+        "TheDiffNamesWhatMovedTests.test_an_absent_field_is_not_silently_equal_to_a_present_one": {
+          "assertTrue": 1
+        },
+        "TheDiffNamesWhatMovedTests.test_identical_documents_produce_no_differences": {
+          "assertEqual": 1
+        },
+        "TheVerdictBranchesOnWHATITISABOUTTests.test_a_real_change_beside_a_timing_change_still_reads_as_a_regression": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "TheVerdictBranchesOnWHATITISABOUTTests.test_a_timing_only_difference_does_not_read_as_a_regression": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "TheVolatileRegistersStateReasonsTests.test_every_excluded_snapshot_field_states_why": {
+          "assertGreater": 1
+        },
+        "TheVolatileRegistersStateReasonsTests.test_the_candidate_register_is_empty_and_that_is_the_healthy_state": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_failure_mode_boundary.py": {
       "test_methods": 27,
       "asserts": {
@@ -10353,12 +10546,12 @@
       }
     },
     "test_one_eligibility_reader.py": {
-      "test_methods": 12,
+      "test_methods": 19,
       "asserts": {
-        "assertEqual": 9,
+        "assertEqual": 15,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
-        "assertIn": 4,
+        "assertIn": 5,
         "fail": 1
       },
       "by_method": {
@@ -10370,6 +10563,27 @@
         },
         "TheCaptureIsWhereThisWasMeasuredTests.test_the_multi_eligible_population_is_not_empty": {
           "assertGreater": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_a_MULTI_position_row_keeps_every_position_it_can_start_at": {
+          "assertEqual": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_a_row_the_feed_says_starts_NOWHERE_stays_nowhere": {
+          "assertEqual": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_a_row_the_pool_does_NOT_KNOW_falls_back_to_its_own_label": {
+          "assertEqual": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_a_row_with_neither_a_record_nor_a_label_claims_nothing": {
+          "assertEqual": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_no_pool_at_all_falls_back_the_same_way": {
+          "assertEqual": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_the_three_former_sites_no_longer_spell_the_composition": {
+          "assertIn": 1
+        },
+        "TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_the_underlying_reader_AGREES_so_this_is_not_a_second_opinion": {
+          "assertEqual": 1
         },
         "TheTwoEmptySetsMeanDifferentThingsTests.test_a_genuinely_multi_eligible_player_keeps_both": {
           "assertEqual": 1
@@ -10409,11 +10623,12 @@
       }
     },
     "test_one_eligibility_vocabulary_everywhere.py": {
-      "test_methods": 12,
+      "test_methods": 16,
       "asserts": {
         "assertEqual": 6,
-        "assertIn": 7,
-        "assertNotIn": 2
+        "assertIn": 9,
+        "assertIsNone": 2,
+        "assertNotIn": 4
       },
       "by_method": {
         "EligibilityCrossesTheSnapshotBoundaryTests.test_a_dual_appears_in_BOTH_of_his_views": {
@@ -10426,6 +10641,13 @@
           "assertIn": 1,
           "assertNotIn": 1
         },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_an_ABSENT_field_and_an_EMPTY_one_do_not_behave_alike": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_an_EMPTY_eligibility_is_an_ANSWER_and_shows_in_no_view": {
+          "assertNotIn": 1
+        },
         "EligibilityCrossesTheSnapshotBoundaryTests.test_the_ALL_view_still_shows_one_row_per_PRIMARY_bucket": {
           "assertEqual": 1,
           "assertIn": 1
@@ -10435,6 +10657,12 @@
         },
         "EligibilityCrossesTheSnapshotBoundaryTests.test_the_LB_view_shows_a_dual_labelled_DL": {
           "assertIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_the_SAME_candidate_with_a_real_eligibility_DOES_show": {
+          "assertIn": 1
+        },
+        "EligibilityCrossesTheSnapshotBoundaryTests.test_the_default_is_ABSENCE_so_the_filter_can_tell_them_apart": {
+          "assertIsNone": 2
         },
         "EligibilityCrossesTheSnapshotBoundaryTests.test_the_snapshot_carries_eligibility_at_all": {
           "assertIn": 1
@@ -10674,18 +10902,21 @@
       }
     },
     "test_one_league_one_team_count.py": {
-      "test_methods": 18,
+      "test_methods": 21,
       "asserts": {
-        "assertEqual": 17,
+        "assertEqual": 22,
         "assertGreaterEqual": 1,
         "assertIsInstance": 1,
-        "assertNotIn": 2,
+        "assertNotIn": 3,
         "assertRaises": 1,
         "assertTrue": 1
       },
       "by_method": {
         "ARosterlessPickBelongsToNoRosterTests.test_a_genuinely_foreign_history_is_STILL_refused": {
           "assertRaises": 1
+        },
+        "ARosterlessPickBelongsToNoRosterTests.test_a_pick_whose_PLAYER_IS_UNKNOWN_is_why_general_equality_is_not_the_property": {
+          "assertEqual": 2
         },
         "ARosterlessPickBelongsToNoRosterTests.test_remaining_starter_demand_no_longer_raises": {
           "assertIsInstance": 1,
@@ -10695,8 +10926,15 @@
           "assertEqual": 1,
           "assertNotIn": 1
         },
-        "ARosterlessPickBelongsToNoRosterTests.test_the_two_functions_agree_on_what_a_rosterless_pick_MEANS": {
+        "ARosterlessPickBelongsToNoRosterTests.test_the_seats_rule_was_ALREADY_type_insensitive": {
           "assertEqual": 1
+        },
+        "ARosterlessPickBelongsToNoRosterTests.test_the_two_functions_agree_on_what_a_rosterless_pick_MEANS": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "ARosterlessPickBelongsToNoRosterTests.test_the_two_rules_read_a_roster_id_AS_THE_SAME_TYPE": {
+          "assertEqual": 2
         },
         "NoModuleSpellsItsOwnTeamCountTests.test_nothing_but_league_config_spells_the_round_arithmetic": {
           "assertEqual": 1
@@ -12683,11 +12921,11 @@
       "asserts": {
         "assertEqual": 6,
         "assertFalse": 7,
-        "assertGreater": 11,
+        "assertGreater": 12,
         "assertGreaterEqual": 1,
-        "assertIn": 8,
-        "assertNotIn": 3,
-        "assertTrue": 19
+        "assertIn": 9,
+        "assertNotIn": 4,
+        "assertTrue": 20
       },
       "by_method": {
         "AMarkerHasToBeginAWord.test_a_marker_buried_inside_another_word_does_not_shield": {
@@ -12710,8 +12948,10 @@
           "assertIn": 1
         },
         "MarkdownProseDoesNotVouchForItself.test_a_name_inside_a_fenced_block_still_vouches": {
-          "assertGreater": 1,
-          "assertTrue": 1
+          "assertGreater": 2,
+          "assertIn": 1,
+          "assertNotIn": 1,
+          "assertTrue": 2
         },
         "MarkdownProseDoesNotVouchForItself.test_a_name_living_only_in_markdown_prose_is_not_in_the_universe": {
           "assertGreater": 1,
@@ -13736,11 +13976,12 @@
       }
     },
     "test_report_fields_mean_their_names.py": {
-      "test_methods": 26,
+      "test_methods": 27,
       "asserts": {
-        "assertEqual": 28,
+        "assertEqual": 29,
         "assertIn": 9,
-        "assertIsNone": 1
+        "assertIsNone": 1,
+        "assertNotEqual": 1
       },
       "by_method": {
         "DraftableRoundsIsTheRoundCount.test_both_axes_reach_the_advertised_set": {
@@ -13757,6 +13998,10 @@
         },
         "DuplicateArmsSurvivesAResume.test_a_genuinely_different_arm_is_not_flagged": {
           "assertEqual": 1
+        },
+        "DuplicateArmsSurvivesAResume.test_provenance_is_a_run_descriptor_and_does_not_hide_a_duplicate": {
+          "assertEqual": 1,
+          "assertNotEqual": 1
         },
         "DuplicateArmsSurvivesAResume.test_the_run_stamps_are_excluded_from_the_fingerprint": {
           "assertIn": 1
@@ -16677,14 +16922,14 @@
       }
     },
     "test_the_discount_arrives_with_its_cause.py": {
-      "test_methods": 20,
+      "test_methods": 22,
       "asserts": {
-        "assertEqual": 5,
+        "assertEqual": 8,
         "assertGreaterEqual": 1,
-        "assertIn": 20,
+        "assertIn": 22,
         "assertIsNone": 3,
         "assertNotEqual": 2,
-        "assertNotIn": 6,
+        "assertNotIn": 9,
         "assertTrue": 1,
         "fail": 1
       },
@@ -16708,14 +16953,25 @@
           "assertIn": 1
         },
         "TheChairsAreToldTheCauseOfTheDiscount.test_a_designation_priced_by_the_PENALTY_says_the_discount_is_in_the_value": {
+          "assertEqual": 1,
           "assertIn": 2
         },
         "TheChairsAreToldTheCauseOfTheDiscount.test_a_designation_priced_by_the_RULE_FLOOR_says_no_penalty_was_added": {
           "assertIn": 2
         },
         "TheChairsAreToldTheCauseOfTheDiscount.test_a_designation_this_engine_does_NOT_price_says_so": {
+          "assertEqual": 1,
           "assertIn": 2,
           "assertNotIn": 1
+        },
+        "TheChairsAreToldTheCauseOfTheDiscount.test_a_priced_designation_with_no_projection_is_not_called_unpriced": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "TheChairsAreToldTheCauseOfTheDiscount.test_a_snapshot_with_no_basis_recorded_says_nothing_rather_than_guessing": {
+          "assertIn": 1,
+          "assertNotIn": 2
         },
         "TheChairsAreToldTheCauseOfTheDiscount.test_an_empty_string_is_treated_as_unreported_too": {
           "assertNotIn": 1
@@ -16751,6 +17007,52 @@
         },
         "TheStoredRecordCarriesItToo.test_the_schema_version_moved_for_the_shape_change": {
           "assertGreaterEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_the_four_undefended_repairs.py": {
+      "test_methods": 7,
+      "asserts": {
+        "assertEqual": 5,
+        "assertFalse": 1,
+        "assertIn": 3,
+        "assertIsNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "BuildSnapshotFillsEligibilityAndNotMerelyDeclaresIt.test_a_dual_eligible_candidate_arrives_with_both_positions": {
+          "assertEqual": 2
+        },
+        "BuildSnapshotFillsEligibilityAndNotMerelyDeclaresIt.test_a_row_the_pool_does_not_know_keeps_its_own_label": {
+          "assertEqual": 2
+        },
+        "BuildSnapshotFillsEligibilityAndNotMerelyDeclaresIt.test_the_field_is_not_merely_declared": {
+          "assertIn": 1,
+          "assertIsNone": 1,
+          "assertNotEqual": 1
+        },
+        "PresentableTextChecksAbsenceBeforeWithholding.test_a_present_value_can_still_be_withheld": {
+          "assertIn": 1
+        },
+        "PresentableTextChecksAbsenceBeforeWithholding.test_an_absent_value_reads_as_absent_not_as_withheld": {
+          "assertEqual": 1
+        },
+        "TheDraftRoomPutsTheDraftsSeatsOnTheLeague.test_the_seats_are_assigned_through_the_one_key": {
+          "assertIn": 1,
+          "assertNotIn": 1,
+          "assertTrue": 1
+        },
+        "TheHistoryShieldIsParagraphScoped.test_a_marker_in_one_paragraph_does_not_shield_another": {
+          "assertFalse": 1,
+          "assertTrue": 1
         }
       },
       "disabled": {
