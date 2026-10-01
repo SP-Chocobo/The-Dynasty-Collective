@@ -18496,14 +18496,14 @@
       }
     },
     "test_withheld_propagation.py": {
-      "test_methods": 23,
+      "test_methods": 26,
       "asserts": {
-        "assertEqual": 6,
+        "assertEqual": 11,
         "assertFalse": 2,
         "assertIn": 20,
         "assertLess": 1,
         "assertNotIn": 5,
-        "assertTrue": 3,
+        "assertTrue": 5,
         "assert_honours_the_rule": 3
       },
       "by_method": {
@@ -18546,6 +18546,17 @@
         "TheDraftRoomPanelAsksTests.test_the_survival_card_sits_inside_a_withheld_fields_branch": {
           "assertIn": 1,
           "assertLess": 1
+        },
+        "TheExposureCensusFollowsThePolicyTests.test_the_SAME_quantities_become_emitted_once_the_policy_releases_them": {
+          "assertEqual": 2
+        },
+        "TheExposureCensusFollowsThePolicyTests.test_the_report_names_the_withheld_quantities_without_carrying_a_value": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "TheExposureCensusFollowsThePolicyTests.test_the_withheld_family_is_classified_as_withheld_not_emitted": {
+          "assertEqual": 2,
+          "assertTrue": 1
         },
         "TheFunctionTheDraftRoomCardsAskTests.test_a_field_that_is_not_withheld_passes_through_byte_for_byte": {
           "assertEqual": 2

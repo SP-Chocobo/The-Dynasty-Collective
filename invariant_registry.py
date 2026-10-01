@@ -540,9 +540,22 @@ REGISTRY: tuple[Invariant, ...] = (
                    "measured pick count in the withheld family's place), app.py's runner-up "
                    "caption, and pick_synthesis.presentable_text, the function the two cards ask. "
                    "Each has a case below; the last is value-based on both arms, which is what a "
-                   "Streamlit surface cannot be.",
+                   "Streamlit surface cannot be.\n"
+                   "11 -> 12 (Phase 1, fact_exposure). THIS CENSUS DID ITS JOB AGAIN, and caught "
+                   "a consulter of a kind the population had not held before: not a presentation "
+                   "surface but an INSTRUMENT, `fact_exposure.classify`, which asks the policy to "
+                   "decide which quantities reach a model provider. The claim was re-verified "
+                   "over all 12 before this number moved. Its case is "
+                   "TheExposureCensusFollowsThePolicyTests, and it deliberately does NOT inherit "
+                   "`_Boundary`: that harness requires the surface to SHOW the number once the "
+                   "family is presentable, and this consulter renders no value on either arm, so "
+                   "inheriting it would assert a property the module cannot have. What is pinned "
+                   "instead is the property that matters for an instrument -- the classification "
+                   "TRACKS the policy rather than restating it, checked on both arms, because a "
+                   "hardcoded family would classify correctly today and silently go stale the day "
+                   "calibration passes.",
         members=_surfaces_consulting_the_withholding_policy,
-        census=11,
+        census=12,
         pinned_by=(
             "test_withheld_propagation.TheDiffDoesNotReportAWithheldDeltaTests",
             "test_withheld_propagation.TheChairPromptDoesNotCarryItTests",

@@ -24,6 +24,7 @@ import unittest
 from unittest import mock
 
 import design_system as ds
+import fact_exposure as fx
 import draft_board_ui as ui
 import pick_debate as pd
 import pick_synthesis as ps
@@ -322,6 +323,59 @@ class TheDraftRoomPanelAsksTests(unittest.TestCase):
         window = "\n".join(lines[max(0, at - 10):at])
         self.assertIn("pick_synthesis.withheld_fields()", window,
                       "the runner-up caption renders survival without asking")
+
+
+class TheExposureCensusFollowsThePolicyTests(unittest.TestCase):
+    """The 12th member of this population: `fact_exposure.classify`, which consults the policy to
+    decide which quantities reach a provider.
+
+    DELIBERATELY NOT A `_Boundary` SUBCLASS, and the reason is the finding. `_Boundary` is
+    value-based with a non-vacuity arm requiring the surface to SHOW the number once the family is
+    presentable. This consulter renders no survival value on either arm -- it reports field NAMES
+    and counts, never a number off a board -- so inheriting that harness would assert a property
+    this module cannot have, and the failure would be the harness's, not the module's. Forcing the
+    fit would have meant either weakening `_Boundary` for everyone or adding a fake value render
+    here purely to satisfy it. Both are worse than saying which kind of consulter this is.
+
+    WHAT IS WORTH PINNING INSTEAD, and it is the scenario the Phase 1 record calls out: the census
+    must TRACK the policy rather than restate it. A hardcoded `{"survival_probability", ...}` would
+    classify correctly today and silently go stale the day calibration passes -- at which point
+    three engine quantities begin reaching a third party and the census would still be reporting
+    them as withheld. So this is the two-arm test: withheld today, and the classes must MOVE when
+    the policy moves.
+    """
+
+    def _classes(self, presentable: bool) -> dict:
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", presentable):
+            return fx.classify()
+
+    def test_the_withheld_family_is_classified_as_withheld_not_emitted(self):
+        withheld = self._classes(presentable=False)
+        family = frozenset(ps.SURVIVAL_DERIVED_FIELDS) & withheld["read"]
+        self.assertTrue(family, "the prompt path reads none of the family -- this arm is vacuous")
+        self.assertEqual(family, family & withheld["withheld"])
+        self.assertEqual(frozenset(), family & withheld["emitted"])
+
+    def test_the_SAME_quantities_become_emitted_once_the_policy_releases_them(self):
+        """The non-vacuity arm, in the form this consulter can actually have. Without it the test
+        above would pass on a census that called everything withheld."""
+        family = frozenset(ps.SURVIVAL_DERIVED_FIELDS) & self._classes(presentable=False)["read"]
+        presentable = self._classes(presentable=True)
+        self.assertEqual(frozenset(), family & presentable["withheld"],
+                         "the census still reports the family as withheld after the policy "
+                         "released it -- it is restating the policy, not asking it")
+        self.assertEqual(family, family & presentable["emitted"],
+                         "the family did not move into the emitted class, so the census does not "
+                         "track the boundary it claims to measure")
+
+    def test_the_report_names_the_withheld_quantities_without_carrying_a_value(self):
+        """`#187` and the refusal rule together: naming a withheld quantity is not presenting it --
+        `format_snapshot_for_llm` names it too, and must. What may not appear is a NUMBER."""
+        withheld = self._classes(presentable=False)["withheld"]
+        self.assertTrue(withheld)
+        for name in withheld:
+            with self.subTest(name=name):
+                self.assertEqual([], _leaks(name, SURVIVAL))
 
 
 if __name__ == "__main__":
