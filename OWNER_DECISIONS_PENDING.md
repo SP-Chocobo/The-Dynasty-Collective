@@ -581,15 +581,22 @@ where the same proportion was available. The one chosen number left in the vocab
 `Doubtful`'s half-game, which preserves the ratio the flat table already stated (−5 against Out's
 −10) and is named in its own constant, `ASSUMED_GAMES_MISSED`, so a second cannot arrive quietly.
 
-**The check that says the derivation is right rather than merely tidier: the two paths now agree
-exactly.** One fact — "this man is on IR" — reached two ways:
+**The check that says the derivation is right rather than merely tidier: the two paths agree
+exactly AT A FULL SLATE (`gp == SEASON_GAMES`).** One fact — "this man is on IR" — reached two
+ways, shown at a full slate:
 
 | | `universal_value` |
 |---|---|
 | `gp` known: points cut to 13/17, penalty stands down (`#191`) | `0.765·points − replacement + th` |
 | `gp` absent: points uncut, penalty `−(4/17)·points` | `0.765·points − replacement + th` |
 
-Measured, both arms in one process: gap **0.000** at every designation and projection tested.
+Measured, both arms in one process: gap **0.000** at every designation and projection tested
+**at `gp == SEASON_GAMES`**. Below a full slate the two paths DIVERGE and are meant to: the
+denominators differ deliberately (`A-F1`), because the naive form would charge the same absence
+twice once the feed zeroes the weeks already missed. The bound is up to 2.25 points, and what this
+check pins is the direction and that bound -- not equality everywhere. The unscoped sentence stood
+here after `draft_room`'s own comment had been narrowed; corrected rather than left, because this
+document is owner-facing and the record wins (`#292`).
 Before D8 those two readings of one fact differed by **−22.71 points** for a 173-point IR player
 and **−76.12** for a 400-point one. It was not a unit wart; it was a 76-point self-contradiction.
 

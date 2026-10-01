@@ -76,7 +76,44 @@ the unrecognised label — and it would have failed on the first run.
 
 ## Status
 
-All five repaired in this cycle. `#126` (one home for a vocabulary) is the register item this
-class belongs to, and `#166` (the companion returned with the number) is what stops the repaired
-version from drifting again: `team_count_with_basis` returns the rule that fired, so a caller can
-tell a real count of one from a floor of one.
+**THREE REPAIRED CLEANLY; TWO STILL HAVE A READER THAT DISAGREES.** An earlier version of this
+section said all five, and an independent review of the repairs disproved it. The correction is
+kept here rather than quietly applied, because a write-up about readers that silently disagree is
+the last document that should carry one.
+
+| | state |
+|---|---|
+| `A-F5`/`C-F2` team_count | **repaired** -- one function, one rule, `team_count_with_basis` returns which fired |
+| `D10` starting slots | **repaired on the number the finding was about**; see the caveat below |
+| `B-F4` candidate eligibility | **repaired in substance**, see 2 |
+| `B-F6` rosterless pick | **partially** -- see 1 |
+| `C-F3` snapshot boundary | **repaired in substance**, see 2 |
+
+1. **`B-F6` agrees on the VALUE and not on the TYPE.** Both readers now treat a rosterless pick
+   as `None`, which was the finding. But `team_count`'s picks rule does not coerce `roster_id`
+   while its own seats rule and `team_slots_filled` both do, so `0` and `"0"` are two teams to one
+   reader and one roster to the other. The same question, two readers, one axis over.
+
+2. **`B-F4`/`C-F3` ask eligibility on both sides now, which was the finding** -- but the composed
+   rule, eligibility with a primary-bucket fallback, is spelled at THREE sites, all three added by
+   that repair. Step 3 of the method above says to decide which reader owns the question and make
+   the others call it. The owning reader exists; three sites wrap it in a locally re-expressed
+   fallback instead. That is this very class, introduced by its own repair.
+
+3. **`D10` remains the exemplar for the lesson, with one scope.** The number the test derived from
+   the authority is right and would have failed on the first run. The SAME message carries a
+   second number, `parsed_starting + len(starters)`, pinned against no authority at all and wrong
+   whenever an unrecognised starting label repeats. The lesson holds exactly as stated -- a
+   derived expectation catches what a literal cannot -- and the counter-example sits in the same
+   sentence as the example.
+
+`#126` (one home for a vocabulary) is the register item this class belongs to, and `#166` (the
+companion returned with the number) is what stops a repaired version from drifting again:
+`team_count_with_basis` returns the rule that fired, so a caller can tell a real count of one from
+a floor of one.
+
+**THE LESSON THIS CORRECTION ADDS.** Four of the five repairs were made by the author of this
+document, who then wrote that all five were done. Each repair closed the disagreement it was aimed
+at; two opened a narrower one in the same place. An author checking their own repair looks for the
+defect they already named, which is exactly the blind spot the class describes -- one reader,
+asked twice, agreeing with itself.

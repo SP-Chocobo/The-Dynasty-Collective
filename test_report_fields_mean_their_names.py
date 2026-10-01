@@ -107,6 +107,26 @@ class DuplicateArmsSurvivesAResume(unittest.TestCase):
                      **{resume_join.PRODUCED_AT: "aaaaaaa", resume_join.CARRIED: False})
         self.assertEqual([], db.duplicate_arms([carried, other]))
 
+    def test_provenance_is_a_run_descriptor_and_does_not_hide_a_duplicate(self):
+        """A1. The third field to be learned the hard way, after `seconds` and the resume stamps.
+
+        `provenance` records how an arm was CONFIGURED, so two arms can agree on every pick and
+        disagree on it -- which is exactly the condition this detector exists to find. When it
+        joined the arm row it silently took the detector's only live finding with it: `12T_ppr`
+        and `12T_ppr_mode_balanced` produce a byte-identical 112-pick sequence, differ in no key
+        but `label`, `seconds` and `provenance`, and stopped being reported. Every committed
+        report predating that field flagged the pair; the one published with it says
+        `independent_formats: 53` where the answer is 52.
+
+        Built in the SHAPE THE REAL PAIR HAS, not an abstract one: same picks, same findings,
+        different mode."""
+        a = dict(self.ARM, provenance={"mode": "auto", "upside_from_round": 15})
+        b = dict(self.ARM, label="b", provenance={"mode": "balanced", "upside_from_round": None})
+        self.assertNotEqual(a["provenance"], b["provenance"],
+                            "non-vacuity: the two arms must actually differ in provenance")
+        self.assertEqual([{"label": "b", "duplicates": "a"}], db.duplicate_arms([a, b]),
+                         "a field describing the RUN hid two byte-identical arms")
+
 
 class PicksByModeRefusesToStateWhatItCannotKnow(unittest.TestCase):
     """Under the crossing rule the board flips wherever `_vor` is exhausted, and nothing records

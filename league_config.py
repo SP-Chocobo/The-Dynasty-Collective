@@ -398,6 +398,17 @@ def ambiguities(league: Optional[dict]) -> list[dict]:
         # `slots_from_roster_positions`' rule, which would be a second home for it (`#126`):
         # restrict to the labels the app recognises, THEN ask Q1 of those.
         parsed_starting = len(starting_slots([s for s in slots if s in KNOWN_SLOTS]))
+        #: THE DECLARED TOTAL IS ASKED OF THE AUTHORITY OVER THE RAW LIST, NOT RECONSTRUCTED BY
+        #: ADDING DISTINCT LABELS (R2). `unknown` is a SET, so `parsed_starting + len(starters)`
+        #: counts a label once however many times the league declares it: three `super-flex`
+        #: slots were reported as "declares 10" where `starting_slots` over the same list says 12.
+        #: The band whose stated job is to let a reader SIZE the error was stating a bound that
+        #: was too tight -- worse than vague, because it reads as precise.
+        #:
+        #: `starting_slots(slots)` is the same reader `parsed_starting` uses, asked of the whole
+        #: list instead of the recognised subset, so the pair cannot drift and no third rule is
+        #: introduced (`#126`). The difference between them is exactly what was dropped.
+        declared_starting = len(starting_slots(slots))
         nonplaying, starters, unresolved = [], {}, []
         for label in unknown:
             key = normalised_slot(label)
@@ -424,7 +435,7 @@ def ambiguities(league: Optional[dict]) -> list[dict]:
                 "detail": f"roster slot(s) {named} name STARTING slots, spelled in a way this app "
                           f"does not recognise, so they were dropped: the board was priced on "
                           f"{parsed_starting} starting slots where your league declares "
-                          f"{parsed_starting + len(starters)}. Every replacement level and every "
+                          f"{declared_starting}. Every replacement level and every "
                           f"starter-demand figure below is about the smaller lineup",
             })
         if unresolved:
@@ -434,7 +445,7 @@ def ambiguities(league: Optional[dict]) -> list[dict]:
                           f"vocabulary, the flex vocabulary, nor {sorted(NON_PLAYING_SLOTS)} -- "
                           f"the lineup solver cannot place anyone in them. IF ANY OF THEM STARTS "
                           f"A PLAYER, the board was priced on {parsed_starting} starting slots "
-                          f"where your league has up to {parsed_starting + len(unresolved)}, and "
+                          f"where your league has up to {declared_starting}, and "
                           f"every replacement level is about a different league. This app cannot "
                           f"tell which, so it cannot bound the error",
             })

@@ -65,14 +65,14 @@
     }
   },
   "complete": true,
-  "commit": "3afca52",
+  "commit": "5eb9662",
   "commits_present": [
     "3afca52",
     "dd4ade7"
   ],
   "carried_forward": [],
   "formats": 53,
-  "independent_formats": 53,
+  "independent_formats": 52,
   "format_axes": {
     "arms": 53,
     "axes": {
@@ -126,7 +126,12 @@
     "arms_whose_league_changed_under_the_same_label": [],
     "axes_source": "arms"
   },
-  "duplicate_arms": [],
+  "duplicate_arms": [
+    {
+      "label": "12T_ppr_mode_balanced",
+      "duplicates": "12T_ppr"
+    }
+  ],
   "picks": 9336,
   "total_findings": 2,
   "seconds": 56297.7,

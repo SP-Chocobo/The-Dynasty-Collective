@@ -899,9 +899,35 @@ def audit_trajectory(trajectory, league: dict, players_db: dict,
 #: two byte-identical arms fingerprinted differently and `independent_formats` was overstated
 #: EXACTLY when resume was used. Excluded for the same reason `seconds` is: they describe the
 #: RUN, not the arm's content.
-_FINGERPRINT_EXCLUDES = frozenset({"label", "seconds", "produced_at_commit", "carried_forward"})
+#:
+#: `provenance` IS THE THIRD TIME THIS RULE WAS LEARNED (A1), and it cost this detector its only
+#: live finding. `12T_ppr` and `12T_ppr_mode_balanced` produce a BYTE-IDENTICAL 112-pick
+#: sequence; the only keys that differ between those two arms are `label`, `seconds` and
+#: `provenance` (`mode` auto vs balanced, `upside_from_round` 15 vs None). The first two were
+#: already excluded, so when `provenance` joined the arm row the pair silently stopped being
+#: reported and `independent_formats` published 53 where the answer is 52. Every committed report
+#: before that field existed flagged the pair; none since has.
+#:
+#: The test of membership here is the rule already written above, not a judgement about which
+#: fields feel incidental: does this field describe the RUN or what the arm MEASURED? `provenance`
+#: records how the arm was configured, which is why two arms can agree on every pick and disagree
+#: on it -- and that is exactly the condition this detector exists to find.
+_FINGERPRINT_EXCLUDES = frozenset({"label", "seconds", "produced_at_commit", "carried_forward",
+                                   "provenance"})
 
 
+#: WHAT `constant_axes` CAN AND CANNOT SEE (A3). It ranges over `advertised_format_axes`, which
+#: is `league_format_hint` plus `roster_shape_axes` -- both derived PURELY FROM THE LEAGUE. The
+#: per-arm parameters `run_battery` forwards are not among them, so an axis that is constant
+#: across every arm because of how the RUN was configured does not announce itself the way a
+#: constant league axis does. Measured on the 53-arm run: `constant_axes` published `[]` while
+#: `provenance.upside_rule` was `round` on all 53 arms and `provenance.opponent_noise` was absent
+#: on all 53. `#241`'s lesson -- "an axis that fails to vary is also a coverage hole" -- is
+#: therefore enforced on the league half of the matrix and not on the configured half.
+#:
+#: Stated rather than widened, because widening it means deciding which provenance keys are AXES
+#: and which are incidental, and that is a definition this battery does not have yet. An empty
+#: `constant_axes` means "no advertised LEAGUE axis is inert", never "nothing is inert".
 def roster_shape_axes(league: dict) -> dict:
     """The ROSTER-SHAPE dimensions of a league, derived from its own `roster_positions`.
 

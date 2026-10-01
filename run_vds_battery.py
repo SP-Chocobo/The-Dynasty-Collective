@@ -68,6 +68,20 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
     for row in results:
         if row.get("strategy") == vds_battery.CONTROL_STRATEGY:
             controls[row.get("format")] = row.get("pick_sequence")
+    # FORMATS WITH NO CONTROL ARM ARE UNDETERMINED, NOT CLEAN (A5). An arm is judged inert by
+    # comparison against its OWN format's control; where that control is absent from `results` --
+    # `--only` is a documented mode and nothing stops it naming non-control arms -- no arm in that
+    # format can be judged either way. The earlier version skipped them silently and `main` then
+    # printed "No inert arms: every strategy changed the draft in every format", which is a
+    # positive claim made from missing evidence. Demonstrated on this run's own arms: drop the
+    # controls from the 36 and the four arms the full run PROVES inert report as zero.
+    #
+    # This block already took care to fix the DENOMINATOR for partial runs (`per_format_ran`
+    # replacing the full strategy count); the same partial run was still being told "none" here.
+    undetermined = sorted({row.get("format") for row in results
+                           if row.get("strategy") != vds_battery.CONTROL_STRATEGY
+                           and row.get("format") not in controls
+                           and row.get("format") is not None})
     for row in results:
         fmt, strategy = row.get("format"), row.get("strategy")
         if strategy == vds_battery.CONTROL_STRATEGY or fmt not in controls:
@@ -142,6 +156,15 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
         "complete": complete,
         "seconds": round(time.time() - started, 1),
         "universe": universe,
+        #: THESE FOUR DESCRIBE THE CODE AT REPORT TIME, NOT THE ARMS (A6). `strategies`,
+        #: `formats`, `seed` and `top_k_swept` are read from the module's tables when the report
+        #: is written, so on a RESUMED run -- the documented way a multi-hour battery finishes --
+        #: arms produced under an older table are described by today's. Demonstrated by changing
+        #: the constants and re-reporting the identical arms: the figures moved, the arms did not.
+        #: `commits_present` is the real disclosure and is kept; the per-arm truth now also rides
+        #: on the row, in `provenance.opponent_noise`, for runs produced after that repair. The
+        #: committed 36-arm run predates it (0 of 36 rows carry `provenance`), so this is a
+        #: caveat about the NEXT resumed run rather than a defect in that one.
         "strategies": {name: dict(cfg) for name, cfg in vds_battery.STRATEGIES.items()},
         "control_strategy": vds_battery.CONTROL_STRATEGY,
         "formats": dict(vds_battery.FORMATS),
@@ -149,6 +172,9 @@ def _report(universe: dict, results: list[dict], started: float, *, complete: bo
         "top_k_swept": list(vds_battery.VDS_TOP_K),
         "arms_run": len(results),
         "INERT_ARMS": sorted(inert),
+        #: Formats whose control arm is absent from this result set, so inertness is UNDETERMINED
+        #: for every arm in them -- never reported as "none" (A5).
+        "INERT_UNDETERMINED_FORMATS": undetermined,
         "inert_arm_count": len(inert),
         "effective_arms": len(results) - len(inert),
         "findings_total": sum(len(r.get("findings", [])) for r in results),
@@ -269,7 +295,11 @@ def main(argv: list[str] | None = None) -> int:
         for label in report["INERT_ARMS"]:
             print(f"   {label}")
     else:
-        print("\nNo inert arms: every strategy changed the draft in every format.")
+        print("\nNo inert arms among the formats that carry a control.")
+    if report["INERT_UNDETERMINED_FORMATS"]:
+        print(f"\nINERTNESS NOT DETERMINABLE for {len(report['INERT_UNDETERMINED_FORMATS'])} "
+              f"format(s) -- no control arm is present to compare against, so no arm in them is "
+              f"claimed clean: {', '.join(report['INERT_UNDETERMINED_FORMATS'])}")
     print("\nfindings by STRATEGY (the axis this battery adds):")
     for name in vds_battery.STRATEGIES:
         marker = "  <- control" if name == vds_battery.CONTROL_STRATEGY else ""

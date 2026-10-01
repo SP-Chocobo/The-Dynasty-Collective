@@ -106,16 +106,47 @@ def _exposure_vocabulary() -> list[str]:
 
 def _python_rendered_figure_sites() -> list[str]:
     """Streamlit render sites that put an engine figure on screen beside the Draft Room's own.
-    Both surfaces must round identically; they did not, and the rule now has one home."""
+    Both surfaces must round identically; they did not, and the rule now has one home.
+
+    COUNTS THE BYPASS ROUTE TOO, AND AN EARLIER VERSION DID NOT (I1). It counted calls to the
+    conforming `_figure` wrapper only -- so adding a CORRECT render site tripped this census and
+    adding the exact defect its own entry names left it green. Demonstrated with a control: a
+    planted bare f-string render held it at 8/8 and exit 0; a planted `_figure(...)` call moved it
+    to 9 and exited 1. A guard that fires on compliance and is silent on the violation is
+    inverted, which is worse than absent.
+
+    `design_system.figure(...)` called directly is the route with a LIVE offender today:
+    `_best_alternative_line` renders `team_acquisition_value` through it, which is why the census
+    is 9 and not 8. The call inside `_figure`'s own body is excluded -- the wrapper implementing
+    itself is not a second surface, and counting it would make the wrapper vouch for itself.
+
+    WHAT THIS STILL CANNOT SEE, stated rather than left for the next reader to discover: a render
+    built by f-string or `str.format` from an engine attribute, with no call to either function,
+    is invisible here. It is caught by `test_display_contract_boundary` on the attributes it
+    knows, not by this census. `_surfaces_consulting_the_withholding_policy` names its own limit
+    the same way, and that is the model this follows.
+    """
     import ast
     import ui_source
     tree = ast.parse(ui_source.text())
-    return sorted(
-        f"{node.lineno}"
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-        and node.func.id == "_figure"
-    )
+
+    #: The wrapper's own body, so `_figure` does not count the one call that implements it.
+    inside_wrapper = range(0, 0)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_figure":
+            inside_wrapper = range(node.lineno, (node.end_lineno or node.lineno) + 1)
+
+    sites = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        conforming = isinstance(func, ast.Name) and func.id == "_figure"
+        bypass = (isinstance(func, ast.Attribute) and func.attr == "figure"
+                  and node.lineno not in inside_wrapper)
+        if conforming or bypass:
+            sites.append(f"{node.lineno}")
+    return sorted(sites)
 
 
 def _surfaces_consulting_the_withholding_policy() -> list[str]:
@@ -394,7 +425,10 @@ REGISTRY: tuple[Invariant, ...] = (
                    "from zero, so the two disagree on any figure landing on .5 above an even "
                    "floor -- one player showed as 16 in one panel and 17 in the other.",
         members=_python_rendered_figure_sites,
-        census=8,
+        #: 9, NOT 8: eight conforming `_figure(...)` calls plus one live bypass,
+        #: `_best_alternative_line` rendering through `design_system.figure` directly. The 8 was
+        #: recorded while the enumerator could not see that route at all (I1).
+        census=9,
         pinned_by=(
             "test_216_room_integrity.TheDisplayRoundingRuleTests"
             ".test_python_and_the_browser_round_the_boundary_class_identically",

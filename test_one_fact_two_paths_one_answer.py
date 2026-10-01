@@ -22,11 +22,20 @@ available. The rate is `games_missed / SEASON_GAMES`, read off the one priced-ga
 `player_universe.ASSUMED_GAMES_MISSED` names as chosen and preserves at the ratio the flat
 magnitudes already stated (-5 against Out's -10, so half a game).
 
-THE CHECK THAT SAYS THE DERIVATION IS RIGHT AND NOT MERELY TIDIER -- the two paths now agree
-EXACTLY. One fact ("this man is on IR"), reached two ways:
+THE CHECK THAT SAYS THE DERIVATION IS RIGHT AND NOT MERELY TIDIER -- the two paths agree
+EXACTLY AT A FULL SLATE, and the scope is the claim. One fact ("this man is on IR"), reached two
+ways, shown at `gp == SEASON_GAMES`:
 
     gp known    points cut to 13/17 before bpa; penalty stands down (`#191`)
     gp absent   points uncut; penalty = -(4/17) * points
+
+BELOW A FULL SLATE THEY DIVERGE, BY DESIGN (`A-F1`). `availability_factor` divides by the games
+actually played and `HEALTH_DISCOUNT_RATE` divides by `SEASON_GAMES`; the mixed denominators are
+deliberate, because the naive `(gp - missed)/gp` keeps removing the same games forever and would
+charge an absence twice once the feed zeroes the weeks already missed. What is pinned is the
+DIRECTION and the BOUND, measured at up to 2.25 points, not equality. An earlier version of this
+docstring claimed equality unscoped, twelve lines above a method renamed `..._AT_A_FULL_SLATE` to
+scope exactly that -- the module contradicted itself.
 
     universal_value, both:   0.765 * points - replacement + time_horizon_adj
 

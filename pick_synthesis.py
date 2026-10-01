@@ -1808,6 +1808,28 @@ class PickSnapshot:
     config_ambiguities: Optional[tuple] = None
 
 
+def snapshot_eligibility(row: dict, players_db: Optional[dict]) -> frozenset:
+    """Every position this candidate can be STARTED at, for the snapshot (`C-F3`).
+
+    READ THROUGH THE ONE ELIGIBILITY READER (`#172`/MANDATE 2.6), never off the row's own label,
+    so the view filter downstream keys off exactly what `need_bonus` keyed off.
+
+    AT MODULE SCOPE BECAUSE A CLOSURE CANNOT BE TESTED (R19). This was a local function inside
+    `build_snapshot`, so the only way to reach it was to build a whole board -- and no test did.
+    Replacing its body with `frozenset()` left `test_one_eligibility_vocabulary_everywhere`,
+    `test_pick_synthesis`, `test_snapshot_identity_boundary` and `test_draft_board_ui` all green,
+    because the suite pinned that the FIELD EXISTS and that a view READS it, never that anything
+    FILLS it. Every board would have gone back to showing a dual-eligible man in one view only.
+
+    THE FALLBACK IS THE ROW'S OWN LABEL AND NOTHING ELSE. A frame may carry `position` without a
+    `player_id` the pool knows; that row is placed on its primary bucket rather than dropped, and
+    an empty eligibility would silently remove it from every view.
+    """
+    info = (players_db or {}).get(str(row.get("player_id")))
+    eligible = dr.player_eligible_positions(info) if info else None
+    return frozenset(eligible or ({row["position"]} if row.get("position") else ()))
+
+
 def build_snapshot(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -2055,16 +2077,10 @@ def build_snapshot(
     tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
     path_flags = decision_path_flags(raw_candidates)
 
-    # READ THROUGH THE ONE ELIGIBILITY READER (`#172`/MANDATE 2.6), never off the row's own
-    # label, so the view filter downstream keys off exactly what `need_bonus` keyed off.
-    def _eligibility(row: dict) -> frozenset:
-        info = (players_db or {}).get(str(row.get("player_id")))
-        eligible = dr.player_eligible_positions(info) if info else None
-        return frozenset(eligible or ({row["position"]} if row.get("position") else ()))
-
     candidates = [
         CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label,
-                          near_tie_with_leader=tie, eligible_positions=_eligibility(c), **paths)
+                          near_tie_with_leader=tie,
+                          eligible_positions=snapshot_eligibility(c, players_db), **paths)
         for c, (necessity, label), tie, paths in zip(
             raw_candidates, necessity_by_candidate, tie_flags, path_flags)
     ]
