@@ -5,3 +5,4 @@ test_invariant_confirmation_anchors: passes on the clean tree (54.0s)
 baseline: running the scored modules on the clean tree (a verdict is meaningless unless this is green)...
 baseline: green (1351.0s)
 
+feasibility_first never binds: caught  (437.4s, 2 site(s) mutated)

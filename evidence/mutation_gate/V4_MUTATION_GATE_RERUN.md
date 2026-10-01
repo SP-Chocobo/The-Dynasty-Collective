@@ -196,7 +196,7 @@ silently. **No engine file, no test, no fixture and no part of the harness was a
 |---|---|---|---|---|
 | — | `test_invariant_confirmation_anchors` (clean-tree precondition) | — | **passes** | 54.0s (run 2; 52.5s in run 1) |
 | — | **baseline** (scored modules, clean tree) | — | **GREEN** | **1351.0s** |
-| 1 | feasibility_first never binds | 2 | pending | pending |
+| 1 | feasibility_first never binds | 2 | **caught** | 437.4s |
 | 2 | board order ignores feasibility | 1 | pending | pending |
 | 3 | board order ignores fieldability | 1 | pending | pending |
 | 4 | upside board order ignores feasibility | 1 | pending | pending |
@@ -227,5 +227,19 @@ Baseline GREEN on the clean tree, and all five arms `caught`. Every one of
 `MUTANT DOES NOT PARSE`, `FIXTURE NO LONGER BINDS` and
 `SUITE IS ALREADY RED ON THE CLEAN TREE` is a finding, not a pass. Harness exit code: 0 = all
 caught, 1 = at least one SURVIVED, 2 = at least one arm reached no verdict.
+
+## A trap worth naming: the stale `evidence/invariant_confirmation.json`
+
+The harness writes `evidence/invariant_confirmation.json` only **after** its arm loop finishes
+(`store_io.write` at the end of `main`). So for the entire duration of a run, the copy in the
+tree is the **previous** run's. During this run it still held five `caught` rows with runtimes
+557.8 / 579.6 / 571.7 / 557.1 / 563.8s — and `git log` confirms those were last written by
+commit `6860992`, "v4 mutation gate PASSES at 7984b1d".
+
+Those five rows are **not** results from this run and are not reported as such anywhere in this
+document. Reading them as current would have reproduced exactly the error this whole re-run
+exists to correct: a gate verdict about code that no longer exists. Every verdict in the table
+above is taken from `v4_rerun_raw.log`, which is this run's own stdout, written as each arm
+reports. The JSON is quoted only once this run has overwritten it.
 
 Raw log: `evidence/mutation_gate/v4_rerun_raw.log` (committed beside this file).
