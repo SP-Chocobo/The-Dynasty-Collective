@@ -54,7 +54,15 @@ HISTORY_DIR = Path("data/draft_history")
 # readable and keeps its own number -- a reader can then tell "this field was never captured"
 # from "this field was captured as absent", which §18/#112 named as the distinction the board
 # currently cannot make. Never renumber an existing record.
-EVIDENCE_SCHEMA_VERSION = 1
+#: 2 -> 3 (mandate 1.7): the projection carries the whole input-state stamp, having carried two of
+#: its four fields. A version-2 record has no pool_scope or players_db_stamp KEY at all, which is
+#: what lets a reader tell "never captured" from "captured as absent" -- the distinction this
+#: constant's own comment exists for, and the reason the number moves rather than the old records.
+#: 4 -> 5 (mandate 2.2): the projection carries `config_ambiguities` -- whether the league this
+#: board was priced on could be read at all. A version-4 record has no such KEY, which is what lets
+#: a reader tell "this board was never asked" from "this board was asked and the config was clean".
+#: Those are opposite statements about whether the prices can be trusted, so the number moves.
+EVIDENCE_SCHEMA_VERSION = 5
 
 # The candidate fields retained per row. Chosen to answer "why is this one above that one" --
 # the value layer, the two bonuses that separate universal from team-acquisition value, the
@@ -72,14 +80,23 @@ EVIDENCE_SCHEMA_VERSION = 1
 # fully intelligible without them: bpa_source names the anchor, confidence grades it.
 _CANDIDATE_EVIDENCE_FIELDS = (
     "player_id", "name", "position", "team",
-    "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
+    "universal_value", "need_bonus", "team_acquisition_value",
     "bpa_source", "confidence",
     "pick_necessity", "necessity_label",
     "survival_probability", "intervening_picks",
     "positional_forfeit", "rival_premium", "denial_team",
     "positional_cliff", "position_run_detected",
     "near_tie_with_leader", "cliff_protection", "block_opportunity", "pure_value",
-    "context_elevated", "reach_label", "projected_points", "waiting_cost",
+    #: `context_elevated` was retired from CandidateSnapshot at #25 (ruled 2026-09-21) -- it
+    #: fired on one row across 36 formats. Dropping it from this projection is a SHAPE change,
+    #: so EVIDENCE_SCHEMA_VERSION goes to 2 and every record written under 1 stays readable and
+    #: keeps its own number, exactly as that constant's contract says.
+    "projected_points", "waiting_cost",
+    #: MANDATE 2.5, SCHEMA 3 -> 4. The stored record carried `risk_adj`'s effect through
+    #: `universal_value` and not the designation that caused it, so a historical board could show a
+    #: discounted price with nothing in the record explaining the discount. Both, with the basis,
+    #: because an absent status without one cannot be told from a healthy player.
+    "injury_status", "availability_basis",
 )
 
 _SAFE_SCOPE = re.compile(r"[^A-Za-z0-9_.-]")
@@ -137,8 +154,36 @@ def evidence_projection(snapshot, snapshot_id: str) -> dict:
         "user_selected_player_id": snapshot.user_selected_player_id,
         # The input-state stamp, carried verbatim. This is what lets a reader ask
         # snapshot_is_current of a RESTORED record, not just a live one.
+        #
+        # MANDATE 1.7: ALL FOUR OF IT. This carried two of the stamp's fields while the snapshot
+        # grew two more -- pool_scope and players_db_stamp -- so a restored record could be asked
+        # whether picks had been made and whether the merger's date had moved, and could not be
+        # asked whether it was even the same POPULATION or the same player universe. The sentence
+        # above claims a reader can put a record to the same question a live board answers, and it
+        # was two-thirds true.
+        #
+        # Carried verbatim like the other two, never recomputed: a projection that re-derived a
+        # stamp could disagree with the board it describes, which is the one thing this function's
+        # own docstring promises it cannot do.
         "picks_consumed": snapshot.picks_consumed,
         "data_freshest_date": snapshot.data_freshest_date,
+        "pool_scope": snapshot.pool_scope,
+        "players_db_stamp": snapshot.players_db_stamp,
+        # MANDATE 2.2. NOT part of the stamp above, and stored beside it rather than inside it: the
+        # stamp answers whether this board is still current, and this answers whether it was ever
+        # trustworthy. A stored board is a board someone reads prices from, so the verdict has to
+        # survive the write or the replay silently loses the one caveat that qualifies every number
+        # in the record.
+        #
+        # RESHAPED, NOT RECOMPUTED. The snapshot holds `(kind, detail)` pairs, which JSON cannot
+        # distinguish from a two-element list on the way back, so each pair is written as its own
+        # named object. That is a change of shape for the medium, not a second derivation -- the
+        # values are copied, so this still cannot disagree with the board it describes. `None`
+        # survives as `None`, because "nobody asked" is a state and not an empty answer.
+        "config_ambiguities": (
+            None if snapshot.config_ambiguities is None
+            else [{"kind": kind, "detail": detail}
+                  for kind, detail in snapshot.config_ambiguities]),
         "candidate_count": len(snapshot.candidates),
         "candidates": [candidate_evidence(c) for c in snapshot.candidates],
     }

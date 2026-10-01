@@ -1,0 +1,606 @@
+"""Do this repository's own comments and docstrings name things that still exist?
+
+`#182` is a standing order to audit the prose, and prose rots differently from code: a renamed
+constant, a deleted class, a guard that was described but never written leave the source green
+and the explanation wrong. Nothing in a test suite reads a docstring.
+
+WHAT THIS CHECKS, and why that shape. Only `backticked_identifiers` in comments and docstrings,
+and only against whether the name appears ANYWHERE in the repository -- code, data, JSON keys,
+markdown. A backtick in this codebase means "this is a name in the system", so a backticked name
+that exists nowhere is either a typo, a rename that did not reach its explanation, or a claim
+about something that was never built. All three were found on the first run:
+
+  `PANEL_ONLY`                             the constant is ADJUDICATION_PANEL_ONLY (typo)
+  `ValidatedFlagIsUnconditional`           named as a characterization guard, NEVER WRITTEN
+  `TheConstructionIsStrandedOnPurposeTests` correct -- its own sentence says the class WAS this
+
+The third is why this is not a simple absence check. Renamed and withdrawn things are quoted
+here deliberately and constantly; the repo's discipline is to strike a claim in place rather
+than delete it, and that discipline REQUIRES naming what no longer exists.
+
+SO THE RULE IS NOT "the name exists" BUT "the name exists, or the prose says it is history."
+HISTORICAL_MARKERS is a hand-kept vocabulary, which `#126` is right to be suspicious of. It is
+here anyway, because the alternative -- an allow-list of specific dead names -- goes stale
+silently the moment one is resurrected, while a marker that stops matching simply starts
+failing. Each marker earns its place by appearing in prose this repo actually writes.
+
+SECOND CHECK: the VALUES quoted for constants. `#56` says a bound is derived, never calibrated,
+and this repository explains most of its constants in prose sitting next to them. Change the
+constant and the explanation beside it becomes a confident, specific lie. `misquoted_constants`
+reads every module-level numeric constant and every place the prose writes `NAME = <number>` or
+`NAME (<number>)`, and requires them to agree.
+
+Only those two forms. A first attempt took the first number within forty characters of a named
+constant and reported 76 disagreements, ALL of them false: prose legitimately names a constant
+and then an item number, a measured value, or a table cell. An instrument at a 100% false
+positive rate is worse than none. The tight form checks 73 real quotations and, as committed,
+disagrees with the code nowhere. Scientific notation is part of the number: without the exponent
+group, an ablation arm forcing a cap to 1e9 reads as "1" and reports as a contradiction.
+"""
+
+from __future__ import annotations
+
+import ast
+import functools
+import io
+import re
+import subprocess
+import tokenize
+from pathlib import Path
+
+#: Words with which this repository marks a statement as NOT A CLAIM ABOUT THE CURRENT CODE.
+#: Two jobs, one vocabulary, because both checks ask the same question of a block of prose.
+#:
+#:   HISTORY  -- "This class was `X`", "renamed to `Y`", "it used to read", "NEVER WRITTEN".
+#:               Naming what no longer exists is required by this repo's discipline of striking
+#:               a claim in place rather than deleting it.
+#:
+#:   PROBES   -- "the NEEDCAP arm sets `NEED_BONUS_MAX = 1e9`", "I first registered the
+#:               acceptance test for `SUPER_FLEX_QB_SHARE = 1.0`". An ablation states a value a
+#:               constant is forced to for one experiment; a pre-registration states a value it
+#:               would be MOVED to if a gate passed. Neither asserts what the constant IS. Both
+#:               are speech acts this repository performs constantly -- `doc_index` already
+#:               carries `pre-?registrat` as one of its own vocabulary words -- and both would
+#:               otherwise read as the prose contradicting the code.
+#:
+#: Derived from prose this repository actually writes, not from a general list of English
+#: past-tense markers. A false fire costs one word here or one reworded sentence; a missed fire
+#: is a document confidently stating a number the code stopped using, which is the whole point.
+HISTORICAL_MARKERS = (
+    "was", "were", "used to", "renamed", "previously", "no longer", "never written",
+    "never existed", "has ever existed", "deleted", "removed", "withdrawn", "superseded",
+    "replaced", "old version", "predates", "stale",
+    "ablation", "arm", "probe", "experiment", "counterfactual", "registered",
+    #: MUTATION TESTING IS THE SAME CATEGORY as the five above, and was the one missing from it
+    #: (#52 phase 6). A mutation record's whole subject is a value the constant DOES NOT HAVE:
+    #: a battery row reporting a probability cap at ten times its real value, surviving 51
+    #: tests, is a finding about the TEST SUITE and not a claim about the cap. (Stated without
+    #: quoting the row verbatim: this comment is itself in the corpus, and a checker that
+    #: demonstrates a misquote by committing one reports itself -- measured, it did.) Without
+    #: this marker every mutation table in the
+    #: repository -- and this repository records them at the bottom of test modules by standing
+    #: convention, plus every battery in the preserved `#52` audit log -- reads as a
+    #: contradiction, and the check that exists to catch ONE stale number was reporting 18.
+    #: "mutat" rather than "mutation" so the record may say mutated or mutating -- and "mutant"
+    #: SEPARATELY, because it does not share that stem (mutan-, not mutat-), which the marker's
+    #: own test caught. The pattern anchors a marker to the start of a word, so neither fires
+    #: mid-word.
+    "mutat", "mutant", "planted",
+    #: EXPLICIT NON-EXISTENCE AND SUPERSESSION, the two idioms this repository actually writes and
+    #: the vocabulary did not carry. Found when the shield was scoped to the sentence (D-F2): five
+    #: of the nine names it newly exposed were in prose that says, in plain words, that the name
+    #: does not exist -- and the checker reported them as prose asserting that it does.
+    #:
+    #: `replac` AS A STEM, because the list held "replaced" while the prose writes "REPLACES", and
+    #: the matcher anchors at a word start, so the -d form never matched the -s form. Two renamed
+    #: test methods in `test_draft_strategy.py` were flagged for exactly that one letter.
+    #:
+    #: THESE ARE PHRASES, NOT THE WORD "no", deliberately. A bare "no" would shield roughly
+    #: anything; "there is no" and "needs no" are assertions with a subject, and the subject is
+    #: the name. This is completing the vocabulary for an existing idiom rather than growing it
+    #: until the report reads zero -- the distinction this module's docstring draws.
+    #:
+    #: THE EVIDENCE FOR THAT RESTRAINT IS THE THREE NAMES, NOT THE TOTAL, AND AN EARLIER VERSION
+    #: OF THIS COMMENT GOT IT WRONG. It said "the report still stands at four rather than nought
+    #: after they were added". IT STANDS AT ZERO. The four it pointed to are exactly the four
+    #: that `SELF_REFERENTIAL` -- added in the same change -- suppresses, so the two halves of
+    #: one commit cancel and the total says nothing about this list. Measured, by swapping each
+    #: suppression out at runtime: shipped 0; without `SELF_REFERENTIAL` 4, every one of them
+    #: inside this module or its test; without these four markers 3.
+    #:
+    #: Those 3 are the real evidence, and they are what a reader should check: `fgmiss_0_19` in
+    #: `player_universe.py` ("There is no `fgmiss_0_19`") and two renamed methods in
+    #: `test_draft_strategy.py` ("REPLACES `test_...`, which ..."). All three sit in prose that
+    #: is genuinely historical, which is what makes these markers idiom completion and not
+    #: papering over rot. Citing a total that two independent suppressions produce is the `#133`
+    #: shape, in the commit that repaired `#133`'s own instrument.
+    "replac", "there is no", "needs no", "no separate",
+)
+
+#: A MARKER MUST BEGIN A WORD. Nothing else about how it is matched is a judgement call, and
+#: the first two attempts both got it wrong in opposite directions:
+#:
+#:   SUBSTRING (as shipped). `arm` fired inside `Spearman`, `harmless`, `harmonize`, `harmful`,
+#:     `alarming` and `disarmed`; `were` fired inside `lowered` and `powered`. Seven blocks
+#:     across the two corpora were shielded by the letters of unrelated words. A shield that
+#:     opens on the spelling of "Spearman" is not a shield.
+#:   \bWORD\b. Kills those, and kills the morphology this repository actually writes:
+#:     `staleness` (49 blocks), `ablations`, `probes`, `counterfactuals`, and identifier-shaped
+#:     mentions like `noise_arm` where `_` leaves no word boundary at all.
+#:
+#: "Not preceded by a letter" keeps every one of those and drops every leak, because all six
+#: leaks carry the marker INSIDE a word and all the morphology carries it at the front. Measured
+#: over both corpora: python shielded 293 -> 295, markdown 950 -> 966, and ZERO dead names are
+#: exposed either way -- the verdict does not move, the instrument just stops lying about why.
+@functools.lru_cache(maxsize=4)
+def _marker_pattern(markers: tuple[str, ...]) -> re.Pattern | None:
+    """Compiled once per vocabulary. Keyed on the tuple rather than closed over it because two
+    tests EMPTY that tuple to prove the allowance is load-bearing, and an allowance that could
+    not be switched off could not be shown to be doing anything."""
+    if not markers:
+        return None
+    return re.compile(r"(?<![A-Za-z])(?:"
+                      + "|".join(re.escape(m) for m in markers) + r")", re.I)
+
+
+def is_history(text: str) -> bool:
+    """Does this block of prose mark itself as NOT A CLAIM ABOUT THE CURRENT CODE?"""
+    pattern = _marker_pattern(tuple(HISTORICAL_MARKERS))
+    return bool(pattern and pattern.search(text))
+
+
+#: Markers that are ORDINARY ENGLISH and do not, alone, mark a sentence as historical. "The
+#: default was chosen because..." still asserts what the default IS.
+#:
+#: MEASURED BEFORE DECIDING WHAT TO DO ABOUT IT, because the audit finding said this shield
+#: "exempts most of what it claims to check" and that is not what the numbers say. Of 138 prose
+#: blocks quoting a constant's value, 53 (38%) are exempted -- substantial, not most. Of those, 27
+#: are exempted ONLY by a word in this set, most often a bare "was" (10 blocks) or "were" (4).
+#:
+#: AND THE OVER-BREADTH COSTS NOTHING TODAY, which is why the repair is a CHECK rather than a
+#: tightening. Every one of the 18 weak-exempt blocks that names a live constant quotes the value
+#: the code actually has -- zero disagreements. Narrowing the vocabulary would have produced 27
+#: reports, all of them false, and a checker that cries wolf 27 times stops being read. So the
+#: allowance stays and `weak_sole_exemptions` makes its reach visible and ratchetable: if a
+#: weak-exempt block ever states a value the code does not have, that is a real finding and the
+#: test built on this reports it.
+WEAK_MARKERS = frozenset({"was", "were", "arm", "experiment", "registered", "stale"})
+
+
+def weak_sole_exemptions(text: str) -> frozenset[str]:
+    """The markers exempting this block when ALL of them are weak, else an empty set.
+
+    Empty means the block is either not exempt at all, or exempt via a marker that unambiguously
+    names the past ("used to", "renamed", "superseded", "ablation", ...).
+    """
+    pattern = _marker_pattern(tuple(HISTORICAL_MARKERS))
+    if not pattern:
+        return frozenset()
+    found = {m.group(0).lower() for m in pattern.finditer(text)}
+    return frozenset(found) if found and found <= WEAK_MARKERS else frozenset()
+
+#: THE ONLY TWO FORMS THAT UNAMBIGUOUSLY QUOTE A CONSTANT'S VALUE: `NAME = 12.0` and
+#: `NAME (12.0)`, optionally backticked. Scientific notation is part of the number, not a
+#: separate one -- without the exponent group, a cap forced to 1e9 in an ablation reads as "1",
+#: and every such arm in this repository reports as a contradiction.
+NUMBER = r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?"
+QUOTED_VALUE = re.compile(
+    rf"`?([A-Z][A-Z0-9_]{{3,}})`?[ \t]*(?:=|is)[ \t]*`?({NUMBER})`?"
+    rf"|`?([A-Z][A-Z0-9_]{{3,}})`?[ \t]*\([ \t]*({NUMBER})[ \t]*\)")
+
+#: A backticked token this short is almost always a word, not a name.
+MIN_NAME_LENGTH = 5
+
+#: BOTH WALKS ARE CACHED FOR THE PROCESS. Uncached, the suite paid ~33s for this module
+#: because every call re-tokenized every file. Nothing here mutates the tree, and a tool that
+#: read it twice in one process would be reading a tree that could not have changed under it.
+#:
+#: Git object ids are quoted constantly and are not names in the system.
+SHA = re.compile(r"^[0-9a-f]{7,40}$")
+
+
+def _tracked(*globs: str) -> list[Path]:
+    out = subprocess.run(["git", "ls-files", "-z", *globs],
+                         capture_output=True, text=True, check=True)
+    return [Path(name) for name in out.stdout.split("\0") if name]
+
+
+@functools.lru_cache(maxsize=1)
+def prose_blocks() -> tuple[tuple[Path, int, str], ...]:
+    """Every comment and docstring in this repository's Python, as (path, line, text)."""
+    blocks: list[tuple[Path, int, str]] = []
+    for path in _tracked("*.py"):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        try:
+            for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+                if tok.type == tokenize.COMMENT:
+                    blocks.append((path, tok.start[0], tok.string))
+        except (tokenize.TokenError, IndentationError):
+            pass
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                doc = ast.get_docstring(node)
+                if doc:
+                    blocks.append((path, getattr(node, "lineno", 1), doc))
+    return tuple(blocks)
+
+
+#: A FENCE OPENS OR CLOSES A CODE BLOCK. Everything between two of them is a QUOTATION of code,
+#: a shell transcript or a table of output -- not prose making a claim -- so it goes to the
+#: haystack and never to the corpus. Both fence characters are matched because this repository
+#: writes both.
+FENCE = re.compile(r"^(?:```|~~~)")
+
+
+@functools.lru_cache(maxsize=256)
+def markdown_split(path: Path) -> tuple[tuple[tuple[Path, int, str], ...], str]:
+    """One markdown file cut in two: (prose paragraphs, the text of its fenced blocks).
+
+    THE PARAGRAPH IS THE UNIT, not the file and not the line. A whole file is too coarse -- one
+    "was" in a 9,000-line register would shield every claim in it. A single line is too fine: a
+    sentence that wraps puts its marker on one line and its quotation on the next, and the
+    shield stops reaching the thing it is shielding. A blank-line-delimited paragraph is the
+    unit this repository's own prose is written in, and it is where a marker's scope ends.
+
+    A HEADING IS ITS OWN ONE-LINE BLOCK. It terminates the paragraph before it and joins the one
+    after it, both of which matter. Joining was measured as marker context and rejected --
+    shielding each paragraph with its nearest heading costs 4 of 35 checkable constant
+    quotations and does not even shield the case that motivated trying it. But the first draft
+    went further and DISCARDED headings, which silently exempted six real quotations that live
+    in one: `NEAR_TIE_BAND = 2.0`, `NECESSITY_STANDOUT_REFERENCE_GAP = 15.0` and
+    `NEED_BONUS_MAX = 12.0`, each written into an `### A1`/`A2`/`A3` heading twice over. All six
+    agree with the code, which is exactly why dropping them would never have been noticed.
+    """
+    prose: list[tuple[Path, int, str]] = []
+    code: list[str] = []
+    fenced = False
+    buf: list[str] = []
+    start = 1
+    for number, line in enumerate(
+            path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        if FENCE.match(line.strip()):
+            fenced = not fenced
+            if buf:
+                prose.append((path, start, "\n".join(buf)))
+                buf = []
+            continue
+        if fenced:
+            code.append(line)
+            continue
+        if not line.strip() or line.startswith("#"):
+            if buf:
+                prose.append((path, start, "\n".join(buf)))
+                buf = []
+            if line.startswith("#"):
+                prose.append((path, number, line))      # a heading is a block, not a divider
+            continue
+        if not buf:
+            start = number
+        buf.append(line)
+    if buf:
+        prose.append((path, start, "\n".join(buf)))
+    return tuple(prose), "\n".join(code)
+
+
+@functools.lru_cache(maxsize=1)
+def markdown_blocks() -> tuple[tuple[Path, int, str], ...]:
+    """Every prose paragraph in this repository's tracked markdown, as (path, line, text)."""
+    blocks: list[tuple[Path, int, str]] = []
+    for path in _tracked("*.md"):
+        blocks.extend(markdown_split(path)[0])
+    return tuple(blocks)
+
+
+#: THIS CHECKER'S OWN TEST MODULE IS NOT PART OF THE CORPUS.
+#:
+#: It exists to NAME things in order to prove they are absent -- `assertIn("SomeDeadName", dead)`
+#: -- and a string literal in a tracked .py file is code, not prose, so it lands in the haystack
+#: and the name it was quoting stops reading as dead. The guards passed while the file was
+#: untracked and went red the moment it was committed.
+#:
+#: One file, one reason, and its absence fails loudly: remove this and the non-vacuity guards in
+#: test_prose_names.py stop being able to plant a dead name at all. It is the same self-reference
+#: doc_index hit when it classified its own output.
+NOT_ITS_OWN_CORPUS = frozenset({"test_prose_names.py"})
+
+#: A TRANSCRIPT IS NOT A PLACE A NAME LIVES (V4-I2). The haystack takes markdown's FENCED CODE,
+#: on the reasoning that a fence holds real source while the prose around it is commentary. An
+#: evidence document breaks that: its fences hold QUOTED INSTRUMENT OUTPUT, so a report that
+#: lists the names this checker called dead puts every one of them into the corpus, and each then
+#: vouches for itself. Found when four independent review branches were merged and
+#: `test_the_haystack_excludes_the_prose_itself` went red: `ValidatedFlagIsUnconditional` and
+#: `TheConstructionIsStrandedOnPurposeTests` reached the haystack from a fenced block in
+#: `INDEPENDENT_REVIEW_REPAIRS.md` quoting this module's own report.
+#:
+#: This is the hole the docstring below says was closed -- "that memo, being in the haystack,
+#: vouches for the old name everywhere" -- reopened through the one channel the closure left
+#: open. Evidence is a RECORD OF WHAT WAS OBSERVED, never a definition, so none of it is a place
+#: a name can legitimately live.
+TRANSCRIPTS_NOT_DEFINITIONS = ("evidence/",)
+
+
+@functools.lru_cache(maxsize=1)
+def haystack() -> str:
+    """Everything a name could legitimately live in -- with comments and docstrings STRIPPED
+    from the Python, so a name that exists only in the prose describing it does not vouch for
+    itself, and with this checker's own test module excluded (see NOT_ITS_OWN_CORPUS).
+
+    MARKDOWN CONTRIBUTES ITS FENCED CODE AND NOTHING ELSE, by that same rule. It used to be read
+    whole, which left a hole this repository is exactly the shape to fall into: rename a constant
+    and leave one memo still naming the old one, and that memo -- being in the haystack -- vouches
+    for the old name everywhere, so every docstring that also still names it goes on passing.
+    Measured when the hole was closed, it was costing nothing: 0 names in Python prose were
+    vouched for by markdown alone, and the universe falls from 31,714 words to 25,189 with no
+    change of verdict. Closed while it is free to close."""
+    parts = []
+    for path in _tracked("*.py"):
+        if path.name in NOT_ITS_OWN_CORPUS:
+            continue
+        source = path.read_text(encoding="utf-8", errors="replace")
+        try:
+            toks = list(tokenize.generate_tokens(io.StringIO(source).readline))
+        except (tokenize.TokenError, IndentationError):
+            parts.append(source)
+            continue
+        for tok in toks:
+            if tok.type == tokenize.COMMENT:
+                continue
+            if tok.type == tokenize.STRING and tok.line.strip().startswith(('"""', "'''")):
+                continue
+            parts.append(tok.string)
+    for path in _tracked("*.js", "*.html", "*.json", "*.css", "*.toml", "*.yml", "*.yaml"):
+        parts.append(path.read_text(encoding="utf-8", errors="replace"))
+    for path in _tracked("*.md"):
+        if any(seg in path.as_posix() for seg in TRANSCRIPTS_NOT_DEFINITIONS):
+            continue                                # quoted output, not source -- see above
+        parts.append(markdown_split(path)[1])       # FENCED CODE ONLY -- see the docstring
+
+    # A TRACKED MODULE'S OWN STEM IS A NAME IN THE SYSTEM, and nothing above guarantees it
+    # appears. A module is only spelled out in code where something imports it, so a module
+    # whose importers are all comments, all markdown prose, or all excluded reads as dead
+    # while its file sits right there in the tree.
+    #
+    # This module was the proof. Its single code-level importer is its own test module, which
+    # NOT_ITS_OWN_CORPUS removes from the corpus -- so the exclusion that stops the checker
+    # vouching for itself also erased its own name, and the first comment anywhere to cite it
+    # was reported as naming something that exists nowhere. 72 other stems were in the same
+    # state, every one of them a one-shot probe script, every one of them a latent false
+    # positive waiting for the first sentence to mention it.
+    #
+    # Derived from git, not listed here: the set of importable module names in this repository
+    # has one home (the tree), and a stem drops out of the universe the moment its file is
+    # deleted -- which is exactly when prose still naming it SHOULD go red.
+    parts.extend(path.stem for path in _tracked("*.py"))
+    return "\n".join(parts)
+
+
+def words(universe: str) -> frozenset[str]:
+    """Every word-shaped token in the corpus. A set membership test is exactly `\bname\b` for
+    identifier-shaped names, and turns a per-name scan of a multi-megabyte string into a lookup
+    -- the difference between this module costing the suite ~22s and ~2s."""
+    return frozenset(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", universe))
+
+
+#: THE DEAD-NAME CORPUS IS PYTHON PROSE. THE MARKDOWN WAS MEASURED AND DELIBERATELY LEFT OUT.
+#:
+#: `#182` says to audit EVERY document, so this was run over the 123 tracked markdown files
+#: before being declined, and the numbers are recorded so nobody has to run it again:
+#:
+#:   3,416 backticked-name occurrences (979 distinct) survive the marker filter and get tested
+#:      69 of them exist nowhere -- but only once markdown prose is out of the haystack as well,
+#:         which it now is; against the old haystack the answer was a self-vouching 0
+#:      50 survive a shape filter for names that look like THIS system's (an underscore or
+#:         ALL_CAPS -- which drops httpx, flask, pkill, pickle, uvicorn, Pipfile)
+#:       0 of the 50, read at their sites, are defects.
+#:
+#: NONE OF THE NAMES IN THIS COMMENT IS BACKTICKED, and that is the finding in miniature: a
+#: backtick here means "this is a name in the system", every one of these is cited precisely
+#: because it is NOT, and the first draft of this paragraph quoted them properly and was
+#: reported by the checker it is explaining. Nine dead names, all mine.
+#:
+#: Every one is a legitimate speech act that Python prose does not perform. A PROPOSAL naming
+#: words that do not exist yet (OVERVIEW and EVERYTHING in DRAFT_ROOM_UI.md, where the point of
+#: the sentence is that they SHOULD exist). An ASSERTED ABSENCE -- ARCHITECTURE_AUDIT.md section
+#: 4.5 is headed STATUS: MISSING and its evidence line is "no CONTRACT_VERSION, PROMPT_VERSION,
+#: or equivalent exists anywhere in the tree", which IS the finding. An EXPERIMENT LABEL in a
+#: results table (kdst_1qb_slot1, kdst_deep18 -- trial names, never identifiers). Or a register
+#: entry about something long dead.
+#:
+#: Making those pass would mean growing the marker vocabulary until the report reached zero,
+#: which is calibration to this corpus rather than derivation from it, and this module's own
+#: docstring already records that an instrument at a high false-positive rate is worse than none.
+#: The CONSTANT check has the opposite profile and DOES read the markdown -- see below.
+#: PARAGRAPH-SCOPED, NOT BLOCK-SCOPED (D-F2). The rule this module states is "the name exists, or
+#: the prose says IT is history" -- and "it" is the name, so the shield must sit near the name. Applied to the whole block, what the code
+#: implemented was "the block contains a common English past-tense word", which is a different and
+#: far weaker rule: `HISTORICAL_MARKERS` includes "was", "were" and "arm", so one bare "was" in an
+#: unrelated sentence shielded every name beside it. MEASURED at the v4 pass: of 1,446 prose blocks
+#: naming something, 651 (45.0%) were never examined at all, 374 of 499 module docstrings (75%) were
+#: shielded, and 177 of the shielded blocks carried no marker other than "was". Three dead names
+#: were living in there.
+#:
+#: The vocabulary is NOT narrowed to fix this, deliberately. "was" belongs in it -- "the label was
+#: false" is exactly the prose a history shield exists for -- and trimming markers until the report
+#: reads zero is the calibration-to-corpus this module's own docstring refuses. Scope was the defect,
+#: not vocabulary.
+#: THE PARAGRAPH, NOT THE SENTENCE, and the difference was measured rather than guessed. Scoped to
+#: the sentence this exposed `ValidatedFlagIsUnconditional`, whose very next sentence reads "NO SUCH
+#: CLASS HAS EVER EXISTED" -- a marker already in the vocabulary, one sentence too far away. A
+#: correction and the thing it corrects are one thought and one paragraph; splitting them makes the
+#: shield refuse the clearest history prose in the repository.
+#:
+#: A paragraph is the right unit for a second reason: `prose_blocks` already emits each COMMENT line
+#: as its own block, so comments are line-scoped whatever happens here. The 45% over-shielding was
+#: almost entirely DOCSTRINGS, where one "was" in the opening line covered every name in forty
+#: lines of unrelated text -- 374 of 499 module docstrings. Paragraphs cut exactly that.
+_PARAGRAPH_SPLIT = re.compile(r"\n\s*\n")
+
+
+def _paragraph_around(text: str, position: int) -> str:
+    """The paragraph containing `position`, splitting on blank lines."""
+    start, end = 0, len(text)
+    for match in _PARAGRAPH_SPLIT.finditer(text):
+        if match.start() > position:
+            end = match.start()
+            break
+        start = match.end()
+    return text[start:end]
+
+
+#: THE CHECKER AND ITS OWN TEST MODULE ARE NOT PART OF THE CORPUS THEY CHECK, and this became
+#: load-bearing the moment the shield was scoped to the sentence. Both are the `#254` shape --
+#: an instrument reporting itself:
+#:
+#:   `test_prose_names.py` FABRICATES names that exist nowhere, on purpose, because that is the
+#:     only way to prove the checker catches one. Under a block-wide shield its fixtures happened
+#:     to sit beside a marker; scoped to the sentence they became findings, and `PANEL_ONLY` and
+#:     `TheConstructionIsStrandedOnPurposeTests` are fixtures, not rot.
+#:   `prose_names.py` QUOTES the English words that leaked through the old substring match --
+#:     `alarming`, `disarmed`, `harmless` -- to record why the matcher anchors to a word start.
+#:     A checker that cannot discuss its own false positives without reporting them is a checker
+#:     that cannot document itself.
+#:
+#: Named as an explicit pair rather than derived from a pattern, so a reader sees exactly what is
+#: unexamined; `invariant_confirmation` excludes its own anchors module for the same reason and
+#: records it the same way.
+SELF_REFERENTIAL = frozenset({"prose_names.py", "test_prose_names.py"})
+
+
+def dead_names() -> dict[str, list[str]]:
+    """Backticked names that exist nowhere and are not marked as history, as {name: [sites]}."""
+    universe = words(haystack())
+    found: dict[str, list[str]] = {}
+    for path, line, text in prose_blocks():
+        if path.name in SELF_REFERENTIAL:
+            continue
+        for match in re.finditer(r"`([A-Za-z_][A-Za-z0-9_]*)`", text):
+            if is_history(_paragraph_around(text, match.start())):
+                continue
+            name = match.group(1)
+            if len(name) < MIN_NAME_LENGTH or SHA.match(name):
+                continue
+            if name in universe:
+                continue
+            found.setdefault(name, []).append(f"{path}:{line}")
+    return found
+
+
+@functools.lru_cache(maxsize=1)
+def numeric_constants() -> dict[str, float]:
+    """Module-level numeric constants with exactly ONE definition across the repository.
+
+    A name defined twice with different values is not a misquotation problem, it is a #126
+    problem -- two homes for one fact -- and this check declines to guess which one the prose
+    meant. Measured when this was written: 92 constants, 0 defined with conflicting values.
+    """
+    seen: dict[str, set[float]] = {}
+    for path in _tracked("*.py"):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if not (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)):
+                continue
+            name = node.targets[0].id
+            value = node.value
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]{3,}", name):
+                continue
+            if isinstance(value, ast.Constant) and isinstance(value.value, (int, float)) \
+                    and not isinstance(value.value, bool):
+                seen.setdefault(name, set()).add(float(value.value))
+    return {name: next(iter(vals)) for name, vals in seen.items() if len(vals) == 1}
+
+
+def misquoted_constants() -> list[tuple[str, str, float, float]]:
+    """(site, name, real, quoted) wherever prose states a constant's value and is wrong.
+
+    THIS CHECK READS THE MARKDOWN TOO, and the dead-name check above does not. The asymmetry is
+    measured, not stylistic. `NAME = 12.0` is an unambiguous quotation of a value wherever it
+    appears, so the false-positive population is tiny, while a backticked name in a document
+    might be a proposal, an asserted absence or a trial label. And the markdown is where this
+    repository actually explains its constants at length: Python prose offers 6 quotations of a
+    known constant to check, the markdown offers 40 over 14 distinct constants. Checking the
+    smaller population and skipping the larger one was the gap, not a choice."""
+    real = numeric_constants()
+    return [(site, name, real[name], quoted)
+            for site, name, quoted, shielded in quoted_constant_sites()
+            if not shielded and name in real and abs(real[name] - quoted) > 1e-12]
+
+
+def quoted_constant_sites() -> list[tuple[str, str, float, bool]]:
+    """(site, name, quoted value, whether the history shield suppresses it) for every quotation
+    of a single-homed constant anywhere in this repository's prose or markdown.
+
+    ONE HOME FOR "WHICH QUOTATIONS ARE EXAMINED" (`#126`). This walk had three readers --
+    `misquoted_constants`, the census under it, and the mutation test's own oracle -- and `I2`
+    found two of them still at block scope after the third moved to paragraph scope. A census
+    that re-derives the scope rule is a second definition of it, and the mutation test's copy
+    was worse than that: an oracle that disagrees with the checker reports a real repair as a
+    regression, which is exactly how it failed. The shield is reported rather than applied here
+    so the census can count what it suppressed without walking a second time.
+
+    PARAGRAPH SCOPE, NOT BLOCK SCOPE. `D-F2` moved `dead_names`' shield to paragraph scope and
+    this neighbour kept the block-wide test, so one marker anywhere in a long docstring exempted
+    every quotation in it. Measured over the real corpus: 4 quotations were shielded by a marker
+    NOT in their own paragraph -- `SUPER_FLEX_QB_SHARE`, `D_MIN_SCALE`, `FLEX_GROUP_DEPTH_FACTOR`,
+    `SPAN`, none of them actually misquoted. The markdown half was already clean at paragraph
+    scope (75 of 75 shielded in their own paragraph), so this costs nothing there."""
+    real = numeric_constants()
+    sites = []
+    for path, line, text in tuple(prose_blocks()) + tuple(markdown_blocks()):
+        multiline = len(text.splitlines()) > 1
+        for match in QUOTED_VALUE.finditer(text):
+            name = match.group(1) or match.group(3)
+            if name not in real:
+                continue
+            at = line + (text[:match.start()].count("\n") if multiline else 0)
+            sites.append((f"{path}:{at}", name,
+                          float(match.group(2) or match.group(4)),
+                          is_history(_paragraph_around(text, match.start()))))
+    return sites
+
+
+def _quotation_census() -> tuple[int, int]:
+    """(quotations of a single-homed constant, how many the history shield suppressed).
+
+    What `misquoted_constants` actually EXAMINED, which is the only honest denominator for its
+    verdict. Reads the SAME list the check reads, so it cannot drift from the check it describes
+    -- an earlier version said that while walking the corpus a second time, and `I2` caught the
+    two walks disagreeing about the shield's scope (`#126`, `#133`)."""
+    sites = quoted_constant_sites()
+    return len(sites), sum(1 for *_rest, shielded in sites if shielded)
+
+
+def main() -> int:
+    dead = dead_names()
+    for name, sites in sorted(dead.items()):
+        print(f"{name:44s} {', '.join(sites)}")
+    print(f"{len(dead)} backticked name(s) in prose exist nowhere in this repository, "
+          f"over {len(prose_blocks())} comments and docstrings")
+    wrong = misquoted_constants()
+    for site, name, real, quoted in wrong:
+        print(f"{site:52s} {name} is {real} but the prose says {quoted}")
+    # THE CHECKABLE POPULATION, NOT THE SCANNED ONE. This line used to report the constants
+    # defined and the blocks read -- 112 and ~18,000 -- and neither is the number of claims this
+    # run actually verified. A reader (including the one who wrote this) quoted those denominators
+    # as evidence the corpus was clean, when the quantity examined was two orders of magnitude
+    # smaller. A rate over the wrong population is the `#245` shape: an instrument whose summary
+    # invites a conclusion its measurement does not support.
+    checkable, shielded = _quotation_census()
+    print(f"{len(wrong)} constant value(s) quoted wrongly, over {checkable} quotation(s) of a "
+          f"single-homed constant ({shielded} of them shielded as history, so {checkable - shielded} "
+          f"were actually compared)")
+    print(f"    scanned to find them: {len(numeric_constants())} single-homed constants, "
+          f"{len(prose_blocks())} comments and docstrings, "
+          f"{len(markdown_blocks())} markdown paragraphs")
+    return 1 if (dead or wrong) else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

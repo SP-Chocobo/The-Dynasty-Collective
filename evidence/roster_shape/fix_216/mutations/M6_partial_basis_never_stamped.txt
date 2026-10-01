@@ -1,0 +1,16 @@
+......F....
+======================================================================
+FAIL: test_an_unpriced_rostered_player_who_could_block_the_position_downgrades_the_basis (test_216_displacement.DisplacementLevelDerivationTests.test_an_unpriced_rostered_player_who_could_block_the_position_downgrades_the_basis)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_displacement.py", line 105, in test_an_unpriced_rostered_player_who_could_block_the_position_downgrades_the_basis
+    self.assertEqual(partial["basis"], lo.DISPLACEMENT_ROSTER_PARTIAL, "a WR can hold FLEX, which a TE reaches")
+AssertionError: 'measured' != 'roster_partially_priced'
+- measured
++ roster_partially_priced
+ : a WR can hold FLEX, which a TE reaches
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.006s
+
+FAILED (failures=1)

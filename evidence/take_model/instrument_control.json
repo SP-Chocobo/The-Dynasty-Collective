@@ -1,0 +1,9 @@
+{
+ "policy_rank": 3,
+ "picks": 48,
+ "histogram": {
+  "3": 48
+ },
+ "spike_share": 1.0,
+ "verdict": "the instrument CAN see concentration -- the real-draft diffusion is a finding"
+}

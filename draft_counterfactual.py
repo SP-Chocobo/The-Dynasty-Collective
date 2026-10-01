@@ -14,8 +14,8 @@ picks-so-far state immediately before that pick and re-evaluates that identical 
     position" inclusion is TAV-based (see narrow_candidates' own docstring), not UV-based, so
     the true UV-argmax across the whole pool is not guaranteed to appear in a stored
     PickRecord's snapshot at all -- this recomputes the full board specifically to get it right.
-  - real market consensus (KeepTradeCut) via pick_synthesis._consensus_lookup / consensus_reach
-    -- the same, already-shipped lookup the live engine itself uses for reach_label, not a new
+  - real market consensus (KeepTradeCut) via pick_synthesis._consensus_lookup / consensus_standing
+    -- the same, already-shipped lookup the live engine itself uses for consensus standing, not a new
     ADP model. That lookup is empty for a non-superflex league BY DESIGN (its own docstring:
     "this app's committed baseline only carries KTC's superflex-format export, and using
     superflex-inflated QB consensus for a 1QB league would silently misrepresent that league's
@@ -56,10 +56,17 @@ class NodeComparison:
     engine_player_id: str
     engine_player_name: str
     engine_position: str
-    engine_uv: float
-    engine_tav: float
+    #: OPTIONAL, and the annotation was a lie before this. Both come straight off the
+    #: trajectory's own snapshot, where `CandidateSnapshot.universal_value` and
+    #: `.team_acquisition_value` are `Optional[float]` because a row the pricing layer could not
+    #: value at all carries neither. A sharp chair never takes such a row -- `_board_order` sorts
+    #: unpriced last -- but an `opponent_noise` arm drawing from its own top-k does, and the
+    #: trajectory that produced `#34` took two of them in round 15. Annotating them `float` did
+    #: not make them floats; it hid that `regret_vs_bpa` below had to cope.
+    engine_uv: Optional[float]
+    engine_tav: Optional[float]
     engine_necessity: str
-    engine_near_tie: bool
+    engine_near_tie: Optional[bool]   # None: the tie comparison was never made (#61 rule 5)
 
     bpa_player_id: str
     bpa_player_name: str
@@ -74,27 +81,81 @@ class NodeComparison:
     adp_consensus_rank: Optional[int]
     adp_tav: Optional[float]
 
-    regret_vs_bpa: float  # engine_tav - bpa_tav; >= 0 by construction (engine always TAV-argmax)
+    #: engine_tav - bpa_tav. NOT sign-constrained, and the reason is the point.
+    #:
+    #: This read ">= 0 by construction (engine always TAV-argmax)", then became routinely
+    #: negative while pick_synthesis ordered on acting_now_value, and that ordering is reverted
+    #: (#22). It is STILL not sign-constrained, for a narrower reason: `_board_order` leads with
+    #: the feasibility backstop, so a roster with as few picks left as it has unfillable named
+    #: slots will take a lower-tav player on purpose. A negative regret is that choice,
+    #: recorded -- not an error, and specifically not evidence the engine picked badly. What
+    #: changed at the revert is the FREQUENCY, not the contract: it should now be rare rather
+    #: than routine. Reading it as a defect count is what this comment exists to prevent.
+    #: NONE WHEN engine_tav IS ABSENT (`#187`). No engine price means there is no difference to
+    #: report, and 0.0 there would be the worse failure of the two: it reads as "the engine gave
+    #: up nothing", a measured verdict in the engine's own favour invented out of a missing
+    #: number. Every consumer that averages or maximises this must filter on `is not None` and
+    #: say how many nodes it dropped -- an absence folded into a mean is the same fabrication one
+    #: layer along. `_near_tie` on this path already answers None for exactly this reason.
+    regret_vs_bpa: Optional[float]
     regret_vs_adp: Optional[float]  # engine_tav - adp_tav; sign is NOT constrained
 
     equals_bpa: bool
     equals_adp: Optional[bool]  # None when adp_available is False
-    deviation_supported: Optional[bool]  # None when equals_bpa (nothing to classify)
+    deviation_supported: Optional[bool]  # None when equals_bpa, and when unmeasurable -- see basis
+    #: WHY deviation_supported holds the value it does. Required, because None on that field
+    #: now covers two genuinely different situations and neither may be read as the other:
+    #: "the engine took BPA, there is no deviation to classify" and "the engine deviated and
+    #: this harness could not tell whether it was supported". A consumer counting unsupported
+    #: deviations must not count the second as either. The allowed values are None (equals_bpa)
+    #: plus every member of DEVIATION_BASES -- which is the ONE home for that vocabulary (#126),
+    #: read rather than re-listed here, because this copy went stale at #22 while the tuple did
+    #: not.
+    deviation_support_basis: Optional[str]
 
 
-def _full_board(merger: DataMerger, players_db: dict, picks_so_far: list[dict], roster_id: str, league: dict, mode: str, pool_scope: str) -> list[dict]:
-    return dr.compute_draft_board(merger, players_db, picks_so_far, my_roster_id=roster_id, league=league, mode=mode, pool_scope=pool_scope)
+def _full_board(merger: DataMerger, players_db: dict, picks_so_far: list[dict], roster_id: str,
+                league: dict, mode: str, pool_scope: str, *,
+                sleeper_projections=None, sleeper_basis=dr.SLEEPER_BASIS_WEEKLY,
+                weekly_projections=None) -> list[dict]:
+    """The board this comparison is scored against.
+
+    THE PRICING PATH IS A PARAMETER, and it was not. This built a VENDOR-ONLY board -- no
+    `sleeper_projections`, no `sleeper_basis`, no `weekly_projections` -- while `engine_tav` is read
+    off the trajectory's own snapshot. So whenever the trajectory came from a scoring-aware run,
+    `regret_vs_bpa = engine_tav - bpa_tav` subtracted two numbers from two different pricings and
+    reported the difference as regret. The existing consumers happen to be internally consistent
+    only because both of their sides use the vendor reconstruction, which is a universe production
+    never prices.
+    """
+    return dr.compute_draft_board(merger, players_db, picks_so_far, my_roster_id=roster_id,
+                                  league=league, mode=mode, pool_scope=pool_scope,
+                                  sleeper_projections=sleeper_projections,
+                                  sleeper_basis=sleeper_basis,
+                                  weekly_projections=weekly_projections)
 
 
-def bpa_row(board: list[dict]) -> dict:
-    """Pure argmax(universal_value) over a full board -- extracted so this specific property
-    (BPA is a UV-argmax, never a TAV-argmax) is directly unit-testable against a small
-    synthetic board, not dependent on a real draft happening to produce a case where they
-    diverge."""
-    return max(board, key=lambda r: r["universal_value"])
+def bpa_row(board: list[dict]) -> Optional[dict]:
+    """Pure argmax(universal_value) over the PRICED rows of a full board -- extracted so this
+    specific property (BPA is a UV-argmax, never a TAV-argmax) is directly unit-testable
+    against a small synthetic board, not dependent on a real draft happening to produce a case
+    where they diverge.
+
+    None when no row on the board carries a price. That is a real state since #193: admission
+    stopped requiring that someone had published a number, so a board can legitimately contain
+    rows whose universal_value is None. Those rows are not candidates for "best player
+    available" -- there is no sense in which an unpriced player is the best one -- and the
+    unguarded argmax this replaced did not merely rank them wrongly, it raised TypeError on the
+    first None it touched. Filtering rather than defaulting is the same rule the rest of this
+    engine follows: absence is excluded from a comparison, never coerced to a number that would
+    place it on the scale."""
+    priced = [r for r in board if r.get("universal_value") is not None]
+    if not priced:
+        return None
+    return max(priced, key=lambda r: r["universal_value"])
 
 
-def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool, current_overall_pick: int) -> tuple[Optional[dict], Optional[str]]:
+def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool) -> tuple[Optional[dict], Optional[str]]:
     """(row, unavailable_reason). row is the board row with the best (lowest) real KTC
     consensus rank -- None with a reason string when no consensus data applies to this node."""
     if not is_superflex:
@@ -104,10 +165,10 @@ def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool, current
         return None, "Superflex league, but no KTC consensus data is loaded in this merger instance."
     best_row, best_rank = None, None
     for row in board:
-        reach = ps.consensus_reach(row["name"], current_overall_pick, consensus_by_key)
-        if reach is None:
+        standing = ps.consensus_standing(row["name"], consensus_by_key)
+        if standing is None:
             continue
-        rank = reach["consensus_rank"]
+        rank = standing["consensus_rank"]
         if best_rank is None or rank < best_rank:
             best_rank, best_row = rank, {**row, "_consensus_rank": rank}
     if best_row is None:
@@ -117,13 +178,33 @@ def _adp_pick(board: list[dict], merger: DataMerger, is_superflex: bool, current
 
 def compare_trajectory(
     merger: DataMerger, players_db: dict, league: dict, trajectory: DraftTrajectory,
+    *, sleeper_projections=None, sleeper_basis=None, weekly_projections=None,
 ) -> list[NodeComparison]:
     """One NodeComparison per pick already recorded in `trajectory`. Reconstructs picks-so-far
     from the trajectory's own pick sequence -- never replays or re-simulates a decision, and
-    never mutates `trajectory`, `merger`, `players_db`, or `league`."""
+    never mutates `trajectory`, `merger`, `players_db`, or `league`.
+
+    REFUSES RATHER THAN COMPARING TWO PRICINGS. `mode` and `pool_scope` were already read from the
+    trajectory's config so the reconstruction matched the run; the PRICING PATH was not, and a
+    vendor-only board scored against a scoring-aware `engine_tav` makes every regret number a
+    difference between two rulers. The trajectory records `priced_from` (`#204`, and now carried per
+    arm by `0.7`), so the disagreement is detectable: if the trajectory was priced
+    `vendor+sleeper` and no projections are supplied here, this raises instead of returning a
+    number nobody can interpret.
+    """
     is_superflex = "SUPER_FLEX" in (league.get("roster_positions") or [])
     mode = trajectory.config.get("mode", "auto")
     pool_scope = trajectory.config.get("pool_scope", "all")
+    priced_from = trajectory.config.get("priced_from")
+    if priced_from and priced_from != "vendor_only" and sleeper_projections is None:
+        raise ValueError(
+            f"this trajectory was priced {priced_from!r} but no sleeper_projections were supplied, "
+            f"so every board built here would be vendor-only while engine_tav came from a "
+            f"scoring-aware snapshot -- regret_vs_bpa would be a difference between two pricings. "
+            f"Pass the same projections the trajectory was run with, or compare a vendor-only run.")
+    if sleeper_basis is None:
+        sleeper_basis = (trajectory.config.get("sleeper_basis")
+                        or dr.SLEEPER_BASIS_WEEKLY)
 
     picks_so_far: list[dict] = []
     results: list[NodeComparison] = []
@@ -132,14 +213,24 @@ def compare_trajectory(
         engine_candidates = rec.snapshot["candidates"]
         engine_cand = next(c for c in engine_candidates if c["id"] == rec.chosen_player_id)
 
-        board = _full_board(merger, players_db, picks_so_far, rec.roster_id, league, mode, pool_scope)
+        board = _full_board(merger, players_db, picks_so_far, rec.roster_id, league, mode,
+                            pool_scope, sleeper_projections=sleeper_projections,
+                            sleeper_basis=sleeper_basis,
+                            weekly_projections=weekly_projections)
         if not board:
             picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round, "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
             continue
 
         bpa_row_ = bpa_row(board)
-        current_overall_pick = rec.pick_no
-        adp_row, adp_reason = _adp_pick(board, merger, is_superflex, current_overall_pick)
+        if bpa_row_ is None:
+            # No priced row on this board, so there is no best-player-available to compare the
+            # engine against. Skipped exactly like the empty-board case above rather than
+            # compared against a fabricated baseline -- a node with no ruler is not a node the
+            # engine can be scored at.
+            picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round,
+                                 "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
+            continue
+        adp_row, adp_reason = _adp_pick(board, merger, is_superflex)
 
         engine_tav = engine_cand["tav"]
         bpa_tav = float(bpa_row_["final_score"])
@@ -148,18 +239,16 @@ def compare_trajectory(
         equals_bpa = str(bpa_row_["player_id"]) == rec.chosen_player_id
         equals_adp = (str(adp_row["player_id"]) == rec.chosen_player_id) if adp_row is not None else None
 
-        deviation_supported = None
-        if not equals_bpa:
-            deviation_supported = (
-                engine_cand["necessity"] in _SUPPORTED_NECESSITY_LABELS
-                or _near_tie(engine_candidates, rec.chosen_player_id)
-            )
+        deviation_supported, deviation_support_basis = (None, None) if equals_bpa else (
+            classify_deviation(engine_cand["necessity"],
+                               _near_tie(engine_candidates, rec.chosen_player_id)))
 
         results.append(NodeComparison(
             pick_no=rec.pick_no, pick_label=rec.pick_label, roster_id=rec.roster_id,
             engine_player_id=rec.chosen_player_id, engine_player_name=engine_cand["name"],
             engine_position=engine_cand["pos"], engine_uv=engine_cand["uv"], engine_tav=engine_tav,
-            engine_necessity=engine_cand["necessity"], engine_near_tie=_near_tie(engine_candidates, rec.chosen_player_id),
+            engine_necessity=engine_cand["necessity"],
+            engine_near_tie=_near_tie(engine_candidates, rec.chosen_player_id),
             bpa_player_id=str(bpa_row_["player_id"]), bpa_player_name=bpa_row_["name"],
             bpa_position=bpa_row_["position"], bpa_uv=float(bpa_row_["universal_value"]), bpa_tav=bpa_tav,
             adp_available=adp_row is not None, adp_unavailable_reason=adp_reason,
@@ -167,31 +256,109 @@ def compare_trajectory(
             adp_player_name=adp_row["name"] if adp_row is not None else None,
             adp_consensus_rank=adp_row["_consensus_rank"] if adp_row is not None else None,
             adp_tav=adp_tav,
-            regret_vs_bpa=round(engine_tav - bpa_tav, 3),
-            regret_vs_adp=(round(engine_tav - adp_tav, 3) if adp_tav is not None else None),
+            regret_vs_bpa=(round(engine_tav - bpa_tav, 3) if engine_tav is not None else None),
+            regret_vs_adp=(round(engine_tav - adp_tav, 3)
+                           if engine_tav is not None and adp_tav is not None else None),
             equals_bpa=equals_bpa, equals_adp=equals_adp, deviation_supported=deviation_supported,
+            deviation_support_basis=deviation_support_basis,
         ))
         picks_so_far.append({"pick_no": rec.pick_no, "round": rec.round, "roster_id": rec.roster_id, "player_id": rec.chosen_player_id})
 
     return results
 
 
-def _near_tie(candidates: list[dict], chosen_id: str) -> bool:
-    """Reads the engine's OWN near_tie_with_leader signal off the serialized candidate --
-    serialize_candidate exposes it as the string "tie" inside the "forces" list (see
-    draft_board_ui._forces), the same rendered signal a human looking at the live board would
-    see, not a threshold re-derived here.
+#: EVERY basis classify_deviation can return, with ONE home (#126). The allowed set was
+#: hand-listed in this module's own field comment and again in its test, and when the ordering
+#: repair added a basis both copies went stale -- the test failing not because the verdict was
+#: wrong but because its private copy of the vocabulary had not been told. A caller or a test
+#: that wants the set reads it from here.
+DEVIATION_BASES = ("necessity", "near_tie", "unmeasurable_tie", "neither")
 
-    KNOWN LIMIT, deliberately not repaired here. near_tie_with_leader is three-state (#61 rule
-    5) and this returns bool, so an unpriced candidate's UNKNOWN would read as False -- the
-    exact false negative rule 5 exists to stop. It is not repaired because it is unreachable,
-    not because it is acceptable: compare_trajectory calls bpa_row() on the full board BEFORE
-    it ever calls this, and bpa_row is max(board, key=universal_value), which raises TypeError
-    on any board carrying an unpriced row (verified directly; that is #61 invariant 15, still
-    open). Every board on which an unknown tie could exist kills this harness upstream of this
-    function. Repairing the false negative first would be building for a state the harness
-    cannot reach -- so the order is invariant 15, then this."""
+#: The subset that carries no verdict: deviation_supported is None and the basis says why.
+DEVIATION_BASES_WITHOUT_VERDICT = ("unmeasurable_tie",)
+
+
+def classify_deviation(necessity: str, near_tie: Optional[bool]) -> tuple[Optional[bool], str]:
+    """Was a deviation from BPA supported, and BY WHAT -- as a pair, never as a bare verdict.
+
+    AN "ordering_key" BASIS LIVED HERE AND IS REVERTED WITH THE ORDERING IT DESCRIBED (#22).
+    While `build_snapshot` sorted on `acting_now_value`, the engine passed over the tav leader
+    routinely and by design -- measured on a real 12x16 draft, on 93 of 192 picks by more than
+    20 tav -- so a measured `acting_now_value` was a real basis: the key was live and had
+    ranked the chosen player first on it. That ordering lost 6.090% of starting-lineup points
+    against a fixed field and was reverted, so the basis now describes a mechanism the engine
+    does not have, and a harness that keeps it would excuse deviations on the strength of a key
+    nothing reads. It is removed rather than left returning False, because an unused basis in
+    the vocabulary is an invitation to wire it back up.
+
+    WHAT REMAINS TRUE, and is why non-BPA picks still occur: the board ranks on
+    `team_acquisition_value`, which is BPA plus the team-specific terms, so the tav argmax and
+    the BPA argmax differ whenever those terms differ across the head of the board. That is an
+    ordinary deviation and it still needs a basis -- necessity, a near tie, or neither.
+
+    Extracted from compare_trajectory so this decision can be tested directly rather than only
+    through a full simulated draft. That matters here specifically: the interesting branch is
+    the one that fires when a tie was never measurable, which a fixture draft may or may not
+    happen to produce, so a test that only runs a draft can pass while never reaching it. Two
+    mutations proved exactly that -- reporting an unmeasurable tie as "unsupported", and
+    collapsing two bases onto one label, both survived the draft-only test untouched (#195).
+
+    The basis is REQUIRED, not decoration, because deviation_supported's None covers two
+    unrelated situations and a consumer must not read one as the other:
+      - the engine took BPA, so there is no deviation to classify (caller's case, basis None);
+      - the engine deviated and this harness could not tell (basis "unmeasurable_tie").
+    Reporting the second as False would assert the engine deviated WITHOUT support on the
+    strength of a comparison nobody performed -- the harsher reading, and exactly the false
+    negative #61 rule 5 exists to stop.
+
+    Necessity is checked before the tie deliberately: a MUST TAKE is supported whether or not
+    anyone could measure a tie, so an unmeasurable tie must not downgrade it to unknown."""
+    if necessity in _SUPPORTED_NECESSITY_LABELS:
+        return True, "necessity"
+    if near_tie is True:
+        return True, "near_tie"
+    if near_tie is None:
+        return None, "unmeasurable_tie"
+    return False, "neither"
+
+
+def _near_tie(candidates: list[dict], chosen_id: str) -> Optional[bool]:
+    """Three-state (#61 rule 5, wired at #195): True / False / None where the comparison was
+    never made.
+
+    Reads the engine's OWN near_tie_with_leader off the serialized candidate. It used to read
+    the rendered "tie" string out of the "forces" list instead, and that was a lossy channel by
+    construction: forces is a list of what FIRED, so "measured, no tie" and "never measurable"
+    both appear there as absence. This function returned bool, so an unpriced candidate's
+    UNKNOWN read as False -- the exact false negative rule 5 exists to stop -- and that False
+    became deviation_supported=False, asserting the engine had deviated without support on the
+    strength of a comparison nobody performed.
+
+    HOW THAT WAS ALLOWED TO STAND, AND WHY IT NO LONGER IS. The limit was recorded as
+    unreachable rather than acceptable: compare_trajectory calls bpa_row() on the full board
+    before it ever reaches here, and bpa_row used to raise TypeError on any board carrying an
+    unpriced row (#61 invariant 15), so every board on which an unknown tie could exist killed
+    the harness upstream. The recorded order was invariant 15 first, then this. #193 forced
+    invariant 15 to the front by making unpriced rows routine, bpa_row was repaired to exclude
+    them, and the unreachability argument went with it. This is the second half of that order.
+
+    HOW THE THIRD STATE IS RECOVERED WITHOUT WIDENING ANY BOUNDARY. The serialized board is a
+    PRESENTATION payload, and its `forces` list deliberately represents both False and None by
+    omission -- draft_board_ui's own contract test forbids a negative tie claim in that payload,
+    correctly, because nothing it renders asserts one. So the state cannot be read off `forces`.
+    It does not have to be: near_tie_flags returns None for exactly one reason, an entry whose
+    team_acquisition_value is None, and the payload already carries `tav`. A priced candidate
+    was therefore compared, and the absence of "tie" on him is a measured False; an unpriced one
+    was never compared, and is None. The distinction is derived from what the payload already
+    says rather than bolted onto it.
+
+    A candidate this harness cannot find at all still returns None rather than False, for the
+    same reason: not finding the row is not evidence that the tie did not fire."""
     cand = next((c for c in candidates if c["id"] == chosen_id), None)
     if cand is None:
-        return False
-    return "tie" in (cand.get("forces") or [])
+        return None
+    if "tie" in (cand.get("forces") or []):
+        return True
+    # Not flagged. Whether that is a measured "no" or an unmade comparison is decided by
+    # whether this candidate had a price to be compared with -- see above.
+    return False if cand.get("tav") is not None else None

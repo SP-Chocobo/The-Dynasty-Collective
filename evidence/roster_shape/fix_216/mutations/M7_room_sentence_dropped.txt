@@ -1,0 +1,14 @@
+.....F.
+======================================================================
+FAIL: test_the_rendered_panel_states_a_displacement_deduction_with_its_words (test_216_room_integrity.EveryTermOfTheIdentityReachesTheRoomTests.test_the_rendered_panel_states_a_displacement_deduction_with_its_words)
+#216, executed. A candidate whose whole context is a displacement deduction: the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_room_integrity.py", line 274, in test_the_rendered_panel_states_a_displacement_deduction_with_its_words
+    self.assertIn("12.5", focus, f"the panel does not state the deduction: {focus!r}")
+AssertionError: '12.5' not found in 'This is a strong action pick — 31% survival to your next turn across 11 intervening pick(s).\n        \n          UV 50UV pts\n          ACQ 38UV pts\n          PROJ 250season pts\n          SURV 31%\n          CLIFF HIGH\n          PRICED VS live starter demand\n          \n        \n      ' : the panel does not state the deduction: 'This is a strong action pick — 31% survival to your next turn across 11 intervening pick(s).\n        \n          UV 50UV pts\n          ACQ 38UV pts\n          PROJ 250season pts\n          SURV 31%\n          CLIFF HIGH\n          PRICED VS live starter demand\n          \n        \n      '
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.277s
+
+FAILED (failures=1)

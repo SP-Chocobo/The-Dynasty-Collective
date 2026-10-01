@@ -160,10 +160,15 @@ def main() -> None:
         new_cf = compare_trajectory(merger, players_db, league, new_traj)
         old_supported = sum(1 for c in old_cf if c.deviation_supported is True)
         new_supported = sum(1 for c in new_cf if c.deviation_supported is True)
-        old_regret = round(sum(c.regret_vs_bpa for c in old_cf), 3)
-        new_regret = round(sum(c.regret_vs_bpa for c in new_cf), 3)
+        # `regret_vs_bpa` is None at a node whose engine pick carried no price (`#187`), so the
+        # sum is over the MEASURABLE nodes and the two counts are printed beside it. If the
+        # counts differ between arms the totals are not comparable, whatever they say.
+        old_measurable = [c.regret_vs_bpa for c in old_cf if c.regret_vs_bpa is not None]
+        new_measurable = [c.regret_vs_bpa for c in new_cf if c.regret_vs_bpa is not None]
+        old_regret = round(sum(old_measurable), 3)
+        new_regret = round(sum(new_measurable), 3)
         cf_identical = (old_cf == new_cf)
-        print(f"counterfactual nodes identical: {cf_identical} (deviation_supported old={old_supported} new={new_supported}, total regret_vs_bpa old={old_regret} new={new_regret})")
+        print(f"counterfactual nodes identical: {cf_identical} (deviation_supported old={old_supported} new={new_supported}, total regret_vs_bpa old={old_regret} new={new_regret} over {len(old_measurable)}/{len(new_measurable)} measurable nodes)")
         overall_ok = overall_ok and cf_identical
 
         # 5) The one thing that's SUPPOSED to change: DENIAL/block_opportunity flag density.

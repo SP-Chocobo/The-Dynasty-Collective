@@ -1,0 +1,434 @@
+{
+  "_comment": "#30: realized cost of an early K/DEF pick, by counterfactual surgery on one draft. UPPER bound on the gain from deferring (the swapped-in player is not removed from whoever really drafted him) and PESSIMISTIC about deferring (no waivers, so the vacated slot stays empty). See counterfactual_cost.py.",
+  "arm": "12T_ppr_K_DEF",
+  "early_before_round": 13,
+  "early_kdst_picks_found": 42,
+  "helped_by_deferring": 34,
+  "hurt_by_deferring": 8,
+  "mean_delta": 81.39,
+  "rounds": 16,
+  "rows": [
+    {
+      "actual_total": 2794.86,
+      "counterfactual_total": 2801.86,
+      "delta": 7.0,
+      "drafted": "Tampa Bay Buccaneers",
+      "instead": "George Pickens",
+      "position": "DEF",
+      "round": 9,
+      "seat": "1"
+    },
+    {
+      "actual_total": 2408.28,
+      "counterfactual_total": 2352.98,
+      "delta": -55.3,
+      "drafted": "Brandon Aubrey",
+      "instead": "Davante Adams",
+      "position": "K",
+      "round": 5,
+      "seat": "2"
+    },
+    {
+      "actual_total": 2408.28,
+      "counterfactual_total": 2466.48,
+      "delta": 58.2,
+      "drafted": "Miami Dolphins",
+      "instead": "Jakobi Meyers",
+      "position": "DEF",
+      "round": 8,
+      "seat": "2"
+    },
+    {
+      "actual_total": 2692.58,
+      "counterfactual_total": 2798.68,
+      "delta": 106.1,
+      "drafted": "Baltimore Ravens",
+      "instead": "Jakobi Meyers",
+      "position": "DEF",
+      "round": 8,
+      "seat": "3"
+    },
+    {
+      "actual_total": 2692.58,
+      "counterfactual_total": 2826.98,
+      "delta": 134.4,
+      "drafted": "Detroit Lions",
+      "instead": "Jerry Jeudy",
+      "position": "DEF",
+      "round": 10,
+      "seat": "3"
+    },
+    {
+      "actual_total": 2692.58,
+      "counterfactual_total": 2652.58,
+      "delta": -40.0,
+      "drafted": "Los Angeles Rams",
+      "instead": "TreVeyon Henderson",
+      "position": "DEF",
+      "round": 12,
+      "seat": "3"
+    },
+    {
+      "actual_total": 2617.7,
+      "counterfactual_total": 2597.9,
+      "delta": -19.8,
+      "drafted": "Tyler Bass",
+      "instead": "Nico Collins",
+      "position": "K",
+      "round": 6,
+      "seat": "4"
+    },
+    {
+      "actual_total": 2617.7,
+      "counterfactual_total": 2635.1,
+      "delta": 17.4,
+      "drafted": "Green Bay Packers",
+      "instead": "Jakobi Meyers",
+      "position": "DEF",
+      "round": 8,
+      "seat": "4"
+    },
+    {
+      "actual_total": 2617.7,
+      "counterfactual_total": 2733.7,
+      "delta": 116.0,
+      "drafted": "Washington Commanders",
+      "instead": "Jerry Jeudy",
+      "position": "DEF",
+      "round": 10,
+      "seat": "4"
+    },
+    {
+      "actual_total": 2617.7,
+      "counterfactual_total": 2688.3,
+      "delta": 70.6,
+      "drafted": "Jacksonville Jaguars",
+      "instead": "Darnell Mooney",
+      "position": "DEF",
+      "round": 12,
+      "seat": "4"
+    },
+    {
+      "actual_total": 2618.38,
+      "counterfactual_total": 2534.12,
+      "delta": -84.26,
+      "drafted": "Ka'imi Fairbairn",
+      "instead": "C.J. Stroud",
+      "position": "K",
+      "round": 6,
+      "seat": "5"
+    },
+    {
+      "actual_total": 2618.38,
+      "counterfactual_total": 2700.38,
+      "delta": 82.0,
+      "drafted": "Houston Texans",
+      "instead": "Jakobi Meyers",
+      "position": "DEF",
+      "round": 8,
+      "seat": "5"
+    },
+    {
+      "actual_total": 2618.38,
+      "counterfactual_total": 2764.08,
+      "delta": 145.7,
+      "drafted": "Cincinnati Bengals",
+      "instead": "Jerry Jeudy",
+      "position": "DEF",
+      "round": 10,
+      "seat": "5"
+    },
+    {
+      "actual_total": 2618.38,
+      "counterfactual_total": 2755.58,
+      "delta": 137.2,
+      "drafted": "Chicago Bears",
+      "instead": "Jordan Addison",
+      "position": "DEF",
+      "round": 11,
+      "seat": "5"
+    },
+    {
+      "actual_total": 2618.38,
+      "counterfactual_total": 2729.98,
+      "delta": 111.6,
+      "drafted": "Las Vegas Raiders",
+      "instead": "Darnell Mooney",
+      "position": "DEF",
+      "round": 12,
+      "seat": "5"
+    },
+    {
+      "actual_total": 2637.86,
+      "counterfactual_total": 2586.26,
+      "delta": -51.6,
+      "drafted": "Cameron Dicker",
+      "instead": "Khalil Shakir",
+      "position": "K",
+      "round": 7,
+      "seat": "6"
+    },
+    {
+      "actual_total": 2637.86,
+      "counterfactual_total": 2731.76,
+      "delta": 93.9,
+      "drafted": "Buffalo Bills",
+      "instead": "Jakobi Meyers",
+      "position": "DEF",
+      "round": 8,
+      "seat": "6"
+    },
+    {
+      "actual_total": 2868.12,
+      "counterfactual_total": 2805.22,
+      "delta": -62.9,
+      "drafted": "Jake Bates",
+      "instead": "Khalil Shakir",
+      "position": "K",
+      "round": 7,
+      "seat": "7"
+    },
+    {
+      "actual_total": 2868.12,
+      "counterfactual_total": 2960.82,
+      "delta": 92.7,
+      "drafted": "Pittsburgh Steelers",
+      "instead": "Jakobi Meyers",
+      "position": "DEF",
+      "round": 8,
+      "seat": "7"
+    },
+    {
+      "actual_total": 2868.12,
+      "counterfactual_total": 2965.72,
+      "delta": 97.6,
+      "drafted": "Atlanta Falcons",
+      "instead": "Jerry Jeudy",
+      "position": "DEF",
+      "round": 10,
+      "seat": "7"
+    },
+    {
+      "actual_total": 2868.12,
+      "counterfactual_total": 3007.82,
+      "delta": 139.7,
+      "drafted": "New Orleans Saints",
+      "instead": "Jordan Addison",
+      "position": "DEF",
+      "round": 11,
+      "seat": "7"
+    },
+    {
+      "actual_total": 2353.74,
+      "counterfactual_total": 2463.54,
+      "delta": 109.8,
+      "drafted": "Cairo Santos",
+      "instead": "Michael Pittman",
+      "position": "K",
+      "round": 9,
+      "seat": "8"
+    },
+    {
+      "actual_total": 2353.74,
+      "counterfactual_total": 2505.14,
+      "delta": 151.4,
+      "drafted": "Matt Gay",
+      "instead": "Jordan Addison",
+      "position": "K",
+      "round": 11,
+      "seat": "8"
+    },
+    {
+      "actual_total": 2353.74,
+      "counterfactual_total": 2469.44,
+      "delta": 115.7,
+      "drafted": "Jake Moody",
+      "instead": "Xavier Worthy",
+      "position": "K",
+      "round": 12,
+      "seat": "8"
+    },
+    {
+      "actual_total": 1771.72,
+      "counterfactual_total": 1846.22,
+      "delta": 74.5,
+      "drafted": "Kansas City Chiefs",
+      "instead": "Khalil Shakir",
+      "position": "DEF",
+      "round": 7,
+      "seat": "9"
+    },
+    {
+      "actual_total": 1771.72,
+      "counterfactual_total": 1914.22,
+      "delta": 142.5,
+      "drafted": "Chris Boswell",
+      "instead": "Khalil Shakir",
+      "position": "K",
+      "round": 8,
+      "seat": "9"
+    },
+    {
+      "actual_total": 1771.72,
+      "counterfactual_total": 1959.12,
+      "delta": 187.4,
+      "drafted": "Blake Grupe",
+      "instead": "Keenan Allen",
+      "position": "K",
+      "round": 10,
+      "seat": "9"
+    },
+    {
+      "actual_total": 1771.72,
+      "counterfactual_total": 2012.22,
+      "delta": 240.5,
+      "drafted": "Younghoe Koo",
+      "instead": "Jordan Addison",
+      "position": "K",
+      "round": 11,
+      "seat": "9"
+    },
+    {
+      "actual_total": 1771.72,
+      "counterfactual_total": 1955.92,
+      "delta": 184.2,
+      "drafted": "Cam Little",
+      "instead": "Xavier Worthy",
+      "position": "K",
+      "round": 12,
+      "seat": "9"
+    },
+    {
+      "actual_total": 2133.3,
+      "counterfactual_total": 2166.8,
+      "delta": 33.5,
+      "drafted": "Jason Sanders",
+      "instead": "Khalil Shakir",
+      "position": "K",
+      "round": 7,
+      "seat": "10"
+    },
+    {
+      "actual_total": 2133.3,
+      "counterfactual_total": 2287.8,
+      "delta": 154.5,
+      "drafted": "Minnesota Vikings",
+      "instead": "Khalil Shakir",
+      "position": "DEF",
+      "round": 8,
+      "seat": "10"
+    },
+    {
+      "actual_total": 2133.3,
+      "counterfactual_total": 2366.8,
+      "delta": 233.5,
+      "drafted": "Indianapolis Colts",
+      "instead": "Jordan Addison",
+      "position": "DEF",
+      "round": 11,
+      "seat": "10"
+    },
+    {
+      "actual_total": 2133.3,
+      "counterfactual_total": 2131.3,
+      "delta": -2.0,
+      "drafted": "Tennessee Titans",
+      "instead": "Jaxson Dart",
+      "position": "DEF",
+      "round": 12,
+      "seat": "10"
+    },
+    {
+      "actual_total": 2288.32,
+      "counterfactual_total": 2324.22,
+      "delta": 35.9,
+      "drafted": "Los Angeles Chargers",
+      "instead": "Khalil Shakir",
+      "position": "DEF",
+      "round": 8,
+      "seat": "11"
+    },
+    {
+      "actual_total": 2288.32,
+      "counterfactual_total": 2415.02,
+      "delta": 126.7,
+      "drafted": "Jason Myers",
+      "instead": "Michael Pittman",
+      "position": "K",
+      "round": 9,
+      "seat": "11"
+    },
+    {
+      "actual_total": 2288.32,
+      "counterfactual_total": 2431.52,
+      "delta": 143.2,
+      "drafted": "Daniel Carlson",
+      "instead": "Keenan Allen",
+      "position": "K",
+      "round": 10,
+      "seat": "11"
+    },
+    {
+      "actual_total": 2288.32,
+      "counterfactual_total": 2464.82,
+      "delta": 176.5,
+      "drafted": "Wil Lutz",
+      "instead": "Jordan Addison",
+      "position": "K",
+      "round": 11,
+      "seat": "11"
+    },
+    {
+      "actual_total": 2288.32,
+      "counterfactual_total": 2436.22,
+      "delta": 147.9,
+      "drafted": "Joey Slye",
+      "instead": "Xavier Worthy",
+      "position": "K",
+      "round": 12,
+      "seat": "11"
+    },
+    {
+      "actual_total": 2553.82,
+      "counterfactual_total": 2448.52,
+      "delta": -105.3,
+      "drafted": "Denver Broncos",
+      "instead": "Khalil Shakir",
+      "position": "DEF",
+      "round": 7,
+      "seat": "12"
+    },
+    {
+      "actual_total": 2553.82,
+      "counterfactual_total": 2603.52,
+      "delta": 49.7,
+      "drafted": "Chase McLaughlin",
+      "instead": "Khalil Shakir",
+      "position": "K",
+      "round": 8,
+      "seat": "12"
+    },
+    {
+      "actual_total": 2553.82,
+      "counterfactual_total": 2604.02,
+      "delta": 50.2,
+      "drafted": "Joshua Karty",
+      "instead": "Keenan Allen",
+      "position": "K",
+      "round": 10,
+      "seat": "12"
+    },
+    {
+      "actual_total": 2553.82,
+      "counterfactual_total": 2625.72,
+      "delta": 71.9,
+      "drafted": "Dustin Hopkins",
+      "instead": "Xavier Worthy",
+      "position": "K",
+      "round": 12,
+      "seat": "12"
+    }
+  ],
+  "season": "2024",
+  "teams": 12
+}

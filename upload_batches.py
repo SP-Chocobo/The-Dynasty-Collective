@@ -111,8 +111,21 @@ def _load() -> list[dict]:
 @store_io.atomic(lambda *a, **k: BATCHES_PATH)
 def record(*, name: str, note: str = "", as_of: Optional[str] = None,
            files: Optional[list[str]] = None,
-           league_ids: Optional[list[str]] = None) -> str:
-    """Store one upload batch and return its id.
+           league_ids: Optional[list[str]] = None) -> Optional[str]:
+    """Store one upload batch and return its id, or None if it did not reach disk.
+
+    OPTIONAL BECAUSE THE WRITE CAN DECLINE (#52 phase 7.5 / L-11). `store_io.write` refuses to
+    overwrite a store it has found damaged -- correctly, since the alternative replaces
+    whatever was recoverable with a one-element file -- and this function used to return an id
+    regardless. Measured on a truncated batches store: `record` handed back
+    `5c94a18f5606`, nothing changed on disk, `batches()` could not find that id, and the UI
+    said the upload was recorded. The user's STATED as-of date went with it, which is not a
+    cosmetic loss: precedence treats a stated date as beating a declared one, so the file
+    silently dropped from "wins its tiebreaks" to "loses every tie".
+
+    An id names a stored batch. Returning one for a batch that was never stored is the same
+    class of claim as a survival probability for a pick that has no next turn -- a value where
+    there is an absence -- and callers must be able to tell.
 
     `as_of` is the date the DATA is from, not the date it was uploaded -- those are different
     facts and the repo has already been bitten by conflating them (see DynastyProcess's own
@@ -140,7 +153,8 @@ def record(*, name: str, note: str = "", as_of: Optional[str] = None,
         "files": list(files or []),
         "league_ids": list(league_ids or []),
     })
-    store_io.write(BATCHES_PATH, batches)
+    if not store_io.write(BATCHES_PATH, batches):
+        return None
     return batch_id
 
 
@@ -168,6 +182,26 @@ def stated_as_of(relative_path: str) -> Optional[str]:
     return (batch or {}).get("as_of")
 
 
+def valid_declared_date(declared) -> Optional[str]:
+    """A declared source_date that does not parse is NOT a date, and must not be treated as one.
+
+    `parse_as_of` above exists because `_negated_date` turns a malformed date into a key that
+    often sorts FIRST -- its docstring measures '8/28/26' -> '1/71/73', which beats a correct
+    '2026-08-18'. That reasoning was applied to the date a PERSON states and not to the one a
+    CSV column declares, so the guard sat next to the hole it was written for. Measured on the
+    post-phase-1 tree: '8/28/26', '1/5/26' and even 'not-a-date' all arrived as basis
+    "declared", and a blank column arrived as the float NaN, which is truthy, carrying basis
+    "declared" on a value that is not a date in any sense.
+
+    Non-strings (NaN from an empty CSV cell, None, a stray number) are not dates either, and are
+    refused before `parse_as_of` is asked to call `.strip()` on them.
+    """
+    if not isinstance(declared, str):
+        return None
+    iso, error = parse_as_of(declared)
+    return None if error else iso
+
+
 def date_basis(stated: Optional[str], declared: Optional[str]) -> str:
     """Which of the three states a file's source_date is in.
 
@@ -177,8 +211,10 @@ def date_basis(stated: Optional[str], declared: Optional[str]) -> str:
     """
     if stated:
         return DATE_STATED
-    if declared:
+    if valid_declared_date(declared):
         return DATE_DECLARED
+    # A declared value that does not parse is UNKNOWN, not DECLARED. Reporting it as declared
+    # is the claim "this file said when it was from", and an unparseable string did not.
     return DATE_UNKNOWN
 
 
@@ -189,7 +225,7 @@ def resolve_source_date(stated: Optional[str], declared: Optional[str]) -> Optio
     to do with it -- an undated row loses every tie rather than winning one on an accident -- and
     that branch only becomes reachable once something stops inventing a date first.
     """
-    return stated or declared or None
+    return stated or valid_declared_date(declared) or None
 
 
 @store_io.atomic(lambda *a, **k: BATCHES_PATH)

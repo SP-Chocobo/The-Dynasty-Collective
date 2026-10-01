@@ -1,8 +1,12 @@
+import os
+import pathlib
 import tempfile
+import time
 import unittest
 from unittest import mock
 
 import sleeper_client as sc
+import ui_source
 
 
 class ComputePointsFromStatsTests(unittest.TestCase):
@@ -250,5 +254,301 @@ class BaselineProjectionRowsTests(unittest.TestCase):
             self.assertIn("Aubrey", target.read_text())
 
 
+class PlayersDatabaseFreshnessIsDisclosedTests(unittest.TestCase):
+    """#118. The players database decides who exists, what position they play and whether they
+    are hurt -- and `build_freshness_manifest` listed four sources, none of them this one.
+
+    The sharp half is not the 24h window; it is `get_players`' SECOND `cache_path.exists()`
+    branch, which returns an arbitrarily old cache when a live fetch fails. From every consumer's
+    side that is indistinguishable from a healthy daily pull, so nothing anywhere could have told
+    a reader that the player universe they were looking at was a week old.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.cache = pathlib.Path(self.dir) / sc.PLAYERS_CACHE_FILENAME
+
+    def _age(self, seconds):
+        self.cache.write_text("{}")
+        stamp = time.time() - seconds
+        os.utime(self.cache, (stamp, stamp))
+
+    def test_a_cache_that_was_never_written_reports_absence_not_a_zero_age(self):
+        """'Never fetched' and 'fetched this instant' are opposite facts. Only one is a
+        duration, and reporting 0.0 for the other says the reassuring one."""
+        self.assertIsNone(sc.players_cache_age_seconds(self.dir))
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_ABSENT)
+
+    def test_a_fresh_cache_is_within_the_window(self):
+        self._age(60)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_WITHIN_WINDOW)
+
+    def test_a_week_old_cache_is_beyond_the_window(self):
+        """The failed-refetch case, which is the one the register item is really about."""
+        self._age(7 * 86400)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_BEYOND_WINDOW)
+
+    def test_the_disclosed_boundary_is_the_SAME_boundary_get_players_refetches_on(self):
+        """The whole value of this disclosure is that it agrees with the code it describes. If
+        `get_players` refetches at exactly MAX_AGE (it uses `age < MAX_AGE`) but the manifest
+        still called that copy fresh, the manifest would be reassuring at the one moment the
+        client itself had decided the data was too old."""
+        self.cache.write_text("{}")
+        mtime = self.cache.stat().st_mtime
+        window = sc.PLAYERS_CACHE_MAX_AGE_SECONDS
+        # `now` is injected so the age is EXACTLY the window -- setting an mtime and reading the
+        # wall clock cannot land there, and the earlier version of this test that tried was
+        # vacuous: it survived flipping `<` to `<=`.
+        self.assertEqual(sc.players_cache_basis(self.dir, now=mtime + window),
+                         sc.PLAYERS_BEYOND_WINDOW, "at the window, get_players refetches")
+        self.assertEqual(sc.players_cache_basis(self.dir, now=mtime + window - 0.001),
+                         sc.PLAYERS_WITHIN_WINDOW, "a hair inside the window is still fresh")
+
+    def test_the_state_is_derived_every_call_never_remembered(self):
+        """A stored state would go stale exactly when it mattered -- after a refresh that the
+        thing holding the state did not perform."""
+        self._age(7 * 86400)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_BEYOND_WINDOW)
+        self._age(1)
+        self.assertEqual(sc.players_cache_basis(self.dir), sc.PLAYERS_WITHIN_WINDOW)
+
+    def test_the_absent_manifest_row_carries_None_date_and_None_days(self):
+        """Not zeros. The manifest sorts on `(days is None, days)`, so a None lands last; a 0
+        would put 'never fetched' at the top of the list beside the freshest source there is."""
+        label, as_of, days = sc.players_freshness_entry(self.dir)
+        self.assertIsNone(as_of)
+        self.assertIsNone(days)
+        self.assertIn("never fetched", label)
+
+    def test_the_beyond_window_row_says_a_failed_refresh_keeps_using_this_copy(self):
+        """The label has to name the consequence, because that is the part a reader cannot see.
+        An old date alone reads as 'nobody opened the app', not 'a refresh failed and the board
+        you are looking at was built from this'."""
+        self._age(7 * 86400)
+        label, as_of, days = sc.players_freshness_entry(self.dir)
+        self.assertIn("failed refresh", label)
+        self.assertEqual(days, 7)
+
+    def test_a_fresh_row_does_not_carry_the_warning(self):
+        """Non-vacuity for the test above: a label that always warned would prove nothing."""
+        self._age(60)
+        label, _, days = sc.players_freshness_entry(self.dir)
+        self.assertNotIn("failed refresh", label)
+        self.assertEqual(days, 0)
+
+    def test_the_row_is_shaped_like_every_other_manifest_row(self):
+        """(label, ISO date or None, int days or None) -- it is appended into the same list and
+        sorted by the same key, so a differently shaped row would raise inside the sort."""
+        self._age(3 * 86400)
+        row = sc.players_freshness_entry(self.dir)
+        self.assertEqual(len(row), 3)
+        rows = [("A", "2026-01-01", 5), row, sc.players_freshness_entry(tempfile.mkdtemp())]
+        rows.sort(key=lambda e: (e[2] is None, e[2]))
+        self.assertEqual([r[2] for r in rows], [3, 5, None])
+
+    def test_the_client_method_reads_its_OWN_cache_dir_not_the_default(self):
+        """Two clients on different directories must not report each other's freshness."""
+        self._age(7 * 86400)
+        other = tempfile.mkdtemp()
+        self.assertEqual(sc.SleeperClient(self.dir).players_cache_basis(),
+                         sc.PLAYERS_BEYOND_WINDOW)
+        self.assertEqual(sc.SleeperClient(other).players_cache_basis(), sc.PLAYERS_ABSENT)
+
+
+class TheManifestActuallyAppendsThePlayersRowTests(unittest.TestCase):
+    """Non-vacuity at the consumer. Everything above can pass while the manifest never calls it,
+    which is exactly the shape #118 is an instance of: a quantity that exists and reaches nobody.
+
+    Read through ui_source rather than off app.py directly (#136): the manifest is a candidate
+    for #137's hull extraction, and a raw app.py read would stop covering it the moment the view
+    moves -- silently, with the test still green. This module's first draft did read app.py, and
+    test_ui_source failed it."""
+
+    def _manifest(self):
+        return ui_source.block("def build_freshness_manifest", until="\ndef ")
+
+    def test_build_freshness_manifest_appends_the_players_entry(self):
+        self.assertIn("players_freshness_entry", self._manifest(),
+                      "the players database is computed but never reaches the manifest")
+
+    def test_the_entry_is_appended_before_the_sort_that_orders_it(self):
+        """Appending after the sort would leave the row wherever it landed -- for an absent
+        cache, the top of the list, the exact opposite of what its None days column asks for."""
+        body = self._manifest()
+        self.assertLess(body.index("players_freshness_entry"), body.index("entries.sort("))
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheTwoWeeklyEndpointsShareOneImplementationTests(unittest.TestCase):
+    """The defect this class exists for: `/stats/nfl/regular/{season}/{week}` 404s.
+
+    `get_weekly_projections` learned years ago that Sleeper wants `season_type` in the QUERY
+    STRING and wrote it in a comment. The stats side never got told -- it lived as a hand-rolled
+    `_get` inside measure_projection_accuracy, and nothing caught it because that instrument
+    needs `api.sleeper.app`, which the sandbox denies, so its actuals path had NEVER ONCE run
+    against the real API. Measured on a networked machine, 2024 week 5:
+
+        /stats/nfl/regular/2024/5               404, 0 rows      <- what shipped
+        /stats/nfl/2024/5?season_type=regular   200, list, 2074  <- live
+        /stats/nfl/2024/5                       400 bad-request
+
+    The network half stays untestable here. The URL SHAPE and the normalisation do not, and they
+    are the half that was wrong.
+    """
+
+    def _client(self):
+        return sc.SleeperClient()
+
+    def test_stats_puts_season_type_in_the_QUERY_STRING_not_the_path(self):
+        client = self._client()
+        with mock.patch.object(client, "_get", return_value=[]) as mock_get:
+            client.get_weekly_stats("2024", 5)
+        url = mock_get.call_args[0][0]
+        self.assertIn("season_type=regular", url)
+        self.assertNotIn("/nfl/regular/", url,
+                         "season_type is back in the path -- that URL returns 404")
+        self.assertIn("/stats/nfl/2024/5", url)
+
+    def test_projections_keeps_the_same_shape(self):
+        client = self._client()
+        with mock.patch.object(client, "_get", return_value=[]) as mock_get:
+            client.get_weekly_projections("2024", 5)
+        url = mock_get.call_args[0][0]
+        self.assertIn("season_type=regular", url)
+        self.assertNotIn("/nfl/regular/", url)
+        self.assertIn("/projections/nfl/2024/5", url)
+
+    def test_the_two_urls_differ_ONLY_by_the_endpoint_name(self):
+        """NON-VACUITY, and the property that makes one home worth having: if these ever stop
+        being the same shape, one of them is being maintained and the other is not -- which is
+        exactly how the stats side got left behind."""
+        client = self._client()
+        urls = {}
+        for kind, call in (("stats", client.get_weekly_stats),
+                           ("projections", client.get_weekly_projections)):
+            with mock.patch.object(client, "_get", return_value=[]) as mock_get:
+                call("2024", 5)
+            urls[kind] = mock_get.call_args[0][0]
+        self.assertEqual(urls["stats"].replace("/stats/", "/X/"),
+                         urls["projections"].replace("/projections/", "/X/"))
+
+    def test_a_LIST_payload_normalises_which_is_what_stats_actually_returns(self):
+        """The live stats endpoint returns a list of records, NOT a dict. measure_projection_
+        accuracy called `.items()` straight on the raw payload, so this would have raised the
+        moment the URL was right -- a second defect hidden behind the first."""
+        client = self._client()
+        payload = [
+            {"player_id": "4034", "stats": {"pts_ppr": 21.5}},
+            {"player_id": "6794", "stats": {"pts_ppr": 8.0}},
+            {"player_id": "9999"},                      # no stats -> dropped
+            "not a record",                             # not a dict -> skipped, not raised
+        ]
+        with mock.patch.object(client, "_get", return_value=payload):
+            out = client.get_weekly_stats("2024", 5)
+        self.assertEqual(out, {"4034": {"pts_ppr": 21.5}, "6794": {"pts_ppr": 8.0}})
+
+    def test_a_DICT_payload_still_normalises(self):
+        client = self._client()
+        with mock.patch.object(client, "_get",
+                               return_value={"4034": {"stats": {"pts_ppr": 21.5}}}):
+            self.assertEqual(client.get_weekly_stats("2024", 5), {"4034": {"pts_ppr": 21.5}})
+
+    def test_the_two_error_postures_are_NOT_shared_and_that_is_deliberate(self):
+        """MY OWN FIRST VERSION OF THIS TEST WAS WRONG, and is corrected rather than deleted.
+
+        It asserted `get_weekly_stats` returns {} on an unreachable API -- the PROJECTIONS
+        contract, applied to the stats method. It is the opposite: stats RAISE, because an empty
+        result is indistinguishable from "nobody scored" and a validation record built on that
+        would report the engine as catastrophically wrong about a week that never downloaded.
+        The shared helper therefore shares the URL and the normalisation and NOT the try/except
+        -- merging those would have destroyed a documented difference while looking tidier."""
+        client = self._client()
+        with mock.patch.object(client, "_get", side_effect=sc.SleeperAPIError("boom")):
+            with self.assertRaises(sc.SleeperAPIError):
+                client.get_weekly_stats("2024", 5)
+            self.assertEqual(client.get_weekly_projections("2024", 5), {})
+
+    def test_the_instrument_calls_the_CLIENT_and_never_hand_rolls_the_url(self):
+        """Scans the CODE, not the text (#200). The bug was a raw `_get` with a literal URL in
+        measure_projection_accuracy; this fails if one comes back.
+
+        DOCSTRINGS ARE EXCLUDED, and the exclusion is the point of "scans the CODE". A docstring
+        is not reachable as a URL -- it cannot be passed to `_get` no matter what it says -- so a
+        string constant in documentation position is prose about an endpoint, never a call to one.
+        This was found by tripping it: the module's docstring now carries a measured table naming
+        /projections/nfl, written to retract a false claim about which source the board actually
+        prices K and DST from, and the guard flagged the retraction as a hand-rolled URL. A guard
+        that forbids DESCRIBING the bug it exists to prevent is one people route around.
+
+        The teeth are unchanged. Every other string literal in the module is still scanned, which
+        is where a hand-rolled URL would have to live to be used."""
+        import ast
+        from pathlib import Path
+        tree = ast.parse((Path(__file__).parent / "measure_projection_accuracy.py").read_text())
+        documentation = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef,
+                                     ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            first = (node.body or [None])[0]
+            if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                    and isinstance(first.value.value, str)):
+                documentation.add(id(first.value))
+        literals = [n.value for n in ast.walk(tree)
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                    and id(n) not in documentation]
+        offenders = [s for s in literals if "/stats/nfl" in s or "/projections/nfl" in s]
+        self.assertEqual(offenders, [],
+                         "the instrument is building a Sleeper URL itself again; call "
+                         "SleeperClient.get_weekly_stats / get_weekly_projections instead")
+        calls = {n.func.attr for n in ast.walk(tree)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+        self.assertIn("get_weekly_stats", calls)
+        self.assertIn("get_weekly_projections", calls)
+
+
+class TheUrlGuardStillHasTeethTests(unittest.TestCase):
+    """Non-vacuity for the docstring exclusion above. An exclusion that swallowed every literal
+    would make that guard pass forever while guarding nothing -- which is exactly the failure
+    mode #18 was, a check that could not see the thing it was written for."""
+
+    def _offenders(self, source: str) -> list[str]:
+        import ast
+        tree = ast.parse(source)
+        documentation = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef,
+                                     ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            first = (node.body or [None])[0]
+            if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                    and isinstance(first.value.value, str)):
+                documentation.add(id(first.value))
+        return [n.value for n in ast.walk(tree)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                and id(n) not in documentation
+                and ("/stats/nfl" in n.value or "/projections/nfl" in n.value)]
+
+    def test_a_hand_rolled_url_in_real_code_is_still_caught(self):
+        """THE BUG ITSELF, in the shape it actually shipped in."""
+        source = 'def go(client):\n    return client._get("/stats/nfl/regular/2024/5")\n'
+        self.assertEqual(len(self._offenders(source)), 1)
+
+    def test_a_hand_rolled_url_inside_a_function_that_HAS_a_docstring_is_still_caught(self):
+        """The exclusion must skip the docstring only, not everything in a documented function."""
+        source = ('def go(client):\n    """Fetch a week."""\n'
+                  '    return client._get("/projections/nfl/2024/5")\n')
+        self.assertEqual(len(self._offenders(source)), 1)
+
+    def test_a_url_in_a_module_docstring_is_not_an_offender(self):
+        source = '"""We read /projections/nfl here."""\nX = 1\n'
+        self.assertEqual(self._offenders(source), [])
+
+    def test_a_url_in_a_COMMENT_was_never_an_offender_and_still_is_not(self):
+        """Comments are not Constant nodes at all -- recorded so nobody 'fixes' this by scanning
+        text and reintroduces the thing #200 forbids."""
+        source = "# /stats/nfl/regular/2024/5 is what used to ship\nX = 1\n"
+        self.assertEqual(self._offenders(source), [])

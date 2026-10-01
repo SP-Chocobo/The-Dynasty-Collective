@@ -1,0 +1,38 @@
+{
+  "M1_blanket_anti_TE": {
+    "target": "draft_room.py",
+    "find": "            slot_alternatives=alternatives,\n        )\n    return out",
+    "replace": "            slot_alternatives=alternatives,\n        )\n    if \"TE\" in out:\n        out[\"TE\"] = dict(out[\"TE\"], adjustment=-200.0)\n    return out",
+    "why": "A blanket anti-tight-end rule -- the over-correction #216 must not become."
+  },
+  "M2_roster_term_per_candidate": {
+    "target": "draft_room.py",
+    "find": "        depth = depth_by_position.get(position) or {}",
+    "replace": "        depth = depth_by_position.get(position) or {}\n        _mut_row_scale = float(row.get(\"projected_points\") or 0.0) % 7.0",
+    "why": "scaffolding only; paired with M2b below"
+  },
+  "M2b_roster_term_per_candidate": {
+    "target": "draft_room.py",
+    "find": "            \"depth_exposure\": depth_exposure_value,",
+    "replace": "            \"depth_exposure\": depth_exposure_value + (float(row.get(\"_points\") or 0.0) % 7.0),",
+    "why": "Makes a per-POSITION roster term vary between two players at the same position. (reads _points -- the column score_row actually sees; projected_points is set AFTER the apply, so the first draft of this mutation added exactly zero.)"
+  },
+  "M3_refuse_when_dedicated_slots_full": {
+    "target": "draft_room.py",
+    "find": "            slot_alternatives=alternatives,\n        )\n    return out",
+    "replace": "            slot_alternatives=alternatives,\n        )\n        _ded = dedicated_slot_counts(roster_positions).get(position, 0)\n        _held = sum(1 for p in roster_players if position in p.get(\"eligible\", set()))\n        if _ded and _held >= _ded:\n            out[position] = dict(out[position], adjustment=-200.0)\n    return out",
+    "why": "Drafts strictly to slot counts: refuses anyone whose dedicated slots are full."
+  },
+  "M4_term_switched_off": {
+    "target": "draft_room.py",
+    "find": "            slot_alternatives=alternatives,\n        )\n    return out",
+    "replace": "            slot_alternatives=alternatives,\n        )\n        out[position] = dict(out[position], adjustment=0.0)\n    return out",
+    "why": "The anchor correction never reaches the board; ordering reverts to universal_value."
+  },
+  "M2c_need_bonus_per_candidate": {
+    "target": "draft_room.py",
+    "find": "            \"need_bonus\": need_bonus,",
+    "replace": "            \"need_bonus\": need_bonus + (float(row.get(\"_points\") or 0.0) % 7.0),",
+    "why": "Makes need_bonus -- a per-POSITION term -- vary between two players at the same position. (reads _points -- the column score_row actually sees; projected_points is set AFTER the apply, so the first draft of this mutation added exactly zero.)"
+  }
+}

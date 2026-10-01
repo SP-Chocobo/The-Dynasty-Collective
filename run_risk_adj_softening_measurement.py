@@ -34,6 +34,16 @@ DYNASTY_LEAGUE = {
 }
 STATUSES = ("Questionable", "Doubtful", "Out", "IR")
 
+#: The RISK_ADJ table AS IT STOOD WHEN THIS EXPERIMENT WAS RUN, pinned locally rather than read
+#: live from draft_room (#191). A script that reproduces a past measurement must not silently
+#: become a different measurement when production changes: "Questionable" was removed from
+#: RISK_ADJ by owner ruling after these results were recorded, and reading the live table would
+#: either crash on the missing key (which is how this was found) or, worse, quietly re-run the
+#: experiment over three statuses and report it under the same name as the four-status one.
+#: The recorded results describe THESE magnitudes. See ENGINEERING_DOCTRINE and the skill note:
+#: never compare a fresh run against a baseline built by different code.
+RISK_ADJ_AS_MEASURED = {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5}
+
 
 def _build_players_db(merger: dm.DataMerger) -> dict[str, dict]:
     proj = merger.projections
@@ -69,7 +79,7 @@ def main() -> None:
 
     negative_examples: dict[str, list[dict]] = {}
     for status in STATUSES:
-        base_penalty = dr.RISK_ADJ[status]
+        base_penalty = RISK_ADJ_AS_MEASURED[status]
         softened_penalty = base_penalty * EXPERIMENT_A_SCALE
         crossed_zero_before = 0
         crossed_zero_after = 0

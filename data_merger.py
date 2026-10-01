@@ -167,8 +167,30 @@ def external_upload_targets() -> dict[str, str]:
 
 def _recency_weight(source_date: Optional[str]) -> float:
     """1.0 for a source dated today, halving every COMPOSITE_RECENCY_HALFLIFE_DAYS. An
-    unparsable/missing date gets a fixed middling weight (neither trusted as fresh nor
-    discarded as worthless) rather than crashing or silently dropping that source."""
+    unparsable/missing date gets 0.5.
+
+    WHAT 0.5 ACTUALLY MEANS HERE, because the previous sentence claimed otherwise. It read
+    "neither trusted as fresh nor discarded as worthless", which describes a neutral stance;
+    0.5 is not neutral, it is *exactly one half-life*. This function assigns an undated source
+    the age of 60 days. Measured: an honestly dated 89-day-old file weighs 0.3577 and therefore
+    loses to a file that simply left its date blank.
+
+    THE OWNER'S RULING (#52 phase 2) IS THAT ABSENCE DOES NOT COMPETE ON RECENCY, and it is
+    already enforced where recency decides WHICH SOURCE WINS: `_negated_date` maps an undated
+    row to "~", which sorts after every real date, so an undated file loses every precedence
+    tie. That is the path this ruling governs.
+
+    This weight is a different thing -- a BLENDING coefficient inside composite_player_score,
+    where several sources contribute at once. Making absence lose here too would mean weighting
+    it below the oldest dated source in the blend, and since a dated weight decays continuously
+    toward zero, no constant is below all of them. Replacing 0.5 with another hand-picked number
+    would be inventing a second uncalibrated constant to fix the first, which #56 forbids and
+    which is the defect class this audit spent six waves finding.
+
+    So the number is UNCHANGED and the claim about it is corrected. Deriving a blending weight
+    for an undated source is open work, and it is a valuation change -- it does not belong in a
+    provenance repair.
+    """
     if not source_date:
         return 0.5
     try:
@@ -244,6 +266,37 @@ def name_key(norm_name: str) -> tuple[str, str]:
     return (tokens[0][0], " ".join(tokens[1:]))
 
 
+def team_defense_key(norm_name: str) -> tuple[str, str]:
+    """A TEAM DEFENSE's (first-initial, nickname) key -- the vendor's OWN abbreviation convention.
+
+    MANDATE 2.3: 11 of 32 team defenses could not resolve to their transcribed row, and every one
+    of the 11 has a multi-word city. `name_key` keys on everything after the FIRST token, which is
+    right for a person and wrong here: Sleeper names a defense from `first_name` (the city) plus
+    `last_name` (the nickname), so "Green Bay Packers" keys to ("g", "bay packers") while the
+    vendor's own row, "G Packers", keys to ("g", "packers"). Measured: the 11 are exactly Green
+    Bay, Kansas City, Las Vegas, Los Angeles (x2), New England, New Orleans, New York (x2), San
+    Francisco and Tampa Bay. The 21 single-word cities matched by luck.
+
+    NO LIST OF 32 NICKNAMES, deliberately. A hardcoded team roster is a constant that goes stale
+    the next time a franchise renames itself -- this app has been bitten by a hand-set constant
+    often enough to have a register item about it. What this function encodes instead is the
+    ABBREVIATION RULE both sides already follow: the first letter of the first token, and the last
+    token. Applied to "green bay packers" and to "g packers" it produces the same key, which is the
+    whole requirement.
+
+    NOT REACHED FOR A PERSON, and that separation is the point. `name_key`'s docstring records a
+    real defect from keying a person on their last token alone -- "A.J. Brown" and "Amon-Ra St.
+    Brown" both key to ("a", "brown") and one was silently priced as the other. This is called only
+    where the caller has said the position IS a team defense, which `_TEAM_DEFENSE_POSITIONS`
+    already names, and a team defense is not a person at all (see the namespace comment there)."""
+    tokens = norm_name.split() if isinstance(norm_name, str) else []
+    if not tokens:
+        return ("", "")
+    if len(tokens) == 1:
+        return (tokens[0][0], tokens[0])
+    return (tokens[0][0], tokens[-1])
+
+
 def _normalize_columns(df: pd.DataFrame, default_kind: str = "rankings") -> pd.DataFrame:
     rename = {}
     for col in df.columns:
@@ -312,6 +365,19 @@ _POSITION_SYNONYMS = {
 }
 
 
+def identity_namespace(position) -> str:
+    """The public name for the dedup IDENTITY namespace -- "are these two rows the same person".
+
+    `_position_group` is this module's own, and other modules need the same answer: draft_room's
+    rookie lookup keys on it so that Jordan Love (QB) cannot inherit Jeremiyah Love's (RB) rookie
+    status. Exposed as a named function rather than letting callers import the private one,
+    because the comparison key next to it (`position_family`) answers a DIFFERENT question --
+    "is this the same kind of player" -- and the two are not interchangeable in either direction.
+    One home for the vocabulary, so a caller cannot pick the wrong one by accident.
+    """
+    return _position_group(position)
+
+
 def position_family(position) -> Optional[str]:
     """The role a position names, with vendor synonyms collapsed -- or None when the position
     is unknown. None means "no opinion", never "no match": an absent position is not evidence
@@ -327,6 +393,16 @@ def position_family(position) -> Optional[str]:
     if not text:
         return None
     return _POSITION_SYNONYMS.get(text, text)
+
+
+#: A club value meaning "this player is on no NFL roster", as distinct from "the caller did
+#: not say". Sleeper reports a team for everyone who has one, so its absence there is a real
+#: statement and callers holding a Sleeper record pass this rather than None. Every ordinary
+#: team comparison then does the right thing without a special case, because a sentinel club
+#: agrees with nothing. It is deliberately not a real abbreviation and not empty: an empty
+#: string is falsy and would collapse straight back into "unspecified", which is the exact
+#: conflation that broke the trade calculator (#196).
+NO_NFL_TEAM = "__no_nfl_team__"
 
 
 def _position_group(position) -> str:
@@ -1132,6 +1208,13 @@ def load_all(
     projections_dir: Path = PROJECTIONS_DIR, default_kind: str = "rankings",
     format_hint: Optional[dict] = None,
     conflicts: Optional[list] = None,
+    #: MANDATE 2.4. Every file this call could not parse, appended as
+    #: {"file", "error", "detail"} -- the same out-parameter shape `conflicts` uses, for the same
+    #: reason stated there: a merge that silently discards a VALUE has not succeeded, and neither
+    #: has a load that silently discards a FILE. Optional so existing callers are unchanged; a
+    #: caller that passes nothing gets exactly the old behaviour and learns nothing, which is why
+    #: DataMerger._load passes one.
+    skipped: Optional[list] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse every CSV/JSON/PDF once, bucketed into (rankings_df, free_agents_df, trade_values_df).
 
@@ -1164,18 +1247,94 @@ def load_all(
     for f in files:
         try:
             df, kind = load_projection_file(f, default_kind=default_kind)
-        except Exception:
-            continue  # skip unparsable/misformatted files rather than crashing the app
+        except Exception as exc:  # noqa: BLE001 -- recorded, then skipped; see below
+            # MANDATE 2.4: SKIPPING IS RIGHT AND SILENCE IS NOT. Continuing past an unparsable
+            # file is correct -- one bad upload must not take the app down -- and this recorded
+            # nothing, so five files in, two loaded, three skipped read as a successful load with
+            # `is_loaded` True. Mitigated for a user upload, which the person just chose and can
+            # see is missing; NOT mitigated for a committed baseline file that stops parsing after
+            # a library upgrade, where nothing in the app ever says the pool got smaller.
+            #
+            # The exception TYPE is kept as well as the message: "this CSV has a bad header row"
+            # and "pandas raised on a dtype it used to accept" are different problems with
+            # different fixes, and the message alone frequently does not separate them.
+            if skipped is not None:
+                skipped.append({
+                    "file": f.name, "error": type(exc).__name__, "detail": str(exc)[:300],
+                })
+            continue
 
         # Suffix-stripping (Jr./Sr./III/...) can collapse two *different* real
         # players onto the same norm_name within one file (e.g. a Draft Sharks
         # page listing both "B Robinson" ATL RB1 and an unrelated "B Robinson
         # Jr." far down the board). Within a single file, prefer the better
         # (lower) rank rather than an arbitrary row-order tiebreak.
-        if "rank" in df.columns:
-            df = df.sort_values("rank", na_position="last").drop_duplicates(subset="norm_name", keep="first")
+        #
+        # IDENTITY IS ESTABLISHED BEFORE DEDUPLICATION, NOT RECOVERED AFTER IT. This key was
+        # `norm_name` alone, and a first-initial export collides across positions constantly:
+        # every offense file carries "J Love" RB ARI *and* "J Love" QB GB. The lower-ranked
+        # namesake was deleted from every file, and because that happened HERE -- one stage
+        # before _reconcile_rows builds its position-aware key -- the two guards written for
+        # exactly this (_dedup_by_name_and_position, _drop_contested_identities) never got a
+        # second row to protect. Measured on the committed baseline, 12 files:
+        #
+        #     same norm_name, SAME position                 22   the Jr./Sr. case above
+        #     same norm_name, diff position, DIFFERENT team 31   two different people
+        #     same norm_name, diff position, SAME team       0   (see below)
+        #
+        # Ten real players were deleted from the pool, including Jordan Love -- a startable
+        # QB in a SUPERFLEX league priced at no projection, no trade_value and no rank.
+        #
+        # The key is the RAW position, not _position_group: that namespace is deliberately
+        # coarse (QB and RB are both "offense"), which separates the six IDP casualties and
+        # none of the four offensive ones. And the finer key is safe precisely because that
+        # third row measures zero -- no file lists one multi-eligible person twice at two
+        # positions, so nothing here can split a single player into two rows.
+        # EVERY PART OF THIS KEY IS MADE NULL-SAFE BEFORE IT IS CONCATENATED, and that is not
+        # defensive habit -- it is the repair for a defect this exact line shipped (#52 phase 6).
+        #
+        # `position` arrives as pandas' `str` dtype here, where `astype(str)` leaves a missing
+        # value as NA rather than turning it into the string "nan". NA propagates through `+`,
+        # so every row with no position got the SAME null key -- and `drop_duplicates` treats
+        # nulls as equal to one another. The trade-value chart is exactly that table: 48 rookie
+        # pick slots and 10 future picks carry no position at all, and all 58 collapsed onto one
+        # surviving row. pick_value() survived only because the single row left happened to be a
+        # rookie slot; every future-pick price in the rookie draft tool returned None.
+        #
+        # It reproduced ONLY through load_projection_file. Reading the same CSV with a bare
+        # pd.read_csv gives an object-dtype column, where astype(str) does produce "nan" and the
+        # keys stay distinct -- so a probe built that way says the code is fine. The dtype is the
+        # bug, which is why the regression test builds its frame through the real loader.
+        norm = df["norm_name"].astype(str).fillna("")
+        if "position" in df.columns:
+            df = df.assign(_ident=norm + "|"
+                           + df["position"].astype(str).str.strip().str.upper().fillna(""))
         else:
-            df = df.drop_duplicates(subset="norm_name", keep="first")
+            df = df.assign(_ident=norm)
+        if "rank" in df.columns:
+            df = df.sort_values("rank", na_position="last").drop_duplicates(subset="_ident", keep="first")
+        else:
+            df = df.drop_duplicates(subset="_ident", keep="first")
+        df = df.drop(columns="_ident")
+
+        # CARRY THE DISTINCTNESS FORWARD, because the stage that merges files cannot re-derive it.
+        #
+        # _dedup_by_name_and_position and _reconcile_rows both key on _position_group, which is
+        # coarse ON PURPOSE -- their own docstrings say so -- precisely so that a genuine RB->WR
+        # reclassification collapses onto one row, and they deliberately exclude team because a
+        # trade is still one person. Both of those are right, and both mean that once the files
+        # are concatenated, "J Love QB GB" and "J Love RB ARI" are indistinguishable from one
+        # reclassified player. Recovering the QB above only to lose the RB below is not a fix.
+        #
+        # What separates the two cases is not position and not team, it is SIMULTANEITY: one
+        # source listing both rows at once is asserting two people, while a reclassification or
+        # a trade only ever yields one row per file. That fact exists here and nowhere later, so
+        # it is stamped here. Empty for every ordinary row, so the coarse key is unchanged for
+        # everyone except the names a source has already told us are contested.
+        if "position" in df.columns and len(df):
+            contested = df["norm_name"].duplicated(keep=False)
+            df = df.assign(_identity_hint=df["position"].astype(str).str.strip().str.upper()
+                           .where(contested, ""))
 
         # The dedup tiebreak below is decided by (source_date, filename), NOT filesystem
         # mtime as this used to read. Every loaded file already carries a source_date -- real,
@@ -1210,6 +1369,44 @@ def load_all(
     # different shape than rankings rows -- a separate bucket, not folded into
     # rankings, so DataMerger.projections never mixes player rankings with rookie
     # pick slot/future pick rows that would never sensibly match a roster player.
+    # MANDATE 2.3: THE HINT IS DETECTED PER FILE AND MUST APPLY ACROSS THEM. Simultaneity is a
+    # per-file fact and is observable nowhere else, so the detection above stays exactly where it
+    # is. The BUG is that the stamp stayed there too: a name contested in one file and alone in
+    # another got "j love|QB" from the first and "j love|" from the second, which are two different
+    # dedup keys, so one player split into two canonical records. Mechanism confirmed in all 12
+    # format hints, wrong file wins in 5.
+    #
+    # So the fact is propagated rather than re-derived: a name any file has flagged as two people
+    # is two people in every file, and every row of that name carries its position as the
+    # discriminator. Re-deriving it over the concatenation instead would LOSE the fact -- a
+    # reclassification and a trade also produce two rows once files are combined, which is the
+    # exact conflation the per-file detection exists to avoid.
+    #
+    # Measured consequence: <=0.12 universal-value points and ZERO rank changes. Repaired because
+    # the mechanism is wrong, and recorded at the size it is rather than dressed up.
+    _contested_names: set = set()
+    for _entries in (rankings_entries, fa_entries, tvc_entries):
+        for _entry in _entries:
+            _frame = _entry[2]
+            if "_identity_hint" in _frame.columns and "norm_name" in _frame.columns:
+                flagged = _frame["_identity_hint"].fillna("").astype(str) != ""
+                _contested_names.update(_frame.loc[flagged, "norm_name"].astype(str))
+    if _contested_names:
+        def _propagate(frame):
+            if "position" not in frame.columns or "norm_name" not in frame.columns or not len(frame):
+                return frame
+            names = frame["norm_name"].astype(str)
+            positions = frame["position"].astype(str).str.strip().str.upper()
+            existing = (frame["_identity_hint"].fillna("").astype(str)
+                        if "_identity_hint" in frame.columns
+                        else pd.Series([""] * len(frame), index=frame.index))
+            return frame.assign(
+                _identity_hint=positions.where(names.isin(_contested_names), existing))
+
+        rankings_entries = [(d, n, _propagate(f), sc) for d, n, f, sc in rankings_entries]
+        fa_entries = [(d, n, _propagate(f)) for d, n, f in fa_entries]
+        tvc_entries = [(d, n, _propagate(f)) for d, n, f in tvc_entries]
+
     fa_entries.sort(key=lambda e: (e[0], e[1]))
     tvc_entries.sort(key=lambda e: (e[0], e[1]))
     rankings_entries.sort(key=lambda e: (e[0], e[1]))
@@ -1255,7 +1452,13 @@ def load_all(
 # same defense is a 111-point season under the settings below and a 276-point season under
 # CBS's assumptions -- and it is the SPREAD, not the level, that VOR reads as positional
 # separation."
-_TRANSCRIBED_SOURCE_FILES = {
+#: MANDATE 4 / `#126`: PUBLIC, AND THE ONLY DEFINITION. `draft_room.KDST_SEEDED_SOURCE_FILES`
+#: spelled the same two filenames for the same reason -- a season total transcribed from some other
+#: league's display, which cannot adapt to the league being drafted. Byte-identical today, so the
+#: input that splits them is a THIRD transcribed file: added here it would change provenance and
+#: leave the board's confidence tier behind, or the reverse. This module reads the files and decides
+#: what a source IS, so the set lives here and draft_room binds its own name to this object.
+TRANSCRIBED_SOURCE_FILES = {
     "sleeper_kicker_projections.csv",
     "sleeper_dst_projections.csv",
 }
@@ -1288,7 +1491,7 @@ def measurement_basis(source_file) -> Optional[str]:
     name = str(source_file).strip()
     if not name:
         return None
-    if name in _TRANSCRIBED_SOURCE_FILES:
+    if name in TRANSCRIBED_SOURCE_FILES:
         return "sleeper_transcribed"
     return "draftsharks_vendor"
 
@@ -1313,16 +1516,53 @@ def _basis_for_position(rows: pd.DataFrame) -> Optional[str]:
     return ranked[0][2]
 
 
+#: WHERE A ROW CAME FROM, ranked. The contract this implements, ruled by the owner in #52
+#: phase 2: **explicit league configuration > uploaded data > inferred metadata > committed
+#: baseline**. Before this, `league_dir` conferred NOTHING -- precedence was basis, then a
+#: format score read off the FILENAME, then date. Measured on the committed baseline: a league
+#: upload of the owner's own file with every value doubled and a fresh source_date was ignored
+#: entirely when named `rankings_export.csv` or `my_league_2026.csv`, and won only when renamed
+#: to carry format tokens. The file's NAME decided whether the user's own league data counted.
+#:
+#: Ranked above the format score on purpose, because a filename-derived format IS the "inferred
+#: metadata" the contract puts below uploaded data. A user who uploads a file for their league
+#: has stated something about their league; a token in a filename is a guess about it.
+PROVENANCE_BASELINE = 0   # committed to the repository, shared by every league
+PROVENANCE_GLOBAL = 1     # uploaded, but not to any particular league
+PROVENANCE_LEAGUE = 2     # uploaded FOR this league -- the strongest statement available today
+PROVENANCE_TIER_COLUMN = "_provenance_tier"
+#: MANDATE 2.4: the tiers above are ORDERING, not wording -- PROVENANCE_BASELINE is literally 0, and
+#: a report that told a person "provenance: 0" about a file that would not parse has told them
+#: nothing. These are the reader-facing names for the same three tiers, in one place so a surface
+#: cannot invent a fourth spelling.
+PROVENANCE_LABELS = {
+    PROVENANCE_BASELINE: "committed baseline",
+    PROVENANCE_GLOBAL: "your uploads (all leagues)",
+    PROVENANCE_LEAGUE: "your uploads (this league)",
+}
+
+
+def _stamped(frame: "pd.DataFrame", tier: int) -> "pd.DataFrame":
+    """Mark every row with where it came from. Empty frames pass through untouched."""
+    if frame is None or frame.empty:
+        return frame
+    return frame.assign(**{PROVENANCE_TIER_COLUMN: tier})
+
+
 def _precedence_sort_key(row) -> tuple:
     """Stated precedence, most significant first:
 
       1. basis confidence  -- a vendor methodology over a transcribed screenshot
-      2. format match      -- how well the file's own format assumptions fit THIS league
+      2. provenance tier   -- a file uploaded FOR this league outranks a shared upload, which
+                              outranks the committed baseline (see PROVENANCE_* above). Sits
+                              ABOVE format match because a filename-derived format is inferred
+                              metadata, and the contract puts uploaded data above inference.
+      3. format match      -- how well the file's own format assumptions fit THIS league
                               (_rankings_format_match_score; higher is better). This was
                               previously expressed by re-ordering whole frames and relying on
                               keep="last", which a field-level merge cannot see, so it is
                               carried on the row instead.
-      3. recency           -- a newer source_date
+      4. recency           -- a newer source_date
     Filename is applied separately, by a stable pre-sort (see _order_by_precedence), because
     it must keep the LAST name winning -- the direction the old keep="last" dedup had. Both
     directions are equally arbitrary, and changing which arbitrary answer is given would move
@@ -1330,11 +1570,15 @@ def _precedence_sort_key(row) -> tuple:
     """
     confidence = BASIS_CONFIDENCE.get(row.get("measurement_basis"), 0.0)
     try:
+        tier = float(row.get(PROVENANCE_TIER_COLUMN) or PROVENANCE_BASELINE)
+    except (TypeError, ValueError):
+        tier = PROVENANCE_BASELINE
+    try:
         format_score = float(row.get("_format_match_score") or 0.0)
     except (TypeError, ValueError):
         format_score = 0.0
     date = str(row.get("source_date") or "")
-    return (-confidence, -format_score, _negated_date(date))
+    return (-confidence, -tier, -format_score, _negated_date(date))
 
 
 def _order_by_precedence(group: list) -> list:
@@ -1380,9 +1624,28 @@ def _conflict_reason(winner, loser) -> str:
     return "filename"
 
 
-_RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key"}
+_RECONCILED_IDENTITY_COLUMNS = {"norm_name", "_name_key", "_dedup_key", "_identity_hint"}
+#: The tier rides through on the merged row so a later merge still knows where the
+#: winning value came from -- the same mistake the identity hint taught in phase 1.1.
 # The fields worth recording a disagreement about -- the numbers that become a valuation.
 _CONFLICT_TRACKED_FIELDS = {"projection", "proj_3yr", "trade_value", "rank"}
+
+
+def _identity_hint_of(frame: "pd.DataFrame") -> "pd.Series":
+    """The contested-identity discriminator, or an empty string for every ordinary row.
+
+    Stamped in load_all, where a single source listing two same-named rows at two positions is
+    asserting two different people -- the one place that fact is observable. Read here so the
+    coarse _position_group key keeps doing its job (a reclassification still collapses, a trade
+    still collapses) for everyone it was designed for, and stops silently merging the handful of
+    names a source has already flagged as two people.
+
+    Missing column, older frame, or a fixture built by hand: empty, and the key is exactly what
+    it was before this existed.
+    """
+    if "_identity_hint" not in frame.columns:
+        return pd.Series([""] * len(frame), index=frame.index)
+    return frame["_identity_hint"].fillna("").astype(str)
 
 
 def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None) -> pd.DataFrame:
@@ -1442,7 +1705,9 @@ def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None
 
     # 2. field-level merge within the chosen basis
     if "position" in combined.columns:
-        combined["_dedup_key"] = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+        combined["_dedup_key"] = (combined["norm_name"] + "|"
+                                  + combined["position"].map(_position_group)
+                                  + "|" + _identity_hint_of(combined))
     else:
         combined["_dedup_key"] = combined["norm_name"]
     value_columns = [c for c in combined.columns if c not in _RECONCILED_IDENTITY_COLUMNS]
@@ -1457,7 +1722,13 @@ def _reconcile_rows(frames: list[pd.DataFrame], conflicts: Optional[list] = None
     for _key, group in grouped.items():
         ordered = _order_by_precedence(group)
         winner = ordered[0]
-        row = {"norm_name": winner["norm_name"]}
+        # _identity_hint rides through on the merged row rather than being consumed here.
+        # _dedup_by_name_and_position runs AFTER this on the reconciled frame and keys on the
+        # same coarse group, so dropping the discriminator at this boundary would hand the two
+        # people straight back to it -- which is exactly what it did on the first attempt.
+        row = {"norm_name": winner["norm_name"],
+               "_identity_hint": str(winner.get("_identity_hint") or ""),
+               PROVENANCE_TIER_COLUMN: winner.get(PROVENANCE_TIER_COLUMN, PROVENANCE_BASELINE)}
         for column in value_columns:
             chosen_value, chosen_source = None, None
             for candidate in ordered:
@@ -1583,7 +1854,8 @@ def _dedup_by_name_and_position(frames: list[pd.DataFrame], empty: pd.DataFrame)
         return empty.copy()
     combined = pd.concat(frames, ignore_index=True, sort=False)
     if "position" in combined.columns:
-        dedup_key = combined["norm_name"] + "|" + combined["position"].map(_position_group)
+        dedup_key = (combined["norm_name"] + "|" + combined["position"].map(_position_group)
+                     + "|" + _identity_hint_of(combined))
     else:
         dedup_key = combined["norm_name"]
     return combined.assign(_dedup_key=dedup_key).drop_duplicates(
@@ -1775,23 +2047,56 @@ class DataMerger:
         self._load()
 
     def _load(self) -> None:
+        # THE RESOLUTION MEMO, cleared here because _load is the one place the tables it
+        # describes are rebuilt -- reload() and set_league_format() both route through it, so
+        # a format switch cannot leave a stale answer behind (#201). See merge_player.
+        self._merge_memo: dict[tuple, dict] = {}
         empty = pd.DataFrame(columns=["name", "norm_name"])
         # Every field-level disagreement this load resolved, and how. A merge that silently
         # discards a value has not succeeded -- 1084 of these were being resolved per load with
         # no record of any of them.
         self.reconciliation_conflicts: list[dict] = []
         conflicts = self.reconciliation_conflicts
-        baseline_rankings, _, _ = load_all(self.baseline_dir / "rankings",
+        # MANDATE 2.4: EVERY FILE THAT WOULD NOT PARSE, and WHICH DIRECTORY it was in. load_all
+        # cannot know whether it was handed the committed baseline or a user's own upload folder,
+        # and the difference is the whole point: a baseline file that stops parsing after a library
+        # upgrade shrinks the pool for every league with nobody having changed anything, while a bad
+        # upload is something the person just did and can see. Stamped here for the same reason the
+        # provenance labels below are -- this is the only place all three directories are named.
+        self.unparsable_files: list[dict] = []
+
+        def _load_dir(directory, *, provenance: str, **kwargs):
+            found: list[dict] = []
+            frames = load_all(directory, skipped=found, **kwargs)
+            for entry in found:
+                self.unparsable_files.append({
+                    **entry, "provenance": provenance,
+                    "provenance_label": PROVENANCE_LABELS.get(provenance, "unknown source"),
+                    "directory": str(directory),
+                })
+            return frames
+
+        baseline_rankings, _, _ = _load_dir(self.baseline_dir / "rankings",
+                                            provenance=PROVENANCE_BASELINE,
                                             format_hint=self.league_format, conflicts=conflicts)
-        _, _, baseline_tvc = load_all(self.baseline_dir / "trade_value", default_kind="trade_value_chart")
-        global_rankings, _, global_tvc = load_all(self.global_dir,
-                                                   format_hint=self.league_format, conflicts=conflicts)
+        _, _, baseline_tvc = _load_dir(self.baseline_dir / "trade_value",
+                                       provenance=PROVENANCE_BASELINE,
+                                       default_kind="trade_value_chart")
+        global_rankings, _, global_tvc = _load_dir(self.global_dir, provenance=PROVENANCE_GLOBAL,
+                                                   format_hint=self.league_format,
+                                                   conflicts=conflicts)
         if self.league_dir:
-            league_rankings, league_fa, league_tvc = load_all(self.league_dir,
-                                                               format_hint=self.league_format,
-                                                               conflicts=conflicts)
+            league_rankings, league_fa, league_tvc = _load_dir(
+                self.league_dir, provenance=PROVENANCE_LEAGUE,
+                format_hint=self.league_format, conflicts=conflicts)
         else:
             league_rankings, league_fa, league_tvc = empty.copy(), empty.copy(), empty.copy()
+        # Stamped here rather than inside load_all, because load_all does not know which of the
+        # three directories it was handed -- the caller does, and this is the only place all
+        # three are named together.
+        baseline_rankings = _stamped(baseline_rankings, PROVENANCE_BASELINE)
+        global_rankings = _stamped(global_rankings, PROVENANCE_GLOBAL)
+        league_rankings = _stamped(league_rankings, PROVENANCE_LEAGUE)
         self.projections = _merge_rankings(
             baseline_rankings, global_rankings, league_rankings, conflicts=conflicts,
         )
@@ -1860,12 +2165,28 @@ class DataMerger:
         # see _find_match's docstring), so a plain norm_name-to-norm_name join against it would
         # silently miss almost everyone. Key on name_key(), the same shared key _find_match
         # uses to bridge that abbreviation, rather than exact-string equality.
-        position_by_key: dict[tuple[str, str], str] = {}
+        # AMBIGUOUS IS NOT "THE FIRST ONE I SAW". This was `.setdefault(name_key(norm), pos)`,
+        # first row wins -- and `name_key` is a first-initial key, so ("j", "love") maps to a DB,
+        # a QB and an RB on the current pool. First-wins picked DB, which put Jordan Love's
+        # bot_research rows in the IDP percentile pool. Measured after phase 1.1: 27 keys map to
+        # more than one raw position and **19 cross a position GROUP**, which is the boundary
+        # this segmentation exists to respect.
+        #
+        # A key that names two groups does not name a pool, so it answers None and the rows it
+        # covers are ranked in neither -- the absence contract, applied to a grouping decision
+        # rather than a value. Silently ranking an offensive player against defenders is the
+        # error this segmentation was added to prevent, and doing it by coin flip is that same
+        # error with a tidier face.
+        groups_by_key: dict[tuple[str, str], set] = {}
         if "position" in self.projections.columns:
             for norm, pos in zip(self.projections["norm_name"], self.projections["position"]):
                 if pd.isna(pos):
                     continue
-                position_by_key.setdefault(name_key(norm), pos)
+                groups_by_key.setdefault(name_key(norm), set()).add(_position_group(pos))
+        position_by_key: dict[tuple[str, str], Optional[str]] = {
+            key: (next(iter(groups)) if len(groups) == 1 else None)
+            for key, groups in groups_by_key.items()
+        }
         for (source, source_file), (field, higher_is_better) in _EXTERNAL_PERCENTILE_RULES.items():
             mask = (
                 (self.external_values["source_name"] == source)
@@ -1891,7 +2212,10 @@ class DataMerger:
             # covers both), same distinction _position_group draws for the dedup collision fix.
             if source == "bot_research" and position_by_key:
                 row_groups = self.external_values["norm_name"].map(
-                    lambda n: _position_group(position_by_key.get(name_key(n)))
+                    # position_by_key already holds a GROUP (or None where the name is
+                    # contested); re-grouping it would turn None into the empty-string bucket
+                    # and quietly pool every ambiguous row together.
+                    lambda n: position_by_key.get(name_key(n))
                 )
                 for group_value in row_groups[mask].unique():
                     group_mask = mask & (row_groups == group_value)
@@ -1983,7 +2307,16 @@ class DataMerger:
         Unknown on either side is not evidence of a mismatch -- an absent position or team must
         not manufacture a contradiction any more than it may manufacture a match. Only a
         disagreement between two values that both exist rejects.
-        """
+
+        THE ONE SUBTLETY, AND IT COST A REGRESSION TO LEARN (#196). "The caller passed no team"
+        and "this player is on no NFL roster" are DIFFERENT FACTS, and only the second is
+        evidence. An earlier version of this rule treated a falsy `team` as the second, which
+        broke every legitimately team-less lookup in the app -- the trade calculator resolves
+        free text with neither team nor position (app.py), and 16 tests that pin exactly that
+        went red. A caller who knows the player is unrostered says so with NO_NFL_TEAM, which
+        is a team value like any other and disagrees with every real club through the ordinary
+        comparison below. A caller who simply has nothing to say passes None and gets the
+        principle above, unchanged."""
         if team and "team" in row.index and pd.notna(row.get("team")) and str(row["team"]) != str(team):
             return True
         if position and "position" in row.index and pd.notna(row.get("position")):
@@ -2008,6 +2341,45 @@ class DataMerger:
         if not position or "position" not in row.index or pd.isna(row.get("position")):
             return False
         return _position_group(position) != _position_group(row["position"])
+
+    @staticmethod
+    def _different_offense_position(row: pd.Series, positions) -> bool:
+        """The same rejection one notch finer, and ONLY inside the offense group (#196).
+
+        _different_identity_namespace above is deliberately coarse because IDP vendors
+        genuinely disagree about the same man: measured on the captured universe, 94 of 398
+        matched IDP rows carried an exact-position disagreement, overwhelmingly LB<->DL (27),
+        DB<->DL (23) and LB<->DB (20) -- a vocabulary split, not a misidentification. Those
+        survive this rule by design (10 remain after the club rejections thin the field).
+        Coarsening is right there and must stay.
+
+        Offence is not like that. Nobody exports a running back as a tight end. Measured on the
+        captured universe with set_league_format applied (which selects the rankings export and
+        therefore changes these counts -- an earlier version of this note quoted format-free
+        numbers), 61 of 381 matched offensive rows carried an exact-position disagreement
+        before this rule, and EVERY ONE was a different person:
+            60 of 61 had no team on the query side, so the club rejection could not fire --
+               the Josiah Price shape (TE, unrostered) taking Jadarian Price's RB/SEA row;
+             1 of 61 shared a team and was also wrong: Jermar Jefferson (RB, MIN) resolving
+               onto the WR/MIN row that belongs to Justin Jefferson, priced at his value.
+             0 of 61 disagreed on team, because that case is rejected upstream.
+        After the rule: 0 of 272. So within offence an exact-position disagreement is evidence
+        of a different person, with no measured counterexample to trade away.
+
+        Takes a SET of the query's eligible positions rather than one string, because a
+        genuinely multi-position player is the only shape that could make this rule wrong, and
+        #172 is about to make that list available. Today every caller passes a single primary
+        position, so the set is a singleton and the rule is exactly as measured; when
+        fantasy_positions arrives the call site widens and nothing here changes."""
+        eligible = {p for p in (positions or ()) if p}
+        if not eligible or "position" not in row.index or pd.isna(row.get("position")):
+            return False
+        candidate = row["position"]
+        if _position_group(candidate) != "offense":
+            return False
+        if any(_position_group(p) != "offense" for p in eligible):
+            return False
+        return candidate not in eligible
 
     def _find_match(self, full_name: str, position: Optional[str] = None,
                      team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> Optional[pd.Series]:
@@ -2059,7 +2431,15 @@ class DataMerger:
                 # behind, so a manual alias onto a colliding name reported an arbitrary
                 # iloc[0] pick as verified. The row still returns (same as the automatic
                 # paths do when ambiguous); only the certainty claim is corrected.
-                return exact.iloc[0], "alias", len(exact), len(exact) == 1
+                alias_candidate = exact.iloc[0]
+                # Same namespace rejection as the exact and key paths. An alias is
+                # hand-maintained, so a crossing here is a curation error rather than a lossy
+                # hash -- which is a reason to SURFACE it as a miss, not a reason to trust it:
+                # a hand-written mapping is exactly the kind of thing that goes stale when a
+                # player it names retires and a defender inherits the name.
+                if position and self._different_identity_namespace(alias_candidate, position):
+                    return None, None, len(exact), False
+                return alias_candidate, "alias", len(exact), len(exact) == 1
             # alias didn't resolve in this particular table (e.g. player isn't in
             # the free-agent table) — fall through to normal matching below
 
@@ -2088,9 +2468,41 @@ class DataMerger:
                 narrowed = exact_matches[exact_matches["position"] == position]
                 if not narrowed.empty:
                     exact_matches = narrowed
-            return exact_matches.iloc[0], "exact", len(exact_matches), len(exact_matches) == 1
+            exact_candidate = exact_matches.iloc[0]
+            # A TEXTUAL MATCH IS NOT AN IDENTITY. The narrowing above only runs when more than
+            # one row survives, so a SINGLE exact row was returned whatever namespace it sat in
+            # -- and returned `verified=True`, which is the strongest thing this function can
+            # say. Measured after phase 1.1: querying "C Conner" as QB, RB, WR, TE or K each
+            # matched the same DB row, and "A Winfield Jr." as a QB matched a DB.
+            #
+            # The key path below already rejects this; it was simply never applied here. Both
+            # waves that examined `_resolve` enumerated the branches, saw the gap, measured 0
+            # crossings on their probes and filed a null -- the crossings only appear when the
+            # query names a position no row of that name holds, which is exactly the shape a
+            # roster-side lookup produces.
+            #
+            # Deliberately the NAMESPACE check and NOT the team one: the key path's own comment
+            # explains that a team mismatch on an exact full-name match is more likely stale
+            # roster data than a different person, and that reasoning is sound and untouched.
+            # It does not carry over to identity namespace. The Bills' Josh Allen and the
+            # defensive lineman Josh Allen are this module's founding example of two people,
+            # and no amount of roster staleness turns one into the other.
+            if position and self._different_identity_namespace(exact_candidate, position):
+                return None, None, len(exact_matches), False
+            return exact_candidate, "exact", len(exact_matches), len(exact_matches) == 1
 
-        key = name_key(norm_name)
+        # MANDATE 2.3: A TEAM DEFENSE IS KEYED BY THE VENDOR'S ABBREVIATION RULE, not the person
+        # one. See team_defense_key -- 11 of 32 defenses could not resolve, all of them
+        # multi-word cities, because the person rule keys on everything after the first token.
+        # Gated on the CALLER's stated position rather than on the shape of the name, so a person
+        # can never fall into it: the last-token key is a measured defect for people.
+        #
+        # The row side needs no change. Every vendor row is already the abbreviated form, so
+        # `name_key` and `team_defense_key` agree on it -- both give ("g", "packers") for
+        # "g packers". It is only the QUERY, which arrives spelled out from Sleeper, that needed
+        # the other rule.
+        defense_query = bool(position) and str(position).strip().upper() in _TEAM_DEFENSE_POSITIONS
+        key = team_defense_key(norm_name) if defense_query else name_key(norm_name)
         # Use the precomputed column when this table has one (every table _load() builds
         # does) -- falls back to computing it on the fly for an ad hoc table (e.g. a
         # one-off external-source subset) that never went through _load().
@@ -2122,6 +2534,19 @@ class DataMerger:
             # roster data than a misidentified player, and shouldn't be thrown out.
             if team and "team" in table.columns and pd.notna(candidate.get("team")) and candidate["team"] != team:
                 return None, None, len(key_matches), False
+            # A player Sleeper reports as unrostered arrives here as NO_NFL_TEAM, not as None,
+            # so the rejection above already covers him: a sentinel club disagrees with every
+            # real one. That is the whole of #196's team half. Measured with set_league_format
+            # applied, 236 matched rows were an unrostered query against a club-bearing vendor
+            # row before this landed, and 5 of them carried a real league-scored projection --
+            # Van Jefferson (via the FUZZY path, holding Justin Jefferson's row), Kyle Williams
+            # (holding Kyren Williams'), Myles Murphy, Chris Johnson and Ben Sauls. After: 0.
+            # The rest were unrostered namesakes with no projection, so the cost is stale trade
+            # values on players nothing else could price; each still keeps his own sleeper_points
+            # (#193). No separate asymmetric clause is needed here, and an earlier one that
+            # inferred unrostered-ness from a MISSING ARGUMENT instead broke every free-text
+            # lookup in the app -- the trade calculator resolves names with no team and no
+            # position at all, and 16 tests pinning that went red.
             # Same rejection, on the other axis the merger already treats as identity: a
             # same-team, same-key pair can still be two different people if they sit in
             # different dedup namespaces (confirmed live -- a WR resolving onto a DB who
@@ -2129,6 +2554,10 @@ class DataMerger:
             # see). Only the coarse group, so the LB/DL vocabulary split between vendors stays
             # a match.
             if self._different_identity_namespace(candidate, position):
+                return None, None, len(key_matches), False
+            # ...and the finer offence-only rejection, which is what actually recovers the
+            # players a first-initial export throws together. See _different_offense_position.
+            if self._different_offense_position(candidate, {position}):
                 return None, None, len(key_matches), False
             return candidate, "key", len(key_matches), len(key_matches) == 1
 
@@ -2169,11 +2598,31 @@ class DataMerger:
         unambiguous exact hit at every call site, and the one consumer that needed the
         distinction (app.py's trade calculator, free-text input with no position to narrow on)
         had to recompute name_key itself to recover it."""
+        # MEMOIZED, and only on the default table (#201). Resolution is a pure function of
+        # (name, position, team) and the loaded projections: nothing about a draft in progress
+        # can change the answer, yet build_available_pool asks it again for every player on
+        # every board build -- 168 times per simulated draft. Measured on the real Sleeper
+        # universe: one board build took 13.55s against 0.61s for the 764-row vendor
+        # reconstruction, a 22x gap that put a full 33-arm battery at roughly 21 hours.
+        #
+        # A caller-supplied `df` is NEVER cached: it is an ad hoc table this merger knows
+        # nothing about, and keying on its identity would be a correctness bet for no gain.
+        # The cached dict is COPIED out, because callers own what they receive -- build_roster_table
+        # does row.update() straight onto its result, and handing out the cached object would
+        # let one caller's mutation become another's input.
+        memo_key = (player_full_name, position, team) if df is None else None
+        if memo_key is not None:
+            hit = self._merge_memo.get(memo_key)
+            if hit is not None:
+                return dict(hit)
         match, path, candidates, verified = self._resolve(
             player_full_name, position=position, team=team, df=df)
         if match is None:
-            return {"matched": False, "match_path": None,
+            miss = {"matched": False, "match_path": None,
                     "match_candidates": candidates, "match_verified": False}
+            if memo_key is not None:
+                self._merge_memo[memo_key] = miss
+            return dict(miss)
         # The identity of the row that was matched, not of the query -- so a caller can tell
         # whether two different players resolved onto the SAME canonical record. Deliberately
         # (norm_name, position_group): the dedup identity namespace, which is what makes two
@@ -2182,8 +2631,26 @@ class DataMerger:
         # row.update()s this straight onto a Sleeper-derived row).
         row = {"matched": True, "match_path": path,
                "match_candidates": candidates, "match_verified": verified,
+               # THE KEY NAMES THE VENDOR RECORD, NOT THE IDENTITY NAMESPACE (#52 phase 6).
+               #
+               # This was (norm_name, _position_group(position)). draft_room's
+               # _drop_contested_identities treats two pool rows sharing this key as being
+               # priced off ONE record, and refuses to price either -- which is right, and is
+               # what keeps Bijan and Brian Robinson (both RB ATL, one published 'B Robinson'
+               # row between them) from each claiming a trade value that belongs to one of them.
+               #
+               # But _position_group is the coarse namespace: QB and RB are both "offense". So
+               # two pool rows that _resolve had CORRECTLY matched to two DIFFERENT vendor rows
+               # still collided here, and both were refused. Measured on the IDP board once the
+               # identity repair stopped deleting one of each pair: J Love (the GB QB and the
+               # ARI RB), J Williams, K Williams and M Washington -- eight pool rows, four
+               # distinct vendor records, all eight unpriced.
+               #
+               # The raw position is what makes this key answer the question it is asked. The
+               # Robinson case is untouched: same name, same position, same single record, so
+               # they still collide and are still both refused.
                "match_canonical_key": (str(match.get("norm_name")),
-                                       _position_group(match.get("position")))}
+                                       str(match.get("position")))}
         for field in ("projection", "vorp", "tier", "trade_value", "rank",
                        "position", "team", "pos_rank", "proj_3yr",
                        # WHY the multi-year figure is absent, not just that it is. These two
@@ -2209,11 +2676,56 @@ class DataMerger:
                        "source_file", "source_date"):
             if field in match.index and pd.notna(match[field]):
                 row[field] = match[field]
-        return row
+        if memo_key is not None:
+            self._merge_memo[memo_key] = row
+        return dict(row)
 
     @property
     def is_external_values_loaded(self) -> bool:
         return not self.external_values.empty
+
+    def bye_week_by_team(self) -> dict[str, int]:
+        """NFL team -> its bye week, derived from the source rows that carry one.
+
+        WHY DERIVED FROM TEAM RATHER THAN READ PER PLAYER. `bye_week` arrives as a column on
+        individual player rows and is non-null on only 638 of 2600 of them, which joins onto
+        just 66.5% of the valuation frame. But a bye is a property of an NFL TEAM, not of a
+        player: everyone on a roster sits out the same week. Collapsing to a team map and
+        reading it back through `team` lifts coverage to 99.1% of the valuation frame -- the
+        remaining gap is rows with no team at all, which is a different absence and stays
+        absent rather than being guessed.
+
+        THE INTEGRITY PROPERTY, and why it is checked rather than assumed. If two players on
+        the same team report different bye weeks, either the source is wrong or -- far more
+        likely here, given this codebase's history with joins (#77, #78) -- rows have been
+        attached to the wrong players. That would be invisible downstream: every consumer
+        would just see a plausible week. So a team whose rows disagree is DROPPED and reported
+        by `bye_week_conflicts()`, never resolved by majority vote: a conflict means the input
+        is not trustworthy for that team, and picking a winner would hide exactly the defect
+        worth seeing. Verified on the committed baseline: 32 teams, 0 conflicts, weeks 5-14.
+        """
+        return {team: week for team, (week, ok) in self._bye_week_map().items() if ok}
+
+    def bye_week_conflicts(self) -> dict[str, list[int]]:
+        """Teams whose rows disagree about their own bye week -- empty on sound input.
+
+        Separated from the map itself so a caller cannot mistake "no conflicts" for "no data":
+        an empty map and an empty conflict list together mean the source carries no bye weeks,
+        which is a different fact from a clean parse.
+        """
+        return {team: weeks for team, (weeks, ok) in self._bye_week_map().items() if not ok}
+
+    def _bye_week_map(self):
+        if self.external_values.empty or "bye_week" not in self.external_values.columns:
+            return {}
+        rows = self.external_values[
+            self.external_values["bye_week"].notna() & self.external_values["team"].notna()
+        ]
+        out = {}
+        for team, group in rows.groupby("team"):
+            weeks = sorted({int(w) for w in group["bye_week"]})
+            out[str(team)] = (weeks[0], True) if len(weeks) == 1 else (weeks, False)
+        return out
 
     def composite_capable_source_names(self) -> list[str]:
         """Distinct source_name values currently loaded that can ACTUALLY feed

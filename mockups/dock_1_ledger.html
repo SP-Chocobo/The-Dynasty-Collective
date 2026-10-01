@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en" data-level="partial" data-sidebar="on"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D1 · Ledger — Debate Dock mockup</title>
+<style>
+
+
+:root {
+  --bg: #15120b;
+  --surface: #1f1a11;
+  --surface-2: #1a1610;
+  --line: #2c2517;
+  --line-2: #3f3522;
+  --ink: #ece3d2;
+  --muted: #a79a83;
+  --dim: #776d5a;
+  --emerald: #1a9e4b;
+  --emerald-b: #4ee08c;
+  --gold: #d4a017;
+  --gold-b: #f7cf4a;
+  --violet: #9457d4;
+  --violet-b: #c9a4f0;
+  --crimson: #b0193c;
+  --crimson-b: #ff6b85;
+  --sky: #1466c4;
+  --sky-b: #6fb2f7;
+  --amber: #e07b0a;
+  --amber-b: #f9a828;
+  --cliff: #0d9488;
+  --cliff-b: #3ad9c8;
+  --block: #c2410c;
+  --block-b: #f9a05c;
+  --pure: #e2d8c3;
+  --tie: #7b7059;
+  --tie-b: #a99d84;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.display { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .06em; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
+.badge-necessity-must-take { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; box-shadow: 0 0 0 1px rgba(201,164,240,0.35), 0 0 8px rgba(148,87,212,0.45); }
+.badge-necessity-strong { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-necessity-preferred { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-necessity-close-call { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.badge-necessity-low { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.pill-QB { background: rgba(143,134,240,0.18); color: #8f86f0; }
+.pill-RB { background: rgba(23,191,160,0.18); color: #17bfa0; }
+.pill-WR { background: rgba(74,168,239,0.18); color: #4aa8ef; }
+.pill-TE { background: rgba(232,104,63,0.18); color: #e8683f; }
+.pill-K { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DEF { background: rgba(239,127,192,0.18); color: #ef7fc0; }
+.pill-DL { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-LB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill { display: inline-block; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; letter-spacing: .04em; }
+.necessity-pill { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .16rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
+.unit { color: var(--muted); font-size: .68em; letter-spacing: .02em; margin-left: .2em; }
+/* ABSENCE. One mark, everywhere: muted, hatched, with a title. It can never be mistaken for a
+   small number, an empty cell, or a zero-length bar. */
+.absent {
+  color: var(--muted); font-weight: 500; cursor: help; border-radius: 3px; padding: 0 .3em;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px);
+}
+.state-word { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .64rem; letter-spacing: .05em; text-transform: uppercase; padding: .08rem .4rem; border-radius: 3px; border: 1px solid var(--line-2); color: var(--muted); }
+.state-word.measured { color: var(--muted); }
+.state-word.imputed { color: var(--amber-b); border-color: var(--amber); }
+.state-word.unavailable { color: var(--muted); border-style: dashed; }
+
+/* The spec card: closed by default so the board's own height is what the gate measures. */
+.spec { margin: 0 0 .5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: .82rem; color: var(--muted); }
+.spec summary { cursor: pointer; padding: .55rem .9rem; list-style: none; }
+.spec summary::-webkit-details-marker { display: none; }
+.spec summary .hint { color: var(--muted); font-size: .74rem; }
+.spec b { color: var(--ink); }
+.spec .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.spec .specbody { padding: .2rem .9rem .8rem; display: grid; grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline; }
+.controls { display: flex; gap: .6rem; flex-wrap: wrap; margin: 0 0 .7rem; }
+.controls button {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
+  padding: .3rem .7rem; cursor: pointer;
+}
+.controls button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.controls button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
+
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.02em; }
+.badge-quant { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-beat { background: rgba(13,148,136,0.18); color: #3ad9c8; border: 1px solid #0d9488; }
+.badge-contrarian { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; }
+.badge-moderator { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.badge-moderator-verdict { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; box-shadow: 0 0 0 1px rgba(255,107,133,0.35), 0 0 8px rgba(176,25,60,0.45); }
+.badge-user { background: rgba(123,112,89,0.18); color: #a99d84; border: 1px solid #7b7059; }
+.badge-summary { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-notice { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+.seat[data-role="quant"], .msg[data-role="quant"] > .mh .seat { color: #4ee08c; border-color: #1a9e4b; background: rgba(26,158,75,0.18); }
+.msg[data-role="quant"] { --rail: #1a9e4b; }
+.tab[data-role="quant"][aria-selected="true"] { border-bottom-color: #4ee08c; color: #4ee08c; }
+.seat[data-role="beat"], .msg[data-role="beat"] > .mh .seat { color: #3ad9c8; border-color: #0d9488; background: rgba(13,148,136,0.18); }
+.msg[data-role="beat"] { --rail: #0d9488; }
+.tab[data-role="beat"][aria-selected="true"] { border-bottom-color: #3ad9c8; color: #3ad9c8; }
+.seat[data-role="contrarian"], .msg[data-role="contrarian"] > .mh .seat { color: #c9a4f0; border-color: #9457d4; background: rgba(148,87,212,0.18); }
+.msg[data-role="contrarian"] { --rail: #9457d4; }
+.tab[data-role="contrarian"][aria-selected="true"] { border-bottom-color: #c9a4f0; color: #c9a4f0; }
+.seat[data-role="moderator"], .msg[data-role="moderator"] > .mh .seat { color: #ff6b85; border-color: #b0193c; background: rgba(176,25,60,0.18); }
+.msg[data-role="moderator"] { --rail: #b0193c; }
+.tab[data-role="moderator"][aria-selected="true"] { border-bottom-color: #ff6b85; color: #ff6b85; }
+.seat[data-role="user"], .msg[data-role="user"] > .mh .seat { color: #a99d84; border-color: #7b7059; background: rgba(123,112,89,0.18); }
+.msg[data-role="user"] { --rail: #7b7059; }
+.tab[data-role="user"][aria-selected="true"] { border-bottom-color: #a99d84; color: #a99d84; }
+.seat[data-role="summary"], .msg[data-role="summary"] > .mh .seat { color: #6fb2f7; border-color: #1466c4; background: rgba(20,102,196,0.18); }
+.msg[data-role="summary"] { --rail: #1466c4; }
+.tab[data-role="summary"][aria-selected="true"] { border-bottom-color: #6fb2f7; color: #6fb2f7; }
+.seat[data-role="notice"], .msg[data-role="notice"] > .mh .seat { color: #f9a828; border-color: #e07b0a; background: rgba(224,123,10,0.18); }
+.msg[data-role="notice"] { --rail: #e07b0a; }
+.tab[data-role="notice"][aria-selected="true"] { border-bottom-color: #f9a828; color: #f9a828; }
+body { font-size: 14px; overflow-x: hidden; }
+/* The stand-in for the app: a 400px sidebar and a page of faux blocks. The dock is fixed over
+   it exactly as .st-key-debate_dock is (left: sidebar width, right: 0, bottom: 0). */
+.app { display: grid; grid-template-columns: 400px minmax(0, 1fr); min-height: 100vh; }
+html[data-sidebar="off"] .app { grid-template-columns: 0 minmax(0, 1fr); }
+html[data-sidebar="off"] .side { display: none; }
+html[data-sidebar="off"] .dock { left: 0; }
+.side { background: var(--surface-2); border-right: 1px solid var(--line); padding: 1.2rem; }
+.side .ph, .main .ph { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--dim); font-size: .78rem; padding: .5rem .8rem; margin-bottom: .6rem; }
+.main { padding: 1.4rem 5.7rem 0; }
+.main .banner { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.4rem; margin-bottom: .6rem; background: var(--surface-2); }
+.main .banner .eyebrow { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--tie-b); font-weight: 600; }
+.main .banner h1 { margin: .1rem 0 .2rem; font-size: 2rem; }
+.main .banner .sub { color: var(--muted); font-size: .84rem; }
+.tabs { display: flex; gap: 0; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; width: max-content; margin: .6rem 0 1rem; }
+.tabs span { padding: .5rem .9rem; font-size: .84rem; color: var(--muted); border-right: 1px solid var(--line-2); }
+.tabs span:last-child { border-right: 0; }
+.tabs span.on { color: var(--ink); background: var(--surface); }
+/* Padding-bottom = the dock's cap, as the app does with [data-testid='stMain']. */
+html[data-level="collapsed"] .main { padding-bottom: max(9vh, 64px); }
+html[data-level="partial"] .main { padding-bottom: 40vh; }
+html[data-level="full"] .main { padding-bottom: 94vh; }
+
+/* THE DOCK FRAME. The app's own: the four-stop hairline (flourish; gold allowed there), the
+   line, the shadow, the caps per tier. overflow-y auto is kept so the instrument can SEE an
+   overflow (dockScrollHeight > clientHeight); a variant that scrolls the whole dock has
+   failed, and only its designated .scroll region may scroll. */
+.dock { position: fixed; left: 400px; right: 0; bottom: 0; z-index: 9; box-sizing: border-box;
+  background: linear-gradient(90deg, var(--emerald), var(--gold), var(--violet), var(--crimson)) top / 100% 2px no-repeat, var(--bg);
+  border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.45);
+  padding: 8px 24px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: .45rem;
+  transition: left .15s ease, max-height .22s ease; }
+html[data-level="collapsed"] .dock { max-height: max(9vh, 64px); }
+html[data-level="partial"] .dock { max-height: 40vh; }
+html[data-level="full"] .dock { max-height: 94vh; }
+.dock .scroll { overflow-y: auto; min-height: 0; }
+/* The floating harness: level, sidebar, the history cut, reduced motion. Not part of the dock. */
+.harness { position: fixed; top: .5rem; right: .8rem; z-index: 20; display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.harness button { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .04em; text-transform: uppercase; background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px; padding: .28rem .6rem; cursor: pointer; }
+.harness button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+
+/* Shared vocabulary inside the dock. */
+.eyebrow { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.eyebrow b { color: var(--ink); font-weight: 600; }
+.wordmark { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .1em; font-size: .9rem; color: var(--ink); text-transform: uppercase; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.seat { display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 4px; border: 1px solid; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; font-weight: 700; cursor: help; flex: none; }
+.seat.failed { color: var(--muted); border-style: dashed; background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px); }
+.seat.silent { color: var(--dim); border-color: var(--line-2); background: transparent; }
+.seats { display: inline-flex; gap: .22rem; align-items: center; }
+/* The recommendation is a WORD, weighted by size and never coloured: four values would need
+   four hues. Conviction is a ladder of glyphs; below Majority it takes the one signal hue. */
+.rec { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+.conv { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .74rem; color: var(--ink); cursor: help; white-space: nowrap; }
+.conv i { font-style: normal; letter-spacing: .12em; margin-right: .3em; }
+.conv.low { color: var(--amber-b); }
+.attn { color: var(--amber-b); }
+.age { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); white-space: nowrap; cursor: help; }
+.q { color: var(--ink); }
+.trunc { cursor: help; }
+.mark { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 3px; padding: .04rem .34rem; cursor: help; white-space: nowrap; }
+.mark.on { color: var(--ink); border-color: var(--ink); }
+/* Buttons: primary is gold (user action, the one non-brand job gold has), label in bg. */
+.btn { font-family: "Segoe UI", system-ui, sans-serif; font-size: .8rem; font-weight: 600; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 7px; padding: .38rem .8rem; cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: var(--bg); font-weight: 700; }
+.btn.quiet { color: var(--muted); font-weight: 500; }
+.btn.icon { padding: .3rem .5rem; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.btn:hover { border-color: var(--ink); }
+textarea.ask { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); border-radius: 7px; padding: .5rem .7rem; font-family: "Segoe UI", system-ui, sans-serif; font-size: .86rem; resize: none; }
+textarea.ask::placeholder { color: var(--dim); }
+/* Prose: one renderer, one style, the whole message. */
+.prose { font-size: .86rem; line-height: 1.5; color: var(--ink); }
+.prose p { margin: 0 0 .45rem; }
+.prose p:last-child { margin-bottom: 0; }
+.prose ul { margin: 0 0 .45rem; padding-left: 1.1rem; }
+.prose li { margin: 0 0 .12rem; }
+.prose b { font-weight: 700; }
+.prose.clamp { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+/* The receipt: the Moderator's block as labelled fields. */
+.receipt { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .2rem .8rem; align-items: baseline; font-size: .84rem; }
+.receipt .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.receipt .v { color: var(--ink); min-width: 0; }
+.receipt .v .absent { font-size: .8rem; }
+.extra { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); }
+.extra div { margin-top: .15rem; }
+/* An absent report: a card-sized labelled absence, not a message. */
+.absent-report { border: 1px dashed var(--line-2); border-radius: 8px; padding: .55rem .8rem; color: var(--muted); font-size: .8rem;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--line) 55%, transparent) 6px 7px); }
+.absent-report b { color: var(--ink); font-weight: 600; }
+.fold { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .7rem; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 6px; padding: .3rem .7rem; text-align: center; cursor: pointer; }
+.fold:hover { color: var(--ink); }
+[role="option"] { cursor: pointer; }
+
+
+.bar { display: flex; align-items: center; gap: .7rem; min-height: 2.2rem; flex-wrap: nowrap; min-width: 0; }
+.bar .grow { flex: 1; }
+.bar .eyebrow, .bar .mark, .bar .conv, .bar .btn { flex: none; white-space: nowrap; }
+.bar .mark.on { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bar .q { font-size: .86rem; color: var(--muted); min-width: 18ch; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .q b { color: var(--ink); font-weight: 500; }
+.bar .rec { font-size: .95rem; }
+.bar .grow { flex: 0 0 .5rem; }
+.dh { display: flex; align-items: center; gap: .8rem; flex: none; }
+.dh .grow { flex: 1; }
+.body2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1.2rem; flex: 0 1 auto; min-height: 0; }
+.body2 > * { min-height: 0; }
+.verdict { border: 1px solid var(--line-2); border-radius: 10px; padding: .55rem .85rem .65rem; background: color-mix(in srgb, var(--surface) 80%, transparent); min-width: 0; overflow-y: auto; }
+.verdict .top { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; margin: .15rem 0 .35rem; }
+.verdict .rec { font-size: 1.5rem; line-height: 1; }
+.verdict .conv { font-size: .8rem; }
+.verdict .asked { font-size: .82rem; color: var(--muted); margin-bottom: .35rem; }
+.verdict .asked b { color: var(--ink); font-weight: 500; }
+.ask { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.ask .chips { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.ask textarea { height: 5.4rem; }
+.ask .btns { display: flex; gap: .4rem; flex-wrap: wrap; }
+.ask .hint { font-size: .72rem; color: var(--dim); }
+.ledger { border: 1px solid var(--line); border-radius: 10px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+html[data-level="full"] .ledger { min-height: 14rem; }
+.ledger .lh { display: flex; gap: .8rem; align-items: baseline; padding: .4rem .8rem; border-bottom: 1px solid var(--line-2); flex: none; }
+.ledger .rows { overflow-y: auto; min-height: 0; }
+.lrow { border-bottom: 1px solid var(--line); }
+.lrow:last-child { border-bottom: 0; }
+.lrow .head { display: grid; grid-template-columns: 4.2rem 1.2rem minmax(0, 1fr) 5.2rem 9.4rem 5.4rem auto; gap: .6rem; align-items: center; padding: .38rem .8rem; }
+.lrow .head .q { font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrow .head .q b { font-weight: 500; }
+.lrow .head .rec { font-size: .8rem; }
+.lrow .head .conv { font-size: .7rem; }
+.lrow .kg { font-family: "JetBrains Mono", monospace; color: var(--muted); text-align: center; cursor: help; }
+.lrow[aria-expanded="true"] { background: color-mix(in srgb, var(--surface) 70%, transparent); box-shadow: inset 3px 0 0 var(--gold); }
+.lrow .detail { padding: .2rem .8rem .7rem 6.6rem; display: grid; gap: .55rem; }
+.reports { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.report { border: 1px solid var(--line-2); border-radius: 8px; padding: .45rem .65rem; min-width: 0; }
+.report .rh { display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.report .rh .who { font-family: "JetBrains Mono", monospace; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.report .prose { font-size: .82rem; }
+.mod { border-left: 2px solid var(--crimson); padding-left: .7rem; }
+.marks { display: inline-flex; gap: .3rem; }
+
+</style></head>
+<body>
+
+<div class="harness" aria-label="mockup harness">
+  <button id="lv-collapsed" onclick="setLevel('collapsed')">collapsed</button>
+  <button id="lv-partial" onclick="setLevel('partial')">partial</button>
+  <button id="lv-full" onclick="setLevel('full')">full</button>
+  <button id="btn-sidebar" aria-pressed="true" onclick="toggleSidebar(this)">sidebar 400px</button>
+  <button id="btn-cut" aria-pressed="false" onclick="toggleCut(this)" title="Cut the history after the Moderator's block-less follow-up (8 messages): the standing verdict must still be the BUY two messages up.">history cut at follow-up</button>
+  <button id="btn-motion" aria-pressed="false" onclick="toggleMotion(this)">reduced motion</button>
+</div>
+
+
+<div class="app">
+  <aside class="side" aria-hidden="true">
+    <div class="ph">Activity Log (0)</div><div class="ph">Connections &amp; Models</div><div class="ph">Roles &amp; Routing</div><div class="ph">Data Uploads</div><div class="ph">External Valuation Sources</div>
+    <div class="ph" style="margin-top:2rem">Status · Data Freshness: Recent</div>
+  </aside>
+  <div class="main">
+    
+<details class="spec">
+  <summary><span class="k">Variant</span> <b>D1 · Ledger</b> — the unit is the decision: standing call → receipt + ask → the ledger of every decision <span class="hint">· open for the hierarchy argument, sacrifice and data</span></summary>
+  <div class="specbody">
+  <span class="k">Collapsed</span><span>One line: the recommendation, the conviction ladder, the question it answered (truncated at a word, full on hover), how many chairs it rests on, and its age — plus the attached context and the one action. It is the newest BLOCK-BEARING verdict, so a follow-up that only talked cannot blank it (the app's collapsed dock does blank: probe asis_collapsed_n8).</span>
+  <span class="k">Partial</span><span>The receipt of that call beside the ask panel, and nothing else. Every field of the Moderator's block as a labelled row (the four the prompt requires shown as absent when missing; the optional ones omitted, which is the Moderator's own statement that they do not apply), the ACTION ITEM marked when it is tracked as an objective, the dissenting chair named by its seat. No transcript: at 40vh a transcript is what the app currently spends its partial tier on and shows none of (probe: 0 messages visible).</span>
+  <span class="k">Full</span><span>Adds the ledger: one row per decision or exchange, newest first, in a scroll region of its own — time, kind, question, recommendation, conviction, the four seats, marks. A row opens to the three reports across (a failed chair as a labelled absence), the Moderator's prose and receipt. Follow-ups are their own rows and say when they issued no new call.</span>
+  <span class="k">Sacrifices</span><span>The conversation is not readable as a conversation: a follow-up's prose is a row's detail, not a bubble under its question. The receipt is repeated (standing call above, its row below) at full. The partial tier carries only ONE decision; if you want the one before it you go to full.</span>
+  <span class="k">Data</span><span>One league's chat history in app.append_message's own shape (14 rows: a memory summary, two Full Prytaneum runs, a block-less follow-up, a stale-data notice), constructed because no history is stored in this tree; the attached context is the real Draft Room seed for pick 3.03. The second run's Beat chair is llm_engine's own fail-soft string, so the panel that produced the standing WAIT verdict was two chairs of three. Two objectives are open, one of them the first verdict's ACTION ITEM; the first verdict is pinned.</span>
+  </div>
+</details>
+
+    <div class="banner"><div class="eyebrow">Fantasy Football Command Center</div><h1>Gold Wyrm Dynasty</h1><div class="sub">Dynasty · 12-team · Superflex · Full PPR · Taxi: 4</div></div>
+    <div class="tabs"><span class="on">Matchup</span><span>Roster Maintenance</span><span>Draft Room</span><span>League</span><span>Import Audit</span></div>
+    <div class="ph" style="height:3rem">Lineup Readiness</div>
+    <div class="ph" style="height:2.4rem">Pinned Messages (1)</div>
+    <div class="ph" style="height:14rem">Active Objectives (2)</div>
+    <div class="ph" style="height:22rem">Roster by position</div>
+    <div class="ph" style="height:22rem">Projections</div>
+  </div>
+</div>
+
+<div class="dock" id="dock" aria-label="The Prytaneum"></div>
+<script>
+const PAYLOAD = {"league": {"name": "Gold Wyrm Dynasty", "format": "12-team \u00b7 Superflex \u00b7 Dynasty"}, "history": [{"role": "summary", "content": "Earlier in this chat (compacted 2025-08-30): the panel reviewed the startup draft plan twice. Consensus was to anchor the roster on two QBs before round 4 in this superflex format and to treat TE as a round-5-or-later position unless T Mcbride fell. A HOLD verdict on D Achane was recorded on 08-22 (Majority; Contrarian dissented on workload). One objective was opened: check with Roster 6 whether their 2027 1st is available.", "ts": 1757116800.0}, {"role": "user", "content": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "ts": 1757188800.0}, {"role": "quant", "content": "Numbers first, then what they mean for 3.03.\n\n**Draft Sharks / engine view (season + 3-year)**\n- M Stafford (QB, LAR): universal value 101.8, your acquisition value 106.7 UV pts. Need term +4.85 \u2014 you have one QB and this is superflex, so the second QB slot is live starter demand, not depth.\n- T Shough (QB, NO): universal value 99.6, acquisition 104.1. Same need term. The 2.6-point gap between them is INSIDE the engine's 2.0-point noise band only if you round generously; it is not.\n- Next QB after those two: B Mayfield at 100 acquisition, survival 72%.\n\n**Sleeper weekly projection (this week only)**\nStafford 19.4, Shough 15.1, Mayfield 18.8 under your scoring (6 pt pass TD, -2 INT). One week; do not read it as the season.\n\n**Positional scarcity**\nThere are 3 QBs in the top 8 of your board and 16 picks before your next turn. The engine's forfeit for skipping QB until then is 34.9 UV pts \u2014 the largest positional forfeit on the board by 9 points. That is the number that decides this, not the Stafford-vs-Shough gap.\n\n**Divergence to note**\nDraft Sharks' 3-year view has Shough ahead of Stafford (age: 37 vs 25). Your league scoring gives no bonus that closes that; it is purely horizon. The engine's dynasty-horizon adjustment already prices it and still lands Stafford 2.6 ahead on acquisition.\n\nNet: if you want a QB at this pick, Stafford is the number. If you want to defer QB, the cost is 34.9, and Mayfield at 72% survival is the realistic fallback, not Shough at 37%.", "ts": 1757188804.0, "provider": "claude", "model": "claude-sonnet-4-5"}, {"role": "beat", "content": "Market and news, labelled by source.\n\n**Market consensus (KTC / FantasyCalc, checked today)**\n- KTC superflex dynasty: Shough 4,410, Stafford 3,120, Mayfield 3,390. The market has Shough a full tier above Stafford \u2014 this is the biggest Draft Sharks vs market split on your board.\n- FantasyCalc superflex: same ordering, Shough ranked QB14, Stafford QB22.\n- Why they disagree: age. The market is pricing 2027-2029; Draft Sharks' season projection is pricing this year, where Stafford's offense (Nacua, Adams) is the better situation.\n\n**News / depth chart (ESPN, team beat, last 72h)**\n- Stafford: full participant all week, no back flare-up reported since August. Named starter, no controversy.\n- Shough: named Week 1 starter over Rattler on Tuesday's presser. Coaching staff quote: \"he's earned it.\" Rookie contract, four-year window.\n- Mayfield: healthy; Evans/Godwin both active.\n\n**Signal**\nThe room is drafting rookies early \u2014 42 of 48 picks in the last comparable startup went to first-year players in rounds 1-3. Shough's 37% survival is the engine's read of those rosters' boards; the market number says the real figure is probably lower.\n\nLabel: KTC/FantasyCalc figures are market, not projection. Depth chart claims are from team pressers, not speculation.", "ts": 1757188813.0, "provider": "gemini", "model": "gemini-2.5-pro"}, {"role": "contrarian", "content": "Pressure-testing both.\n\nAgainst the Quant: the 2.6-point gap is real but it is a SEASON number on a 37-year-old with a back history. The engine's horizon adjustment is a model, not an observation \u2014 Draft Sharks' own 3-year view flips the order, and the Quant said so. Two of your three numeric sources disagree with the recommendation; that should cap conviction.\n\nAgainst the Beat: KTC is a crowd of dynasty players who systematically overpay for youth at QB. A 4,410 vs 3,120 spread is a market opinion about 2028, and you are on the clock in 2025 with one QB rostered. The market being \"right\" about Shough does not make him available at 3.19.\n\nWhat both are missing: you do not have to choose between them at THIS pick. Mayfield at 100 acquisition and 72% survival is within 7 points of Stafford and almost certainly there at your next turn. The real question is whether 7 UV pts of QB is worth more than the best non-QB on the board now \u2014 C Lamb at 100, 18% survival, at a position where you have nothing.\n\nMy read: taking Stafford is defensible and it is what the numbers say. Taking Lamb and Mayfield across the two picks is the higher-variance, higher-ceiling line, and nobody above priced it. Risk on Stafford is not the pick \u2014 it is the age cliff arriving mid-window with no exit value.", "ts": 1757188827.0, "provider": "openai", "model": "gpt-5"}, {"role": "moderator", "content": "Take Stafford. The forfeit for skipping QB to your next turn is 34.9 UV pts, the biggest positional cost on the board, and Shough at 37% survival is not a plan \u2014 the market number the Beat pulled says the true figure is lower. The Contrarian's Lamb-then-Mayfield line is the one real alternative and it rests on Mayfield surviving 16 picks at 72%; that is a bet, and this is a decisive regime where the engine's own margin (4.1 clear of the second priced candidate, outside the 2.0 noise band) says you do not need one. Draft Sharks' 3-year view flipping the order is why this is Majority and not Unanimous.\n\nRECOMMENDATION: BUY\nCONVICTION: Majority\nREASON: 34.9 UV pts positional forfeit for deferring QB, with the only alternative QB at 37% survival\nDISSENT: Contrarian \u2014 prefers C Lamb now and B Mayfield at 3.19 (72% survival) as a higher-ceiling two-pick line\nRISK: Stafford's age cliff arrives inside your window with no exit value; a back recurrence turns a 107 into a 2027 problem\nACTION ITEM: If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there\nSOURCE FINDING: Tyler Shough | KTC | Ranked a full tier above Stafford in superflex dynasty value | 14\nSOURCE COMPARISON: Tyler Shough | Matthew Stafford | > | KTC superflex dynasty | market values the four-year window over the 2025 offense", "ts": 1757188835.0, "provider": "claude", "model": "claude-opus-4-1"}, {"role": "user", "content": "Why not Shough though? 37% isn't nothing and he's 12 years younger.", "ts": 1757188955.0}, {"role": "moderator", "content": "Because 37% is the engine compounding sixteen rosters' own boards, and the Beat's market read says those boards like Shough MORE than the engine assumes \u2014 so the honest number is below 37, not above it. You'd be passing on a 107 for a coin flip that's weighted against you.\n\nThe age point is real and it's exactly why the call was Majority rather than Unanimous. If your plan is to compete in 2027-2029 rather than now, that changes the weighting and I'd say so \u2014 but nothing in your roster context says that; you have one QB, twelve teams, and a superflex slot that is live demand today.\n\nIf you want the younger arm, the line that actually works is the Contrarian's: Lamb now, Mayfield at 3.19 at 72%. That gives you the WR you have nothing at and a QB2 who is 32 rather than 37. It is not the call I made, but it is a coherent one, and it does not involve hoping Shough falls.", "ts": 1757188961.0, "provider": "claude", "model": "claude-opus-4-1"}, {"role": "user", "content": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?", "ts": 1757206961.0}, {"role": "notice", "content": "Your Free Agent Finder data is 19 days old (as of 2025-08-18). Waiver/roster value shifts week to week, so if this question is about a current decision, a fresh export would likely be more accurate \u2014 upload one in the sidebar when you get a chance. Answering with what's loaded for now.", "ts": 1757206962.0}, {"role": "quant", "content": "**Trade equity (Draft Sharks trade values, this league's format)**\n- D Achane: 6,410\n- K Williams: 4,180\n- Roster 6's 2027 1st: the engine values a future 1st at the league's mid-round average, 2,900, until the standings give it a slot. Roster 6 finished 3rd last year; if that holds, the pick is worth closer to 2,200.\n\nRaw: you send 6,410, you receive 6,380 to 7,080 depending on the pick. Even to slightly favourable on paper.\n\n**Roster fit**\nYour RB room after the trade: Williams, B Hall, K Walker. Starter demand at RB in this format is 2 plus flex; you would still fill it. Achane's need term on your roster is +4.2; Williams' would be +3.9 \u2014 near-identical fit.\n\n**What the numbers do not know**\nWhether the 2027 1st lands at 1.03 or 1.10 is the whole trade. That is a standings question, not a valuation one.", "ts": 1757206966.0, "provider": "claude", "model": "claude-sonnet-4-5"}, {"role": "beat", "content": "\u26a0\ufe0f Gemini request failed: 503 Service Unavailable", "ts": 1757206967.0, "provider": "gemini", "model": "gemini-2.5-pro"}, {"role": "contrarian", "content": "The Quant has this as even and it is not, in two ways that cut against each other.\n\nAgainst taking it: Roster 6 is a contender trading a future pick for a win-now back. Contenders' picks are late. Pricing that 1st at 2,900 flatters it; 2,200 is the realistic figure and the Quant said so. At 2,200 you are sending 6,410 for 6,380 and taking on Williams' workload questions (the Rams drafted Hunter in April).\n\nFor taking it: Achane's value is a health number. He has finished one full season in three. The market price of 6,410 assumes the healthy version; you are selling the assumption, which is what a rebuild should do.\n\nNo Beat report reached me, so I could not check the Hunter split or Achane's current status. Treat both of those as unverified. My position: the trade is fine in principle and mispriced in one specific place. Ask for the 2027 1st to become their 2026 1st, or add a 2nd. Do not take it as offered.", "ts": 1757206974.0, "provider": "openai", "model": "gpt-5"}, {"role": "moderator", "content": "The trade is close to even on paper and the paper is missing the one number that decides it: where Roster 6's 2027 1st lands. The Beat Tracker did not report this round \u2014 the Gemini call failed \u2014 so nothing here about Kyren Williams' Hunter split or Achane's current status is verified, and I am not going to pretend it is. Two of three chairs reached the panel. What they agree on: as offered, this is a contender buying your best asset with their latest pick.\n\nRECOMMENDATION: WAIT\nCONVICTION: Worth investigation\nREASON: The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that flattering price\nRISK: Achane's next injury arrives before a better offer does and the 6,410 becomes a 4,500\nRECON: Ask Roster 6 whether they would swap the 2027 1st for their 2026 1st, or add a 2027 2nd \u2014 that is the exact gap the Quant measured\nPRICE CEILING: Achane for Williams plus a 1st and a 2nd, nothing less\nALTERNATIVE: If Roster 6 will not move on the pick, Roster 9 is the other contender with an RB hole and they hold their own 2026 1st, which is a known slot rather than a guess \u2014 the same conversation there resolves the one number this panel could not.\nACTION ITEM: Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run\nTODO UPDATE: 1 | Check with Roster 6 whether their 2026 1st is available, not the 2027 | the 2027 pick is priced at a slot it is unlikely to reach", "ts": 1757206983.0, "provider": "claude", "model": "claude-opus-4-1"}], "attached": {"surface": "Draft Room", "looking_at": "On the clock for pick 3.03.", "decision": "Decision regime: decisive.", "evidence": "M Stafford (QB) \u2014 PREFERRED, acquisition value 107 UV pts, survival 0%\nT Shough (QB) \u2014 PREFERRED, acquisition value 104 UV pts, survival 37%\nT Mcbride (TE) \u2014 STRONG ACTION, acquisition value 103 UV pts, survival 0%\nC Lamb (WR) \u2014 STRONG ACTION, acquisition value 100 UV pts, survival 18%\nB Mayfield (QB) \u2014 PREFERRED, acquisition value 100 UV pts, survival 72%\nD Achane (RB) \u2014 PREFERRED, acquisition value 96 UV pts, survival 0%\nJ Jefferson (WR) \u2014 PREFERRED, acquisition value 92 UV pts, survival 72%\nK Walker (RB) \u2014 PREFERRED, acquisition value 91 UV pts, survival 44%\n...and 59 more candidate(s) in the current pool/scope.", "entities": ["M Stafford", "T Shough", "T Mcbride", "C Lamb", "B Mayfield", "D Achane", "J Jefferson", "K Walker"]}, "todos": [{"id": 1, "ts": 1756339200.0, "date": "2025-08-28", "text": "Check with Roster 6 whether their 2027 1st is available", "source": "moderator", "question": "Is Roster 6 a trade partner for picks?", "decision_ts": null, "status": "active", "resolution_reason": "", "resolution_date": null, "revisions": [], "notes": []}, {"id": 2, "ts": 1757188840.0, "date": "2025-09-06", "text": "If Mayfield is still on the board at 3.19, take him as QB2 regardless of what else is there", "source": "moderator", "question": "On the clock at 3.03. The board has Stafford at 107 and Shough at 104 but Shough has 37% survival to my next turn and Stafford is basically gone. Do I take Stafford here or gamble that Shough comes back?", "decision_ts": null, "status": "active", "resolution_reason": "", "resolution_date": null, "revisions": [], "notes": []}, {"id": 3, "ts": 1757206840.0, "date": "2025-09-06", "text": "Counter Roster 6 with Achane for K Williams + 2026 1st before Thursday's waiver run", "source": "moderator", "question": "Roster 6 just offered me their 2027 1st and Kyren Williams for Achane. I'm rebuilding at RB anyway. Take it?", "decision_ts": null, "status": "active", "resolution_reason": "", "resolution_date": null, "revisions": [], "notes": []}], "pinned": [1757188835.0], "roleNames": {"quant": "Quant", "beat": "Beat Tracker", "contrarian": "Contrarian", "moderator": "Moderator"}, "verdictFields": ["RECOMMENDATION", "CONVICTION", "REASON", "DISSENT", "RISK", "RECON", "PRICE CEILING", "ALTERNATIVE", "ACTION ITEM"]};
+
+const ABSENT = "—";
+const ROLE_WORD = { quant: "Quant", beat: "Beat Tracker", contrarian: "Contrarian", moderator: "Moderator", user: "You", summary: "Memory summary", notice: "Notice" };
+const ROLE_LETTER = { quant: "Q", beat: "B", contrarian: "C", moderator: "M" };
+const ROLE_JOB = { quant: "numbers: VORP, scarcity, trade math", beat: "market consensus and news, via live search", contrarian: "pressure-tests the other two", moderator: "synthesises the three reports into one verdict" };
+const CHAIRS = ["quant", "beat", "contrarian"];
+const FIELDS = PAYLOAD.verdictFields;
+const FIELD_KEY = f => f.toLowerCase().replace(/ /g, "_");
+const CONV = { unanimous: ["●●●", "Unanimous: all three chairs land the same direction.", false],
+               majority: ["●●○", "Majority: two chairs agree, one dissents — DISSENT names who and why.", false],
+               split: ["●○○", "Split: no real consensus among the three.", true],
+               speculative: ["◌◌◌", "Speculative: the chairs may agree, but the evidence under them is thin.", true],
+               "worth investigation": ["?", "Worth investigation: the answer depends on something only another manager can tell you — RECON says what to ask.", true] };
+//: A fixed "now" so ages are stable: five hours after the newest row. Stated on the page.
+const NOW = Math.max(...PAYLOAD.history.map(m => m.ts)) + 5 * 3600;
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function absent(why) { return `<span class="absent" title="${esc(why)}">${ABSENT}</span>`; }
+function ago(ts) {
+  const s = NOW - ts, d = new Date(ts * 1000).toISOString().slice(0, 16).replace("T", " ");
+  const w = s < 90 ? "just now" : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`;
+  return `<span class="age" title="${d} UTC">${w}</span>`;
+}
+function trunc(s, n) {
+  s = String(s).replace(/\s+/g, " ").trim();
+  if (s.length <= n) return esc(s);
+  const cut = s.slice(0, n).replace(/\s+\S*$/, "");
+  return `<span class="trunc" title="${esc(s)}">${esc(cut)}…</span>`;
+}
+// ONE markdown renderer over the WHOLE message: paragraphs on blank lines, "- " bullets,
+// **bold**. Escaped first. Nothing else is interpreted.
+function md(text) {
+  const blocks = String(text).trim().split(/\n\s*\n/);
+  return blocks.map(b => {
+    const lines = b.split("\n");
+    if (lines.every(l => /^\s*[-*•]\s+/.test(l))) return `<ul>${lines.map(l => `<li>${inline(l.replace(/^\s*[-*•]\s+/, ""))}</li>`).join("")}</ul>`;
+    return `<p>${lines.map(inline).join("<br>")}</p>`;
+  }).join("");
+}
+function inline(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+// The Moderator's block, parsed the way llm_engine.parse_moderator_verdict does (each labelled
+// line at most once; TODO / SOURCE lines collected separately). Prose is everything before the
+// first RECOMMENDATION: line, exactly app.format_agent_content's split.
+function parseVerdict(text) {
+  const m = /^RECOMMENDATION:/m.exec(text);
+  if (!m) return { prose: text, fields: {}, extra: [], has: false };
+  const prose = text.slice(0, m.index).trim(), block = text.slice(m.index);
+  const fields = {}, extra = [];
+  for (const raw of block.split("\n")) {
+    const line = raw.trim().replace(/^[-*# ]+/, "");
+    let hit = false;
+    for (const f of FIELDS) { if (line.toUpperCase().startsWith(f + ":")) { const v = line.slice(f.length + 1).trim(); if (v && !(FIELD_KEY(f) in fields)) fields[FIELD_KEY(f)] = v; hit = true; break; } }
+    if (!hit && /^(TODO UPDATE|TODO LIKELY RESOLVED|SOURCE FINDING|SOURCE COMPARISON):/i.test(line)) extra.push(line);
+  }
+  return { prose, fields, extra, has: true };
+}
+function failed(msg) { return msg.content.startsWith("⚠️"); }
+function failText(msg) { return msg.content.replace(/^⚠️\s*/, ""); }
+// Units: a Full Prytaneum run is exactly [quant, beat, contrarian, moderator]; the user line
+// immediately before it is its question. A Moderator alone after a user line is a follow-up.
+function units(history) {
+  const out = []; let i = 0;
+  while (i < history.length) {
+    const r = history[i];
+    if (i + 3 < history.length && ["quant", "beat", "contrarian", "moderator"].every((role, k) => history[i + k].role === role)) {
+      const u = { kind: "debate", ts: history[i + 3].ts, quant: history[i], beat: history[i + 1], contrarian: history[i + 2], moderator: history[i + 3], question: null, followups: [] };
+      takeQuestion(out, u); out.push(u); i += 4; continue;
+    }
+    if (r.role === "moderator") {
+      const u = { kind: "followup", ts: r.ts, moderator: r, question: null };
+      takeQuestion(out, u); out.push(u); i += 1; continue;
+    }
+    out.push({ kind: r.role === "user" ? "user" : r.role, ts: r.ts, msg: r }); i += 1;
+  }
+  return out;
+}
+// The user line that opened a run sits before it, possibly behind a notice: app.py appends the
+// question, then maybe_nudge_stale_free_agents' notice, then the chairs. Look back past notices.
+function takeQuestion(out, u) {
+  for (let k = out.length - 1; k >= 0 && k >= out.length - 2; k--) {
+    if (out[k].kind === "user") { u.question = out[k].msg; out.splice(k, 1); return; }
+    if (out[k].kind !== "notice") return;
+  }
+}
+// The standing verdict: the newest unit whose Moderator text CARRIES a block. A follow-up
+// that re-emitted the block counts; one that only talked does not, and the earlier call stands.
+function standing(us) {
+  for (let k = us.length - 1; k >= 0; k--) { const u = us[k]; if (u.moderator && parseVerdict(u.moderator.content).has) return u; }
+  return null;
+}
+function chairs(u) {
+  if (u.kind !== "debate") return CHAIRS.map(r => ({ role: r, msg: null, status: "silent" }));
+  return CHAIRS.map(r => ({ role: r, msg: u[r], status: failed(u[r]) ? "failed" : "reported" }));
+}
+function reached(u) { const cs = chairs(u); return { n: cs.filter(c => c.status === "reported").length, of: u.kind === "debate" ? 3 : 0 }; }
+function seatHtml(c) {
+  const name = PAYLOAD.roleNames[c.role];
+  const t = c.status === "reported" ? `${name} · ${ROLE_JOB[c.role]} · reported (${c.msg.model || "model not recorded"})`
+    : c.status === "failed" ? `${name}: no report reached the panel — ${failText(c.msg)}. Missing information, never a finding that there is nothing to report.`
+    : `${name} was not asked: this was a Moderator-only follow-up.`;
+  return `<span class="seat ${c.status}" data-role="${c.role}" data-status="${c.status}" title="${esc(t)}">${ROLE_LETTER[c.role]}</span>`;
+}
+function seatsHtml(u, withM) {
+  let s = chairs(u).map(seatHtml).join("");
+  if (withM) s += `<span class="seat" data-role="moderator" title="${esc(`Moderator · ${ROLE_JOB.moderator} (${u.moderator.model || "model not recorded"})`)}">M</span>`;
+  return `<span class="seats">${s}</span>`;
+}
+function reachedHtml(u) {
+  const r = reached(u); if (!r.of) return "";
+  return r.n === r.of ? `<span class="mark" title="All three chairs reported to the Moderator.">3 of 3 chairs</span>`
+    : `<span class="mark attn" title="${esc(`${r.of - r.n} chair${r.of - r.n === 1 ? "" : "s"} sent no report; the verdict rests on ${r.n} of ${r.of}. Named in the seats.`)}">${r.n} of ${r.of} chairs</span>`;
+}
+function convHtml(fields, big) {
+  const c = fields.conviction; if (!c) return `<span class="conv">${absent("The Moderator's block carried no CONVICTION line.")}</span>`;
+  const k = c.toLowerCase(), e = CONV[k];
+  if (!e) return `<span class="conv" title="${esc(c)}">${esc(c)}</span>`;
+  return `<span class="conv${e[2] ? " low" : ""}" title="${esc(e[1])}"><i>${e[0]}</i>${big ? esc(c) : esc(c.toLowerCase())}</span>`;
+}
+function recHtml(fields, cls) { return fields.recommendation ? `<span class="rec ${cls || ""}" data-fact="rec">${esc(fields.recommendation)}</span>` : `<span class="rec ${cls || ""}" data-fact="rec">${absent("The Moderator's block carried no RECOMMENDATION line.")}</span>`; }
+function questionOf(u) { return u.question ? u.question.content : null; }
+function modelOf(m) { return m.model ? esc(m.model) : absent("The model that answered was not recorded on this message; it is not the current default."); }
+function objectiveFor(text) { return PAYLOAD.todos.find(t => t.status === "active" && t.text.trim() === String(text).trim()) || null; }
+function pinned(m) { return PAYLOAD.pinned.includes(m.ts); }
+// The receipt: fields present, in the block's own order; the four the prompt requires are
+// shown as absent when missing, the optional ones are omitted (the prompt says omit, so an
+// omitted optional line is the Moderator's own statement that it does not apply).
+function receiptHtml(v, opts) {
+  opts = opts || {};
+  const req = ["recommendation", "conviction", "reason", "risk"], rows = [];
+  for (const f of FIELDS) {
+    const k = FIELD_KEY(f), val = v.fields[k];
+    if (k === "recommendation" || k === "conviction") continue;
+    if (val === undefined) { if (req.includes(k)) rows.push([f, absent(`The Moderator's block carried no ${f} line; the prompt requires one.`)]); continue; }
+    let html = esc(val);
+    if (k === "action_item") { const t = objectiveFor(val); html += t ? ` <span class="mark on" title="Tracked as objective #${t.id}, opened by this verdict.">→ objective #${t.id}</span>` : ` <span class="mark" title="Not found among the open objectives.">not tracked</span>`; }
+    if (k === "dissent") { const who = /^(quant|beat|contrarian)/i.exec(val); if (who) html = `<span class="seat" data-role="${who[1].toLowerCase()}" style="width:1.2rem;height:1.2rem;font-size:.7rem;vertical-align:-3px;margin-right:.3rem">${ROLE_LETTER[who[1].toLowerCase()]}</span>` + html; }
+    rows.push([f, html]);
+  }
+  const ex = v.extra.length && !opts.noExtra ? `<div class="extra">${v.extra.map(l => `<div title="${esc(l)}">${trunc(l, opts.extraChars || 140)}</div>`).join("")}</div>` : "";
+  return `<div class="receipt">${rows.map(([k, h]) => `<span class="k">${k}</span><span class="v" data-field="${FIELD_KEY(k)}">${h}</span>`).join("")}</div>${ex}`;
+}
+function openObjectives() { return PAYLOAD.todos.filter(t => t.status === "active").length; }
+function considering() {
+  const a = PAYLOAD.attached; if (!a) return "";
+  return `<span class="mark on" title="${esc(`${a.surface} · ${a.looking_at}\n${a.decision}\n${a.evidence}\nInvolved: ${a.entities.join(", ")}`)}">considering · ${esc(a.looking_at.replace(/\.$/, ""))} · ${a.entities.length} names</span>`;
+}
+
+// ---- state and harness -----------------------------------------------------------------
+let level = "partial", openId = null, focusedId = null, tabOf = {}, cut = false;
+function hist() { return cut ? PAYLOAD.history.slice(0, 8) : PAYLOAD.history; }
+function setLevel(l) { level = l; document.documentElement.dataset.level = l; for (const x of ["collapsed", "partial", "full"]) document.getElementById("lv-" + x).setAttribute("aria-pressed", x === l); render(); }
+function toggleSidebar(b) { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); document.documentElement.dataset.sidebar = on ? "on" : "off"; }
+function toggleCut(b) { cut = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", cut); openId = null; render(); }
+function toggleMotion(b) { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); document.documentElement.classList.toggle("reduced-motion", on); }
+function levelBtns() {
+  const up = level !== "full" ? `<button class="btn icon quiet" onclick="setLevel('${level === "collapsed" ? "partial" : "full"}')" title="Expand one tier">▲</button>` : "";
+  const dn = level !== "collapsed" ? `<button class="btn icon quiet" onclick="setLevel('${level === "full" ? "partial" : "collapsed"}')" title="Collapse one tier">▼</button>` : "";
+  return `<span class="levels">${up}${dn}</span>`;
+}
+function uid(u) { return `${u.kind}-${u.ts}`; }
+function optAttrs(u, i) { const id = uid(u); return `role="option" data-unit="${id}" data-kind="${u.kind}" aria-expanded="${openId === id}" tabindex="${(focusedId ? focusedId === id : i === 0) ? 0 : -1}"`; }
+function wire(root) {
+  const opts = [...root.querySelectorAll('[role="option"]')];
+  opts.forEach(el => {
+    el.addEventListener("click", ev => { if (ev.target.closest("button, a, textarea, .tab")) return; openId = openId === el.dataset.unit ? null : el.dataset.unit; focusedId = el.dataset.unit; render(); });
+    el.addEventListener("keydown", ev => {
+      const k = opts.indexOf(el);
+      if (ev.key === "ArrowDown" && opts[k + 1]) { ev.preventDefault(); focusedId = opts[k + 1].dataset.unit; opts[k + 1].focus(); opts[k].tabIndex = -1; opts[k + 1].tabIndex = 0; }
+      else if (ev.key === "ArrowUp" && opts[k - 1]) { ev.preventDefault(); focusedId = opts[k - 1].dataset.unit; opts[k - 1].focus(); opts[k].tabIndex = -1; opts[k - 1].tabIndex = 0; }
+      else if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openId = openId === el.dataset.unit ? null : el.dataset.unit; focusedId = el.dataset.unit; render(); }
+      else if (ev.key === "Escape" && openId) { ev.preventDefault(); openId = null; render(); }
+    });
+  });
+  if (focusedId && (document.activeElement === document.body || root.contains(document.activeElement))) { const f = root.querySelector(`[data-unit="${focusedId}"]`); if (f && document.activeElement !== f) { opts.forEach(o => o.tabIndex = o === f ? 0 : -1); f.focus(); } }
+}
+function setTab(id, role) { tabOf[id] = tabOf[id] === role ? null : role; render(); const t = document.querySelector(`[data-unit="${id}"] .tab[data-role="${role}"]`); t && t.focus(); }
+
+
+function kindGlyph(u) {
+  return { debate: ["●", "A Full Prytaneum run: three chairs, then the Moderator's verdict."], followup: ["↳", "A follow-up: the Moderator alone, on the same reports."],
+           summary: ["▤", "A memory summary: older turns compacted into one block."], notice: ["!", "A system notice."], user: ["·", "A question with no answer recorded."],
+           quant: ["Q", "The Quant alone."], beat: ["B", "The Beat Tracker alone."] }[u.kind] || ["·", u.kind];
+}
+function standingLine(S, V) {
+  if (!S) return `<span class="q">No call stands yet — ask the panel.</span>`;
+  return `${recHtml(V.fields)}${convHtml(V.fields)}<span class="q" data-fact="question">to <b>${trunc(questionOf(S) || "a question not recorded", 72)}</b></span>${reachedHtml(S)}${ago(S.ts)}`;
+}
+function askPanel(us) {
+  const hasDebate = us.some(u => u.kind === "debate");
+  return `<section class="ask" aria-label="ask the panel">
+    <div class="chips">${considering()}<span class="mark" title="Open objectives; the panel reads them as standing context.">${openObjectives()} objectives open</span></div>
+    <textarea class="ask" placeholder="${hasDebate ? "Continue with the Moderator, or /debate for a fresh full panel run (/quant, /beat route explicitly)" : "Ask about a start/sit, trade, or waiver decision (/debate, /quant, /beat route explicitly)"}"></textarea>
+    <div class="btns"><button class="btn primary">${hasDebate ? "Ask the Moderator" : "Ask the panel"}</button><button class="btn quiet">Full Prytaneum</button><button class="btn quiet">Ask Quant</button><button class="btn quiet">Ask Beat Tracker</button><button class="btn icon quiet" title="Attach a file to this chat (this session only)">+</button></div>
+  </section>`;
+}
+function verdictPanel(S, V) {
+  if (!S) return `<section class="verdict"><div class="eyebrow">standing call</div><p class="asked">Nothing decided yet in this league's chat.</p></section>`;
+  return `<section class="verdict scroll" aria-label="standing call">
+    <div class="eyebrow">standing call · ${S.kind === "debate" ? "full panel" : "re-issued in a follow-up"} · ${ago(S.ts)} ${reachedHtml(S)} ${seatsHtml(S, true)}</div>
+    <div class="top">${recHtml(V.fields)}${convHtml(V.fields, true)}</div>
+    <div class="asked">to <b>${trunc(questionOf(S) || "a question not recorded", 150)}</b></div>
+    ${receiptHtml(V, { extraChars: 110 })}
+  </section>`;
+}
+function reportCard(c) {
+  const name = PAYLOAD.roleNames[c.role];
+  if (c.status === "failed") return `<div class="report absent-report" data-field="report" data-role="${c.role}"><b>${esc(name)}</b> · <span class="absent" title="${esc(failText(c.msg))}">no report reached the panel</span><br>Whether the call never ran, ran and was lost, or ran and could not be read is not known here. Missing information, never a finding.</div>`;
+  return `<div class="report" data-field="report" data-role="${c.role}"><div class="rh">${seatHtml(c)}<span class="who">${esc(name)} · ${modelOf(c.msg)}</span></div><div class="prose">${md(c.msg.content)}</div></div>`;
+}
+function ledgerRow(u, i) {
+  const g = kindGlyph(u), id = uid(u), open = openId === id;
+  let mid = "", rec = "", conv = "", seats = "", marks = "";
+  if (u.kind === "debate" || u.kind === "followup") {
+    const V = parseVerdict(u.moderator.content);
+    mid = `<span class="q"><b>${trunc(questionOf(u) || "(no question recorded)", 90)}</b>${u.kind === "followup" && !V.has ? ` <span class="mark" title="The Moderator talked it through and did not re-issue the block; the earlier call stands.">no new call</span>` : ""}</span>`;
+    rec = V.has ? recHtml(V.fields) : `<span class="rec" style="color:var(--muted);font-weight:500">—</span>`;
+    conv = V.has ? convHtml(V.fields) : "";
+    seats = seatsHtml(u, true);
+    marks = `<span class="marks">${pinned(u.moderator) ? '<span class="mark on" title="Pinned: kept easy to find in the Pinned Messages panel.">◉ pinned</span>' : ""}${V.fields.action_item && objectiveFor(V.fields.action_item) ? `<span class="mark on" title="This verdict's ACTION ITEM is tracked as objective #${objectiveFor(V.fields.action_item).id}.">→ #${objectiveFor(V.fields.action_item).id}</span>` : ""}</span>`;
+  } else {
+    mid = `<span class="q" style="color:var(--muted)">${trunc(u.msg.content, 110)}</span>`;
+  }
+  let detail = "";
+  if (open) {
+    if (u.kind === "debate") {
+      const V = parseVerdict(u.moderator.content);
+      detail = `<div class="detail"><div class="reports">${chairs(u).map(reportCard).join("")}</div>
+        <div class="mod"><div class="rh eyebrow" style="margin-bottom:.3rem">Moderator · ${modelOf(u.moderator)} · ${ago(u.moderator.ts)}</div><div class="prose">${md(V.prose)}</div><div style="margin-top:.4rem">${receiptHtml(V)}</div></div></div>`;
+    } else if (u.kind === "followup") {
+      const V = parseVerdict(u.moderator.content);
+      detail = `<div class="detail"><div class="mod"><div class="rh eyebrow" style="margin-bottom:.3rem">Moderator · ${modelOf(u.moderator)} · ${ago(u.moderator.ts)} · on the previous run's reports</div><div class="prose">${md(V.prose)}</div>${V.has ? `<div style="margin-top:.4rem">${receiptHtml(V)}</div>` : ""}</div></div>`;
+    } else detail = `<div class="detail"><div class="prose">${md(u.msg.content)}</div></div>`;
+  }
+  return `<div class="lrow" ${optAttrs(u, i)}><div class="head">${ago(u.ts)}<span class="kg" title="${esc(g[1])}">${g[0]}</span>${mid}${rec}${conv}${seats}${marks}</div>${detail}</div>`;
+}
+function render() {
+  const us = units(hist()), S = standing(us), V = S ? parseVerdict(S.moderator.content) : null, dock = document.getElementById("dock");
+  if (level === "collapsed") {
+    dock.innerHTML = `<div class="bar">${levelBtns()}<span class="eyebrow">standing call</span>${standingLine(S, V)}<span class="grow"></span>${considering()}<button class="btn primary" onclick="setLevel('partial')">Ask</button></div>`;
+    return;
+  }
+  let html = `<header class="dh"><span class="wordmark">The Prytaneum</span><span class="eyebrow">Gold Wyrm Dynasty · ${us.length} entries · now is ${new Date(NOW * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC</span><span class="grow"></span>${levelBtns()}</header>
+    <div class="body2">${verdictPanel(S, V)}${askPanel(us)}</div>`;
+  if (level === "full") {
+    const rows = us.slice().reverse();
+    html += `<div class="ledger"><div class="lh"><span class="eyebrow"><b>ledger</b> · every decision and exchange in this league's chat · newest first · ${rows.filter(u => u.kind === "debate").length} full runs, ${rows.filter(u => u.kind === "followup").length} follow-ups</span><span class="eyebrow">open a row for the three reports</span></div><div class="rows scroll" role="listbox" aria-label="ledger">${rows.map(ledgerRow).join("")}</div></div>`;
+  }
+  dock.innerHTML = html;
+  wire(dock);
+}
+
+setLevel("partial");
+</script>
+</body></html>

@@ -68,11 +68,28 @@ def _row(player_id, position, value, name=None):
     return {
         "player_id": str(player_id), "name": name or f"P{player_id}", "position": position,
         "team": "XX", "bpa": value, "universal_value": value, "final_score": value,
-        "need_bonus": 0.0, "eligibility_bonus": 0.0, "projected_points": 100.0,
+        "need_bonus": 0.0, "projected_points": 100.0,
     }
 
 
 # --------------------------------------------------------------- unit-level, hand-built --
+
+def _regime_gate_lifted(candidates):
+    """decision_regime's ARITHMETIC, with #206's calibration gate lifted.
+
+    Production returns "contested" unconditionally while SURVIVAL_IS_CALIBRATED is False --
+    two arms measured survival_probability losing to a constant predictor. The predicate
+    underneath is unchanged and is what these tests are about, so the gate is lifted here
+    EXPLICITLY: a test left asserting "decisive" against the live function would pass for the
+    gate's reason and stop exercising the thing its name claims.
+    test_threshold_reachability owns the separate question of what production does."""
+    original = ps.SURVIVAL_IS_CALIBRATED
+    try:
+        ps.SURVIVAL_IS_CALIBRATED = True
+        return ps.decision_regime(candidates)
+    finally:
+        ps.SURVIVAL_IS_CALIBRATED = original
+
 
 class PositionCurveExcludesUnpricedTests(unittest.TestCase):
     """Rule 1. pick_analysis walks each position's remaining value curve to size the cost of
@@ -179,8 +196,8 @@ class DecisionRegimeExcludesUnpricedTests(unittest.TestCase):
 
     def test_a_decisive_field_stays_decisive_when_an_unpriced_row_is_added(self):
         priced = [self._c(200.0), self._c(100.0)]
-        self.assertEqual(ps.decision_regime(priced), "decisive")
-        self.assertEqual(ps.decision_regime(priced + [self._c(None)]), "decisive")
+        self.assertEqual(_regime_gate_lifted(priced), "decisive")
+        self.assertEqual(_regime_gate_lifted(priced + [self._c(None)]), "decisive")
 
     def test_one_priced_candidate_among_unpriced_ones_is_contested(self):
         self.assertEqual(ps.decision_regime([self._c(200.0), self._c(None), self._c(None)]),
@@ -202,7 +219,7 @@ class DecisionRegimeExcludesUnpricedTests(unittest.TestCase):
         self.assertIn("leader_in_tie_group is False", source)
         self.assertNotIn("not leader_in_tie_group", source)
         # And the behaviour the guard protects, driven directly.
-        self.assertEqual(ps.decision_regime([self._c(200.0), self._c(100.0)]), "decisive")
+        self.assertEqual(_regime_gate_lifted([self._c(200.0), self._c(100.0)]), "decisive")
 
 
 class NecessityExcludesUnpricedFromTheFieldTests(unittest.TestCase):
@@ -220,8 +237,7 @@ class NecessityExcludesUnpricedFromTheFieldTests(unittest.TestCase):
     unmeasurable term neutral -- is what the function already does everywhere else."""
 
     def _c(self, tav):
-        return {"team_acquisition_value": tav, "need_bonus": 0.0, "eligibility_bonus": 0.0,
-                "survival_probability": None, "positional_cliff": None,
+        return {"team_acquisition_value": tav, "need_bonus": 0.0, "survival_probability": None, "positional_cliff": None,
                 "position_run_detected": False, "rival_premium": 0.0}
 
     def test_an_unpriced_row_does_not_join_the_field_a_leader_is_measured_against(self):
@@ -408,9 +424,28 @@ class LateBoardIntegrationTests(unittest.TestCase):
         results = ds.pick_analysis(self.merger, self.players_db, picks, self.pick_order, index,
                                    "1", DYNASTY_SUPERFLEX, [unpriced[0]["player_id"]], mode="balanced")
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["rival_premium"], 0.0)
+        # CHANGED BY #207. This asserted 0.0, and the comment above it was already the
+        # argument against that: they are skipped "for having no value to take a premium
+        # over". Nothing was measured, so there is no number.
+        self.assertIsNone(results[0]["rival_premium"])
+        self.assertEqual(results[0]["rival_premium_basis"], ds.DENIAL_NO_RIVAL_PRICED)
         self.assertIsNone(results[0]["rival_premium_take_probability"])
-        self.assertEqual(results[0]["denial_value"], 0.0)
+        # CHANGED BY #187, and this test's own comment above is the argument for the change:
+        # they are skipped "for having no value to take a premium over". A 0.0 asserted that a
+        # measurement had been taken and come back empty; nothing was measured here at all, so
+        # the value is absent and the basis says which of the three states produced it.
+        self.assertIsNone(results[0]["denial_value"])
+        self.assertEqual(results[0]["denial_basis"], ds.DENIAL_NO_RIVAL_PRICED)
+        # THE DEFERRAL RECORDED HERE IS NOW DISCHARGED, and on its own stated terms. It read:
+        # "rival_premium feeds pick_necessity's denial term, so giving it the same absence
+        # treatment would move real necessity scores and needs its own measurement first."
+        #
+        # It does not move them. pick_synthesis maps an ABSENT premium to a zero CONTRIBUTION
+        # explicitly (`measured_premium if measured_premium is not None else 0.0`), which is
+        # arithmetically identical to the `or 0.0` it replaced -- the same input produced the
+        # same denial term before and after. What changed is the CLAIM, not the number: the
+        # engine no longer says "no rival wanted him more" when it means "no rival could be
+        # priced". The equivalence is pinned by the test below rather than left as reasoning.
 
     def test_the_snapshot_is_identical_across_repeated_builds(self):
         picks, board, index = self._state(16)

@@ -1,0 +1,26 @@
+universe: 6595 season projections: 5346
+picks: 312
+RAW SAVED: 312 picks
+
+COMPLETED 312 picks in 665s
+overall: {'QB': '32 (10.3%)', 'RB': '84 (26.9%)', 'WR': '95 (30.4%)', 'TE': '101 (32.4%)'}
+
+by quarter of the draft (this is the drift):
+  picks   1- 78: QB 30.8%  RB 30.8%  WR 25.6%  TE 12.8%
+  picks  79-156: QB  7.7%  RB 20.5%  WR 53.8%  TE 17.9%
+  picks 157-234: QB  2.6%  RB 28.2%  WR 17.9%  TE 51.3%
+  picks 235-312: QB  0.0%  RB 28.2%  WR 24.4%  TE 47.4%
+
+per seat:
+  seat  1: QB  3 RB  7 WR  6 TE 10  n=26  WR:RB 0.86
+  seat  2: QB  2 RB  7 WR  6 TE 11  n=26  WR:RB 0.86
+  seat  3: QB  3 RB  6 WR  8 TE  9  n=26  WR:RB 1.33
+  seat  4: QB  2 RB  9 WR  6 TE  9  n=26  WR:RB 0.67
+  seat  5: QB  3 RB  9 WR  9 TE  5  n=26  WR:RB 1.00
+  seat  6: QB  3 RB  7 WR 10 TE  6  n=26  WR:RB 1.43
+  seat  7: QB  2 RB  5 WR 10 TE  9  n=26  WR:RB 2.00
+  seat  8: QB  6 RB  7 WR  5 TE  8  n=26  WR:RB 0.71
+  seat  9: QB  2 RB  7 WR  6 TE 11  n=26  WR:RB 0.86
+  seat 10: QB  2 RB  7 WR 10 TE  7  n=26  WR:RB 1.43
+  seat 11: QB  2 RB  8 WR  8 TE  8  n=26  WR:RB 1.00
+  seat 12: QB  2 RB  5 WR 11 TE  8  n=26  WR:RB 2.20

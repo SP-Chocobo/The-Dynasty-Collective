@@ -44,6 +44,165 @@ def league_usable_positions(roster_positions: list[str]) -> set[str]:
     return positions or set(FANTASY_POSITIONS)
 
 
+#: Designations this engine has ruled carry NO material information about a player (#191).
+#:
+#: "Questionable" is not really an injury status: anything can inspire it, and the NFL's own
+#: use of it is close to strategic. The engine's own data says the same. Sleeper projects a
+#: Questionable player for a FULL SEASON -- of 100 with a games-played projection, 95 carry
+#: gp=17 and 5 carry gp=16, indistinguishable from healthy players (700, overwhelmingly gp=17).
+#: And the penalty it used to carry, -1.5, moved 99 of 2084 board rows by at most SIX ranks and
+#: never touched the top 50. So it was priced precision on a signal that is not there.
+#:
+#: OUT OF THE ARITHMETIC AND OUT OF THE PROSE, which is the part worth stating plainly. The
+#: obvious half-measure -- stop pricing it, keep mentioning it -- was considered and ruled
+#: against by the owner: a flag raised to a person is a claim that the fact matters, and
+#: repeating a designation the engine has just measured as meaningless spends the reader's
+#: attention on noise. Silence is the honest output for a fact that carries nothing.
+#:
+#: THE CONDITION FOR ITS RETURN, recorded so this is a ruling and not a deletion: historical
+#: backing, applied case-specifically. If a record ever shows that THIS player's Questionable
+#: designations track missed games or reduced output, that is evidence about him and may be
+#: surfaced as such. What may never come back is the blanket constant -- a league-wide
+#: magnitude applied to everyone carrying the word (#56: a bound is not a threshold).
+#:
+#: PASSIVE DISPLAY IS NOT AFFECTED, and the distinction is the whole line this constant draws.
+#: A roster table showing what Sleeper says about a player is REPORTING THE FEED. This set
+#: governs the places where the ENGINE ITSELF speaks -- what it prices, what it flags as a
+#: problem, what it hands a chair as evidence.
+IMMATERIAL_INJURY_STATUSES = ("Questionable",)
+
+
+def is_material_injury_status(status: Optional[str]) -> bool:
+    """Should the engine act on, or speak about, this designation at all? (#191)
+
+    False for absence AND for a designation ruled immaterial -- deliberately one predicate, so
+    a caller cannot accidentally treat "he is Questionable" as more actionable than "nothing is
+    known about him", which is the state it is closest to.
+    """
+    return bool(status) and status not in IMMATERIAL_INJURY_STATUSES
+
+
+#: Games a designation GUARANTEES the player misses, taken from the NFL's own roster rules
+#: rather than chosen to fit a sample (#191, #56).
+#:
+#:   IR   -- a player placed on injured reserve and designated to return must miss at least
+#:           four games; without the designation it is season-ending, so four is the FLOOR.
+#:   PUP  -- regular-season Physically Unable to Perform requires missing at least the first
+#:           four games, on the same reading.
+#:   Out  -- ruled out for THIS week: one game.
+#:
+#: Nothing else is here, and the omissions are the disciplined part. "Questionable" and
+#: "Doubtful" are game-time calls with no rule floor at all (and Questionable is out of the
+#: engine entirely -- see IMMATERIAL_INJURY_STATUSES). "Sus" varies by the length of the
+#: suspension, which the feed does not carry. "NA" and "DNR" are not health designations.
+#: A number for any of those would be invented, and inventing one is exactly what #56 forbids.
+#: The NFL regular season. A fact about the league, not a tuning constant.
+SEASON_GAMES = 17
+
+GAMES_MISSED_FLOOR = {"IR": 4, "PUP": 4, "Out": 1}
+
+#: MANDATE 4 / `#126`. The designations this engine RECOGNISES and that carry NO rule floor: a
+#: game-time call, where the man may well play. The complement of GAMES_MISSED_FLOOR within the
+#: recognised vocabulary, which is why it is defined here beside it rather than wherever it happens
+#: to be read.
+#:
+#: `app.INJURY_OK_STATUSES` hand-listed exactly these two to decide whether a status pill reads
+#: amber (playable, flagged) or crimson (unavailable). Same set, second home -- and the input that
+#: splits them is a new designation, which is how PUP reached a board with no entry anywhere.
+#:
+#: LISTED RATHER THAN DERIVED AS "not in GAMES_MISSED_FLOOR", and that is the point of it. A
+#: designation nobody has ruled on must NOT come out of this set as playable: "not in the floor
+#: table" is true of PUP-before-it-was-added, of Sus, of DNR and of any string the feed invents
+#: next, and painting an unknown as playable is precisely the absence-contract failure
+#: UNRECOGNISED_DESIGNATION exists to prevent. So this names what has been ruled on, and anything
+#: outside both sets is unrecognised in both.
+GAME_TIME_CALL_DESIGNATIONS = ("Questionable", "Doubtful")
+
+#: Every designation the engine has a ruling for, either way.
+RECOGNISED_DESIGNATIONS = tuple(GAME_TIME_CALL_DESIGNATIONS) + tuple(GAMES_MISSED_FLOOR)
+
+#: D8. THE ONE CHOSEN NUMBER IN THIS WHOLE VOCABULARY, named here so it cannot hide.
+#:
+#: `Doubtful` is priced and has no rule floor to derive a magnitude from -- `availability_factor`
+#: returns UNRECOGNISED_DESIGNATION for it, because a game-time call guarantees nothing. The flat
+#: table it used to live in expressed a RATIO: -5.0 against `Out`'s -10.0, so half of one game.
+#: That ratio is PRESERVED here rather than re-chosen, which is what makes this a unit conversion
+#: of an existing decision instead of a new decision:
+#:
+#:     Out       1 game    the NFL rule floor
+#:     Doubtful  0.5 game  half of Out, the ratio the flat magnitudes already stated
+#:
+#: It is still a chosen number and `test_one_injury_vocabulary_not_two` names it as the single
+#: licensed exception, so a SECOND invented magnitude cannot arrive quietly beside it. `Doubtful`
+#: also never occurs once in the real feed, which is why nothing measured has ever depended on it.
+ASSUMED_GAMES_MISSED = {"Doubtful": 0.5}
+
+#: Every designation the board PRICES, and the games each is taken to cost. One table, so the
+#: membership of the priced set and the membership of the floor set cannot drift apart -- which is
+#: exactly how PUP came to carry a four-game floor and no penalty (`#126`). Floors first, then the
+#: one assumption, so a designation that later earns a real rule floor overrides its assumption
+#: rather than shadowing it.
+GAMES_MISSED_PRICED = {**GAMES_MISSED_FLOOR, **ASSUMED_GAMES_MISSED}
+
+#: What the engine does with a designation it has never seen. NOT 0.0, which would silently
+#: price an unknown as healthy -- the absence contract's whole point (#202). PUP reached the
+#: board with no entry anywhere and was treated as fully fit for exactly that reason.
+UNRECOGNISED_DESIGNATION = "unrecognised_designation"
+NO_DESIGNATION = "no_designation"
+RULE_FLOOR = "rule_floor"
+IMMATERIAL = "immaterial_designation"
+#: A RECOGNISED designation whose haircut could not be computed because the feed reported no
+#: games-played for the player. Split from UNRECOGNISED_DESIGNATION deliberately: "we do not
+#: know what this designation means" and "we know exactly what it means and lack the
+#: denominator" are different absences with different remedies, and collapsing them is the
+#: defect this whole item exists to correct.
+NO_GAMES_REPORTED = "no_games_reported"
+
+
+def availability_factor(status: Optional[str], projected_games: Optional[float]):
+    """(factor, basis) -- what share of a full-season projection this player can still earn.
+
+    THE COMPANION IS RETURNED WITH THE NUMBER, never separately (#166). A factor of 1.0 means
+    four different things -- nobody said anything, the designation carries no information, the
+    designation is unrecognised, or games-played was never reported -- and a consumer that
+    cannot tell them apart will read the last two as health.
+
+    THE FACTOR IS A BOUND, NOT AN ESTIMATE, and the basis says so. We know a man on IR misses
+    AT LEAST four games; we do not know he misses only four. Applying the floor removes the
+    part that is certain and fabricates nothing, which is the most that can honestly be taken
+    off. Reading it as a point estimate would overstate a season-ending case -- see #188, which
+    is the register item for the "bounded/partial" state this vocabulary still lacks.
+
+    `projected_games` is Sleeper's own `gp` for the player. Absent, no factor is computable:
+    a share of an unknown denominator is not a quantity.
+    """
+    if not status:
+        return 1.0, NO_DESIGNATION
+    if status in IMMATERIAL_INJURY_STATUSES:
+        return 1.0, IMMATERIAL
+    missed = GAMES_MISSED_FLOOR.get(status)
+    if missed is None:
+        return 1.0, UNRECOGNISED_DESIGNATION
+    if not projected_games or projected_games <= 0:
+        return 1.0, NO_GAMES_REPORTED
+    # ANCHORED TO THE SEASON, NOT TO gp -- which is what makes the cut SELF-LIMITING.
+    #
+    # The player will play at most SEASON_GAMES - missed. Sleeper counts `gp`. Only the excess
+    # is fabricated, so the factor is what he can play over what Sleeper counted, never > 1.
+    #
+    # WHY THAT MATTERS, from a live observation the owner made against the running app: Sleeper
+    # had NOT yet zeroed James Conner's weeks 2-4, still showing ~3 points in each, and it
+    # eventually will. The naive form -- (gp - missed) / gp -- keeps removing four games
+    # forever, so the moment Sleeper caught up and dropped gp, the engine would charge the same
+    # absence a second time. This form stops on its own:
+    #
+    #   gp=17 (nothing removed yet)   -> 13/17 = 0.765, the full correction
+    #   gp=16 (one game already gone) -> 13/16 = 0.813, correspondingly smaller
+    #   gp<=13 (the feed has caught up) -> 1.0, no cut at all
+    playable = max(SEASON_GAMES - missed, 0.0)
+    return min(playable / projected_games, 1.0), RULE_FLOOR
+
+
 def player_position(info: dict) -> Optional[str]:
     """The fantasy-relevant position bucket for a player, Sleeper's own way.
 
@@ -67,12 +226,120 @@ def player_eligible_positions(info: dict) -> set[str]:
     everywhere else in this app, which only ever needs one primary bucket for matching/
     grouping purposes. Falls back to {player_position(info)} when fantasy_positions is
     missing/empty, so a record with no real eligibility data still gets its one known
-    position rather than an empty, unassignable set."""
-    eligible = {pos for pos in (info.get("fantasy_positions") or []) if pos in FANTASY_POSITIONS}
-    if eligible:
-        return eligible
+    position rather than an empty, unassignable set.
+
+    MANDATE 2.6 / `#172`: TWO EMPTY SETS THAT MEAN DIFFERENT THINGS. This read
+    `if eligible:` and fell back to the primary position whenever the filtered set came out
+    empty -- which is two situations, not one. `fantasy_positions` ABSENT is missing data, and
+    the fallback is right there: use the one position we know. `fantasy_positions` PRESENT and
+    containing nothing startable is an ANSWER -- Sleeper saying this player is not startable
+    anywhere -- and resurrecting the raw `position` overrides it with the very field `#172` says
+    not to trust.
+
+    Measured on the committed capture, this is ONE row of 6,595: Bradley Sowell, `position: TE`,
+    `fantasy_positions: ["OL"]`. He was eligible at TE, which put him in a legal TE slot in the
+    battery's own lineup audit. He is not a tight end; he is an offensive lineman Sleeper still
+    files under a TE `position`. Reported at the size it is, not dressed up.
+
+    THE SAME CONFLATION IS IN `player_position` ABOVE and is deliberately left there: that
+    function answers "which bucket do I group this player under", it is read by the pool
+    admission and by every matching path in the app, and changing what it returns for that row is
+    a different repair with a much wider blast radius. Recorded here rather than quietly fixed at
+    one end and not the other.
+    """
+    listed = info.get("fantasy_positions")
+    if listed:
+        return {pos for pos in listed if pos in FANTASY_POSITIONS}
     primary = player_position(info)
     return {primary} if primary else set()
+
+
+def eligible_positions_for(player_id, position, players_db) -> frozenset[str]:
+    """Where a BOARD ROW can be started: `player_eligible_positions` for a row the pool knows,
+    the row's own primary bucket for one it does not.
+
+    ONE HOME FOR THE COMPOSED RULE (`B-F4`/`C-F3`, review finding 16). `B-F4` and `C-F3` made
+    three surfaces ask eligibility instead of reading the raw label -- the right repair -- but each
+    wrapped this composition in its own local expression: `feasibility_first._fills_a_hole`,
+    `pick_synthesis.snapshot_eligibility`, and `draft_board_ui.filter_candidates_by_view`. Three
+    spellings of one rule is the defect those repairs were closing, one layer up (`#126`), and the
+    document's own method says to decide which reader OWNS the question and make the others call it.
+
+    AND ALL THREE GOT IT WRONG THE SAME WAY, which is what a shared home prevents. Each tested
+    `if not eligible:` / `eligible or {position}`, and an empty set reaches that branch from TWO
+    places: no record in the pool, and a record whose `fantasy_positions` contain nothing
+    startable. `player_eligible_positions`' docstring is explicit that the second is an ANSWER --
+    Sleeper saying this man starts nowhere -- and that resurrecting the raw `position` overrides it
+    with the very field `#172` says not to trust. So the fallback here is on the RECORD's absence
+    (`info is None`), never on the answer's emptiness (`#187`).
+
+    Measured on the committed capture: the population is ONE row of 6,595 -- Bradley Sowell,
+    `position: TE`, `fantasy_positions: ["OL"]` -- and `build_players_db_from_capture` filters him
+    out before any board is built, so this was latent on the universe production receives (0 of
+    6,594 rows startable nowhere). Repaired anyway, because the next capture is not this one and
+    the three sites each claimed to apply "the same degradation `player_eligible_positions`
+    already applies" while applying a different one.
+    """
+    info = (players_db or {}).get(str(player_id)) if players_db else None
+    if info is not None:
+        #: EMPTY IS THE ANSWER HERE, not a miss. Returned as-is.
+        return frozenset(player_eligible_positions(info))
+    return frozenset({position} if position else ())
+
+
+#: MANDATE 2.3: THE LEAGUE'S MISS RULE AND THE VENDOR'S MISS STATS ARE DIFFERENT VOCABULARIES.
+#: `score_projection` is a dot product over the stat keys present, so a scoring category with no
+#: matching stat key silently contributes nothing -- and the captured league scores a GENERIC
+#: `fgmiss` (-1.0) while Sleeper projects only BUCKETED misses (`fgmiss_30_39`, `fgmiss_40_49`,
+#: `fgmiss_50p`), for which that league declares no weight at all. Neither side could reach the
+#: other, so no missed field goal of any length was ever scored.
+#:
+#: THE MANDATE'S OWN CLAIM FOR THIS ITEM IS FALSE ON THIS CAPTURE, and it is corrected rather than
+#: repeated. It says "There is no `fgm_50p` key, so 5.5-8.8 projected 50+ makes per kicker are never
+#: scored". Measured over all 559 kicker-week projections: `fgm_50p` is present in 527 of them (94%)
+#: and the league weights it at 5.0, so those makes were already scoring. `xpmiss` is present in
+#: 559 of 559 and is weighted too. The unscored quantity was the MISSES, not the long makes.
+_KICKING_MISS_INPUTS = ("fga", "fgm")
+
+
+def derive_kicking_categories(stats: dict) -> dict:
+    """`stats` plus any scoring category it implies EXACTLY, or `stats` unchanged.
+
+    TOTAL MISSED FIELD GOALS ARE EXACT: `fga - fgm`, by definition, no modelling and no assumption.
+    Measured on the capture at a mean of 5.40 per kicker-season, worth -5.40 points each at the
+    captured league's -1.0, and previously worth nothing at all.
+
+    WHY THE TOTAL AND NOT THE VENDOR'S OWN BUCKETED SUM, which would look like the more faithful
+    read: the buckets are INCOMPLETE. There is no `fgmiss_0_19` or `fgmiss_20_29`, so
+    `fgmiss_30_39 + fgmiss_40_49 + fgmiss_50p` understates the total -- it differs from `fga - fgm`
+    in 510 of the 527 rows that carry buckets, by up to 0.190. A league scoring a generic `fgmiss`
+    is scoring every miss, so the total is the quantity its rule names.
+
+    Derived only when BOTH inputs are present: `fga` without `fgm` says nothing about makes, and a 0
+    assumed for either would fabricate the difference (`#187`). A vendor-supplied `fgmiss` is never
+    overwritten -- a real figure outranks a derived one. And attempts BELOW makes is a projection
+    whose own numbers disagree, which is left absent rather than scored as a measured zero.
+
+    WHAT THIS CHANGES, measured rather than asserted: every kicker loses 4.22-6.44 points (mean
+    -5.40) and none gains, because a miss can only cost. 16 of 33 kickers change rank against each
+    other, while the top five hold their identity and order. K ordering is what `#30`'s streaming
+    floor is derived from, so that floor is worth re-deriving over this -- flagged in
+    REPAIR_MANDATE_V2 2.3 rather than claimed to be unaffected."""
+    if not isinstance(stats, dict) or not stats:
+        return stats
+    if any(stats.get(key) is None for key in _KICKING_MISS_INPUTS):
+        return stats
+    if "fgmiss" in stats:
+        return stats  # a real figure outranks a derived one; never overwrite the vendor
+    try:
+        misses = float(stats["fga"]) - float(stats["fgm"])
+    except (TypeError, ValueError):
+        return stats
+    if misses <= 0:
+        # Attempts at or below makes is a projection whose own numbers disagree, not a measurement
+        # of zero misses. Left absent rather than scored as 0.0 (`#187`).
+        return stats
+    return {**stats, "fgmiss": misses}
 
 
 def score_projection(stats: dict, scoring_settings: dict) -> float:
@@ -80,9 +347,12 @@ def score_projection(stats: dict, scoring_settings: dict) -> float:
     # projections under a league's real scoring rules for positions Draft Sharks doesn't
     # project at all (currently IDP), same as this module already does for roster display.
     """Score native Sleeper stat projections without coupling this data model to HTTP."""
+    # MANDATE 2.3: derived categories first, so a rule the league declares can reach the stat line.
+    # A no-op for every position that projects no field goals.
+    scored = derive_kicking_categories(stats or {})
     total = sum(
         float(value) * float(scoring_settings.get(category, 0))
-        for category, value in (stats or {}).items()
+        for category, value in (scored or {}).items()
         if value
     )
     return round(total, 2)

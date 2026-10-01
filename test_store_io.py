@@ -31,6 +31,7 @@ import unittest
 from pathlib import Path
 
 import store_io
+import ui_source
 
 
 def _tmp(name="store.json"):
@@ -68,10 +69,39 @@ class ReadWriteContractTests(unittest.TestCase):
     def test_the_temp_file_is_written_in_the_same_directory_as_its_target(self):
         """os.replace is only atomic within one filesystem. A temp file in the system temp dir
         would silently degrade the whole mechanism to a copy, on exactly the machines where
-        /tmp is a different mount -- and nothing would report it."""
-        body = inspect.getsource(store_io._write_unlocked)
+        /tmp is a different mount -- and nothing would report it.
+
+        SCANS THE FUNCTION THAT HOLDS THE MECHANISM, found rather than named. This read
+        `_write_unlocked`, and when the mechanism was extracted into `replace_atomically` so a
+        cache could reuse the atomicity without the store semantics, the guard went on scanning
+        a body that no longer contained it -- and said nothing. It failed loudly here only
+        because the extracted body was a one-liner; a larger one would have passed. So the
+        function is now located by the thing being guarded, and asserted to be exactly one: two
+        writers would mean two places this rule has to hold and only one of them checked.
+        """
+        writers = [name for name, fn in vars(store_io).items()
+                   if inspect.isfunction(fn) and "os.replace(" in inspect.getsource(fn)]
+        self.assertEqual(len(writers), 1,
+                         f"expected one function to perform the atomic replace, found {writers}")
+        body = inspect.getsource(getattr(store_io, writers[0]))
         self.assertIn("path.with_name(", body)
         self.assertNotIn("tempfile", body)
+
+    def test_the_cache_primitive_does_not_inherit_the_store_guard(self):
+        """`replace_atomically` exists so a CACHE can have the atomicity without the refusal.
+
+        A cache is re-fetchable by definition, so protecting its damaged bytes the way a store's
+        are protected would make a corrupt cache permanently un-refreshable -- a worse bug than
+        the one the atomicity fixes, installed by the fix. Pinned because the two functions sit
+        next to each other and the wrong one is an easy call to make.
+        """
+        path = self.path.with_name("cache.json")
+        path.write_text("{not json")
+        store_io.read(path, {})                       # arms the damage mark
+        self.assertIn(str(path), store_io.unreadable_stores())
+        self.assertIs(store_io.write(path, {"a": 1}), False)      # the STORE refuses
+        store_io.replace_atomically(path, '{"a": 1}')             # the CACHE does not
+        self.assertEqual(path.read_text(), '{"a": 1}')
 
 
 class DamagedStoreTests(unittest.TestCase):
@@ -269,6 +299,14 @@ class EveryStoreGoesThroughItTests(unittest.TestCase):
     #: Files whose JSON writes are deliberately NOT store_io's, each with its reason. Anything
     #: else that writes JSON to disk must go through store_io or this test fails.
     ALLOWED = {
+        "measurement.py": "probe infrastructure, not a store -- the instrument standard made "
+                          "runnable, imported only by probes and its own test. persist_each "
+                          "already does its own atomic replace, which is the durable-partial "
+                          "rule it exists to enforce",
+        "sleeper_import_report.py": "developer report output -- a capture fixture and a run "
+                                    "report, both regenerated on demand. Holds no user state, "
+                                    "and nothing read-modify-writes them. If it ever persists "
+                                    "something the app depends on, it must move to store_io",
         "store_io.py": "it IS the mechanism -- the atomic write lives here",
         "draft_history.py": "already wrote atomically, and write-if-absent means it never "
                             "read-modify-writes: snapshots are immutable once written",
@@ -276,6 +314,30 @@ class EveryStoreGoesThroughItTests(unittest.TestCase):
                              "write costs one re-fetch, and there is no read-modify-write",
         "bot_benchmark.py": "developer-run measurement output, never touched by the app",
     }
+
+    #: The two ways a JSON store gets written here. Named once so the scan below and the control
+    #: beneath it cannot drift apart into two different ideas of what counts.
+    JSON_WRITE_SHAPES = ("write_text(json.dumps", "json.dump(")
+
+    @classmethod
+    def _writes_json(cls, stripped: str) -> bool:
+        return any(shape in stripped for shape in cls.JSON_WRITE_SHAPES)
+
+    def test_the_detector_recognises_both_ways_of_writing_json(self):
+        """THE CONTROL THIS GUARD LACKED, and its absence is why a one-idiom scan survived.
+
+        The scan below only fails when an offender exists OUTSIDE `ALLOWED`. Once the three live
+        `json.dump(` sites were declared, narrowing the detector back to the single original
+        spelling passed cleanly -- the mutation I ran to check the repair SURVIVED it. So the
+        detector is pinned here directly, against synthetic source, where no allowlist can
+        absorb the mutation."""
+        self.assertTrue(self._writes_json('path.write_text(json.dumps(obj))'))
+        self.assertTrue(self._writes_json('json.dump(obj, fh, indent=2)'))
+        self.assertTrue(self._writes_json('json.dump(payload, fh, default=str)'))
+        # And it must not fire on reads or on unrelated dumping.
+        self.assertFalse(self._writes_json('obj = json.load(fh)'))
+        self.assertFalse(self._writes_json('blob = json.dumps(obj)'))
+        self.assertFalse(self._writes_json('path.write_text(yaml.dump(obj))'))
 
     def test_no_module_writes_a_json_store_outside_store_io(self):
         offenders = []
@@ -287,7 +349,14 @@ class EveryStoreGoesThroughItTests(unittest.TestCase):
                 stripped = line.strip()
                 if stripped.startswith("#"):
                     continue
-                if "write_text(json.dumps" in stripped:
+                # BOTH SPELLINGS. This used to match `write_text(json.dumps` alone, and the
+                # more idiomatic `json.dump(obj, fh)` was invisible -- three live sites sat
+                # outside the guard while its docstring said "anything else that writes JSON to
+                # disk must go through store_io or this test fails" (found 2026-09-16). A
+                # one-idiom scan is an enumeration wearing a scan's clothes, which is exactly
+                # the failure the "scanned rather than enumerated" note above warns about one
+                # level up.
+                if self._writes_json(stripped):
                     offenders.append(f"{path.name}:{lineno}")
         self.assertEqual(offenders, [],
                          "a JSON store is being written outside store_io -- route it through "
@@ -317,7 +386,7 @@ class TheGuardIsSurfacedTests(unittest.TestCase):
 
     app.py is source-scanned rather than imported, as every app-level contract here is."""
 
-    APP = (Path(__file__).parent / "app.py").read_text()
+    APP = ui_source.text()
 
     def test_the_app_reads_the_unreadable_register_and_reports_it(self):
         self.assertIn("def warn_about_unreadable_stores(", self.APP)

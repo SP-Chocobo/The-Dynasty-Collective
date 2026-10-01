@@ -29,9 +29,10 @@ import decision_log
 import llm_engine
 import pick_debate
 import provider_meter
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 _FAILURE = "⚠️ Claude request failed: Connection reset by peer"
 

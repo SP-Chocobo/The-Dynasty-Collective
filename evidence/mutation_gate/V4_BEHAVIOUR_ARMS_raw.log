@@ -1,0 +1,39 @@
+=== PRECONDITION: every witness must read REPAIRED on the CLEAN tree ===
+    Without this a 'caught' verdict could come from a witness that is simply wrong.
+  REPAIRED      team_count's picks rule stops coercing roster_id
+  REPAIRED      the composed eligibility rule falls back on the empty ANSWER again
+  REPAIRED      the snapshot's eligibility default goes back to an empty set
+
+--- ARM: team_count's picks rule stops coercing roster_id
+    file=league_config.py  sites=1  catches-with=test_one_league_one_team_count
+    breaking it means: roster_id 0 and "0" become two teams to the count and one roster to the census -- the #126 split B-F6 claims to have closed, one rule inward
+    witness: DEFECTIVE (the mutation changed the governed answer)
+    VERDICT: caught
+      FAIL: test_the_two_rules_read_a_roster_id_AS_THE_SAME_TYPE (test_one_league_one_team_count.ARosterlessPickBelongsToNoRosterTests.test_the_two_rules_read_a_roster_id_AS_THE_SAME_TYPE)
+
+--- ARM: the composed eligibility rule falls back on the empty ANSWER again
+    file=player_universe.py  sites=1  catches-with=test_one_eligibility_reader
+    breaking it means: a man the feed says starts NOWHERE is handed the raw `position` back, which is the field #172 says not to trust -- and the board's feasibility backstop then promotes him for a hole he cannot fill
+    witness: DEFECTIVE (the mutation changed the governed answer)
+    VERDICT: caught
+      FAIL: test_a_row_the_feed_says_starts_NOWHERE_stays_nowhere (test_one_eligibility_reader.TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_a_row_the_feed_says_starts_NOWHERE_stays_nowhere)
+
+--- ARM: the snapshot's eligibility default goes back to an empty set
+    file=pick_synthesis.py  sites=1  catches-with=test_one_eligibility_vocabulary_everywhere
+    breaking it means: absence becomes indistinguishable from "startable nowhere" on the debate boundary, so the view filter has to resurrect the raw `position` for both
+    witness: DEFECTIVE (the mutation changed the governed answer)
+    VERDICT: caught
+      FAIL: test_a_stored_board_without_the_field_replays_on_its_primary_bucket (test_one_eligibility_vocabulary_everywhere.EligibilityCrossesTheSnapshotBoundaryTests.test_a_stored_board_without_the_field_replays_on_its_primary_bucket)
+      FAIL: test_an_ABSENT_field_and_an_EMPTY_one_do_not_behave_alike (test_one_eligibility_vocabulary_everywhere.EligibilityCrossesTheSnapshotBoundaryTests.test_an_ABSENT_field_and_an_EMPTY_one_do_not_behave_alike)
+      FAIL: test_the_default_is_ABSENCE_so_the_filter_can_tell_them_apart (test_one_eligibility_vocabulary_everywhere.EligibilityCrossesTheSnapshotBoundaryTests.test_the_default_is_ABSENCE_so_the_filter_can_tell_them_apart)
+
+=== SUMMARY ===
+  caught               team_count's picks rule stops coercing roster_id
+      FAIL: test_the_two_rules_read_a_roster_id_AS_THE_SAME_TYPE (test_one_league_one_team_count.ARosterlessPickBelongsToNoRosterTests.test_the_two_rules_read_a_roste
+  caught               the composed eligibility rule falls back on the empty ANSWER again
+      FAIL: test_a_row_the_feed_says_starts_NOWHERE_stays_nowhere (test_one_eligibility_reader.TheComposedRuleFallsBackOnTheRECORDNotTheANSWERTests.test_a_row_the_fee
+  caught               the snapshot's eligibility default goes back to an empty set
+      FAIL: test_a_stored_board_without_the_field_replays_on_its_primary_bucket (test_one_eligibility_vocabulary_everywhere.EligibilityCrossesTheSnapshotBoundaryTests
+
+3 arms: 3 caught, 0 survived, 0 inconclusive
+ALL THREE BEHAVIOUR REPAIRS ARE DEFENDED BY A NAMED TEST.

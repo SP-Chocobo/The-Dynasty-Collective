@@ -56,6 +56,17 @@ from pathlib import Path
 DECLARED_INPUT_DIRS = (
     "data/baseline",
     "data/projections/_global",
+    # THE BATTERY'S OWN UNIVERSE, which was outside this manifest entirely -- found independently
+    # by two audit lenses. `data/fixtures/sleeper_capture.json` is where every battery, the VDS
+    # battery, the roster proof, the smoke seats and the render trace get their player universe,
+    # their season projections and the league's scoring rulebook. It is an INPUT to every number
+    # this repository certifies, and this manifest -- whose whole job is "say what the numbers were
+    # computed from" -- did not hash it. A capture swapped for another season's would change every
+    # board on every screen and leave the manifest's hashes untouched.
+    #
+    # Two directories was never a claim about DataMerger alone: the manifest is read as the input
+    # set for the certification, and the certification's universe did not come from DataMerger.
+    "data/fixtures",
 )
 
 #: Extensions the loaders actually read. A README or an ATTRIBUTION.md sitting beside the data is

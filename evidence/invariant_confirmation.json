@@ -1,0 +1,50 @@
+{
+  "results": [
+    {
+      "invariant": "feasibility_first never binds",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 2,
+      "seconds": 509.4,
+      "consequence": "a chair could finish unable to field a legal lineup and nothing would say so",
+      "evidence": "easibility_partitions_the_whole_board\n    self._assert_partitioned(board, \"fills_required_slot\", True, f\"{mode} board\")\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 133, in _assert_partitioned\n    self.fail(\nAssertionError: balanced board: row 3 has fills_required_slot=True but sits BELOW row 0, which does not. The backstop is no longer reaching the order. row 3: 'Jaxon Smith-Njigba' score 172.8; row 0: 'Jahmyr Gibbs' score 195.27\n\n----------------------------------------------------------------------\nRan 750 tests in 506.112s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "invariant": "board order ignores feasibility",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 1,
+      "seconds": 496.5,
+      "consequence": "feasibility becomes advisory -- the #154 backstop stops reaching the pick",
+      "evidence": "easibility_partitions_the_whole_board\n    self._assert_partitioned(board, \"fills_required_slot\", True, f\"{mode} board\")\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 133, in _assert_partitioned\n    self.fail(\nAssertionError: balanced board: row 3 has fills_required_slot=True but sits BELOW row 0, which does not. The backstop is no longer reaching the order. row 3: 'Jaxon Smith-Njigba' score 172.8; row 0: 'Jahmyr Gibbs' score 195.27\n\n----------------------------------------------------------------------\nRan 750 tests in 493.061s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "invariant": "board order ignores fieldability",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 1,
+      "seconds": 488.0,
+      "consequence": "the #30 fieldability backstop becomes advisory -- a roster resumes hoarding a position it cannot field, which is the nine-defense roster",
+      "evidence": "_within_each_feasibility_group\n    self._assert_partitioned(group, \"cannot_be_fielded\", False,\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 133, in _assert_partitioned\n    self.fail(\nAssertionError: balanced board, fills_required_slot=False: row 17 has cannot_be_fielded=False but sits BELOW row 15, which does not. The backstop is no longer reaching the order. row 17: 'Javonte Williams' score 38.34; row 15: 'Josh Allen' score 43.84\n\n----------------------------------------------------------------------\nRan 751 tests in 484.628s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "invariant": "upside board order ignores feasibility",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 1,
+      "seconds": 494.2,
+      "consequence": "feasibility becomes advisory in upside mode -- the branch #154 tier 3 called the one where it matters most, because upside scoring zeroes every roster-aware term",
+      "evidence": "lity_partitions_the_whole_board\n    self._assert_partitioned(board, \"fills_required_slot\", True, f\"{mode} board\")\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 133, in _assert_partitioned\n    self.fail(\nAssertionError: upside board: row 3 has fills_required_slot=True but sits BELOW row 0, which does not. The backstop is no longer reaching the order. row 3: 'Jaxon Smith-Njigba' score 165.19; row 0: 'Christian McCaffrey' score 198.64\n\n----------------------------------------------------------------------\nRan 750 tests in 491.054s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "invariant": "upside board order ignores fieldability",
+      "file": "draft_room.py",
+      "verdict": "caught",
+      "sites_mutated": 1,
+      "seconds": 500.5,
+      "consequence": "the fieldability backstop becomes advisory in upside mode -- the nine-defense roster, on the branch that has no other roster awareness to fall back on",
+      "evidence": "itions_within_each_feasibility_group\n    self._assert_partitioned(group, \"cannot_be_fielded\", False,\n  File \"/home/user/The-Dynasty-Collective/test_board_order_honours_the_backstops.py\", line 133, in _assert_partitioned\n    self.fail(\nAssertionError: upside board, fills_required_slot=False: row 20 has cannot_be_fielded=False but sits BELOW row 17, which does not. The backstop is no longer reaching the order. row 20: 'Cam Skattebo' score 35.35; row 17: 'Josh Allen' score 43.84\n\n----------------------------------------------------------------------\nRan 751 tests in 497.407s\n\nFAILED (failures=1)\n"
+    }
+  ],
+  "sources_dirty_after": ""
+}

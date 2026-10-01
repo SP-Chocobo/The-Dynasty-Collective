@@ -37,14 +37,14 @@ import league_format
 import league_prefs
 import pinned_messages
 import todo_log
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 
 def _build_context_body() -> str:
-    start = _APP.index("def build_context(")
-    return _APP[start:_APP.index("\ndef ", start + 10)]
+    return ui_source.block("def build_context(", "\ndef ")
 
 
 class StoresAreScopedToTheRightThingTests(unittest.TestCase):
@@ -155,9 +155,8 @@ class GlobalResearchWithholdsItsPrivateFieldTests(unittest.TestCase):
         # and the non-vacuity check below is the only reason that surfaced. A window that can
         # stop covering the thing it guards without failing is the defect class this file is
         # part of catching.
-        start = _APP.index("bot_findings = bot_research.load_findings()")
-        end = _APP.index("todo_league_id = st.session_state.selected_league_id", start)
-        panel = _APP[start:end]
+        panel = ui_source.block("bot_findings = bot_research.load_findings()",
+                                "todo_league_id = st.session_state.selected_league_id")
         for expression in ('f["question"]', 'f["league_id"]', 'c["question"]', 'c["league_id"]',
                            'f.get("question")', 'f.get("league_id")'):
             self.assertNotIn(expression, panel)
@@ -178,8 +177,7 @@ class GlobalCachesHoldNoTenantDataTests(unittest.TestCase):
         for name, args in cached:
             self.assertEqual(args.strip(), "", f"{name} gained an argument -- re-check its scope.")
         for name in ("_page_icon", "_header_banner_data_uri"):
-            start = _APP.index(f"def {name}(")
-            body = _APP[start:start + 400]
+            body = ui_source.block(f"def {name}(", chars=400)
             self.assertIn("ASSETS_DIR", body, f"{name} no longer loads a static asset.")
             for leak in ("league", "roster", "user_id", "session_state"):
                 self.assertNotIn(leak, body, f"{name} touches {leak} -- a cross-session cache must not.")

@@ -1,0 +1,660 @@
+{
+  "arm": "REAL",
+  "league_rulebook": "Greatest Show on Paper 2",
+  "rulebook_path": "data/league_captures/greatest_show_on_paper_2.json",
+  "board_path": "evidence/real_drafts/extracted/greatest_show_on_paper_2_board.json",
+  "universe_provenance": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "teams": 12,
+  "rounds": 30,
+  "league_format_hint": {
+    "scoring": "ppr",
+    "superflex": true,
+    "te_premium": true
+  },
+  "seat_identity": "picked_by team, as its original slot number. 'My next selection' belongs to the picker, not the slot; 82 of 360 picks were traded.",
+  "seat_map": {
+    "1": "WillyMo11",
+    "2": "TitleTown4",
+    "3": "SPChocobo",
+    "4": "LFG1298",
+    "5": "Pepper1991",
+    "6": "Snoopking51",
+    "7": "BIGDADDYTRUMP08",
+    "8": "TAmedic27",
+    "9": "KobeLulu",
+    "10": "sam51087",
+    "11": "CP3015",
+    "12": "MatttyyIce"
+  },
+  "picks_total": 360,
+  "picks_resolved": 307,
+  "picks_placeholder_rookie_assets": 48,
+  "picks_unresolved": {
+    "illegible": [
+      "Patrick Mahomes",
+      "Bucky Irving",
+      "Jacory Croskey-M\u2026",
+      "Mark Andrews",
+      "James Conner",
+      "DJ Giddens",
+      "Darren Waller"
+    ],
+    "unmatched": [
+      "Travis Hunter",
+      "Jacory Croskey-M\u2026",
+      "Kenneth Gainwell",
+      "Bruce Miller"
+    ],
+    "ambiguous": 1,
+    "total": 5
+  },
+  "resolver": "evidence/take_model/observed_take_distribution.resolve_picks",
+  "source_state": {
+    "git_head": "d062770",
+    "engine_files_modified_in_tree": [],
+    "sha256_12": {
+      "draft_strategy.py": "f33dc549932a",
+      "pick_synthesis.py": "626fb927c7fd",
+      "draft_room.py": "258a0d1f4511"
+    }
+  },
+  "complete": true,
+  "turns_done": 360,
+  "LIMITS": "Measures calibration as a DIAGNOSTIC. No number here may be written back into the engine as a constant (#56, and the capture's LIMITS).",
+  "exclusions": {
+    "unmeasured": 0,
+    "own_pick": 116,
+    "unknowable": 152,
+    "ghost": 152,
+    "undraftable_rookie": 850,
+    "turns_predicted": 348,
+    "turns_no_next": 12
+  },
+  "pairs": 6616,
+  "engine": {
+    "n": 6616,
+    "base_rate": 0.8242,
+    "brier": 0.13842,
+    "curve": [
+      {
+        "bucket": "0.0-0.1",
+        "n": 205,
+        "predicted_mean": 0.03,
+        "observed_rate": 0.4732
+      },
+      {
+        "bucket": "0.1-0.2",
+        "n": 87,
+        "predicted_mean": 0.1527,
+        "observed_rate": 0.5402
+      },
+      {
+        "bucket": "0.2-0.3",
+        "n": 115,
+        "predicted_mean": 0.2493,
+        "observed_rate": 0.6087
+      },
+      {
+        "bucket": "0.3-0.4",
+        "n": 142,
+        "predicted_mean": 0.3511,
+        "observed_rate": 0.4507
+      },
+      {
+        "bucket": "0.4-0.5",
+        "n": 183,
+        "predicted_mean": 0.4471,
+        "observed_rate": 0.6011
+      },
+      {
+        "bucket": "0.5-0.6",
+        "n": 264,
+        "predicted_mean": 0.5561,
+        "observed_rate": 0.6667
+      },
+      {
+        "bucket": "0.6-0.7",
+        "n": 366,
+        "predicted_mean": 0.6498,
+        "observed_rate": 0.7158
+      },
+      {
+        "bucket": "0.7-0.8",
+        "n": 526,
+        "predicted_mean": 0.7553,
+        "observed_rate": 0.7224
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 933,
+        "predicted_mean": 0.856,
+        "observed_rate": 0.7899
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 3795,
+        "predicted_mean": 0.968,
+        "observed_rate": 0.9249
+      }
+    ]
+  },
+  "control_oracle": {
+    "n": 6616,
+    "base_rate": 0.8242,
+    "brier": 0.0,
+    "curve": [
+      {
+        "bucket": "0.0-0.1",
+        "n": 1163,
+        "predicted_mean": 0.0,
+        "observed_rate": 0.0
+      },
+      {
+        "bucket": "0.1-0.2",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.2-0.3",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.3-0.4",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.4-0.5",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.5-0.6",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.6-0.7",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.7-0.8",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 5453,
+        "predicted_mean": 1.0,
+        "observed_rate": 1.0
+      }
+    ]
+  },
+  "control_constant_base_rate": {
+    "n": 6616,
+    "base_rate": 0.8242,
+    "brier": 0.14489,
+    "curve": [
+      {
+        "bucket": "0.0-0.1",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.1-0.2",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.2-0.3",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.3-0.4",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.4-0.5",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.5-0.6",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.6-0.7",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.7-0.8",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 6616,
+        "predicted_mean": 0.8242,
+        "observed_rate": 0.8242
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 0,
+        "predicted_mean": null,
+        "observed_rate": null
+      }
+    ]
+  },
+  "control_oracle_is_perfect": true,
+  "control_arithmetic_ceiling": {
+    "turns_resolved": 348,
+    "violations": 0,
+    "closest_to_ceiling": {
+      "index": 13,
+      "gap": 2,
+      "gap_resolved": 2,
+      "candidates": 46,
+      "taken": 2
+    },
+    "holds": true
+  },
+  "control_arithmetic_ceiling_resolved": {
+    "turns_resolved": 348,
+    "violations": 0,
+    "closest_to_ceiling": {
+      "index": 13,
+      "gap": 2,
+      "gap_resolved": 2,
+      "candidates": 46,
+      "taken": 2
+    },
+    "holds": true
+  },
+  "by_gap": [
+    {
+      "intervening_picks": 0,
+      "n": 471,
+      "predicted_mean": 1.0,
+      "observed_rate": 1.0,
+      "brier": 0.0
+    },
+    {
+      "intervening_picks": 1,
+      "n": 183,
+      "predicted_mean": 0.9731,
+      "observed_rate": 0.9727,
+      "brier": 0.0276
+    },
+    {
+      "intervening_picks": 2,
+      "n": 569,
+      "predicted_mean": 0.9558,
+      "observed_rate": 0.9719,
+      "brier": 0.03291
+    },
+    {
+      "intervening_picks": 3,
+      "n": 127,
+      "predicted_mean": 0.9374,
+      "observed_rate": 0.937,
+      "brier": 0.06248
+    },
+    {
+      "intervening_picks": 4,
+      "n": 258,
+      "predicted_mean": 0.922,
+      "observed_rate": 0.9496,
+      "brier": 0.05363
+    },
+    {
+      "intervening_picks": 5,
+      "n": 90,
+      "predicted_mean": 0.8857,
+      "observed_rate": 0.9,
+      "brier": 0.089
+    },
+    {
+      "intervening_picks": 6,
+      "n": 678,
+      "predicted_mean": 0.8857,
+      "observed_rate": 0.9115,
+      "brier": 0.09236
+    },
+    {
+      "intervening_picks": 7,
+      "n": 75,
+      "predicted_mean": 0.8603,
+      "observed_rate": 0.9067,
+      "brier": 0.11949
+    },
+    {
+      "intervening_picks": 8,
+      "n": 311,
+      "predicted_mean": 0.8641,
+      "observed_rate": 0.8875,
+      "brier": 0.10323
+    },
+    {
+      "intervening_picks": 9,
+      "n": 142,
+      "predicted_mean": 0.7982,
+      "observed_rate": 0.8521,
+      "brier": 0.11864
+    },
+    {
+      "intervening_picks": 10,
+      "n": 286,
+      "predicted_mean": 0.8394,
+      "observed_rate": 0.8566,
+      "brier": 0.1325
+    },
+    {
+      "intervening_picks": 11,
+      "n": 497,
+      "predicted_mean": 0.7725,
+      "observed_rate": 0.8028,
+      "brier": 0.188
+    },
+    {
+      "intervening_picks": 12,
+      "n": 303,
+      "predicted_mean": 0.8174,
+      "observed_rate": 0.8185,
+      "brier": 0.16113
+    },
+    {
+      "intervening_picks": 13,
+      "n": 53,
+      "predicted_mean": 0.7084,
+      "observed_rate": 0.7547,
+      "brier": 0.20383
+    },
+    {
+      "intervening_picks": 14,
+      "n": 280,
+      "predicted_mean": 0.7722,
+      "observed_rate": 0.7393,
+      "brier": 0.18954
+    },
+    {
+      "intervening_picks": 15,
+      "n": 116,
+      "predicted_mean": 0.7054,
+      "observed_rate": 0.7241,
+      "brier": 0.22479
+    },
+    {
+      "intervening_picks": 16,
+      "n": 743,
+      "predicted_mean": 0.7646,
+      "observed_rate": 0.7524,
+      "brier": 0.19151
+    },
+    {
+      "intervening_picks": 18,
+      "n": 220,
+      "predicted_mean": 0.7486,
+      "observed_rate": 0.6909,
+      "brier": 0.2151
+    },
+    {
+      "intervening_picks": 19,
+      "n": 28,
+      "predicted_mean": 0.745,
+      "observed_rate": 0.7857,
+      "brier": 0.20451
+    },
+    {
+      "intervening_picks": 20,
+      "n": 505,
+      "predicted_mean": 0.7086,
+      "observed_rate": 0.6871,
+      "brier": 0.22626
+    },
+    {
+      "intervening_picks": 22,
+      "n": 290,
+      "predicted_mean": 0.6459,
+      "observed_rate": 0.6448,
+      "brier": 0.2447
+    },
+    {
+      "intervening_picks": 23,
+      "n": 180,
+      "predicted_mean": 0.6981,
+      "observed_rate": 0.6389,
+      "brier": 0.21993
+    },
+    {
+      "intervening_picks": 25,
+      "n": 45,
+      "predicted_mean": 0.7336,
+      "observed_rate": 0.6444,
+      "brier": 0.23931
+    },
+    {
+      "intervening_picks": 27,
+      "n": 16,
+      "predicted_mean": 0.6131,
+      "observed_rate": 0.5,
+      "brier": 0.2482
+    },
+    {
+      "intervening_picks": 30,
+      "n": 32,
+      "predicted_mean": 0.6889,
+      "observed_rate": 0.6562,
+      "brier": 0.28026
+    },
+    {
+      "intervening_picks": 32,
+      "n": 22,
+      "predicted_mean": 0.5878,
+      "observed_rate": 0.5909,
+      "brier": 0.19531
+    },
+    {
+      "intervening_picks": 37,
+      "n": 21,
+      "predicted_mean": 0.5412,
+      "observed_rate": 0.5238,
+      "brier": 0.18234
+    },
+    {
+      "intervening_picks": 40,
+      "n": 7,
+      "predicted_mean": 0.3384,
+      "observed_rate": 0.5714,
+      "brier": 0.25165
+    },
+    {
+      "intervening_picks": 45,
+      "n": 2,
+      "predicted_mean": 0.288,
+      "observed_rate": 1.0,
+      "brier": 0.5072
+    },
+    {
+      "intervening_picks": 47,
+      "n": 44,
+      "predicted_mean": 0.5881,
+      "observed_rate": 0.5227,
+      "brier": 0.2566
+    },
+    {
+      "intervening_picks": 52,
+      "n": 11,
+      "predicted_mean": 0.3503,
+      "observed_rate": 0.2727,
+      "brier": 0.26456
+    },
+    {
+      "intervening_picks": 56,
+      "n": 6,
+      "predicted_mean": 0.2763,
+      "observed_rate": 0.3333,
+      "brier": 0.15214
+    },
+    {
+      "intervening_picks": 58,
+      "n": 5,
+      "predicted_mean": 0.3654,
+      "observed_rate": 0.4,
+      "brier": 0.34026
+    }
+  ],
+  "by_rank_band": [
+    {
+      "board_rank": "0-0",
+      "n": 87,
+      "predicted_mean": 0.2698,
+      "observed_rate": 0.5172,
+      "brier": 0.25777
+    },
+    {
+      "board_rank": "1-2",
+      "n": 503,
+      "predicted_mean": 0.5674,
+      "observed_rate": 0.7535,
+      "brier": 0.22835
+    },
+    {
+      "board_rank": "3-4",
+      "n": 513,
+      "predicted_mean": 0.7084,
+      "observed_rate": 0.7602,
+      "brier": 0.18335
+    },
+    {
+      "board_rank": "5-9",
+      "n": 1204,
+      "predicted_mean": 0.7612,
+      "observed_rate": 0.7591,
+      "brier": 0.16441
+    },
+    {
+      "board_rank": "10-19",
+      "n": 1599,
+      "predicted_mean": 0.8319,
+      "observed_rate": 0.828,
+      "brier": 0.1309
+    },
+    {
+      "board_rank": "20+",
+      "n": 2710,
+      "predicted_mean": 0.928,
+      "observed_rate": 0.886,
+      "brier": 0.10228
+    }
+  ],
+  "beats_constant": true,
+  "sensitivity_including_undraftable_rookies": {
+    "n": 7466,
+    "base_rate": 0.8442,
+    "brier": 0.15683,
+    "curve": [
+      {
+        "bucket": "0.0-0.1",
+        "n": 378,
+        "predicted_mean": 0.0255,
+        "observed_rate": 0.7143
+      },
+      {
+        "bucket": "0.1-0.2",
+        "n": 121,
+        "predicted_mean": 0.1488,
+        "observed_rate": 0.6694
+      },
+      {
+        "bucket": "0.2-0.3",
+        "n": 142,
+        "predicted_mean": 0.2525,
+        "observed_rate": 0.6831
+      },
+      {
+        "bucket": "0.3-0.4",
+        "n": 181,
+        "predicted_mean": 0.3511,
+        "observed_rate": 0.5691
+      },
+      {
+        "bucket": "0.4-0.5",
+        "n": 209,
+        "predicted_mean": 0.4473,
+        "observed_rate": 0.6507
+      },
+      {
+        "bucket": "0.5-0.6",
+        "n": 318,
+        "predicted_mean": 0.5559,
+        "observed_rate": 0.7233
+      },
+      {
+        "bucket": "0.6-0.7",
+        "n": 422,
+        "predicted_mean": 0.6488,
+        "observed_rate": 0.7536
+      },
+      {
+        "bucket": "0.7-0.8",
+        "n": 593,
+        "predicted_mean": 0.7546,
+        "observed_rate": 0.7538
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 1026,
+        "predicted_mean": 0.8558,
+        "observed_rate": 0.809
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 4076,
+        "predicted_mean": 0.9683,
+        "observed_rate": 0.9301
+      }
+    ]
+  }
+}

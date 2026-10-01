@@ -10,23 +10,23 @@ import json
 import unittest
 
 import draft_board_ui as ui
+import pick_synthesis as ps
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 
 def _candidate(**overrides) -> CandidateSnapshot:
     base = dict(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
-        universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
-        team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
+        universal_value=88.5, need_bonus=6.0, team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
-        denial_value=8.4, denial_team="Roster 9", rival_premium=8.4,
+        denial_value=8.4, rival_premium_basis=None, denial_basis="measured", denial_team="Roster 9", rival_premium=8.4,
         positional_forfeit=77.9, position_expected_taken=2.4,
         positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
         near_tie_with_leader=True, cliff_protection=True, block_opportunity=True,
-        pure_value=False, context_elevated=False,
-        consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=250.0,
+        pure_value=False, consensus_rank=None, consensus_tier=None, projected_points=250.0,
     )
     base.update(overrides)
     return CandidateSnapshot(**base)
@@ -52,7 +52,12 @@ class SerializeCandidateTests(unittest.TestCase):
         self.assertEqual(row["rivalPremium"], c.rival_premium)
         self.assertEqual(row["denialTeam"], c.denial_team)
         self.assertEqual(row["needBonus"], c.need_bonus)
-        self.assertEqual(row["eligBonus"], c.eligibility_bonus)
+        self.assertEqual(row["fillsRequiredSlot"], c.fills_required_slot)
+        # MANDATE 2.5: the companion to `uv`, which is health-adjusted. Read unmodified like the
+        # rest -- a serializer that transformed either would be a second place deciding what the
+        # designation means.
+        self.assertEqual(row["injuryStatus"], c.injury_status)
+        self.assertEqual(row["availabilityBasis"], c.availability_basis)
 
     def test_positional_cliff_fields_unpacked_when_present(self):
         row = ui.serialize_candidate(_candidate())
@@ -80,24 +85,24 @@ class SerializeCandidateTests(unittest.TestCase):
         ))
         self.assertEqual(row["forces"], [])
 
-    def test_context_gap_elevated(self):
-        row = ui.serialize_candidate(_candidate(context_elevated=True, pure_value=False))
-        self.assertEqual(row["contextGap"], "elevated")
-
     def test_context_gap_suppressed(self):
-        row = ui.serialize_candidate(_candidate(context_elevated=False, pure_value=True))
+        row = ui.serialize_candidate(_candidate(pure_value=True))
         self.assertEqual(row["contextGap"], "suppressed")
 
-    def test_context_gap_none_when_neither(self):
-        row = ui.serialize_candidate(_candidate(context_elevated=False, pure_value=False))
+    def test_context_gap_none_when_pure_value_is_not_set(self):
+        row = ui.serialize_candidate(_candidate(pure_value=False))
         self.assertIsNone(row["contextGap"])
 
-    def test_context_gap_prefers_elevated_when_both_somehow_true(self):
-        # Not mutually exclusive by construction (see decision_path_flags' docstring) --
-        # this pins which direction the UI shows when a contrived case satisfies both,
-        # rather than leaving it to incidental dict-ordering.
-        row = ui.serialize_candidate(_candidate(context_elevated=True, pure_value=True))
-        self.assertEqual(row["contextGap"], "elevated")
+    def test_the_elevated_direction_is_gone(self):
+        """#25, ruled. Two tests lived here that this replaces: one for the "elevated" glyph,
+        and one pinning that "elevated" WON when a contrived candidate satisfied both
+        directions. That precedence is the part worth remembering -- a flag firing on one row
+        across 36 formats was taking presentation priority over `pure_value`, which fires on
+        real populations. The Context Gap is one-directional until something can express the
+        other honestly."""
+        self.assertIsNone(ui.serialize_candidate(_candidate(pure_value=False))["contextGap"])
+        self.assertEqual(
+            ui.serialize_candidate(_candidate(pure_value=True))["contextGap"], "suppressed")
 
     def test_necessity_class_mapping_covers_every_real_label(self):
         for label, expected_class in [
@@ -370,12 +375,12 @@ class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
                           horizon_basis=horizon_basis)
 
     def test_a_measured_floor_is_stated_without_a_hedge(self):
-        note = ui._waiting_note(self._with_basis("measured"))
+        note = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_MEASURED))
         self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
         self.assertNotIn("estimate", note["title"].lower())
 
     def test_an_imputed_floor_says_so(self):
-        note = ui._waiting_note(self._with_basis("imputed"))
+        note = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_IMPUTED))
         self.assertIsNotNone(note, "vacuous: no waiting note produced at all")
         self.assertIn("estimate", note["title"].lower())
         self.assertIn("too thin to measure", note["title"])
@@ -383,6 +388,143 @@ class WaitingCostProseSaysWhenTheFloorIsAssumed(unittest.TestCase):
     def test_the_two_actually_differ(self):
         # Guards the pair: if the note ignored horizon_basis entirely, both tests above could
         # still pass off one shared string that happened to contain the word.
-        measured = ui._waiting_note(self._with_basis("measured"))["title"]
-        imputed = ui._waiting_note(self._with_basis("imputed"))["title"]
+        measured = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_MEASURED))["title"]
+        imputed = ui._waiting_note(self._with_basis(ps.HORIZON_BASIS_IMPUTED))["title"]
         self.assertNotEqual(measured, imputed)
+
+
+class TheJavaScriptSurvivesAbsenceTests(unittest.TestCase):
+    """#173. The board's prose lives in a JavaScript string the Python AST scan cannot see, and
+    it carried five unguarded reads of Optional numbers: an unpriced position-best -- which
+    narrow_candidates always includes, and which #154's backstop can promote to LEADER --
+    rendered as "null" in a sentence and "NaN" in a subtraction.
+
+    So the JS is EXECUTED here, under Node against a minimal DOM stub, on the four rows the
+    contract demands (a priced leader, an unpriced row with every Optional null, a row of
+    measured ZEROS, a row with NEGATIVE value), and again with the unpriced row as leader.
+    Skipped, loudly, when no Node is on the path -- a skip is visible in the run; a regex over
+    the string would only look like coverage."""
+
+    _DOM_STUB = r"""
+const _els = {};
+function _el(id) {
+  if (!_els[id]) _els[id] = { innerHTML: "", addEventListener() {}, setAttribute() {}, focus() {},
+                              querySelectorAll() { return []; }, contains() { return false; } };
+  return _els[id];
+}
+globalThis.document = {
+  getElementById: _el,
+  querySelectorAll() { return []; },
+};
+"""
+
+    def _rows(self):
+        priced = _candidate(player_id="p", name="Priced Leader", team_acquisition_value=97.4)
+        unpriced = _candidate(
+            player_id="u", name="Unpriced Best", position="K", bpa=None, universal_value=None,
+            team_acquisition_value=None, survival_probability=None, survival_basis=None, intervening_picks=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
+            denial_team=None, rival_premium=None, positional_forfeit=None,
+            position_expected_taken=None, positional_cliff=None, near_tie_with_leader=None,
+            cliff_protection=True, block_opportunity=True, pure_value=True,
+            projected_points=None, need_bonus=None,
+            necessity_label="CLOSE CALL",
+        )
+        zeros = _candidate(
+            player_id="z", name="Measured Zeros", universal_value=0.0, team_acquisition_value=0.0,
+            need_bonus=0.0, survival_probability=0.0, denial_value=0.0, rival_premium_basis=None, denial_basis="measured",
+            rival_premium=0.0, positional_forfeit=0.0, projected_points=0.0,
+            positional_cliff={"tier": "LOW", "gap": 0.0, "typical_gap": 0.0},
+        )
+        negative = _candidate(
+            player_id="n", name="Negative Value", universal_value=-16.1,
+            team_acquisition_value=-16.1, near_tie_with_leader=True, )
+        return priced, unpriced, zeros, negative
+
+    def _render(self, candidates):
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node is not on the path; the board's JS cannot be executed here")
+        payload = ui.serialize_snapshot(_snapshot(candidates), pick_header="ON THE CLOCK — 3.04",
+                                        state_tags=["3RR ACTIVE"])
+        html = ui.render_board_html(payload)
+        script = html.split("<script>", 1)[1].split("</script>", 1)[0]
+        program = (self._DOM_STUB + script
+                   + '\nconsole.log(JSON.stringify({board: _el("board").innerHTML, '
+                     'bar: _el("state-bar").innerHTML, legend: _el("legend").innerHTML}));\n')
+        run = subprocess.run([node, "-e", program], capture_output=True, text=True, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        return json.loads(run.stdout.strip().splitlines()[-1])
+
+    def _row(self, board_html, player_id):
+        start = board_html.index(f'data-id="{player_id}"')
+        end = board_html.find('data-id="', start + 10)
+        return board_html[start:end if end != -1 else None]
+
+    def test_no_row_renders_null_nan_or_undefined(self):
+        priced, unpriced, zeros, negative = self._rows()
+        for order in ((priced, unpriced, zeros, negative), (unpriced, priced, zeros, negative)):
+            with self.subTest(leader=order[0].name):
+                out = self._render(list(order))
+                for token in ("null", "NaN", "undefined"):
+                    self.assertNotIn(token, out["board"], f"{token!r} rendered to a person")
+                    self.assertNotIn(token, out["bar"])
+                    self.assertNotIn(token, out["legend"])
+
+    def test_an_unpriced_value_is_a_deliberate_mark_not_a_number(self):
+        priced, unpriced, zeros, negative = self._rows()
+        row = self._row(self._render([priced, unpriced, zeros, negative])["board"], "u")
+        self.assertIn('class="tav mono absent"', row)
+        self.assertIn(">—<", row)
+        self.assertIn("Unpriced", row)
+        # Every optional clause is omitted, not filled -- no "0.0 universal-value points".
+        self.assertNotIn("0.0 universal-value points", row)
+        self.assertNotIn("about <b>", row)
+
+    def test_a_measured_zero_is_rendered_as_zero(self):
+        priced, unpriced, zeros, negative = self._rows()
+        row = self._row(self._render([priced, unpriced, zeros, negative])["board"], "z")
+        self.assertIn('class="tav mono"', row)
+        self.assertNotIn("absent", row)
+        self.assertIn(">0<", row, "a measured 0 acquisition value is a number")
+        # INVERTED (#206). A measured survival of 0.0 IS a number and the JS still renders it
+        # as one -- that is what this test defends and the `num()` guard is unchanged. But the
+        # chip is gated ahead of that check now, so while survival is uncalibrated even a
+        # measured 0.0 is withheld. The zero-is-not-absent contract is re-asserted on the
+        # quantities that are still shown (tav, cliff typical) two lines below.
+        self.assertIn("SURV <b>\u2014</b>", row)
+        self.assertIn("Withheld: this estimate failed its calibration check", row)
+        self.assertIn("against a typical 0.0", row, "a measured flat position renders its 0.0")
+
+    def test_a_negative_value_keeps_its_sign(self):
+        priced, unpriced, zeros, negative = self._rows()
+        row = self._row(self._render([priced, unpriced, zeros, negative])["board"], "n")
+        self.assertIn(">-16<", row)
+        self.assertIn("acquisition-value point(s) off the board leader", row)
+
+    def test_the_source_carries_no_zero_coalescing_idiom(self):
+        """`|| 0` / `?? 0` render an absence as a measured zero. The one occurrence allowed is
+        the comment that says so."""
+        script = ui._TEMPLATE_SOURCE.split("<script>", 1)[1]
+        code = "\n".join(ln for ln in script.splitlines() if not ln.strip().startswith("//"))
+        self.assertNotIn("|| 0", code)
+        self.assertNotIn("?? 0", code)
+
+    def test_the_force_glyphs_are_text_not_colour_emoji(self):
+        """CSS `color:` does not apply to a colour emoji, so a force whose glyph was an emoji
+        never showed its token. Every glyph must be a single BMP text character."""
+        import re
+        glyphs = re.search(r"const TICK_GLYPH = \{([^}]*)\}", ui._TEMPLATE_SOURCE).group(1)
+        for glyph in re.findall(r'"([^"]+)"', glyphs):
+            with self.subTest(glyph=glyph):
+                self.assertEqual(len(glyph), 1)
+                self.assertLess(ord(glyph), 0x1F000, "a colour emoji cannot take a fill")
+                self.assertNotIn(glyph, "🛡⚔💎")
+
+    def test_ticks_are_legible_at_rest(self):
+        css = ui._TEMPLATE_SOURCE.split("<script>", 1)[0]
+        tick_rule = css[css.index(".tick {"):css.index("}", css.index(".tick {"))]
+        self.assertNotIn("opacity", tick_rule)
+        self.assertNotIn("grayscale", tick_rule)

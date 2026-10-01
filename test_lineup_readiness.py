@@ -28,13 +28,23 @@ class ComputeReadinessTests(unittest.TestCase):
         self.assertEqual(result["filled_starting_slots"], 2)
 
     def test_starter_injury_flag_included(self):
-        roster = [_row(slot="Starter", injury_status="Questionable")]
+        roster = [_row(slot="Starter", injury_status="IR")]
         result = compute_readiness(roster, {}, None, total_starting_slots=1)
         self.assertEqual(len(result["starter_injury_flags"]), 1)
         self.assertEqual(result["starter_injury_flags"][0]["name"], "Ja'Marr Chase")
 
+    def test_a_QUESTIONABLE_starter_is_not_a_lineup_problem(self):
+        """Inverted, not deleted (#191). This case used to be the one the test above covered.
+
+        The module docstring always said "a REAL injury_status"; that word is now enforced.
+        A Questionable starter raised as a problem is a claim the engine cannot support --
+        Sleeper projects such players for a full season."""
+        roster = [_row(slot="Starter", injury_status="Questionable")]
+        result = compute_readiness(roster, {}, None, total_starting_slots=1)
+        self.assertEqual(result["starter_injury_flags"], [])
+
     def test_bench_injury_is_not_a_starter_flag(self):
-        roster = [_row(slot="Bench", injury_status="Questionable")]
+        roster = [_row(slot="Bench", injury_status="IR")]
         result = compute_readiness(roster, {}, None, total_starting_slots=1)
         self.assertEqual(result["starter_injury_flags"], [])
 
@@ -81,7 +91,7 @@ class ComputeReadinessTests(unittest.TestCase):
     def test_never_invents_a_start_sit_recommendation(self):
         # This module answers "is there a problem," never "what should I do about it" -- no
         # key names or produces a per-player "should_start"/"recommendation" verdict.
-        roster = [_row(slot="Starter", injury_status="Questionable"), _row(name="B", slot="Bench")]
+        roster = [_row(slot="Starter", injury_status="IR"), _row(name="B", slot="Bench")]
         depth = {"My Team": {"WR": _cell(1, 50)}, "Rival": {"WR": _cell(5, 400)}}
         result = compute_readiness(roster, depth, "My Team", total_starting_slots=1)
         banned = ("recommend", "should_start", "should_sit", "verdict")

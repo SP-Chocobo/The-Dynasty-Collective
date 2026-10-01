@@ -32,8 +32,12 @@ covered only draft_board_ui's JS prose. Counting every surface that renders a va
 number, the rate is far lower -- the Streamlit metric cards state no unit at all, and there are
 two copies of them (the live Draft Room panel and its Mock Draft twin).
 
-NOTHING IS RENAMED OR NORMALIZED HERE. These tests pin the current copy so that a change to it
-is deliberate and visible. INVERT them on repair; do not delete them.
+REPAIRED (D10 option A, the one option independent of #58): nothing is normalised and no
+number changes, but every surface now says what its number IS. The vocabulary lives in
+design_system.DISPLAY_CONTRACT / VALUE_UNIT / VALUE_UNIT_SHORT, and the two Draft Room panels
+render their cards through ONE function (app._render_pick_metrics) rather than two copies of
+identical copy. The tests below were inverted from the pinning form they had before the
+repair, not deleted; the mechanical half (TheScaleIsNotAPointsTotalTests) is unchanged.
 
 These are source-text tests, and that is stated rather than hidden: for UI copy the source text
 IS the artifact. They prove what the app will render, not what a user concludes from it.
@@ -41,75 +45,362 @@ IS the artifact. They prove what the app will render, not what a user concludes 
 
 from __future__ import annotations
 
+import ast
 import re
 import unittest
 from pathlib import Path
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 _BOARD = (_HERE / "draft_board_ui.py").read_text()
 
 
-class TheTwoUnitsSitAdjacentTests(unittest.TestCase):
+#: READ THE CODE, NOT THE TEXT OF IT (#200, applied here in #52 phase 6).
+#:
+#: Three assertions in this file used to check the card's formatting by grepping the renderer's
+#: SOURCE for `rec.universal_value:.0f`. They were right about what they wanted and wrong about
+#: how they asked: the moment those f-strings moved behind a named helper -- because Python and
+#: the browser were found to round half values differently and the rule needed ONE home -- all
+#: three went red while every claim they make stayed true. A guard that cannot survive its
+#: subject being refactored is measuring the spelling, not the behaviour.
+#:
+#: So the figures are read out of the parsed function instead, and the rounding itself is
+#: asserted against design_system.figure, which is the code that now does it.
+def _rendered_figures() -> dict[str, int]:
+    """{field name: digits} for every card in _render_pick_metrics that renders an engine
+    figure through the shared renderer, read from the AST."""
+    tree = ast.parse(_APP)
+    fn = next((n for n in ast.walk(tree)
+               if isinstance(n, ast.FunctionDef) and n.name == "_render_pick_metrics"), None)
+    assert fn is not None, "_render_pick_metrics is gone; this file is about that function"
+    out: dict[str, int] = {}
+    for node in ast.walk(fn):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "_figure" and node.args):
+            continue
+        target = node.args[0]
+        name = target.attr if isinstance(target, ast.Attribute) else getattr(target, "id", None)
+        if name is None:
+            continue
+        digits = 0
+        if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
+            digits = node.args[1].value
+        out[name] = digits
+    return out
 
-    def test_universal_value_and_projected_points_are_rendered_identically(self):
-        """Same format, same card row, different units. If either format ever changes this
-        fails, which is the point: the two being indistinguishable is the finding."""
-        for panel in ("metric_row1", "mock_metric_row1"):
-            with self.subTest(panel=panel):
-                self.assertRegex(_APP, rf'{panel}\[0\]\.metric\("Universal Value", f"\{{[a-z_.]+:\.0f\}}"\)')
-                self.assertIn('"Projected Points", f"', _APP)
-                self.assertRegex(_APP, rf'{panel}\[2\]\.metric\("Your Acquisition Value", f"\{{[a-z_.]+:\.0f\}}"\)')
-
-    def test_the_value_cards_state_no_unit_at_all(self):
-        """'Projected Points' names its unit in its own label. Its two neighbours do not."""
-        self.assertIn('"Projected Points"', _APP)
-        for bare_label in ('"Universal Value"', '"Your Acquisition Value"',
-                           '"Opportunity Cost of Waiting"', '"Expected Value If You Wait"',
-                           '"Denial Value"'):
-            with self.subTest(label=bare_label):
-                self.assertIn(bare_label, _APP)
-                self.assertNotIn(bare_label.rstrip('"') + ' (universal-value points)"', _APP)
-
-    def test_both_draft_panels_carry_the_same_copy(self):
-        """The live Draft Room panel and the Mock Draft twin are separate code. A repair that
-        fixed one and not the other would be worse than neither, so the duplication is pinned."""
-        for label in ("Universal Value", "Your Acquisition Value", "Denial Value"):
-            with self.subTest(label=label):
-                self.assertEqual(_APP.count(f'"{label}"'), 2,
-                                 "both panels must be repaired together")
 
 
-class TheBoardsProseQualifiesItsUnitUnevenlyTests(unittest.TestCase):
-    """§20.8's count, re-derived here so it cannot drift out of date."""
+def _scanned_sources():
+    """Every production module that could format an engine quantity -- NOT just the ones that
+    import streamlit.
+
+    THE ORIGINAL SCOPE WAS `ui_source.text()`, which resolves to ['app.py'] alone, and that is
+    how the seventh crash site survived the fix that closed the other six. `screen_context.py`
+    formats team_acquisition_value with no guard and reaches the Draft Room through
+    render_debate_chip -- but it draws no widgets, so it imports no streamlit, so a scope keyed
+    on "is this a UI file" could not see it. The scope was chosen by an INCIDENTAL property.
+
+    Formatting an absent value raises wherever it happens, so the scan covers every production
+    module and lets the AST decide. A curated list would only move the blind spot to whichever
+    file is forgotten next."""
+    for path in sorted(_HERE.glob("*.py")):
+        if path.name.startswith("test_") or path.name == "conftest.py":
+            continue
+        yield path.name, path.read_text()
+
+
+class TheTwoUnitsAreToldApartTests(unittest.TestCase):
+    """INVERTED on repair. The cards used to sit UV / projected points / TAV in one row, all
+    `.0f`, with only the middle one naming a unit. They still share a format spec -- that was
+    never the defect -- but every label now carries its unit and every card a help sentence,
+    all from design_system.DISPLAY_CONTRACT, and both panels render through one function."""
+
+    def _renderer(self):
+        return ui_source.block("def _render_pick_metrics(rec)", until="\n\n\ndef ")
+
+    def test_both_draft_panels_render_through_one_function(self):
+        """One definition, two call sites (live Draft Room and its Mock Draft twin). The old
+        pin counted two copies of the label; a shared renderer is what makes "repaired
+        together" a property of the code rather than of a test's vigilance."""
+        self.assertEqual(_APP.count("def _render_pick_metrics("), 1)
+        self.assertIn("_render_pick_metrics(rec)", _APP)
+        self.assertIn("_render_pick_metrics(mock_rec)", _APP)
+        for bare in ('"Universal Value"', '"Your Acquisition Value"', '"Denial Value"',
+                     '"Opportunity Cost of Waiting"', '"Expected Value If You Wait"'):
+            with self.subTest(label=bare):
+                self.assertNotIn(bare, _APP, "a bare, unit-less label came back")
+
+    def test_every_card_takes_its_label_and_help_from_the_contract(self):
+        import design_system as ds
+        block = self._renderer()
+        for quantity in ds.DISPLAY_CONTRACT:
+            with self.subTest(quantity=quantity):
+                self.assertIn(f'label("{quantity}")', block)
+                self.assertIn(f'help=note("{quantity}")', block)
+
+    def test_every_value_label_names_the_value_unit_and_the_points_label_names_season(self):
+        import design_system as ds
+        for quantity, entry in ds.DISPLAY_CONTRACT.items():
+            with self.subTest(quantity=quantity):
+                if entry["unit"] == ds.VALUE_UNIT:
+                    self.assertIn(f"({ds.VALUE_UNIT_SHORT})", entry["label"])
+                    self.assertIn(ds.VALUE_UNIT, entry["help"].lower(),
+                                  "the help sentence must spell the short label out")
+                else:
+                    self.assertNotIn(ds.VALUE_UNIT_SHORT, entry["label"])
+        self.assertIn("(season)", ds.DISPLAY_CONTRACT["projected_points"]["label"])
+        self.assertIn("NOT fantasy points", ds.DISPLAY_CONTRACT["universal_value"]["help"])
+
+    def test_the_format_specs_are_still_identical_which_is_now_fine(self):
+        """The two numbers are STILL rendered to the same precision side by side. The repair is
+        the label, not the number -- D10 option B (rescaling) waits on #58 and must not be
+        smuggled in. Read from the parsed renderer rather than from its source text, so that
+        moving the formatting behind a named helper is not mistaken for rescaling it."""
+        figures = _rendered_figures()
+        for field in ("universal_value", "projected_points", "team_acquisition_value"):
+            with self.subTest(field=field):
+                self.assertIn(field, figures, "this card stopped rendering an engine figure")
+                self.assertEqual(figures[field], 0, "the value cards drifted apart in precision")
+        # And the shared renderer really is a rounding, not a rescaling: a large figure comes
+        # back at its own magnitude. This is the half of the claim a source scan never reached.
+        import design_system as ds
+        self.assertEqual(ds.figure(1234.0), "1234")
+        self.assertEqual(ds.figure(-1234.0), "-1234")
+
+    def test_a_measured_zero_denial_value_is_a_number_not_a_dash(self):
+        """Found while repairing: `rec.denial_value if rec.denial_value else "—"` rendered a
+        real 0.0 -- no rival positioned to gain -- as the same dash an unmeasured value gets.
+        The absence contract in the other direction."""
+        import design_system as ds
+        # The claim, asserted where the behaviour now lives: a measured zero is a number and an
+        # absence is not. Truthiness would collapse the two, which is the defect this test was
+        # written for; `design_system.figure` distinguishes them by returning None only for an
+        # absent or non-finite input.
+        self.assertEqual(ds.figure(0.0, 1), "0.0")
+        self.assertIsNone(ds.figure(None, 1))
+        # ...and denial_value is wired through that renderer rather than a truthiness branch.
+        self.assertIn("denial_value", _rendered_figures())
+        self.assertNotIn("if rec.denial_value else", self._renderer())
+
+    def test_a_measured_no_run_is_a_word_not_a_dash(self):
+        block = self._renderer()
+        self.assertIn('"DETECTED" if rec.position_run_detected else "NONE"', block)
+
+    def test_the_best_alternative_line_carries_its_unit(self):
+        import design_system as ds
+        block = ui_source.block("def _best_alternative_line(alt)", until="\n\n\n")
+        self.assertIn("design_system.VALUE_UNIT_SHORT", block)
+        self.assertEqual(_APP.count("_best_alternative_line("), 3, "def + two call sites")
+
+    def test_the_diff_drawer_deltas_carry_their_unit(self):
+        import design_system as ds
+        import pick_synthesis as ps
+        self.assertIn("design_system.DIFF_UNITS.get(k, '')", _APP)
+        missing = [f for f in ps._DIFF_FIELDS if f not in ds.DIFF_UNITS]
+        self.assertEqual(missing, [], "diff fields with no unit in the drawer")
+
+
+class AbsenceReachesTheMetricCardsTests(unittest.TestCase):
+    """Two of the six cards in `metric_row1` used to format an Optional field with `:.0f` and
+    no guard, which raises TypeError on None and takes the whole Draft Room render with it.
+
+    The pattern was not random. In the SAME row, `projected_points` and `survival_probability`
+    were guarded, while `universal_value` and `team_acquisition_value` -- the two the absence
+    contract explicitly says WILL be None when a position has no replacement level -- were not.
+    The guard had been applied to the fields that rarely need it and skipped on the fields the
+    contract names.
+
+    REACHABILITY is the part worth recording: `_board_order` sorts None-scored rows last, so a
+    None leader looks impossible. But #154's feasibility backstop sorts `_feasible` AHEAD of
+    `final_score`, so an unpriced candidate that fills a REQUIRED slot is promoted over priced
+    candidates that do not -- measured directly as
+    `unpriced QB, feasibility BINDING -> ['qb1','qb2','rb1','wr1']`. Tier 3 is what made this
+    reachable; the backstop and the card were each correct alone.
+
+    This is a CLASS test on purpose. Pinning the four repaired sites would not stop the next
+    Optional field from being rendered bare."""
+
+    #: Fields the dataclass itself declares can be absent. Derived, so a new Optional field is
+    #: covered the day it is added rather than the day someone remembers to extend a list.
+    def _optional_snapshot_fields(self):
+        import typing
+        import pick_synthesis
+        hints = typing.get_type_hints(pick_synthesis.CandidateSnapshot)
+        out = set()
+        for name, hint in hints.items():
+            if type(None) in typing.get_args(hint):
+                out.add(name)
+        return out
+
+    def test_the_dataclass_really_does_declare_these_optional(self):
+        # Non-vacuity: if this returned an empty set the scan below would pass trivially.
+        optional = self._optional_snapshot_fields()
+        self.assertIn("universal_value", optional)
+        self.assertIn("team_acquisition_value", optional)
+        self.assertGreater(len(optional), 5)
+
+    def test_no_optional_field_is_formatted_without_a_none_guard(self):
+        """AST, not regex: find every f-string that applies a format spec to `<x>.<field>` for
+        an Optional field, and require the enclosing expression to test that same field against
+        None. A conditional whose test names a DIFFERENT field does not count."""
+        import ast
+        optional = self._optional_snapshot_fields()
+        unguarded = []
+        for module_name, module_src in _scanned_sources():
+            unguarded.extend(self._unguarded_in(ast.parse(module_src), optional, module_name))
+        self.assertEqual(unguarded, [], "Optional field formatted with no `is not None` guard")
+
+    #: Sites that are SAFE for a reason no static scan can see, each with that reason. Kept
+    #: deliberately tiny: an allowlist is a place defects hide, so an entry earns its place only
+    #: by naming an invariant a reader can check.
+    _TRANSITIVELY_GUARDED = {
+        # draft_board_ui._waiting_note returns early when `waiting_cost is None`, and
+        # waiting_cost IS projected_points minus horizon_floor (draft_room.py:1379/:1406) --
+        # so projected_points cannot be None past that guard. The protection is real but
+        # TRANSITIVE: the field is guarded by testing something derived FROM it, which no
+        # reasonable AST check can follow. If waiting_cost ever stops deriving from
+        # projected_points, this entry becomes a live crash and must be deleted.
+        ("draft_board_ui.py", "projected_points"),
+    }
+
+    def _unguarded_in(self, tree, optional, module_name):
+        import ast
+
+        unguarded = []
+        # An enclosing `if <field> is None: return` guards every later line in that function.
+        # The original scan saw only ternary guards, so it called four safe board sites unsafe
+        # the moment its file scope widened -- a scan that cries wolf gets switched off, which
+        # would cost more than the blind spot it replaced.
+        early_returned = set()
+        for fn in ast.walk(tree):
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            names = set()
+            for stmt in fn.body:
+                if not isinstance(stmt, ast.If):
+                    continue
+                if not any(isinstance(n, ast.Return) for n in stmt.body):
+                    continue
+                names.update(n.attr for n in ast.walk(stmt.test) if isinstance(n, ast.Attribute))
+            for node in ast.walk(fn):
+                if isinstance(node, ast.JoinedStr):
+                    early_returned.add((id(node), frozenset(names)))
+        early_map = {}
+        for node_id, names in early_returned:
+            early_map.setdefault(node_id, set()).update(names)
+        guarded_by = {}   # id(JoinedStr) -> set of attribute names tested against None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.IfExp):
+                tested = {n.attr for n in ast.walk(node.test) if isinstance(n, ast.Attribute)}
+                for branch in (node.body, node.orelse):
+                    for sub in ast.walk(branch):
+                        if isinstance(sub, ast.JoinedStr):
+                            guarded_by.setdefault(id(sub), set()).update(tested)
+            # AND AN ORDINARY `if` STATEMENT, which is the shape this scan could not see at all.
+            # It knew two: an early `return` at the top of a function, and a ternary. The most
+            # natural Python guard -- `if x.field is not None: <render it>` -- was neither, so
+            # `pick_debate`'s three-term sum came back as unguarded while being fully guarded. A
+            # scan that reports a real guard as a defect gets worked around at the call site, and
+            # contorting production code to suit a checker is worse than the blind spot. Both
+            # branches count, exactly as they do for the ternary above: `if x.f is None: <a> else:
+            # <b>` guards `<b>` just as `if x.f is not None: <b>` does.
+            elif isinstance(node, ast.If):
+                tested = {n.attr for n in ast.walk(node.test) if isinstance(n, ast.Attribute)}
+                for branch in (node.body, node.orelse):
+                    for stmt in branch:
+                        for sub in ast.walk(stmt):
+                            if isinstance(sub, ast.JoinedStr):
+                                guarded_by.setdefault(id(sub), set()).update(tested)
+
+        unguarded = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.JoinedStr):
+                continue
+            for part in node.values:
+                if not (isinstance(part, ast.FormattedValue) and part.format_spec is not None):
+                    continue
+                if not isinstance(part.value, ast.Attribute):
+                    continue
+                field = part.value.attr
+                if field not in optional:
+                    continue
+                if field in guarded_by.get(id(node), set()):
+                    continue
+                if field in early_map.get(id(node), set()):
+                    continue
+                if (module_name, field) in self._TRANSITIVELY_GUARDED:
+                    continue
+                unguarded.append(f"{module_name}:{part.lineno} {field}")
+        return unguarded
+
+
+class TheBoardsProseQualifiesItsUnitEverywhereTests(unittest.TestCase):
+    """§20.8's count, re-derived here so it cannot drift out of date -- INVERTED on repair.
+    The two "-point" shortenings are gone, the focus metrics carry a unit suffix, and a legend
+    line states both scales once above the board."""
 
     def test_one_phrase_names_the_full_unit(self):
         self.assertIn("universal-value points", _BOARD)
 
-    def test_two_phrases_name_the_quantity_but_shorten_the_unit_to_point(self):
-        self.assertIn("-point gap to the next best", _BOARD)
-        self.assertIn("-point rival premium", _BOARD)
+    def test_the_two_shortened_phrases_now_name_their_full_unit(self):
+        self.assertNotIn("-point gap to the next best", _BOARD)
+        self.assertIn("universal-value points of drop-off to the next best", _BOARD)
+        self.assertNotIn("-point rival premium", _BOARD)
+        self.assertIn("acquisition-value points, not routine need", _BOARD)
 
-    def test_two_phrases_say_only_points(self):
-        """These are the bare ones. In a fantasy app, unqualified 'points' is the domain's word
-        for a season scoring total -- which is a different quantity, shown on the same screen."""
-        bare_phrases = ("point(s) off the board leader", "points</b> of context lift")
-        for phrase in bare_phrases:
+    def test_the_unit_vocabulary_is_the_contracts_not_the_boards_own(self):
+        """The JS interpolates PAYLOAD.valueUnitShort rather than spelling "UV pts" itself, and
+        serialize_snapshot takes it from design_system -- one source, no drift."""
+        self.assertIn('"valueUnitShort": design_system.VALUE_UNIT_SHORT', _BOARD)
+        self.assertGreaterEqual(_BOARD.count("${PAYLOAD.valueUnitShort}"), 6)
+
+    def test_the_focus_metrics_carry_a_unit_suffix(self):
+        for needle in ('UV <b>', 'ACQ <b>', 'PROJ <b>'):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, _BOARD)
+        self.assertIn('<span class="unit">season pts</span>', _BOARD)
+        self.assertIn('<span class="unit">${PAYLOAD.valueUnitShort}</span>', _BOARD)
+
+    def test_the_legend_states_both_scales(self):
+        self.assertIn('id="legend"', _BOARD)
+        self.assertIn("not fantasy points", _BOARD)
+        self.assertIn("season points per week", _BOARD)
+
+    def test_no_phrase_says_only_points(self):
+        """These three phrases used to say bare "points" about a UV/TAV-family quantity. In a
+        fantasy app, unqualified "points" is the domain's own word for a season scoring total
+        -- which this same panel renders a few lines away -- so the bare wording did not merely
+        omit a unit, it asserted the wrong one. The third phrase is why #116's original count
+        was low: the decisive-branch forfeit chip -- the sentence shown for the LEADER -- was
+        not in it."""
+        qualified = (
+            ("point(s) off the board leader", "acquisition-value"),
+            ("points</b> of context lift", "acquisition-value"),
+            ("pts if you wait", None),
+        )
+        for phrase, unit in qualified:
             with self.subTest(phrase=phrase):
+                if unit is None:
+                    self.assertNotIn(phrase, _BOARD, "the bare 'pts' form came back")
+                    continue
                 lines = [ln for ln in _BOARD.splitlines() if phrase in ln]
                 self.assertEqual(len(lines), 1, "phrase moved or was duplicated")
-                # The unit is unqualified ON THIS LINE. Checking the whole file would pass
-                # trivially, since the forfeit sentence elsewhere does say "universal-value".
-                self.assertNotIn("universal-value", lines[0],
-                                 "this phrase now names its unit -- invert this test")
+                self.assertIn(unit, lines[0], "this phrase lost its unit again")
 
-    def test_the_same_panel_also_renders_real_season_points(self):
+    def test_the_forfeit_chip_names_the_unit_it_is_measured_in(self):
+        self.assertIn("universal-value points if you wait", _BOARD)
+
+    def test_the_same_panel_also_renders_real_season_points_and_says_so(self):
         """`_waiting_note` renders projected_points and horizon_floor -- genuinely season
         fantasy points -- in the same surface as the universal-value phrases above. Both units
-        are present in one panel, which is what makes the bare 'points' ambiguous rather than
-        merely imprecise."""
+        are present in one panel, which is what made the bare 'points' ambiguous; each now
+        says which it is."""
         self.assertIn("c.projected_points:.0f", _BOARD)
         self.assertIn("c.horizon_floor:.0f", _BOARD)
+        self.assertIn("season points against", _BOARD)
+        self.assertIn("season points per week", _BOARD)
+        self.assertIn('"label": f"{per_week:.2f} pts/wk"', _BOARD)
 
 
 class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
@@ -121,17 +412,18 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         import dataclasses
         import pick_synthesis as ps
         candidate = ps.CandidateSnapshot(
+            position_best_now=None, position_next_turn_value=None, acting_now_value=None,
             player_id="p", name="n", position="RB", team=None,
             bpa=-10.0, bpa_source="s", confidence=50.0,
-            universal_value=-12.5, need_bonus=0.0, eligibility_bonus=0.0,
-            team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
-            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None,
+            universal_value=-12.5, need_bonus=0.0, team_acquisition_value=-12.5, survival_probability=None, intervening_picks=None,
+            survival_basis=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
             denial_team=None, rival_premium=None, positional_forfeit=None,
             position_expected_taken=None, positional_cliff=None, position_run_detected=False,
             pick_necessity=0.0, necessity_label="HOLD", near_tie_with_leader=False,
             cliff_protection=False, block_opportunity=False, pure_value=False,
-            context_elevated=False, consensus_rank=None, consensus_tier=None,
-            reach_label=None, projected_points=None,
+            consensus_rank=None, consensus_tier=None,
+            projected_points=None,
         )
         self.assertLess(candidate.team_acquisition_value, 0)
 
@@ -149,8 +441,224 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         """
         import dataclasses
         import pick_synthesis as ps
+        # 38 -> 39 (2026-09-03): depth_exposure, #139's third team-specific term inside
+        # team_acquisition_value. The two questions this test exists to force, answered rather
+        # than skipped past:
+        #
+        #   SCALE. It is on the same bpa-anchored scale as need_bonus and eligibility_bonus,
+        #   bounded [0, DEPTH_EXPOSURE_MAX] and never negative. It implies no unit this file
+        #   has not already measured, and cannot by itself make a TAV negative -- the mechanical
+        #   fact the rest of this module rests on is untouched.
+        #
+        #   SHOULD THE CARD RENDER IT? No, and for the reason the card already does not render
+        #   need_bonus or eligibility_bonus: the metric row shows the three headline quantities,
+        #   and the decomposition of TAV belongs in the "What changed?" drawer, where this term
+        #   now appears with a display label. Adding a fourth adjacent identically-formatted
+        #   card would deepen exactly the unit-borrowing problem documented above, not fix it.
+        # 39 -> 41 (2026-09-04): replacement_basis and growth_signal, #138's last two
+        # write-only quantities, carried from the board row so the retained decision record can
+        # read them. The same two questions, and for growth_signal the answer is NOT routine:
+        #
+        #   SCALE. replacement_basis is a string enum -- "live_starter_demand" |
+        #   "predraft_anchor" -- and implies no unit at all.
+        #
+        #   growth_signal DOES imply one, and it is the wrong one for this card. It is a
+        #   PERCENTILE DIFFERENCE (proj3yr_pct - season_pct, clamped at 0), so it lives on
+        #   exactly the 0-100 band this whole file exists to say the engine's values do NOT
+        #   live on. Measured range on real upside boards: 0 to 87.5. Rendering it beside
+        #   universal_value -- raw projected points, unbounded and signed -- in matching
+        #   formatting is precisely the unit-borrowing this module documents, and would be
+        #   worse than the cases above because here the borrowed unit really is 0-100 and would
+        #   look authoritative.
+        #
+        #   SHOULD THE CARD RENDER THEM? Neither, and for growth_signal the question is
+        #   currently moot rather than merely declined: all three build_snapshot call sites in
+        #   app.py omit `mode`, and build_snapshot forces "balanced", where growth_signal is
+        #   always None. The card cannot render a quantity its own regime never computes. If
+        #   #115 ever routes upside mode to a human board, the scale hazard above has to be
+        #   settled BEFORE the field reaches a metric row, not after.
+        #
+        #   replacement_basis is a qualifier on a price rather than a number, so it belongs
+        #   with horizon_basis in the explanation drawer rather than the metric row -- #36/#137
+        #   territory, and deliberately not done here.
+        # 41 -> 42 (2026-09-06): fills_required_slot, #154's feasibility backstop. The two
+        # questions, and this one inverts the usual answer:
+        #
+        #   SCALE. A bool. It implies no unit at all, because it is not a value -- it is an
+        #   ORDERING fact. pick_synthesis._board_order leads with it, ahead of final_score, so
+        #   it can place a candidate above better-scoring candidates.
+        #
+        #   SHOULD THE CARD RENDER IT? Not the metric row -- that row is for quantities, and a
+        #   bool in it would be the unit-borrowing problem in a new costume. But unlike every
+        #   previous addition, the answer is not "no, leave it to the drawer": this field MUST
+        #   reach a surface, because it silently REORDERS the board and no surface said so. A
+        #   reordering the user cannot see is a reordering the user cannot audit. It renders as
+        #   a marker on the row itself, next to the rank it changed, which is also where the
+        #   same invisibility let an unpriced leader reach an unguarded format string.
+        #   denial_basis (#187), field 43. DOES IT IMPLY A SCALE? No -- it is a categorical
+        #   token from a closed three-value vocabulary, never a quantity, so it cannot borrow a
+        #   unit from the metric row the way a number would.
+        #   SHOULD THE CARD RENDER IT? Not on its own. Unlike fills_required_slot, this field
+        #   reorders nothing and hides nothing: it QUALIFIES denial_value, and the two surfaces
+        #   that state denial_value already carry the qualification -- pick_debate names which
+        #   of the three states produced the number, and the metric's own help text says a 0 is
+        #   a measurement while an absence is not. A separate marker on the row would be a
+        #   third place for the same sentence to drift out of agreement, which is #186's defect
+        #   rather than a fix for it.
+        #   depth_basis (#174), field 44. DOES IT IMPLY A SCALE? No -- a categorical token from
+        #   a closed four-value vocabulary. SHOULD THE CARD RENDER IT? Not as its own metric.
+        #   It qualifies depth_exposure, which the card already renders, and the honest place
+        #   for the qualification is beside that number rather than as a separate tile: the
+        #   board's own depth chip and the chair prose both now state whether the value was
+        #   measured. What made this field necessary was not display, it was that the snapshot
+        #   DROPPED it -- so every consumer past this boundary saw a 0.0 it could not read.
+        #   rival_premium_basis (#207), field 45. DOES IT IMPLY A SCALE? No -- the same closed
+        #   three-value vocabulary denial_basis already uses, deliberately reused rather than
+        #   invented so there is one home for the question "what did we learn about the rivals"
+        #   (#126). SHOULD THE CARD RENDER IT? NOT YET, and the reason is specific rather than
+        #   a deferral: `rival_premium` ITSELF has no card line and appears nowhere in
+        #   pick_debate -- it reaches a person only through pick_necessity, which consumes it.
+        #   A basis rendered beside a number nobody sees would be a label for nothing. The
+        #   binding rule is that the two travel together: if rival_premium ever earns a line,
+        #   this field renders with it, exactly as denial_basis does beside denial_value today.
+        #   What made the field necessary was the same thing that made depth_basis necessary --
+        #   the quantity was becoming 0.0 where nothing had been measured, and #187 had already
+        #   repaired its sibling in the SAME LOOP while leaving this one asserting the strongest
+        #   available claim off no evidence.
+        #   displacement_adj + displacement_basis (#216), fields 46-47. DOES IT IMPLY A SCALE?
+        #   No -- universal-value points, the same scale as the three terms it joins, and
+        #   non-positive by construction. SHOULD THE CARD RENDER IT? Yes, and it does: a fourth
+        #   tile on the second metric row, rendered under a `measured` basis only (an
+        #   unmeasured zero is a dash, a floor says "(floor)"), label and help from
+        #   DISPLAY_CONTRACT like every other card. The basis travels beside the number from
+        #   the first commit, which is the lesson depth_basis (field 44) taught.
+        # 46 -> 48 (2026-09-16): time_horizon_adj and risk_adj, #119's two addends. They are
+        # universal_value's OWN decomposition (universal_value = bpa + time_horizon_adj +
+        # risk_adj), and until now the board computed both and nothing downstream read either --
+        # so the price crossed this boundary as a bare number. The two questions:
+        #
+        #   SCALE. Both sit on exactly the bpa-anchored scale this file already measures, because
+        #   they are literally addends of it. Neither introduces a unit, and unlike growth_signal
+        #   neither is a percentile wearing a value's clothes. risk_adj is SIGNED and always <= 0
+        #   (a haircut); time_horizon_adj is signed both ways. Measured on a full real board: 256
+        #   rows carry risk_adj, 249 at 0.0 and 7 nonzero, all IR, spanning -5.4 to -18.0.
+        #
+        #   SHOULD THE CARD RENDER THEM? Not the metric row -- same answer as need_bonus and
+        #   eligibility_bonus, and for the same reason: the row shows headline quantities, and a
+        #   decomposition belongs in the explanation. They render in the PRYTANEUM's evidence
+        #   block, beside the team_acquisition_value decomposition that already sits there, which
+        #   is where a person asking "why is he worth that?" is actually looking. The ruling that
+        #   the Draft Room must work with no API is what makes that surface the right one: for a
+        #   keyless customer it is the whole explanation.
+        # 48 -> 49 (2026-09-16): absence_kind, #112. It says WHICH of three absences left a row
+        # unpriced, where one token previously covered all three and so asserted the strongest
+        # of them -- "below every source's cutoff", the only one that is evidence of low value --
+        # about every unpriced row.
+        #
+        #   SCALE. No, and for the third time the same answer as denial_basis (43) and
+        #   depth_basis (44): a categorical token from a closed vocabulary, never a quantity, so
+        #   there is no unit for it to borrow from the metric row. It is deliberately spelled as
+        #   a string for that reason -- a numeric kind would be orderable, and something would
+        #   eventually order by it.
+        #
+        #   SHOULD THE CARD RENDER IT? SPLIT ANSWER, and the split is the honest part.
+        #   The Prytaneum: YES, and it does. The NOT PRICED line now names the kind, and the
+        #   coverage-gap phrasing denies the inference the blank invites -- "a COVERAGE GAP, not
+        #   a low grade". That is where a person asking "why is there no number?" is looking,
+        #   and it is the same surface #119's decomposition answers "why is he worth that?" on.
+        #   The board card: NOT SETTLED BY THIS PASS, and named rather than quietly closed.
+        #   This field differs from 43/44/45 in a way that matters. Those qualify a number the
+        #   card either shows (depth_exposure) or does not show at all (rival_premium). This one
+        #   qualifies an ABSENCE that the card already displays as a dash -- and an unexplained
+        #   dash invites exactly the "he's bad" reading the whole item exists to refuse. So the
+        #   case for a marker is real and I am not dismissing it; I simply did not build or
+        #   measure one, and asserting a ruling I did not do the work for is worse than leaving
+        #   the question open with its reasoning attached. It belongs to the UI passes (#181,
+        #   #36), and the binding condition is stated so it cannot evaporate: if the card keeps
+        #   rendering unpriced rows as a bare dash, it is showing an absence without its kind,
+        #   which is the #174 shape one layer out.
+        # 50 -> 53 (#52): position_best_now, position_next_turn_value, acting_now_value.
+        #
+        # THE DECISION THIS RATCHET ASKS FOR, RESTATED AT THE REVERT (#22). This read "it is
+        # WHAT THE BOARD IS NOW ORDERED ON", and that is no longer true -- ordering on it lost
+        # 6.090% of starting-lineup points against a fixed field and was reverted. The field
+        # STAYS, and the case for it is now the narrower one: it answers "does this position
+        # replace itself cheaply if I wait?", which the rank does not and cannot, and which is
+        # what put a defense in round 5 on the board's own evidence. It is in
+        # team_acquisition_value's own units (it is a difference of two of them), so it sits
+        # on the scale this test exists to protect and implies no new one.
+        #
+        # It is NOT rendered on the card yet, and that is deliberate rather than overlooked:
+        # the card's value row is already dense, and where this number belongs -- beside the
+        # rank, beside the forfeit, or as the rank's tooltip -- is a UI question (#181, #36)
+        # that deserves the same treatment the absence-marker note above got, not a slot
+        # chosen here to clear a red test. It reaches the payload (draft_board_ui.serialize_
+        # snapshot's "actingNow") so the surface CAN show it the moment that is decided, and
+        # test_withheld_propagation holds the absence contract on it meanwhile.
+        # 53 -> 52 (#52, 6.1b): eligibility_bonus retired. A field LEAVING is as much a
+        # schema change as one arriving, and this pin is the only thing that makes a reader
+        # confirm the card no longer needs a slot for it.
+        #
+        # 52 -> 51 (#25, ruled 2026-09-21): context_elevated retired. THE QUESTION THIS PIN ASKS
+        # IS ANSWERED BY REMOVAL, not by a slot. The note above used to argue for putting it on
+        # the card once the UI passes decided where; there is nothing to place. Measured across
+        # all 36 battery formats it fired on ONE row -- a multi-eligible WR/DB lifted +79.44 by
+        # displacement_adj -- while the quantity it read has a MEAN of -3.46 across 10,887 priced
+        # rows, so "ranked highly because of fit" was reading what is usually a penalty. The
+        # card's other Context Gap direction, pure_value, is untouched and fires on real
+        # populations. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
+        # 51 -> 52 with `cannot_be_fielded` (#30). CONFIRMED AGAINST THE QUESTION THIS TEST
+        # ASKS: it is a bool, not a scale, so it implies no units the card cannot support, and
+        # it is a companion to a SELECTION decision rather than a price -- the same shape as
+        # `fills_required_slot`, which the card already carries. Whether the card should show
+        # "this roster cannot field another one" is a UI decision and is not made here.
+        # 52 -> 54 (MANDATE 2.5): injury_status and availability_basis. CONFIRMED AGAINST THE
+        # QUESTION THIS TEST ASKS, both halves of it:
+        #   SCALE -- neither is a quantity. One is Sleeper's own designation vocabulary ("Out",
+        #     "IR", "PUP"), the other a basis token from player_universe. No units, so there is no
+        #     scale for the card to misrepresent and nothing to read as universal-value points.
+        #   RENDER -- YES, eventually, and the payload now carries both so the surface can. They are
+        #     the companion to a price the card ALREADY shows: `uv` is health-adjusted, because
+        #     risk_adj includes health_penalty's cut. A card showing the adjusted number with no
+        #     designation beside it is the same gap this mandate item found at the snapshot
+        #     boundary, one surface along. WHERE it goes on the card is a UI decision and is not
+        #     made here -- the same treatment actingNow and cannot_be_fielded got.
+        # 54 -> 55 (MANDATE 3.4): rival_premium_take_rank. CONFIRMED AGAINST BOTH HALVES:
+        #   SCALE -- it is an ORDINAL, a rival's rank on his own board, not a quantity. There are no
+        #     units and nothing that could be read as universal-value points. It replaces a gate on
+        #     `rival_premium_take_probability`, which stays as an observable; that field was on a
+        #     scale `#206`'s normalisation had moved out from under the threshold reading it, which
+        #     is exactly the class of error this pin exists to make somebody look at.
+        #   RENDER -- NO. The card already shows what this decides: the "Denies {team}" flag. The
+        #     rank is the gate's input, not a fact about the player, and putting an opponent's
+        #     internal board position on a card would invite reading it as a property of the man.
+        # 55 -> 56 (C-F3): eligible_positions. CONFIRMED AGAINST BOTH HALVES:
+        #   SCALE -- it is not a quantity at all. A frozenset of position labels carries no units
+        #     and nothing that could be misread as universal-value points, so it implies no scale
+        #     the card cannot support. It is the `#174` companion to a fact the board ALREADY
+        #     acted on: `need_bonus` priced these candidates against the slots they are eligible
+        #     for, and `position` -- one primary bucket -- was the only positional fact crossing
+        #     this boundary, so the position views could not filter on what the engine had used.
+        #   RENDER -- NO, not as its own row. The card names one position today and a set of
+        #     labels beside it invites reading a dual-eligible man as two players. Its consumer is
+        #     `filter_candidates_by_view`, which decides WHICH CARDS APPEAR rather than what one
+        #     card says, and a manager learns the same fact by finding him in the LB view. If a
+        #     card ever shows eligibility it should read as one line of prose ("can start at LB"),
+        #     which is a UI decision and is not made here.
+        # 56 -> 57 (R3): risk_basis. CONFIRMED AGAINST BOTH HALVES:
+        #   SCALE -- it is not a quantity. One of four label strings naming WHICH of
+        #     `health_penalty`'s paths produced `risk_adj`, so it carries no units and cannot be
+        #     misread as universal-value points. It is the `#166` companion to a number the board
+        #     already emitted: `risk_adj == 0.0` arrives from four causes, and only one of them
+        #     means the designation is unpriced.
+        #   RENDER -- NOT AS ITS OWN ROW, and the card does not show it. Its consumer is
+        #     `pick_debate`, which turns it into one sentence of prose for the chair; a raw
+        #     `designation_not_priced` on a card would be jargon, and the sentence it produces is
+        #     already shown beside the designation. The reason this field exists at all is that
+        #     the chair was being told the WRONG one of the four, so the fix belongs in the
+        #     sentence rather than in a new row.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 38,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 57,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")
@@ -159,7 +667,13 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         """Non-vacuity for the whole file: if the number were normalised into a 0-100 band on
         the way out, none of the above would matter. It is not -- the card renders the engine's
         own value with a format specifier and nothing else."""
-        self.assertNotRegex(_APP, r'metric\("Universal Value", f"\{[^}]*(min|max|clamp|/ *100)')
+        block = ui_source.block("def _render_pick_metrics(rec)", until="\n\n\ndef ")
+        # Non-vacuity, read from the AST: the card really is in this block. A substring anchor
+        # here pinned the old f-string spelling and went red when the formatting was given one
+        # home, while the clamp check below -- the actual subject -- never stopped holding.
+        self.assertIn("universal_value", _rendered_figures(),
+                      "non-vacuity: the card is in this block")
+        self.assertNotRegex(block, r"(min|max|clamp)\(|/ *100")
         self.assertNotIn("normalize_display", _APP)
 
 

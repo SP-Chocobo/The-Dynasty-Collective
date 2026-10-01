@@ -19,9 +19,10 @@ actually uses them, and uses the right builder at each call site.
 
 import re
 import unittest
-from pathlib import Path
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+import ui_source
+
+_APP_SOURCE = ui_source.text()
 
 
 class DebateChipWiringTests(unittest.TestCase):

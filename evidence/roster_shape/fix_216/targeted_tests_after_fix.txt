@@ -1,0 +1,13 @@
+....................................................................................................................................................F.............s..............................................................................................................................................................................................................................................................................................................................................
+======================================================================
+FAIL: test_multi_eligible_candidate_gets_a_positive_bonus_when_it_unlocks_an_open_idp_flex (test_draft_room.EligibilityBonusWiringTests.test_multi_eligible_candidate_gets_a_positive_bonus_when_it_unlocks_an_open_idp_flex)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_draft_room.py", line 1717, in test_multi_eligible_candidate_gets_a_positive_bonus_when_it_unlocks_an_open_idp_flex
+    self.assertEqual(row["displacement_adj"], 0.0, "an open slot his eligibility reaches: no deduction")
+AssertionError: -106.0 != 0.0 : an open slot his eligibility reaches: no deduction
+
+----------------------------------------------------------------------
+Ran 497 tests in 358.969s
+
+FAILED (failures=1, skipped=1)

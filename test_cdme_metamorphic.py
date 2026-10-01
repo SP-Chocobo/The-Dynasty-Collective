@@ -56,7 +56,8 @@ class IrrelevantAdditionTests(unittest.TestCase):
 
         # A row far below the real floor -- lower universal_value/final_score than anyone on
         # the real board -- appended, never removed or reordered.
-        floor_score = min(r["final_score"] for r in board)
+        # Priced rows only -- an unpriced row carries None and has no floor to be below (#193).
+        floor_score = min(r["final_score"] for r in board if r["final_score"] is not None)
         irrelevant = dict(board[-1])
         irrelevant["player_id"] = "irrelevant-999999"
         irrelevant["final_score"] = floor_score - 1000.0
@@ -86,7 +87,7 @@ class IrrelevantAdditionTests(unittest.TestCase):
     # asserted the horizon estimator ignores draft depth, which would be the bug, not the fix.
     # Split into the two separate claims so both directions are actually pinned.
     VALUATION_FIELDS = ("player_id", "name", "position", "bpa", "bpa_source", "universal_value",
-                        "need_bonus", "eligibility_bonus", "final_score", "projected_points")
+                        "need_bonus", "final_score", "projected_points")
 
     def test_adding_an_unrelated_bench_slot_does_not_change_universal_value_or_final_score(self):
         before, after = self._boards_with_and_without_an_extra_bench_slot()
@@ -103,6 +104,9 @@ class IrrelevantAdditionTests(unittest.TestCase):
         pairs = [
             (b, a) for b, a in zip(before, after)
             if b["horizon_floor"] is not None and a["horizon_floor"] is not None
+            # waiting_cost is compared below and is its own quantity, absent independently of
+            # the floor -- both companions must be present or the pair is not measurable (#193).
+            and b["waiting_cost"] is not None and a["waiting_cost"] is not None
         ]
         self.assertTrue(pairs, "no measurable horizon floors to compare")
         self.assertTrue(

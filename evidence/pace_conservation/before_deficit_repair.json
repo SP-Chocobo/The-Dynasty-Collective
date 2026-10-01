@@ -1,0 +1,44 @@
+{
+  "1.01": {
+    "picks_made": 0,
+    "gap": 22,
+    "expected_taken": {
+      "QB": 15.54,
+      "RB": 3.81,
+      "TE": 2.47,
+      "WR": 4.33
+    },
+    "total_expected": 26.15,
+    "forfeit": {
+      "QB": 63.1,
+      "RB": 86.87,
+      "TE": 55.35,
+      "WR": 68.85
+    },
+    "qb_taken_so_far": 0,
+    "convention_cumulative_now": 0.0,
+    "convention_cumulative_at_my_next_turn": 8.916666666666668,
+    "convention_increment_over_the_gap": 8.92
+  },
+  "after_24_picks": {
+    "picks_made": 24,
+    "gap": 22,
+    "expected_taken": {
+      "QB": 2.81,
+      "RB": 2.88,
+      "TE": 2.43,
+      "WR": 4.87
+    },
+    "total_expected": 12.99,
+    "forfeit": {
+      "QB": 12.71,
+      "RB": 13.05,
+      "TE": 36.76,
+      "WR": 30.5
+    },
+    "qb_taken_so_far": 11,
+    "convention_cumulative_now": 9.5,
+    "convention_cumulative_at_my_next_turn": 13.166666666666666,
+    "convention_increment_over_the_gap": 2.17
+  }
+}

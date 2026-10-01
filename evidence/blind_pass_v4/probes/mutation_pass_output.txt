@@ -1,0 +1,47 @@
+CONTROL: the clean tree, on the union of every module named below
+    OK (skipped=1)
+
+[DEFENDED] A-F2  health_penalty returns 0.0 for an absent projection
+    reverted in draft_room.py;  test_one_fact_two_paths_one_answer test_draft_room test_risk_adj_absence test_availability_haircut
+    -> FAILED (failures=2, skipped=1)
+    -> first failures: ['test_an_absent_projection_is_absent_rather_than_free', 'test_an_absent_projection_is_absent_and_not_a_free_pass']
+[DEFENDED] B-F4  feasibility_first reads eligibility on the candidate side
+    reverted in draft_room.py;  test_one_eligibility_vocabulary_everywhere test_feasibility_backstop test_draft_room
+    -> FAILED (failures=1, skipped=1)
+    -> first failures: ['test_a_dual_labelled_elsewhere_is_promoted_for_the_hole_he_can_fill']
+[DEFENDED] B-F6  a rosterless pick creates no phantom roster
+    reverted in draft_room.py;  test_one_league_one_team_count test_draft_room
+    -> FAILED (failures=2, errors=1, skipped=1)
+    -> first failures: ['test_remaining_starter_demand_no_longer_raises', 'test_the_phantom_roster_is_not_created', 'test_the_two_functions_agree_on_what_a_rosterless_pick_MEANS']
+[DEFENDED] C-F3  filter_candidates_by_view filters on eligibility
+    reverted in draft_board_ui.py;  test_one_eligibility_vocabulary_everywhere test_draft_board_ui test_a_flex_view_exists_for_every_flex_slot
+    -> FAILED (failures=2)
+    -> first failures: ['test_a_dual_appears_in_BOTH_of_his_views', 'test_the_LB_view_shows_a_dual_labelled_DL']
+[UNDEFENDED] C-F3  eligible_positions is populated by build_snapshot
+    reverted in pick_synthesis.py;  test_one_eligibility_vocabulary_everywhere test_pick_synthesis test_snapshot_identity_boundary test_draft_board_ui
+    -> OK
+[DEFENDED] E-F5  a failed season fetch returns a refusal string
+    reverted in sleeper_client.py;  test_a_partial_season_is_not_a_season test_sleeper_client
+    -> FAILED (failures=1)
+    -> first failures: ['test_a_total_failure_refuses_WITH_a_reason']
+[UNDEFENDED] A-F5  the Draft Room puts the draft's seats on the league dict
+    reverted in app.py;  test_one_league_one_team_count test_ui_source test_three_derivations_of_one_number test_mock_draft_wiring test_live_board_pricing
+    -> OK
+[UNDEFENDED] A-F1  presentable_text checks absence before withholding
+    reverted in pick_synthesis.py;  test_withheld_propagation test_survival_absence_contract test_absence_survives_consumers test_pick_synthesis test_dock_absence_contract
+    -> OK
+[DEFENDED] D10  ambiguities splits the unknown-slot alarm into three bands
+    reverted in league_config.py;  test_a_warning_is_as_loud_as_its_consequence test_league_config test_slot_vocabulary
+    -> FAILED (failures=3)
+    -> first failures: ['test_a_misspelled_bench_slot_is_the_QUIET_band', 'test_the_COUNT_matches_the_SOLVER_and_not_a_literal', 'test_the_bands_are_reported_SEPARATELY_when_both_occur']
+[UNDEFENDED] D-F2  the history shield is scoped to the paragraph, not the block
+    reverted in prose_names.py;  test_prose_names test_source_scan
+    -> OK
+[DEFENDED] D-F4  the per-method floor key is qualified Class.method
+    reverted in assertion_floors.py;  test_assertion_floors
+    -> FAILED (failures=4)
+    -> first failures: ['test_a_deleted_assertion_is_caught', 'test_a_substituted_weaker_assertion_is_caught', 'test_a_STRENGTHENING_also_fails_and_that_is_the_honest_cost', 'test_nothing_in_this_repository_has_shrunk']
+[DEFENDED] A-F5  _round_being_decided routes through team_count/round_of
+    reverted in pick_synthesis.py;  test_one_league_one_team_count test_pick_synthesis test_three_derivations_of_one_number
+    -> FAILED (failures=2)
+    -> first failures: ['test_nothing_but_league_config_spells_the_round_arithmetic', 'test_the_seats_reach_this_derivation_too']

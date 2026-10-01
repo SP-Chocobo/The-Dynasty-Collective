@@ -1,0 +1,1380 @@
+"""#150, the final acceptance gate: reps, across formats, judged on ROSTER QUALITY.
+
+test_draft_simulation.py already covers the MECHANICS -- determinism, no player drafted twice,
+every pick is the board's real argmax, nothing mutated. Those say the simulator is honest. They
+say nothing about whether the rosters it produces are any good, and that is the question this
+module exists to answer:
+
+    "make sure this thing has reps on it, and nothing wonky happens. and, more importantly,
+     that it's building good, defensible, reasonable, rosters"
+
+WHAT MAKES AN AUDIT ADMISSIBLE HERE, and it is the constraint that shaped every one below:
+NO INVENTED THRESHOLDS (#56). "A reasonable roster" is a judgement, and a judgement encoded as
+a constant is an assertion wearing a measurement's clothes. So every audit is one of two kinds:
+
+  STRUCTURAL -- the league's own rules decide, and the engine either satisfied them or did not.
+    "Every dedicated starting slot is filled by the end of a full-length draft" needs no number
+    from me; roster_positions supplies it.
+
+  COMPARATIVE -- two formats drafted from the SAME pool, where the direction of the difference
+    is the claim and its size is nobody's opinion. "Superflex rosters hold more QBs than 1QB
+    rosters" is falsifiable without anyone deciding how many QBs is right.
+
+Anything that would need a magnitude I picked is REPORTED, not asserted -- it lands in the
+report's distributions for a person to read, which is the same split roster_diagnostics already
+uses between a measurement and a verdict.
+
+DELIBERATELY NOT AUDITED, so the report is not read as covering it:
+  * Whether the VALUATION is correct. Every chair uses the same engine, so a battery cannot
+    detect a systematic mispricing -- it would produce twelve consistently wrong rosters and
+    every structural check would pass. That is #52's job (a blind adversarial pass) and #143's
+    (the forward record), and neither is replaceable by more simulation.
+  * Anything behind a human decision. Chairs take the board's argmax; a real drafter reaches.
+"""
+
+from __future__ import annotations
+
+import json
+
+import collections
+from pathlib import Path
+from typing import Any, Optional
+
+import data_merger as dm
+import draft_room as dr
+import league_config as lc
+import draft_simulation
+import draft_strategy as ds
+import lineup_optimizer as lo
+from player_universe import FANTASY_POSITIONS, player_eligible_positions
+
+#: Q1 of the slot vocabulary, imported rather than restated. This module used to carry its own
+#: identical copy under this same name; league_config is the one home (#126), and it also
+#: answers the SECOND question -- which slots a startup draft fills -- that this copy's
+#: existence made look already-answered. See league_config.draftable_slots.
+NON_STARTING_SLOTS = lc.NON_STARTING_SLOTS
+_starting_slots = lc.starting_slots
+
+
+def league_matrix(base_scoring: dict | None = None) -> list[dict]:
+    """Every format the battery drafts, as {label, league, teams, rounds}.
+
+    Chosen to span the axes a real league varies on -- size, scoring, superflex, TE premium,
+    dynasty vs redraft -- plus two shapes carried deliberately because open register items
+    predict something specific about them:
+
+      4WR_TE_PREMIUM -- #153. need_bonus's own cap collapses "zero of my four WRs" and "one of
+        my four" onto the same 12.0 here, measured on 18.2% of candidate rows. If that damages
+        roster construction it should show up in this format's WR counts and nowhere else.
+      HEAVY_IDP -- #152. The trade_value fallback's ceiling is partly a unit artifact, so IDP
+        will be taken LATE relative to real roster demand. That is expected, it is #51's supply
+        defect seen from the arithmetic side, and the report says so rather than rediscovering
+        it as an anomaly.
+    """
+    # #213: EVERY ARM'S RULEBOOK IS THE REAL ONE, with rec/te-premium overlaid. A synthetic
+    # one-key dict made 27 of these arms measure a league in which quarterbacks score nothing.
+    base = dict(base_scoring or {})
+    out: list[dict] = []
+    for teams in (8, 10, 12, 14):
+        for scoring in ("standard", "half_ppr", "ppr"):
+            for superflex in (False, True):
+                league = dr.build_mock_league(teams=teams, superflex=superflex,
+                                              scoring=scoring, te_premium=False, dynasty=True,
+                                              base_scoring=base)
+                rounds = len(lc.draftable_slots(league["roster_positions"]))
+                # The engine cannot know the round count unless the league says so (#161).
+                # Carrying it here is what makes the battery measure the repaired path.
+                league["draft_rounds"] = rounds
+                out.append({
+                    "label": f"{teams}T_{scoring}{'_SF' if superflex else ''}",
+                    "league": league, "teams": teams, "rounds": rounds,
+                })
+    # TE premium and redraft, on one size, so the axis is isolated rather than crossed with
+    # everything above (which would quadruple runtime to re-measure the same thing).
+    for te_premium, dynasty in ((True, True), (False, False), (True, False)):
+        league = dr.build_mock_league(teams=12, superflex=False, scoring="ppr",
+                                      te_premium=te_premium, dynasty=dynasty, base_scoring=base)
+        rounds = len(lc.draftable_slots(league["roster_positions"]))
+        league["draft_rounds"] = rounds
+        out.append({
+            "label": f"12T_ppr{'_TEP' if te_premium else ''}{'_dynasty' if dynasty else '_redraft'}",
+            "league": league, "teams": 12, "rounds": rounds,
+        })
+    # The two shapes build_mock_league cannot express, both carried for a named reason above.
+    custom = {
+        "4WR_TE_PREMIUM": {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "WR", "WR", "TE", "TE", "FLEX"]
+                                + ["BN"] * 6,
+            "scoring_settings": {**base, "rec": 1.0,
+                                 "bonus_rec_te": dr.MOCK_TE_PREMIUM_BONUS},
+            "total_rosters": 12, "settings": {"type": 2},
+        },
+        "HEAVY_IDP": {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX",
+                                 "DL", "DL", "LB", "LB", "DB", "DB"] + ["BN"] * 5,
+            # The IDP arm above all others needs the real rulebook: {"rec": 1.0} carries no
+            # idp_* key at all, so every LB/DB/DL scored 0.0 and the arm's 14 findings were
+            # read as an IDP SUPPLY gap (#210) when 299 IDP stat lines price under real rules.
+            "scoring_settings": {**base, "rec": 1.0},
+            "total_rosters": 12, "settings": {"type": 2},
+        },
+        "LIGHT_IDP": {
+            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "IDP_FLEX"]
+                                + ["BN"] * 6,
+            "scoring_settings": {**base, "rec": 1.0},
+            "total_rosters": 12, "settings": {"type": 2},
+        },
+    }
+    for label, league in custom.items():
+        league["draft_rounds"] = len(league["roster_positions"])
+        out.append({"label": label, "league": league, "teams": league["total_rosters"],
+                    "rounds": len(league["roster_positions"])})
+
+    # MODE IS AN AXIS, and until this was added the battery barely varied it. Every format
+    # above runs mode="auto", which switches to upside scoring only at
+    # UPSIDE_MODE_DEFAULT_ROUND (15) -- and most formats here are 14 rounds, so auto never
+    # reached upside at all. The battery would have reported "modes covered" while exercising
+    # one. Measured on the smoke run before this was fixed: 0 picks with a growth_signal across
+    # 280 picks in two formats.
+    #
+    # So one 12-team format is run in each mode explicitly. upside is the one that matters:
+    # it is the only path that computes growth_signal, it is what every auto-drafted opponent
+    # falls into late, and #115 records that a human board never reaches it -- which makes the
+    # simulation the ONLY place its behaviour is observable at all.
+    mode_base = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False, scoring="ppr",
+                               te_premium=False, dynasty=True)
+    mode_base["draft_rounds"] = len(mode_base["roster_positions"])
+    for mode in ("balanced", "upside"):
+        out.append({"label": f"12T_ppr_mode_{mode}", "league": mode_base, "teams": 12,
+                    "rounds": len(mode_base["roster_positions"]), "mode": mode})
+
+    # A REAL CAPTURED LEAGUE, AS A CONFIGURATION POINT -- NOT AS THE CANONICAL ONE (#251).
+    #
+    # Every arm above is built from `fixtures/sleeper_capture.json` with a rec/te-premium
+    # overlay, so the matrix covers exactly the region its own base rulebook occupies:
+    # `config_space.coverage` measures it at 16 varied axes of 91, and reports ZERO uncovered
+    # coordinates for the fixture -- a tautology, since the matrix is built from it.
+    #
+    # Fourth and Forever carries 21 coordinates no arm here produces, including `rec_fd`,
+    # `rush_fd`, `bonus_rec_te 0.25`, `pass_td 4` (every other arm scores 6) and TAXI slots.
+    # `#250` measured what that costs: the same roster under the two rulebooks inverts the
+    # verdict, 3/12 -0.84% against 10/12 +1.04%. A 33-arm run was never universal evidence
+    # about the engine; it was evidence about one region.
+    #
+    # SUPPLIED DIRECTLY, never through build_mock_league. That function overwrites `rec` from
+    # its own `scoring` argument, which is precisely how #248's arm B came to run at rec 1.0
+    # while claiming to carry F&F's rulebook -- and `rec` selects the rankings EXPORT, so the
+    # arm read a different file than it reported. A captured league enters as itself or not at
+    # all.
+    #
+    # NEITHER LEAGUE IS CANONICAL. This is one more coordinate, and the point of adding it is
+    # that the invariants must hold here too -- not that its outcomes are the right ones.
+    # THE LEAGUE THIS SYSTEM IS ACTUALLY USED ON, which no arm above carries.
+    #
+    # Every arm above is built through build_mock_league, which emits no K, no DEF and no IDP
+    # slot. `format_axes_exercised` now reports the consequence in the battery's own output --
+    # `has_kicker` and `has_defense` constant False across all 34 arms -- but reporting a gap is
+    # not covering it. Measured on this shape by two independent passes: 31 kickers drafted onto
+    # 12 one-K rosters, 102 IDP players into 24 IDP slots, round 21 twelve consecutive DBs, and
+    # `structural_findings` = 0 throughout, because every one of those rosters is LEGAL.
+    #
+    # Supplied directly rather than through build_mock_league, for the reason the F&F block
+    # below gives: that function overwrites `rec` from its own `scoring` argument, and `rec`
+    # selects the rankings export, so an arm built that way reads a different file than it
+    # reports. A captured league enters as itself or not at all.
+    #
+    # NOT CANONICAL, same as F&F. It is one more coordinate -- the point is that the invariants
+    # must hold here too, not that its outcomes are the right ones.
+    owner_path = Path("data/fixtures/sleeper_capture.json")
+    if owner_path.exists():
+        owner_capture = json.loads(owner_path.read_text(encoding="utf-8"))
+        owner_league = owner_capture.get("league_shape") or owner_capture.get("league")
+        if owner_league and owner_league.get("roster_positions"):
+            owner_arm = dict(owner_league)
+            owner_rounds = len(lc.draftable_slots(owner_arm["roster_positions"]))
+            owner_arm["draft_rounds"] = owner_rounds
+            # THE DYNASTY FLAG IS NOT IN THE CAPTURE, AND IS NOT INVENTED HERE.
+            #
+            # `compute_draft_board` reads `is_dynasty` from `league["settings"]["type"] == 2`, and
+            # this capture's `league_shape` carries exactly three keys -- roster_positions,
+            # scoring_settings, total_rosters. So the arm labelled "THE LEAGUE THIS SYSTEM IS
+            # ACTUALLY USED ON" drafts as REDRAFT: `time_horizon_adj` is never applied and
+            # `risk_adj`'s trajectory scaling is off. Nothing the owner arm says about multi-year
+            # valuation, rookie or age handling, or the health signal's scaling is evidence.
+            #
+            # The sibling F&F arm hardcodes {"type": 2}. Doing the same here would assert a fact
+            # the captured data does not contain, which is the opposite of what a capture is for.
+            # The fix belongs in the CAPTURE WRITER, and re-capturing needs api.sleeper.app, which
+            # this environment's network policy denies -- the same blocker as `#30`'s live sync.
+            #
+            # So: carried through if the capture ever has it, stated if it does not, and
+            # `test_arm_rulebook` fails the moment a capture arrives with the flag while this arm
+            # still ignores it -- so the repair lands by itself rather than waiting to be noticed.
+            if (owner_league.get("settings") or {}).get("type") is not None:
+                owner_arm["settings"] = dict(owner_league["settings"])
+            out.append({"label": "CAPTURE_owner_league", "league": owner_arm,
+                        "teams": int(owner_arm.get("total_rosters") or 12),
+                        "rounds": owner_rounds,
+                        # STATED IN THE ARM so a report carries it: this arm's dynasty status is
+                        # UNKNOWN from the capture, not measured as redraft.
+                        "dynasty_flag_present_in_capture":
+                            (owner_league.get("settings") or {}).get("type") is not None})
+
+    capture_path = Path("data/league_captures/fourth_and_forever.json")
+    if capture_path.exists():
+        cap = json.loads(capture_path.read_text(encoding="utf-8"))
+        ff = {
+            "roster_positions": cap["roster_positions"],
+            "scoring_settings": {k: v["value"] for k, v in cap["scoring_settings_observed"].items()},
+            "total_rosters": 12,
+            "settings": {"type": 2},
+        }
+        ff_rounds = len(lc.draftable_slots(ff["roster_positions"]))
+        ff["draft_rounds"] = ff_rounds
+        out.append({"label": "CAPTURE_fourth_and_forever", "league": ff, "teams": 12,
+                    "rounds": ff_rounds})
+
+    # THE ARM THAT MAKES #161 FALSIFIABLE, and the reason it did not exist before is the
+    # finding. Every format above sets rounds = len(roster_positions), which is precisely the
+    # equation feasibility_first was guessing -- so all 5,244 picks of #150 satisfied the
+    # assumption under test and the battery was structurally incapable of contradicting it.
+    # A harness that fixes a variable cannot falsify a defect in that variable.
+    #
+    # rounds < slots is the ORDINARY shape, not an exotic one: benches are filled from waivers
+    # rather than drafted, and this repo's own real league is 33 roster positions against 29
+    # draftable. Here a 20-slot roster is drafted for 12 rounds, so eight bench seats are never
+    # picked and the backstop's "picks left" is wrong by eight unless it is told the truth.
+    # THE ARM THAT CLOSES has_defense (#52, ruled to block v2-freeze).
+    #
+    # Every arm above resolves `has_defense` to False: build_mock_league emits no DEF slot, and
+    # neither captured league has one -- the owner's own league carries a kicker but no team
+    # defense, which is exactly why `has_kicker` varied at one arm while this axis varied at
+    # none. The matrix advertised a dimension it did not cross, so no battery result was ever
+    # evidence about drafting a defense, and `format_axes_exercised` said so in its own output.
+    #
+    # NOT AN EXOTIC COORDINATE. QB/RB/RB/WR/WR/TE/FLEX/K/DEF is the most ordinary roster in
+    # fantasy football, and the battery did not have it. That is the finding, not the fix.
+    #
+    # EXACTLY ONE THING DIFFERS from the 12T ppr arm above: the two slots. Same base rulebook,
+    # same size, same scoring, same superflex and dynasty settings -- so anything this arm shows
+    # that its sibling does not is attributable to the slots and nothing else. Changing three
+    # coordinates at once would have made it a new format rather than a new measurement.
+    #
+    # Population checked before the arm was added, because an arm with an unfillable slot is a
+    # finding about the capture rather than coverage of the axis: the capture carries all 32
+    # team defenses, and every one of them prices, on `live_starter_demand`.
+    kdef = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False,
+                                scoring="ppr", te_premium=False, dynasty=True)
+    kdef["roster_positions"] = list(kdef["roster_positions"]) + ["K", "DEF"]
+    kdef_rounds = len(lc.draftable_slots(kdef["roster_positions"]))
+    kdef["draft_rounds"] = kdef_rounds
+    out.append({"label": "12T_ppr_K_DEF", "league": kdef, "teams": 12, "rounds": kdef_rounds})
+
+    short = dr.build_mock_league(base_scoring=base_scoring, teams=12, superflex=False, scoring="ppr",
+                                 te_premium=False, dynasty=True)
+    short_rounds = max(len(short["roster_positions"]) - 8, 8)
+    short["draft_rounds"] = short_rounds
+    out.append({"label": "12T_ppr_SHORT_DRAFT", "league": short, "teams": 12,
+                "rounds": short_rounds, "audit_roster_fill": False})
+
+    # A BALANCED SIBLING FOR EVERY ARM WHOSE `auto` REACHES THE UPSIDE SWITCH.
+    #
+    # THE GAP THIS CLOSES. Chairs run `mode="auto"`, which flips to upside scoring at
+    # UPSIDE_MODE_DEFAULT_ROUND; `app.py` passes no `mode=` at any `build_snapshot` call site, so
+    # the human's board is ALWAYS balanced. Measured across the matrix above, 17 of its arms draft
+    # part of themselves under a valuation production cannot reach -- the owner's league 132 of 300
+    # picks (44%), Fourth & Forever 144 of 312 (46%), HEAVY_IDP 22%, two more at 12%, twelve
+    # superflex arms at 7%. The existing `12T_ppr_mode_balanced` arm is 14 rounds, so `auto` never
+    # reaches the switch there and it is byte-identical to its sibling -- the mode axis was
+    # advertised and never crossed. So NO arm exercised the human-turn valuation past round 14.
+    #
+    # DERIVED, NOT HAND-PICKED. The rule is "every arm where auto can reach the switch", read off
+    # each arm's own round count against the engine's own constant. Selecting arms by how much
+    # upside they happened to contain would be a threshold, and `#56` forbids one: a bound is not a
+    # threshold, and "12% matters, 7% does not" is a calibration nobody derived.
+    #
+    # ADDED rather than replacing the auto arms, so every number already recorded keeps meaning
+    # what it meant. The cost is battery runtime, which is the honest price of the coverage.
+    crossing = [e for e in out if e.get("mode", "auto") == "auto"
+                and int(e["rounds"]) >= dr.UPSIDE_MODE_DEFAULT_ROUND]
+    for entry in crossing:
+        sibling = dict(entry)
+        sibling["label"] = f"{entry['label']}_balanced_full"
+        sibling["mode"] = "balanced"
+        # The same league object, deliberately: the ONLY difference between the pair is the
+        # valuation, so a difference in their results is attributable to it and nothing else.
+        out.append(sibling)
+    return out
+
+
+def league_format_hint(league: dict) -> dict:
+    """The {scoring, superflex, te_premium} triple set_league_format discriminates on.
+
+    Derived from the league's own settings by the same rules sleeper_client.league_format_summary
+    uses, rather than carried alongside each matrix entry -- a hint that could disagree with the
+    league it describes is a second source of truth for the same fact.
+    """
+    scoring_settings = league.get("scoring_settings") or {}
+    roster_positions = league.get("roster_positions") or []
+    rec = scoring_settings.get("rec", 0)
+    return {
+        "scoring": "ppr" if rec >= 1 else ("half_ppr" if rec == 0.5 else "standard"),
+        "superflex": roster_positions.count("SUPER_FLEX") > 0 or roster_positions.count("QB") > 1,
+        "te_premium": scoring_settings.get("bonus_rec_te", 0) > 0,
+    }
+
+
+def _position_of(players_db: dict, player_id: str) -> Optional[str]:
+    """The RAW Sleeper position, deliberately -- and that is a latent issue, recorded here
+    rather than changed (#52 phase 8).
+
+    `player_universe.player_position` buckets an IDP sub-position into the slot a league
+    actually offers ("FS" -> "DB"); this returns "FS". `roster_shape` and `first_round_taken`
+    both read it, so every battery report's `shape` counts sub-positions rather than roster
+    buckets in IDP formats.
+
+    NOT changed here because the five committed batteries were produced with this reading, and
+    switching it would make new reports incomparable with them on exactly the axis IDP arms
+    exist to measure. `undraftable_positions` no longer uses it for its verdict -- that guard
+    asks `player_eligible_positions` now -- so the remaining consumers are descriptive rather
+    than judgemental, which is the safe half to leave."""
+    info = players_db.get(str(player_id)) or {}
+    return info.get("position")
+
+
+# --------------------------------------------------------------------------------------
+# STRUCTURAL AUDITS -- the league's own rules decide, so no number here is mine.
+# --------------------------------------------------------------------------------------
+
+def unfilled_starting_slots(trajectory, league: dict, players_db: dict) -> list[dict]:
+    """THE defensibility bar, and the whole reason this module exists.
+
+    A full-length draft gives every chair exactly as many picks as it has roster slots. A roster
+    that finishes unable to field a legal starting lineup did not merely draft suboptimally --
+    it drafted something it cannot play, which is the failure mode #87 measured when need_bonus
+    was ablated (four QBs in a one-QB league).
+
+    Solved as the real assignment problem via lineup_optimizer rather than by counting
+    positions, because counting gets FLEX chains wrong: a spare RB legitimately fills a FLEX
+    and frees a WR upward, and a naive per-position tally reports a hole where the solver finds
+    none. (That distinction was measured while building bye_collision -- the naive reading
+    predicted a cost of 16 where the solver found 5.)
+    """
+    slots = lo.slots_from_roster_positions(league.get("roster_positions") or [])
+    findings = []
+    for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
+        players = []
+        for pid in player_ids:
+            info = players_db.get(str(pid)) or {}
+            players.append({"id": str(pid), "value": 1.0,
+                            # MANDATE 2.6: the one eligibility reader, not a third restatement
+                            # of `#172`'s rule. See player_eligible_positions.
+                            "eligible": player_eligible_positions(info)})
+        solved = lo.optimize_lineup(players, slots)
+        # optimize_lineup returns only the pairs it actually made -- an unfillable slot is
+        # filtered back out rather than returned empty (see its docstring), so the holes are the
+        # DIFFERENCE against the slot list, never a scan of the assignments for a missing id.
+        assigned = {a["slot_id"] for a in solved["assignments"] if a.get("player_id")}
+        filled = len(assigned)
+        if filled < len(slots):
+            empty = [slot["label"] for slot in slots if slot["slot_id"] not in assigned]
+            findings.append({
+                "audit": "unfilled_starting_slots", "roster_id": roster_id,
+                "filled": filled, "required": len(slots), "empty_slots": empty,
+                "roster_size": len(player_ids),
+            })
+    return findings
+
+
+def unpriced_picks(trajectory) -> list[dict]:
+    """A chair took a player the engine could not price. Every pick is candidates[0] by
+    team_acquisition_value, so an unpriced choice means the ordering fell through to a
+    tiebreak with no value behind it at all -- the pathological end of #114."""
+    findings = []
+    for pick in trajectory.picks:
+        row = next((c for c in pick.snapshot["candidates"] if c["id"] == pick.chosen_player_id), None)
+        if row is None:
+            findings.append({"audit": "unpriced_picks", "pick": pick.pick_label,
+                             "reason": "chosen player is absent from its own retained board"})
+        elif row.get("tav") is None:
+            findings.append({"audit": "unpriced_picks", "pick": pick.pick_label,
+                             "player": row.get("name"), "reason": "chosen with tav=None"})
+    return findings
+
+
+def undraftable_positions(trajectory, league: dict, players_db: dict) -> list[dict]:
+    """A roster holding a player NO slot in this league can start -- not even a flex share.
+    Structural: the pool is supposed to be filtered to usable positions upstream, so any hit
+    here is a filter that leaked, never a judgement about roster balance.
+
+    ASKED THROUGH THE SAME RULE THE POOL ADMITS ON (#126), which it was not until now. This
+    read one PRIMARY position per player and flagged it if that bucket had no slot, while
+    `build_available_pool` admits on `fantasy_positions` -- so the guard and the filter it
+    polices were asking different questions, and the guard's was the wrong one.
+
+    It cost a false positive on a real capture: Travis Hunter is `position: "DB"` with
+    `fantasy_positions: ["DB", "WR"]`, and a 12-team league starting QB/RB/WR/TE rostered him
+    legitimately as a WR. The audit called that a leaked filter. A structural audit reporting a
+    DEFECT where the engine did the right thing is worse than one that stays quiet, because
+    this file's own docstring says "a finding here is a DEFECT, not an observation" and a
+    reader is entitled to believe it.
+
+    A player is undraftable only when NONE of his eligible positions can be started."""
+    startable = {p for p, n in dr.starter_slot_counts(league.get("roster_positions") or []).items() if n > 0}
+    findings = []
+    for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
+        for pid in player_ids:
+            eligible = player_eligible_positions(players_db.get(str(pid)) or {})
+            if eligible and not (eligible & startable):
+                findings.append({"audit": "undraftable_positions", "roster_id": roster_id,
+                                 "player_id": str(pid),
+                                 "position": _position_of(players_db, pid),
+                                 "eligible": sorted(eligible)})
+    return findings
+
+
+def duplicate_picks(trajectory) -> list[dict]:
+    seen, findings = set(), []
+    for pick in trajectory.picks:
+        if pick.chosen_player_id in seen:
+            findings.append({"audit": "duplicate_picks", "pick": pick.pick_label,
+                             "player_id": pick.chosen_player_id})
+        seen.add(pick.chosen_player_id)
+    return findings
+
+
+def unfieldable_depth(trajectory, league: dict, players_db: dict) -> list[dict]:
+    """A roster carrying more of a position than it can EVER field. The audit that would have
+    caught the nine-defense roster (`evidence/kdst_streaming/ROOT_CAUSE.md`).
+
+    THE FOUR EXISTING AUDITS ALL PASS ON THAT ROSTER. Every starting slot was filled, every pick
+    was priced, DEF is a draftable position, and no player was duplicated. `roster_shape` and
+    `mean_position_count` recorded DEF: 9 in a one-DEF league and returned no verdict, on the
+    stated grounds that a verdict would need a number somebody chose.
+
+    IT DOES NOT, and that is the whole reason this is an audit rather than another distribution.
+    The ceiling is derived from two league facts and nothing else:
+
+      - A position that reaches only slots which admit IT ALONE can start exactly `slots(P)`
+        players in any week. There is no flex chain to absorb a spare, so the surplus is not
+        depth -- it is a roster spot that provably cannot be fielded.
+      - Every team has exactly ONE bye week, so exactly one backup is needed to cover it.
+
+    Ceiling = `slots(P) + 1`. Derived, not calibrated (`#56`), and a BOUND rather than a
+    threshold: it is the largest count that is not provably wasted, so it can only ever be
+    tripped by a roster that is demonstrably carrying an unplayable player.
+
+    FLEX-ELIGIBLE POSITIONS ARE EXEMPT, and must be. A spare RB fills a FLEX and frees a WR
+    upward; a fourth WR in a two-FLEX league is ordinary depth. Asked through the SAME slot
+    eligibility the optimizer solves on (`#126`), never a hand-listed set of "bench positions" --
+    a second reading of which positions have flex reach is exactly how `undraftable_positions`
+    went wrong before it was repaired.
+    """
+    # MANDATE 3.2 -- ONE HOME FOR THE BOUND (`#126`). This audit no longer keeps its own.
+    #
+    # It used to re-derive the ceiling here: count dedicated slots, exempt anything flex-reachable,
+    # compare `slots(P) + 1` against a count taken by PRIMARY POSITION. That is a second reading of
+    # a rule draft_room already owns, and the two disagreed the way a second reading eventually
+    # always does. This audit reported HEAVY_IDP roster 2 as holding 6 LB against a ceiling of 3;
+    # the engine counted 3, because the other three were edge rushers eligible at {DL, LB} and its
+    # `held` count skipped every multi-eligible player. An audit that asks a different question
+    # from the engine cannot tell a defect from a disagreement, and ten of this battery's findings
+    # were the disagreement.
+    #
+    # Both now ask `draft_room.fieldable_ceiling_groups`, over eligibility rather than the primary
+    # bucket, so a finding here is a statement about the bound the ENGINE enforces. Reported per
+    # GROUP because that is the shape of the bound -- a roster is over by a number of players, not
+    # by a number at a named position.
+    ceilings = dr.fieldable_ceiling(league.get("roster_positions") or [])
+    if not ceilings:
+        return []
+
+    findings = []
+    for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
+        eligibilities = [player_eligible_positions(players_db.get(str(pid)) or {})
+                         for pid in player_ids]
+        for group in dr.fieldable_ceiling_groups(ceilings, eligibilities):
+            if group["held"] > group["ceiling"]:
+                findings.append({
+                    "audit": "unfieldable_depth", "roster_id": roster_id,
+                    "positions": sorted(group["positions"]), "held": group["held"],
+                    "startable_per_week": group["slots"],
+                    "ceiling": group["ceiling"],
+                    "unfieldable": group["held"] - group["ceiling"],
+                })
+    return findings
+
+
+def structural_findings(trajectory, league: dict, players_db: dict,
+                        *, audit_roster_fill: bool = True) -> list[dict]:
+    """Every structural audit, in one call. A finding here is a DEFECT, not an observation.
+
+    ONE QUALIFICATION ON THAT CONTRACT, and it is about ATTRIBUTION rather than truth. Under
+    `opponent_noise` (`#263b`) the non-sharp seats do not take their board's top candidate --
+    they choose uniformly from their own top_k. A finding on such a seat is still a true
+    statement about the roster: it really cannot field what it holds. It is NOT evidence about
+    the engine's ORDERING, because the ordering was deliberately overridden before the pick.
+    Measured on the first VDS run to reach the noisy arms: five arms of `12T_ppr_K_DEF` returned
+    zero findings (three sharp, `crossing`, `noisy_k3`) and `noisy_k8` -- the widest random draw
+    -- returned one, a seat holding three kickers against a ceiling of two.
+
+    So read a finding on a noisy arm through `STRATEGY_SPECIFIC_FINDINGS`, which exists to say
+    "this appeared under one strategy and not the control". A finding that appears on the CONTROL
+    arm is about the engine; one that appears only as the rivals get more random is about the
+    noise axis.
+
+    `audit_roster_fill=False` for a format whose draft is SHORTER than its roster. That is not
+    an exemption for convenience: a 12-round draft of a 20-slot roster cannot fill 20 slots, so
+    an unfilled-slot finding there would report arithmetic as an engine defect. The other four
+    audits still run -- a short draft can still price nothing, draft an impossible position,
+    hoard a position it cannot field, or take the same player twice, and those remain defects at
+    any length."""
+    findings = (unpriced_picks(trajectory)
+                + undraftable_positions(trajectory, league, players_db)
+                + unfieldable_depth(trajectory, league, players_db)
+                + duplicate_picks(trajectory))
+    if audit_roster_fill:
+        findings = unfilled_starting_slots(trajectory, league, players_db) + findings
+    return findings
+
+
+# --------------------------------------------------------------------------------------
+# REPORTED DISTRIBUTIONS -- no verdict, because a verdict would need a number I chose.
+# --------------------------------------------------------------------------------------
+
+def roster_shape(trajectory, players_db: dict) -> dict[str, dict[str, int]]:
+    """roster_id -> {position: count}. The raw material for every comparative claim below."""
+    out: dict[str, dict[str, int]] = {}
+    for roster_id, player_ids in trajectory.final_rosters().items():
+        counts: collections.Counter = collections.Counter()
+        for pid in player_ids:
+            position = _position_of(players_db, pid)
+            if position:
+                counts[position] += 1
+        out[roster_id] = dict(counts)
+    return out
+
+
+def mean_position_count(trajectory, players_db: dict, position: str) -> float:
+    shapes = roster_shape(trajectory, players_db)
+    if not shapes:
+        return 0.0
+    return sum(s.get(position, 0) for s in shapes.values()) / len(shapes)
+
+
+def first_round_taken(trajectory, players_db: dict, position: str) -> Optional[int]:
+    """The round a position first comes off the board -- the comparative handle for "does this
+    format pull this position earlier", which is a direction rather than a magnitude."""
+    for pick in trajectory.picks:
+        if _position_of(players_db, pick.chosen_player_id) == position:
+            return pick.round
+    return None
+
+
+def tav_margin_profile(trajectory) -> dict:
+    """How decisively each pick was made: the gap between the chosen candidate and the runner-up.
+
+    #114 measured a real late-draft collapse -- 27.8% of an 18-round draft decided by a
+    player-id tiebreak once every remaining candidate priced identically. Reported rather than
+    asserted, because "how thin is too thin" is exactly the judgement this module refuses to
+    encode. A zero margin is not automatically wrong; a HIGH RATE of them means the ordering
+    stopped carrying information, and a person should see the number.
+    """
+    margins, zero_by_round = [], collections.Counter()
+    total_by_round: collections.Counter = collections.Counter()
+    unmeasurable_by_round: collections.Counter = collections.Counter()
+    for pick in trajectory.picks:
+        rows = [c for c in pick.snapshot["candidates"] if c.get("tav") is not None]
+        total_by_round[pick.round] += 1
+        if len(rows) < 2:
+            continue
+        # THE CHOSEN CANDIDATE, not the top of the list. This measured `top_tav - second_tav`
+        # regardless of who was actually taken -- and the chosen player is NOT the top-tav row
+        # whenever a backstop demotes it (feasibility, fieldability) or `opponent_noise` is on.
+        # So `zero_margin_share`, described as "how decisively the pick was made", was the gap
+        # between two rows that may both have been passed over. Reported under the old name it
+        # was a real number about a different question.
+        by_tav = sorted(rows, key=lambda c: -c["tav"])
+        chosen = next((c for c in rows if c.get("id") == pick.chosen_player_id), None)
+        if chosen is None:
+            # The chosen row carried no tav (or is absent from the candidate set). Counted, not
+            # silently skipped: a pick whose own margin cannot be computed is a gap in this
+            # profile's coverage, and `picks_measured` below would otherwise hide it.
+            unmeasurable_by_round[pick.round] += 1
+            continue
+        runner_up = next((c for c in by_tav if c.get("id") != pick.chosen_player_id), None)
+        if runner_up is None:
+            continue
+        margin = round(chosen["tav"] - runner_up["tav"], 4)
+        margins.append(margin)
+        if margin <= 0:
+            zero_by_round[pick.round] += 1
+    return {
+        "picks_measured": len(margins),
+        # STATED rather than left to a reader's subtraction. A margin that cannot be computed is
+        # not a zero margin, and folding the two together is how a coverage gap reads as a result.
+        "picks_whose_margin_is_unmeasurable": sum(unmeasurable_by_round.values()),
+        "margin_basis": "chosen candidate's tav minus the best OTHER candidate's tav -- not the "
+                        "top two, because a backstop or opponent_noise can mean the chosen row "
+                        "is not the top row",
+        "zero_margin_picks": sum(zero_by_round.values()),
+        "zero_margin_share": (sum(zero_by_round.values()) / len(margins)) if margins else None,
+        "zero_margin_by_round": dict(sorted(zero_by_round.items())),
+        "picks_by_round": dict(sorted(total_by_round.items())),
+        "median_margin": (sorted(margins)[len(margins) // 2] if margins else None),
+    }
+
+
+def qualifier_profile(trajectory) -> dict:
+    """#138's two carried qualifiers, now that picks record them: what KIND of number won.
+
+    A pick resting on the pre-draft anchor is a weaker claim than one resting on live starter
+    demand, and a report that cannot tell them apart is the exact blindness #138 repaired.
+    """
+    bases = collections.Counter(p.chosen_replacement_basis for p in trajectory.picks)
+    # `is not None` and `> 0` are SEPARATE counts, and conflating them is the exact defect this
+    # repository forbids everywhere else -- caught here in the battery's own reporting, where a
+    # truthiness test read a measured growth of 0.0 as "no growth measured". Balanced-mode picks
+    # have growth_signal None because the quantity is never computed; an upside pick can
+    # legitimately measure 0.0, and those are different facts about the draft.
+    measured = [p.chosen_growth_signal for p in trajectory.picks
+                if p.chosen_growth_signal is not None]
+    positive = [value for value in measured if value > 0]
+    return {
+        "replacement_basis": {str(k): v for k, v in sorted(bases.items(), key=lambda kv: str(kv[0]))},
+        "picks_with_growth_measured": len(measured),
+        "picks_with_growth_above_zero": len(positive),
+        "max_growth": max(measured) if measured else None,
+    }
+
+
+def reference_values(merger, players_db: dict, league: dict,
+                     sleeper_projections: Optional[dict[str, dict]] = None,
+                     sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+                     #: #30/#204. The paragraph below has demanded this since it was written; the
+                     #: parameter did not exist, so the ruler was built WITHOUT the streaming floor
+                     #: while the draft ran WITH it. On a K/DEF arm that credited every rostered
+                     #: kicker +23.66 and every defense +15.94 against the board the chairs drafted
+                     #: from -- the exact asymmetry the docstring calls worse than
+                     #: consistent-but-wrong, in the function whose docstring says so.
+                     weekly_projections: Optional[dict] = None) -> dict[str, float]:
+    """player_id -> universal_value on the PRE-DRAFT board. ONE RULER for the whole format.
+
+    Emphatically NOT each player's value at the moment he was taken. Those numbers are measured
+    against different board states, and comparing them is the moving-ruler defect #75/#76 found,
+    where the reference carried 94.5% of all bpa movement. #74 removed that scale, so values are
+    far more stable now -- but "far more stable" is not "comparable", and a strength number that
+    sums across fifteen different board states would be measuring the draft's progress as much
+    as the roster.
+    """
+    # THE RULER AND THE DRAFT MUST BE PRICED THE SAME WAY (#204). run_battery passes whatever
+    # it passed to simulate_full_draft; a ruler built off vendor-only points while the draft
+    # itself ran scoring-aware would make every value-against-the-ruler number in the audit a
+    # comparison between two different quantities -- worse than the consistent-but-wrong state
+    # this replaced, because it would look measured.
+    board = dr.compute_draft_board(merger, players_db, [], my_roster_id=None,
+                                   league=league, mode="balanced",
+                                   sleeper_projections=sleeper_projections,
+                                   sleeper_basis=sleeper_basis,
+                                   weekly_projections=weekly_projections)
+    return {str(row["player_id"]): row["universal_value"] for row in board
+            if row.get("universal_value") is not None}
+
+
+#: Which quantity answers "what is this roster worth". Named rather than implied, because the
+#: two candidates differ in KIND and the wrong one was reported for the life of this battery.
+ROSTER_WORTH_BASIS = "total_value: universal_value is an asset LEVEL, so roster worth is what "\
+                     "the chair OWNS; starter_value sums that level over a starting lineup and "\
+                     "measures positional breadth instead (#211)"
+
+
+def roster_strength(trajectory, league: dict, players_db: dict,
+                    values: dict[str, float]) -> dict:
+    """What each roster is actually WORTH, not merely whether it is legal.
+
+    Three numbers per chair, all on the shared pre-draft ruler:
+      total_value   -- what the chair OWNS. THIS IS THE ROSTER-WORTH NUMBER (see
+        ROSTER_WORTH_BASIS), and saying so is a correction, not a convention.
+      starter_value -- the optimal legal lineup's total, solved with REAL values (unlike
+        unfilled_starting_slots, which passes 1.0 to ask a pure feasibility question). It
+        answers "can this roster field a lineup, and what does doing so cost", which is a real
+        question and NOT the same one.
+      bench_value   -- everything else. Depth, and the price paid for it.
+
+    #211: starter_value WAS DESCRIBED HERE AS "the roster-quality number: it is what the team
+    actually fields", and that was a category error this docstring helped hide for the life of
+    this battery. universal_value is an asset LEVEL -- what a player is worth to OWN -- not a
+    rate that starting him realises, so summing the started subset does not measure quality.
+    Worse, it does not even measure it badly-but-monotonically: 83.8% of a typical pool's
+    universal_value is NEGATIVE (min -319.22, median -30.74, max +79.03) and optimize_lineup
+    has no "leave the slot empty" move, so a roster thin at a position is FORCED to start deep
+    negatives. Measured directly: one +50 WR and one -80 RB against a WR slot and an RB slot
+    returns -30, not +50. The battery duly produced `12T_ppr_mode_upside starters -205.4`.
+    What starter_value therefore ranks is POSITIONAL BREADTH -- who is forced to start the
+    fewest negatives -- which is a property of how a chair spread its picks, not of how good
+    they were. `forced_negative_starters` now travels with it so the contamination is visible
+    at the point of reading, and total_value carries the roster-worth question instead.
+
+    SCOPE, deliberately narrow: NO FINDING CHANGES. The battery's findings are legality checks
+    (unfilled_starting_slots and friends) and none of them has ever read starter_value; this
+    corrects a REPORTED LINE, not a verdict. The numbers in the committed evidence files were
+    produced by the code as it stood and are not retroactively altered -- only their reading is.
+
+    UNPRICED PLAYERS ARE COUNTED, AND -- CONTRARY TO WHAT THIS DOCSTRING USED TO CLAIM -- THEY
+    ARE ALSO ENTERED AT 0.0. The count is real (`unpriced_players` travels with every roster),
+    and that half was always true. The other half was not: `values.get(str(pid), 0.0)` below
+    admits an unpriced player to the lineup solve valued at zero, so the zero lands in
+    total_value, in bench_value, and in the optimizer's own choice of who starts.
+
+    This is #165's OPEN question -- what an unpriced player is worth inside a lineup solve --
+    answered here, silently, as 0.0. That is the option roster_diagnostics rejected on the
+    record, and draft_room._team_roster_players measured what it does: "optimize_lineup
+    maximises total value, so a zero-value player is always the first benched and never holds a
+    slot against contention", i.e. behaviourally near-identical to dropping him while buying
+    "nothing but false confidence". starter_value is therefore a floor for a DIFFERENT reason
+    than this docstring gave, and the floor is not clean.
+
+    NOT REPAIRED HERE ON PURPOSE. Choosing what an unpriced player is worth in a solve IS #165,
+    which the owner has reserved pending an investigation into whether rank, tier or positional
+    context can carry him without inventing a price. Fixing it here would answer a reserved
+    question by implementation. The comment is corrected because a docstring asserting the
+    opposite of its code is worse than none -- it is what let this survive: a reader checking
+    the absence contract would have read the old sentence and moved on. Registered as #168.
+
+    WHERE IT BITES: any roster holding unpriced players, i.e. the IDP arms -- 339 of 415 IDP
+    baseline rows carry no trade value. The starter-value SPREAD this function names below as
+    "the readable signal" is the number most affected by it.
+
+    Reported, never asserted. "Is 812 a good starter_value" needs a threshold nobody has
+    argued for; the SPREAD across chairs is the readable signal, and it is comparative.
+    """
+    slots = lo.slots_from_roster_positions(league.get("roster_positions") or [])
+    per_roster, starters, totals = {}, [], []
+    for roster_id, player_ids in sorted(trajectory.final_rosters().items()):
+        players, unpriced = [], 0
+        for pid in player_ids:
+            info = players_db.get(str(pid)) or {}
+            if str(pid) not in values:
+                unpriced += 1
+            players.append({
+                "id": str(pid), "value": values.get(str(pid), 0.0),
+                # MANDATE 2.6: the one eligibility reader (`#126`).
+                "eligible": player_eligible_positions(info),
+            })
+        solved = lo.optimize_lineup(players, slots)
+        starter_value = round(solved["total_value"], 2)
+        total = round(sum(p["value"] for p in players), 2)
+        # #211's COMPANION. optimize_lineup has no "leave the slot empty" move -- it fills every
+        # slot it can -- so a roster thin at a position is FORCED to start a below-replacement
+        # player and his negative value lands in starter_value. Counting them is what lets a
+        # reader tell a weak lineup from a lineup that was never fillable.
+        forced_negative = sum(1 for a in solved["assignments"] if a["value"] < 0)
+        per_roster[roster_id] = {
+            "starter_value": starter_value, "total_value": total,
+            "bench_value": round(total - starter_value, 2),
+            "unpriced_players": unpriced,
+            "forced_negative_starters": forced_negative,
+            "slots_filled": len(solved["assignments"]),
+            "starting_slots": len(slots),
+        }
+        starters.append(starter_value)
+        totals.append(total)
+    starters.sort()
+    totals.sort()
+    return {
+        "per_roster": per_roster,
+        # THE ROSTER-WORTH LINE (#211). universal_value is an asset LEVEL, so the quantity that
+        # answers "what is this roster worth" is what the chair OWNS, not what it starts.
+        "roster_worth_basis": ROSTER_WORTH_BASIS,
+        "total_value_min": totals[0] if totals else None,
+        "total_value_median": totals[len(totals) // 2] if totals else None,
+        "total_value_max": totals[-1] if totals else None,
+        "total_value_spread": round(totals[-1] - totals[0], 2) if totals else None,
+        # THE LINEUP LINE. Retained because it answers a real and different question -- can this
+        # roster field a legal lineup, and what does the forced assignment cost -- but it is NOT
+        # the roster-worth number and the companion below is what stops it being read as one.
+        "starter_value_min": starters[0] if starters else None,
+        "starter_value_median": starters[len(starters) // 2] if starters else None,
+        "starter_value_max": starters[-1] if starters else None,
+        "starter_value_spread": round(starters[-1] - starters[0], 2) if starters else None,
+        "forced_negative_starters": sum(r["forced_negative_starters"]
+                                        for r in per_roster.values()),
+    }
+
+
+def unpriced_at_decision(trajectory) -> dict:
+    """Picks whose CANDIDATE SET carried an unpriced row, and picks that TOOK one.
+
+    #170. This exists because roster_strength's `unpriced_players` cannot answer the question
+    it appears to answer. That counter measures against `reference_values`, which is built from
+    the PRE-DRAFT board -- and the pre-draft board prices every row while every drafted player
+    is necessarily on it, so its `values.get(pid, 0.0)` fallback is unreachable and the count is
+    0 by construction across all 33 formats and ~5,000 picks. Reported as "every player priced",
+    it reads as a measurement of the engine and is a property of the ruler's timing.
+
+    This reads the board AS IT WAS AT THE PICK, off the snapshot every PickRecord already
+    retains, so it can actually come out non-zero. Same idiom as chosen_replacement_basis: a
+    decomposition of a decision the record already stores, read rather than re-derived.
+
+    HONEST SCOPE, because the two are not the same question. The snapshot carries the NARROWED
+    CANDIDATE SET, not the whole board, so this measures whether absence reached the DECISION
+    SURFACE -- did an unpriced player contend for, or win, a pick -- and not what fraction of
+    the board was unpriced. The decision surface is the question #165 and #168 are about; board
+    coverage would need the board retained, which no record currently keeps.
+
+    Absence is counted as absence: a candidate whose "uv" key is missing is NOT the same as one
+    carrying None, and neither is folded into a zero. `examined` is reported so a rate is never
+    quoted over an empty set."""
+    examined = with_unpriced = took_unpriced = no_uv_key = 0
+    for pick in trajectory.picks:
+        candidates = (pick.snapshot or {}).get("candidates") or []
+        if not candidates:
+            continue
+        examined += 1
+        unpriced_ids = set()
+        for cand in candidates:
+            if "uv" not in cand:
+                no_uv_key += 1
+            elif cand.get("uv") is None:
+                unpriced_ids.add(str(cand.get("id")))
+        if unpriced_ids:
+            with_unpriced += 1
+            if str(pick.chosen_player_id) in unpriced_ids:
+                took_unpriced += 1
+    return {
+        "picks_examined": examined,
+        "picks_with_an_unpriced_candidate": with_unpriced,
+        "picks_that_took_an_unpriced_candidate": took_unpriced,
+        "candidate_rows_missing_the_uv_key": no_uv_key,
+    }
+
+
+def audit_trajectory(trajectory, league: dict, players_db: dict,
+                     values: Optional[dict[str, float]] = None,
+                     *, audit_roster_fill: bool = True) -> dict:
+    """One trajectory, fully judged and fully described."""
+    return {
+        "label": trajectory.config.get("label", ""),
+        # THE WHOLE CONFIG, not just the label. `simulate_full_draft` records priced_from,
+        # sleeper_basis, mode, pool_scope, opponent_noise, upside_rule, upside_from_round and
+        # picks_by_mode into DraftTrajectory.config explicitly "so two trajectories are not
+        # mistaken as comparable" -- and this function read one key of it, so no per-arm entry in
+        # any report carried a mode, a noise seed or a pricing path. A carried arm produced under
+        # a different seed was indistinguishable from a fresh one, while the report's header
+        # printed the CURRENT code's constants. Copied rather than referenced so the recorded
+        # entry cannot change under a later mutation of the trajectory.
+        "provenance": {k: v for k, v in sorted(trajectory.config.items()) if k != "label"},
+        # THE AXES THIS ARM WAS ACTUALLY DRAFTED UNDER, carried with the arm. `format_axes` in the
+        # report was computed from the LIVE matrix and matched carried arms by label only, so if a
+        # league definition changed under an unchanged label -- which `12T_ppr_K_DEF` did when K
+        # and DEF were appended to it -- a resumed report advertised axis coverage the carried
+        # numbers were not produced under. Recorded here, the arm can be compared against the
+        # matrix instead of assumed to match it.
+        "format_axes": advertised_format_axes(league),
+        "picks": len(trajectory.picks),
+        "rosters": len(trajectory.final_rosters()),
+        "findings": structural_findings(trajectory, league, players_db,
+                                        audit_roster_fill=audit_roster_fill),
+        "shape": roster_shape(trajectory, players_db),
+        "margins": tav_margin_profile(trajectory),
+        "qualifiers": qualifier_profile(trajectory),
+        "regimes": dict(collections.Counter(p.decision_regime for p in trajectory.picks)),
+        "strength": (roster_strength(trajectory, league, players_db, values)
+                     if values is not None else None),
+        # #170. Deliberately NOT folded into "strength": that block measures against the
+        # pre-draft ruler, this one against the board at the pick, and merging two coverage
+        # numbers with different references is how the first one came to be misread.
+        "unpriced_at_decision": unpriced_at_decision(trajectory),
+    }
+
+
+#: Fields excluded from an arm's content fingerprint. `label` is the thing being compared, and
+#: `seconds` is wall-clock -- including it would make every arm unique and the check vacuous.
+#: Found the hard way: the first version of this comparison included `seconds` and reported 0
+#: duplicates against a matrix that has 8.
+#: `produced_at_commit` and `carried_forward` are stamped onto every arm by
+#: `run_draft_battery.main` BEFORE `_battery_report` calls `duplicate_arms`, and a carried arm
+#: necessarily differs from a fresh one in both. So on a resumed run -- which is the documented
+#: normal way a ~3-hour battery completes, because the container is reclaimed on inactivity --
+#: two byte-identical arms fingerprinted differently and `independent_formats` was overstated
+#: EXACTLY when resume was used. Excluded for the same reason `seconds` is: they describe the
+#: RUN, not the arm's content.
+#:
+#: `provenance` IS THE THIRD TIME THIS RULE WAS LEARNED (A1), and it cost this detector its only
+#: live finding. `12T_ppr` and `12T_ppr_mode_balanced` produce a BYTE-IDENTICAL 112-pick
+#: sequence; the only keys that differ between those two arms are `label`, `seconds` and
+#: `provenance` (`mode` auto vs balanced, `upside_from_round` 15 vs None). The first two were
+#: already excluded, so when `provenance` joined the arm row the pair silently stopped being
+#: reported and `independent_formats` published 53 where the answer is 52. Every committed report
+#: before that field existed flagged the pair; none since has.
+#:
+#: The test of membership here is the rule already written above, not a judgement about which
+#: fields feel incidental: does this field describe the RUN or what the arm MEASURED? `provenance`
+#: records how the arm was configured, which is why two arms can agree on every pick and disagree
+#: on it -- and that is exactly the condition this detector exists to find.
+_FINGERPRINT_EXCLUDES = frozenset({"label", "seconds", "produced_at_commit", "carried_forward",
+                                   "provenance"})
+
+
+#: WHAT `constant_axes` CAN AND CANNOT SEE (A3). It ranges over `advertised_format_axes`, which
+#: is `league_format_hint` plus `roster_shape_axes` -- both derived PURELY FROM THE LEAGUE. The
+#: per-arm parameters `run_battery` forwards are not among them, so an axis that is constant
+#: across every arm because of how the RUN was configured does not announce itself the way a
+#: constant league axis does. Measured on the 53-arm run: `constant_axes` published `[]` while
+#: `provenance.upside_rule` was `round` on all 53 arms and `provenance.opponent_noise` was absent
+#: on all 53. `#241`'s lesson -- "an axis that fails to vary is also a coverage hole" -- is
+#: therefore enforced on the league half of the matrix and not on the configured half.
+#:
+#: WIDENED, AND THE DEFINITION THAT BLOCKED IT WAS NOT NEEDED (A3, decided 2026-10-01). The reason
+#: given for stating this rather than closing it was that widening means "deciding which provenance
+#: keys are AXES and which are incidental". That decision dissolves once the two populations are
+#: reported SEPARATELY instead of merged: `constant_axes` keeps ranging over the advertised LEAGUE
+#: axes and keeps gating through `UNCOVERED_AXES`, and `configured_axes` / `constant_configured`
+#: report the per-arm configuration as a DISCLOSURE. No key has to be called an axis or an
+#: incidental for both numbers to be true, and merging them would have been the `#174` error --
+#: one name over two denominators.
+#:
+#: CONFIGURED CONSTANTS ARE DISCLOSED, NOT GATED, and that is the substantive decision here. A
+#: constant league axis is a coverage hole: the matrix advertised a dimension it did not cross. A
+#: constant configured key is often the point -- one `seed` across every arm is what makes the run
+#: reproducible -- so failing on it would turn a register of coverage holes into a register of
+#: deliberate settings. What was actually wrong was silence: the 53-arm run published
+#: `constant_axes: []` and said NOTHING about `upside_rule` being `round` on all 53 arms or
+#: `opponent_noise` being absent on all 53. It now says both, and a reader can judge them.
+def roster_shape_axes(league: dict) -> dict:
+    """The ROSTER-SHAPE dimensions of a league, derived from its own `roster_positions`.
+
+    `league_format_hint` answers "which rankings export fits this league" -- scoring, superflex,
+    te_premium. Those are the axes `format_axes_exercised` has always reported, and they are the
+    right ones for FILE SELECTION. They are not the only ways a matrix can fail to cover the
+    league someone actually plays.
+
+    WHY THIS EXISTS, measured: the matrix carried 34 arms, **0 of them with a kicker slot** and
+    **0 combining SUPER_FLEX with any IDP slot**, while the owner's league has both. A full
+    draft on that shape put 31 kickers onto 12 rosters and 102 IDP players into 24 IDP slots, and
+    the battery reported `0 structural findings` -- because `structural_findings` checks legality
+    and the coverage instrument could not see slot composition as a dimension at all. Two
+    independent blind passes found that behaviour; the instrument that exists to notice an
+    unexercised axis reported "no constant axis" over a kicker-free matrix, truthfully, about
+    the three axes it knew about.
+
+    Derived, never hand-listed, exactly as the format axes are: these come from the league's own
+    slots, so a league that adds a slot family appears here without anyone editing a list.
+    """
+    slots = [str(s).upper() for s in (league.get("roster_positions") or [])]
+    return {
+        "has_kicker": "K" in slots,
+        "has_defense": "DEF" in slots or "DST" in slots,
+        # dm.IDP_POSITIONS is the one home for the IDP vocabulary (#126); a league can name
+        # an IDP slot either as a flex ("IDP_FLEX") or as a bare position ("LB").
+        "has_idp_slot": any(s.startswith("IDP") or s in dm.IDP_POSITIONS for s in slots),
+        "has_superflex_slot": "SUPER_FLEX" in slots,
+        # THE NAME AND THE VALUE, SEPARATED. This key used to hold the count below -- starting
+        # slots, excluding BN as well as IR and TAXI -- under the name `draftable_rounds`. So the
+        # `format_axes.axes.draftable_rounds` histogram in every report was a histogram of a
+        # different quantity than its name: it said 8 where the arm drafts 14, 10 where F&F drafts
+        # 26, and 11 where the owner league drafts 25. Measured: 35 of the 36 arms disagreed.
+        #
+        # The repair is NOT to swap in `league_config.draftable_slots`, which was the obvious
+        # move and is also wrong: that returns 14 for `12T_ppr_SHORT_DRAFT`, whose whole purpose
+        # is to draft 8. It agrees with the real count on 35 of 36 arms, which is exactly the
+        # kind of near-miss that reads as correct. The arm's round count is a property of the
+        # DRAFT, not of the roster shape, and the league carries it directly.
+        # `league_config` owns both readers (#126). The hand-written exclusion list that used to
+        # sit here is what let this quantity drift from the name above it in the first place --
+        # and my first pass at this repair rewrote it by hand again, against `lc.starting_slots`,
+        # which returns the identical count on all 36 arms. A second implementation that agrees
+        # today is the whole shape of Tier 4.
+        "starting_slots": len(lc.starting_slots(league.get("roster_positions"))),
+        "draftable_rounds": int(league.get("draft_rounds") or 0) or
+                            len(lc.draftable_slots(league.get("roster_positions"))),
+    }
+
+
+#: ONE HOME FOR THE AXIS VOCABULARY THE MATRIX ADVERTISES (#126, #52 phase 6).
+#:
+#: There are two derived vocabularies here and they answer different questions: which rankings
+#: EXPORT fits a league (league_format_hint -- scoring, superflex, te_premium) and what SHAPE the
+#: league is (roster_shape_axes -- kicker, defense, IDP, superflex slot, draftable rounds). Both
+#: are real coverage dimensions, and format_axes_exercised unions them.
+#:
+#: The union used to be spelled out inside that function, which made it a SECOND home: the
+#: report knew about both vocabularies and every test that checked the report knew about only
+#: one, so the tests tracked league_format_hint's keys by hand and went red the moment the shape
+#: axes were added. That is the hand-list defect one layer up from the one #126 names. The union
+#: lives here, and the report and its tests both read it.
+def advertised_format_axes(league: dict) -> dict:
+    """{axis name: this league's value} across every dimension the matrix claims to cross."""
+    axes = dict(league_format_hint(league))
+    axes.update(roster_shape_axes(league))
+    return axes
+
+
+#: Axes the matrix ADVERTISES but does not currently VARY, each with why and what would close it.
+#:
+#: Registering a hole is not silencing it -- it is the difference between a coverage gap someone
+#: decided to carry and one nobody noticed. The guard reads this both ways: an unregistered
+#: constant axis fails (a gap appeared), and a registered axis that starts varying ALSO fails
+#: (the registration went stale and should be deleted). Neither direction can drift quietly.
+#: EMPTY IS THE HEALTHY STATE, not a reason to delete this register.
+#:
+#: `has_defense` lived here until #52: no arm carried a DEF slot, so the matrix advertised a
+#: dimension it did not cross and no run was evidence about drafting a defense. It was closed by
+#: adding `12T_ppr_K_DEF` -- a DEF-bearing arm differing from its sibling in exactly the two
+#: slots -- rather than by adjusting anything, which is what its own entry said closing it would
+#: take.
+#:
+#: The register stays because `test_every_constant_axis_is_a_REGISTERED_one` compares the
+#: matrix's constant axes AGAINST it, in both directions: an unregistered constant axis is a new
+#: coverage hole, and a registered axis that starts varying is a stale registration. Empty means
+#: "every advertised axis is actually crossed", which is the goal state -- and the comparison
+#: still catches the next hole the day it appears. Deleting the register would delete the
+#: mechanism at the moment it first had nothing to report.
+UNCOVERED_AXES: dict[str, str] = {}
+
+
+def format_axes_exercised(matrix: list[dict], labels=None, results=None) -> dict:
+    """Which value of each format axis the arms ACTUALLY exercise, and which axes are CONSTANT.
+
+    THE SIBLING OF duplicate_arms, AND IT CATCHES WHAT duplicate_arms CANNOT. That detector
+    finds arms whose measured content is byte-identical. It cannot see an axis that varies the
+    arms' *scoring values* while never varying the thing those values are supposed to select --
+    the arms differ, so nothing is flagged, and the matrix goes on advertising a dimension it
+    stopped having.
+
+    #241 WAS FILED AS EXACTLY THAT AND WAS WRONG, which is worth keeping here rather than
+    deleting. The claim was that all 33 arms resolve `te_premium=True`, because #213 made the
+    real Fourth & Forever rulebook (`bonus_rec_te = 0.25`) every arm's base and
+    `build_mock_league(te_premium=False)` can add a bonus but not remove one. The measurement
+    behind it built the matrix from `data/league_captures/fourth_and_forever.json` -- a
+    DIFFERENT captured league from the one `run_draft_battery` actually drafts, which is
+    `data/fixtures/sleeper_capture.json` (full PPR, no TE bonus). Against the battery's own
+    source the axis varies: 30 arms `False`, 3 `True`, and no axis is constant. The finding is
+    withdrawn; this function is kept because it is what caught it, on its first real run.
+
+    So the hole it guards against is real in KIND even though that instance was not: an axis can
+    stop varying without any arm becoming a duplicate, and nothing else in the report would say
+    so. It now says so, and a witness test pins that no axis is constant TODAY.
+
+    DERIVED, NEVER HAND-LISTED, twice over: the axis NAMES come from league_format_hint's own
+    return keys, so adding an axis there makes it appear here without anyone editing a list;
+    and the values come from the arms' own leagues rather than from the labels, which is the
+    #126 rule and also the reason a label saying "redraft" cannot lie to this function.
+
+    `labels` scopes the answer to the arms actually being reported (a --only run, or the arms a
+    resumed report has so far), so the disclosure always describes THAT report rather than the
+    matrix a fuller run would have had.
+    """
+    entries = [e for e in matrix
+               if labels is None or e.get("label") in labels]
+    # WHAT THE ARMS RECORDED WINS OVER WHAT THE MATRIX SAYS NOW, and a disagreement is reported
+    # rather than resolved silently. `results` is optional so an older report file, whose arms
+    # carry no `format_axes`, still aggregates from the matrix exactly as before.
+    recorded = {r["label"]: r["format_axes"] for r in (results or [])
+                if isinstance(r.get("format_axes"), dict)}
+    drifted = sorted(
+        e["label"] for e in entries
+        if e.get("label") in recorded
+        and recorded[e["label"]] != advertised_format_axes(e["league"]))
+    axes: dict[str, dict[str, int]] = {}
+    for entry in entries:
+        # Both derived vocabularies, from their one home. An axis that is constant in either
+        # sense is a matrix not covering something.
+        axis_values = recorded.get(entry.get("label")) or advertised_format_axes(entry["league"])
+        for axis, value in axis_values.items():
+            # str() because JSON object keys are strings: True would round-trip as "true"
+            # anyway, and a dict keyed half by bool and half by str sorts unstably.
+            seen = axes.setdefault(axis, {})
+            seen[str(value)] = seen.get(str(value), 0) + 1
+    return {
+        "arms": len(entries),
+        "axes": {a: dict(sorted(v.items())) for a, v in sorted(axes.items())},
+        # An axis with one observed value across >1 arm is advertised but not exercised. With a
+        # single arm every axis is trivially constant and saying so would be noise, not news.
+        "constant_axes": sorted(a for a, v in axes.items() if len(v) == 1) if len(entries) > 1 else [],
+        # NAMED, not averaged away. An arm whose recorded axes differ from the matrix's current
+        # answer for the same label was drafted under a different league than the one this report
+        # would describe, and quoting its numbers as coverage of today's matrix is the defect.
+        "arms_whose_league_changed_under_the_same_label": drifted,
+        "axes_source": ("arms" if recorded else "matrix"),
+        # THE CONFIGURED HALF OF THE MATRIX (A3). Everything above is derived from each arm's
+        # LEAGUE; these two are derived from each arm's own `provenance`, which is the whole config
+        # `audit_trajectory` copies onto the row. Reported under names that say which is which, and
+        # NOT gated through `UNCOVERED_AXES` -- see the decision recorded above `roster_shape_axes`.
+        **_configured_axis_census(results, labels),
+    }
+
+
+def _configured_axis_census(results, labels) -> dict:
+    """`{configured_axes, constant_configured, configured_source}` over the arms' own provenance.
+
+    ABSENCE IS SAYABLE (`#187`). An older report whose arms carry no `provenance` -- the committed
+    VDS run is exactly that, 0 of 36 rows -- gets `None` for both populations and
+    `configured_source: "absent"`, never an empty dict that reads as "nothing is constant". The
+    first version of this returned `{}` and would have published a clean-looking disclosure over a
+    report it could not see into.
+
+    A KEY MISSING FROM AN ARM IS A VALUE, recorded as the string "absent". That is how
+    `opponent_noise` is constant across all 53 arms of the format battery: not one of them sets it,
+    so the axis has exactly one observed value and saying "no value" would lose the finding.
+    """
+    rows = [r for r in (results or [])
+            if labels is None or r.get("label") in labels]
+    with_provenance = [r for r in rows if isinstance(r.get("provenance"), dict)]
+    if not with_provenance:
+        #: THE SAME KEYS EITHER WAY. A report whose shape depends on what it found makes every
+        #: consumer write `.get()` and guess what a missing key meant; the values carry the
+        #: absence, the schema does not.
+        return {"configured_axes": None, "constant_configured": None,
+                "configured_source": "absent", "arms_carrying_provenance": 0}
+    keys = sorted({k for r in with_provenance for k in r["provenance"]})
+    census: dict[str, dict[str, int]] = {}
+    for key in keys:
+        seen: dict[str, int] = {}
+        for r in with_provenance:
+            # str() for the same reason the league half does it: JSON object keys are strings, and
+            # a dict keyed half by bool and half by str sorts unstably.
+            value = str(r["provenance"].get(key, "absent")) if key in r["provenance"] else "absent"
+            seen[value] = seen.get(value, 0) + 1
+        census[key] = dict(sorted(seen.items()))
+    return {
+        "configured_axes": census,
+        # Same single-arm rule as `constant_axes`: with one arm everything is trivially constant
+        # and saying so is noise rather than news.
+        "constant_configured": (sorted(k for k, v in census.items() if len(v) == 1)
+                                if len(with_provenance) > 1 else []),
+        "configured_source": "arms",
+        "arms_carrying_provenance": len(with_provenance),
+    }
+
+
+def valuation_mix(results: list[dict]) -> dict:
+    """Which VALUATION actually produced this run's picks, and which arms never reached upside.
+
+    A FLAG NOBODY CHECKS IS A COMMENT (A2). `simulate_full_draft` records `picks_by_mode` on every
+    arm for a stated reason -- *"mode='auto' is not one valuation: compute_draft_board's upside
+    branch zeroes every team-specific term, so a trajectory can be half roster-aware and half
+    roster-blind with nothing in the record saying so"* -- and no report builder read it, nothing
+    printed it, and nothing asserted it. Measured on the committed 53-arm run: balanced 8,664 picks
+    against upside 672 (7.2%), with 18 of 53 arms making any upside pick at all, and 17 of the 34
+    `auto` arms -- the SHIPPED default -- making none.
+
+    AND THE REASON ALL SEVENTEEN MADE NONE IS STRUCTURAL, so it is derived here rather than left to
+    a reader: the draft is shorter than the rule's trigger. `upside_from_round` is 15 and those arms
+    draft 14 rounds (8 for `12T_ppr_SHORT_DRAFT`), so the round-triggered branch is UNREACHABLE, not
+    merely unused. `vds_battery.FORMATS` already states this property for one arm; it holds for every
+    14-round arm in the format matrix, which is half the `auto` population.
+
+    UNKNOWN IS ITS OWN BUCKET (`#187`). `_picks_by_mode` returns None under the crossing rule,
+    because nothing records the effective mode per pick and a plausible number would be a guess.
+    Those arms count in `arms_with_an_unknown_split` and are excluded from the pick sums rather than
+    read as zero -- the alternative being a 0% upside share that means "we did not measure".
+    """
+    rows = [r for r in (results or []) if isinstance(r.get("provenance"), dict)]
+    if not rows:
+        return {"source": "absent", "picks": None, "arms": None}
+    splits = {r["label"]: r["provenance"].get("picks_by_mode") for r in rows}
+    known = {label: v for label, v in splits.items() if isinstance(v, dict)}
+    picks = {"balanced": sum(v.get("balanced", 0) for v in known.values()),
+             "upside": sum(v.get("upside", 0) for v in known.values())}
+    total = picks["balanced"] + picks["upside"]
+    unreachable = sorted(
+        r["label"] for r in rows
+        if r["provenance"].get("mode") == "auto"
+        and (splits.get(r["label"]) or {}).get("upside") == 0
+        # THE RULE'S OWN TRIGGER AGAINST THE ARM'S OWN ROUND COUNT, both off the row. Not a
+        # constant quoted from this module: the arm records both, which is the point of provenance.
+        and (r["provenance"].get("upside_from_round") or 0)
+            > int((r.get("format_axes") or {}).get("draftable_rounds") or 0) > 0)
+    return {
+        "source": "arms",
+        "arms": len(rows),
+        "picks": picks,
+        # The share the artifact's reader actually wants, over the arms that KNOW their split.
+        "upside_share": (round(picks["upside"] / total, 4) if total else None),
+        "arms_with_any_upside_pick": sum(1 for v in known.values() if v.get("upside", 0) > 0),
+        "arms_with_an_unknown_split": sorted(label for label, v in splits.items()
+                                             if not isinstance(v, dict)),
+        "auto_arms": sum(1 for r in rows if r["provenance"].get("mode") == "auto"),
+        "auto_arms_that_never_entered_upside": sorted(
+            r["label"] for r in rows if r["provenance"].get("mode") == "auto"
+            and (splits.get(r["label"]) or {}).get("upside") == 0),
+        # NAMED, because "never fired" and "could not fire" are different findings. An auto arm
+        # that merely happened to make no upside pick is a measurement; one whose trigger round is
+        # past the end of its draft is a configuration that cannot produce the branch at all.
+        "auto_arms_whose_upside_rule_is_UNREACHABLE": unreachable,
+    }
+
+
+def duplicate_arms(results: list[dict]) -> list[dict]:
+    """Arms of the matrix whose ENTIRE measured content is identical to another arm's.
+
+    WHY THE INSTRUMENT HAS TO SAY THIS ABOUT ITSELF. league_matrix() crosses four sizes x three
+    scorings x two QB modes and reports the count as though every arm were independent evidence.
+    It is not: `set_league_format` resolves a league's format to the best-fitting Dynasty
+    Rankings export, and no HALF-PPR export exists in the baseline -- so a half_ppr league
+    legitimately draws PPR values (scored 0.5 rather than 1.0 by
+    data_merger._rankings_format_match_score, and disclosed to the user in app.py). That is
+    CORRECT handling of a real data limitation. What is not correct is a report claiming N
+    formats of coverage when some of them reproduce another arm byte for byte, which inflates
+    the denominator under every rate this battery produces and makes a duplicated finding look
+    like independent corroboration.
+
+    THE COUNT THIS PARAGRAPH USED TO CARRY IS STALE, AND ITS STALENESS COST A DECISION. It said
+    "8 of them reproduce another arm byte for byte", measured when the battery was VENDOR-priced
+    -- half_ppr leagues drew the PPR export and genuinely collapsed onto the PPR arms. Once
+    `#213`/`#201`/`#204` made the battery scoring-aware, scoring reaches a price through the
+    league's own STAT LINES rather than only through export selection, and those arms stopped
+    duplicating. Measured on `BATTERY_2026-09-12_scoring_aware_full_99f9f76`: **33 formats, 32
+    independent, ONE duplicate** (`12T_ppr_mode_balanced` duplicates `12T_ppr`).
+
+    A trim of the Gate 1 matrix was proposed and ruled on the strength of the stale figure; the
+    measurement showed it would remove one arm and save ~12 minutes of a 6.5-hour run, and the
+    ruling was reversed (`#258`). No number belongs in this prose that the detector can report
+    for itself -- which is the whole reason the detector is derived.
+
+    DERIVED, NEVER HAND-LISTED, for the reason league_config.ambiguities() is derived: a list
+    naming half_ppr would go stale the first time a half-PPR export is added, or miss a
+    collapse on an axis nobody predicted. This compares what the arms actually PRODUCED, so a
+    new duplicate announces itself and a resolved one disappears without anyone editing a list.
+    """
+    seen: dict[str, str] = {}
+    dupes: list[dict] = []
+    for row in results:
+        body = json.dumps({k: v for k, v in row.items() if k not in _FINGERPRINT_EXCLUDES},
+                          sort_keys=True, default=str)
+        first = seen.get(body)
+        if first is None:
+            seen[body] = row.get("label")
+        else:
+            dupes.append({"label": row.get("label"), "duplicates": first})
+    return dupes
+
+
+def prefix_arms(sequences: dict[str, list]) -> list[dict]:
+    """Arms whose ENTIRE pick sequence is a prefix of another arm's. The third detector.
+
+    WHY A THIRD ONE EXISTS, and the published entry that earned it. `#276`: the depth battery's
+    six-arm bench ladder (BN 6/10/14/18/22/26, 12 teams, everything else held) turned out to be
+    ONE 408-pick draft sampled at six lengths -- BN6's 168 picks are a strict prefix of BN10's
+    216, and so on. `#271` had already published that ladder as "the crossing fires in none of
+    the six", which overstates one observation as six, and a prediction resting on those six
+    arms agreeing could not have failed.
+
+    NEITHER SIBLING CAN SEE IT, and that is the point:
+      - `duplicate_arms` compares each arm's ENTIRE measured body for byte identity. Prefix-
+        nested arms have different lengths and different totals, so nothing is flagged.
+      - `format_axes_exercised` catches an axis that stops varying. The bench axis genuinely
+        varies 6 -> 26, so nothing is flagged.
+    An axis varies, no arm is a duplicate, and the arms are still not independent evidence.
+
+    WHY PREFIX AND NOT "SHARES A LONG OPENING". Every snake draft of the same league shares its
+    first pick, and most share several; a similarity threshold here would be a calibrated
+    constant with no derivation behind it, which `#56` forbids (a bound is not a threshold).
+    STRICT PREFIX is a structural fact, not a judgement: arm A adds no observation that arm B
+    does not already contain, because B replays A exactly and then continues. That is decidable
+    with no constant at all, which is the only reason this detector is allowed to exist.
+
+    Equal-length identical sequences are NOT reported here -- that is `duplicate_arms`' job, and
+    reporting the same collapse from two detectors would double-count one problem.
+
+    Returns one row per nested arm naming its container, longest container first so the report
+    reads as "this arm is contained by that one".
+    """
+    items = [(label, list(seq)) for label, seq in sequences.items()]
+    nested: list[dict] = []
+    for label, seq in items:
+        container = None
+        for other_label, other in items:
+            # `other_label == label` is UNREACHABLE BY CONSTRUCTION and kept as a guard rather
+            # than a live branch: the length test below already excludes self, because no
+            # sequence is STRICTLY longer than itself. A mutation pass confirmed it -- deleting
+            # this clause leaves every test passing, an EQUIVALENT MUTANT rather than a gap in
+            # the tests, and it is recorded here so the next reader does not go hunting for the
+            # missing case. It stays because it makes the length test's `<=` load-bearing for
+            # one thing only (equal-length arms belong to duplicate_arms) instead of two.
+            if other_label == label or len(other) <= len(seq):
+                continue
+            if other[:len(seq)] == seq:
+                if container is None or len(sequences[container]) < len(other):
+                    container = other_label
+        if container is not None:
+            nested.append({"label": label, "prefix_of": container,
+                           "picks": len(seq), "container_picks": len(sequences[container])})
+    return nested
+
+
+def run_battery(merger, players_db: dict, matrix: Optional[list[dict]] = None,
+                *, mode: str = "auto",
+                sleeper_projections: Optional[dict[str, dict]] = None,
+                sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+                #: #30. Same capture, same #204 argument as sleeper_projections: without it the
+                #: battery certifies a board that has no streaming floor while production ships
+                #: one that does. {} or None from a capture that predates weekly lines, in which
+                #: case no floor is derived and the run is exactly what it was.
+                weekly_projections: Optional[dict] = None) -> list[dict]:
+    """Draft every format in the matrix and audit each one.
+
+    pick_order is generated per format rather than reused, since team count varies -- and it is
+    a real input, not a seed: this whole battery contains no randomness, so re-running it must
+    reproduce byte-identical trajectories (test_draft_simulation already pins that contract for
+    one draft; here it holds across the matrix).
+    """
+    results = []
+    for entry in matrix if matrix is not None else league_matrix():
+        # THE FORMAT HAS TO REACH THE MERGER, and this line is why the first full run was
+        # partly vacuous. `rec` and `bonus_rec_te` do NOT propagate through scoring_settings
+        # into offensive valuation -- Draft Sharks' season projection is a STATIC pre-computed
+        # number. They propagate by FILE SELECTION: set_league_format picks a different Dynasty
+        # Rankings export (see data_merger._detect_rankings_format), which app.py calls on every
+        # rerun. A battery that never calls it drafts every format from whichever export
+        # happened to load, so scoring is silently held constant.
+        #
+        # Measured on the run before this was added: standard, half_ppr and ppr produced
+        # BYTE-IDENTICAL drafts in all eight size/superflex combinations, and TE premium was
+        # equally inert. The roster geometry was genuinely exercised; the scoring axis was not
+        # exercised at all while appearing in every label.
+        merger.set_league_format(league_format_hint(entry["league"]))
+        roster_ids = [str(i) for i in range(1, entry["teams"] + 1)]
+        pick_order = ds.generate_pick_order(roster_ids, entry["rounds"], "snake")
+        # THE SECOND HALF OF THE SAME LESSON (#204). set_league_format above carries scoring
+        # into the VENDOR export by file selection; these two carry the league's own scoring
+        # into the SLEEPER points, which is the other half of what production prices from
+        # (app.py passes season_projections + SLEEPER_BASIS_SEASON_SUM on every rerun). A
+        # battery that omits them drafts a board where sleeper_points, sleeper_basis and
+        # availability_basis are None on every row -- so the scoring-aware path and the
+        # availability haircut are both absent from the final gate while appearing nowhere in
+        # the report as absent.
+        # upside_rule and opponent_noise are forwarded FROM THE ARM, defaulted so every arm that
+        # does not carry them drafts exactly as before -- the format matrix carries neither, so
+        # its trajectories are byte-identical to the runs already committed under it. They exist
+        # because the VDS battery (vds_battery.py) sweeps them: the format matrix varies FORMAT
+        # and holds strategy fixed at mode="auto", which is the gap #20/#22 fell through. One arm
+        # loop, extended -- not a second copy, because two batteries with two copies of one audit
+        # is two homes for one fact (#126) and the copy nobody watches is the one that drifts.
+        trajectory = draft_simulation.simulate_full_draft(
+            merger, players_db, entry["league"], pick_order,
+            mode=entry.get("mode", mode), config_label=entry["label"],
+            upside_rule=entry.get("upside_rule", dr.UPSIDE_RULE_ROUND),
+            opponent_noise=entry.get("opponent_noise"),
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+            weekly_projections=weekly_projections)
+        values = reference_values(merger, players_db, entry["league"],
+                                  sleeper_projections=sleeper_projections,
+                                  sleeper_basis=sleeper_basis,
+                                  weekly_projections=weekly_projections)
+        # Formats whose draft is shorter than their roster opt out of the fill audit only
+        # (see structural_findings); every other audit still applies to them.
+        audited = audit_trajectory(trajectory, entry["league"], players_db, values,
+                                   audit_roster_fill=entry.get("audit_roster_fill", True))
+        audited["teams"] = entry["teams"]
+        audited["rounds"] = entry["rounds"]
+        # THE PICK SEQUENCE, player ids only. Carried so a caller can derive whether two arms
+        # actually drafted differently instead of assuming that a parameter it forwarded had an
+        # effect. The VDS battery uses it to detect INERT arms -- measured before its first run,
+        # two of its six strategies reproduced the control byte-for-byte on an 8-round format,
+        # because `auto` never reaches the upside round there and the crossing rule never fires.
+        # A strategy can be listed, forwarded, and exercise nothing.
+        audited["pick_sequence"] = [str(p.chosen_player_id) for p in trajectory.picks]
+        results.append(audited)
+    return results

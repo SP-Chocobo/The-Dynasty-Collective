@@ -1,0 +1,137 @@
+{
+  "_comment": "Engine vs a field of sane styles, drafted on a FINISHED season's projections and scored on that season's REALIZED weekly outcomes. The first grade in this repository the engine cannot optimise toward. No waivers, oracle weekly lineup -- see run_backtest_grade.py.",
+  "results": [
+    {
+      "kdst_slots": [
+        "K",
+        "DEF"
+      ],
+      "label": "12T_ppr_K_DEF",
+      "mean_delta": -15.45,
+      "median_delta": 10.78,
+      "pool": 674,
+      "rounds": 16,
+      "rows": [
+        {
+          "delta": 48.39,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2600.66,
+          "field_mean_realized": 2552.27,
+          "seat": "1",
+          "weeks_scored": 18
+        },
+        {
+          "delta": -124.28,
+          "engine_first_kdst_round": 4,
+          "engine_never_started": 0,
+          "engine_realized": 2439.56,
+          "field_mean_realized": 2563.84,
+          "seat": "2",
+          "weeks_scored": 18
+        },
+        {
+          "delta": -124.28,
+          "engine_first_kdst_round": 4,
+          "engine_never_started": 0,
+          "engine_realized": 2439.56,
+          "field_mean_realized": 2563.84,
+          "seat": "3",
+          "weeks_scored": 18
+        },
+        {
+          "delta": -190.82,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2374.26,
+          "field_mean_realized": 2565.08,
+          "seat": "4",
+          "weeks_scored": 18
+        },
+        {
+          "delta": -66.82,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2507.74,
+          "field_mean_realized": 2574.56,
+          "seat": "5",
+          "weeks_scored": 18
+        },
+        {
+          "delta": 45.16,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2611.16,
+          "field_mean_realized": 2566.0,
+          "seat": "6",
+          "weeks_scored": 18
+        },
+        {
+          "delta": 324.81,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2868.56,
+          "field_mean_realized": 2543.75,
+          "seat": "7",
+          "weeks_scored": 18
+        },
+        {
+          "delta": 230.3,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2782.56,
+          "field_mean_realized": 2552.26,
+          "seat": "8",
+          "weeks_scored": 18
+        },
+        {
+          "delta": 153.95,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2711.56,
+          "field_mean_realized": 2557.61,
+          "seat": "9",
+          "weeks_scored": 18
+        },
+        {
+          "delta": 14.06,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 0,
+          "engine_realized": 2553.26,
+          "field_mean_realized": 2539.2,
+          "seat": "10",
+          "weeks_scored": 18
+        },
+        {
+          "delta": 7.49,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 1,
+          "engine_realized": 2538.26,
+          "field_mean_realized": 2530.77,
+          "seat": "11",
+          "weeks_scored": 18
+        },
+        {
+          "delta": -503.3,
+          "engine_first_kdst_round": 5,
+          "engine_never_started": 2,
+          "engine_realized": 2092.56,
+          "field_mean_realized": 2595.86,
+          "seat": "12",
+          "weeks_scored": 18
+        }
+      ],
+      "season": "2024",
+      "seats_graded": 12,
+      "styles": [
+        "need_first",
+        "points_need"
+      ],
+      "teams": 12,
+      "wins": 7
+    }
+  ],
+  "ruler": "realized: sum of each week's best legal lineup over actual stats",
+  "season": "2024",
+  "seconds": 633.3
+}

@@ -1,0 +1,181 @@
+{
+  "league": "Fourth and Forever",
+  "universe_provenance": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "constraint": "one opponent makes one pick, so mass over their board must be <= 1.0",
+  "named_keys": {
+    "1": 0.55,
+    "2": 0.32,
+    "3": 0.18,
+    "4": 0.1,
+    "5": 0.06
+  },
+  "named_keys_sum": 1.21,
+  "floor": 0.02,
+  "control_five_priced_rows": {
+    "priced_rows": 5,
+    "unpriced_rows": 0,
+    "named_key_mass": 1.21,
+    "tail_mass": 0.0,
+    "unpriced_floor_mass": 0.0,
+    "total_mass": 1.21
+  },
+  "control_expected_total": 1.21,
+  "control_passes": true,
+  "per_board": {
+    "1": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "2": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "3": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "4": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "5": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "6": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "7": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "8": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "9": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "10": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "11": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    },
+    "12": {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49
+    }
+  },
+  "boards": 12,
+  "min_total_mass": 23.49,
+  "max_total_mass": 23.49,
+  "mean_total_mass": 23.49,
+  "identical_across_boards_is_derivable": "mass depends only on row counts, and at an empty board every opponent draws from the same pool -- see depth_arm for the proof the instrument is not stuck",
+  "depth_arm": [
+    {
+      "priced_rows": 481,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 9.52,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 23.49,
+      "picks_made": 0
+    },
+    {
+      "priced_rows": 441,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 8.72,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 22.69,
+      "picks_made": 40
+    },
+    {
+      "priced_rows": 401,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 7.92,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 21.89,
+      "picks_made": 80
+    },
+    {
+      "priced_rows": 361,
+      "unpriced_rows": 638,
+      "named_key_mass": 1.21,
+      "tail_mass": 7.12,
+      "unpriced_floor_mass": 12.76,
+      "total_mass": 21.09,
+      "picks_made": 120
+    }
+  ],
+  "depth_arm_responds": true
+}

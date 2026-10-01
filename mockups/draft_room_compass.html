@@ -1,0 +1,338 @@
+<title>Goldwyrm Draft Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ── Goldwyrm. Tokens are design_system.py's, not re-chosen here (#126: one home). ──────── */
+:root{
+  --bg:#15120b; --surface:#1f1a11; --surface-2:#1a1610; --line:#2c2517; --line-2:#3f3522;
+  --ink:#ece3d2; --muted:#a79a83; --dim:#776d5a; --pure:#e2d8c3;
+  --gold:#d4a017; --gold-b:#f7cf4a;            /* the ONE accent: the clock, and my seat */
+  --emerald-b:#4ee08c; --crimson-b:#ff6b85; --cliff-b:#3ad9c8; --amber-b:#f9a828;
+  --violet-b:#c9a4f0; --sky-b:#6fb2f7; --tie-b:#a99d84;
+  --QB:#8f86f0; --RB:#17bfa0; --WR:#4aa8ef; --TE:#e8683f; --K:#a09480; --DEF:#a09480;
+  --LB:#a09480; --DL:#a09480; --DB:#a09480;
+  --disp:"Cinzel","Trajan Pro",Georgia,serif;
+  --sans:"Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono","DejaVu Sans Mono",monospace;
+  --r:10px;
+}
+/* Committed single visual world -- a lit board in a dark room. No theme swap; every colour
+   is painted explicitly so the page holds on either host ground. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{padding-inline:16px;padding-block:14px 28px;max-width:1400px;margin:0 auto}
+h1,h2,h3{margin:0;text-wrap:balance}
+.eyebrow{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+         color:var(--dim)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── masthead ─────────────────────────────────────────────────────────────────────────── */
+.mast{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1.1rem;margin-bottom:.9rem}
+.mast h1{font-family:var(--disp);font-weight:600;font-size:1.15rem;letter-spacing:.07em;
+         color:var(--pure)}
+.mast .lg{color:var(--muted);font-size:.82rem}
+.note{color:var(--dim);font-size:.78rem;max-width:78ch;margin:.15rem 0 1rem}
+.note b{color:var(--muted);font-weight:600}
+
+/* ── THE RAIL. Pans; dims at both edges so focus is local without a scrollbar. ─────────── */
+.railwrap{position:relative;border:1px solid var(--line-2);border-radius:var(--r);
+          background:var(--surface-2);padding:.55rem 0 .6rem}
+.railhead{display:flex;justify-content:space-between;align-items:center;gap:1rem;
+          padding:0 .8rem .5rem}
+.recenter{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+          color:var(--bg);background:var(--gold-b);border:0;border-radius:999px;
+          padding:.3rem .7rem;cursor:pointer}
+.recenter[hidden]{display:none!important}
+.rail{display:flex;gap:.4rem;overflow-x:auto;padding:.15rem .8rem .35rem;scrollbar-width:none;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent);
+      mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent)}
+.rail::-webkit-scrollbar{display:none}
+.cell{flex:0 0 128px;border:1px solid var(--line);border-radius:8px;background:var(--surface);
+      padding:.4rem .5rem;display:flex;flex-direction:column;gap:.18rem;min-height:62px}
+.cell .lbl{display:flex;justify-content:space-between;gap:.4rem;font-family:var(--mono);
+           font-size:.58rem;letter-spacing:.08em;color:var(--dim)}
+.cell .who{font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;
+           text-overflow:ellipsis}
+.cell .plr{font-size:.78rem;color:var(--ink);white-space:nowrap;overflow:hidden;
+           text-overflow:ellipsis}
+.cell .pos{font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:.06em}
+/* MINE -- a persistent ownership marker. Deliberately NOT the clock treatment (#262). */
+.cell.mine{border-color:var(--gold);background:linear-gradient(180deg,#241d10,#1c1710)}
+.cell.mine .who{color:var(--gold-b)}
+/* PENDING -- no player yet, so the owner label IS the content. */
+.cell.pending .plr{color:var(--dim);font-style:italic}
+/* ON THE CLOCK -- the clock treatment, spent once. */
+.cell.clock{border-color:var(--gold-b);box-shadow:0 0 0 1px var(--gold-b),0 0 22px -4px var(--gold);
+            background:linear-gradient(180deg,#2e2411,#1f1a11)}
+.cell.clock .lbl,.cell.clock .who{color:var(--gold-b)}
+.cell.turn{position:relative}
+.cell.turn::after{content:"BACK TO BACK";position:absolute;left:.5rem;right:.5rem;bottom:-.08rem;
+  font-family:var(--mono);font-size:.48rem;letter-spacing:.09em;color:var(--gold-b);text-align:center}
+
+/* ── clock strip ──────────────────────────────────────────────────────────────────────── */
+.clockbar{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem 1.3rem;margin:.9rem 0 .75rem;
+          padding:.6rem .85rem;border:1px solid var(--line-2);border-radius:var(--r);
+          background:var(--surface-2)}
+.clockbar .big{font-family:var(--disp);font-size:1.5rem;font-weight:600;color:var(--gold-b);
+               letter-spacing:.05em;line-height:1}
+.kv{display:flex;flex-direction:column;gap:.1rem}
+.kv .v{font-family:var(--mono);font-size:.86rem;color:var(--ink)}
+.kv .v.warn{color:var(--crimson-b)}
+
+/* ── the board of plates ──────────────────────────────────────────────────────────────── */
+.boardhead{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
+           margin:.2rem 0 .5rem}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:.55rem;
+       transition:filter .22s ease,opacity .22s ease}
+.board.dimmed{filter:saturate(.45) brightness(.42);opacity:.62;pointer-events:none}
+.plate{display:grid;grid-template-columns:48px 1fr;gap:.6rem;align-items:start;text-align:left;
+       border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
+       padding:.55rem .65rem;cursor:pointer;font:inherit;color:inherit;
+       transition:border-color .14s ease,transform .14s ease}
+.plate:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.plate:focus-visible{outline:2px solid var(--gold-b);outline-offset:2px}
+.plate.top{border-color:var(--gold)}
+/* The portrait WELL. Sleeper headshots are ~4:3 on a LIGHT GREY ground, so the plate owns
+   that grey deliberately (#262) rather than masking it. Empty here: the artifact CSP blocks
+   external images, so the well is designed to read as intentional when no photo loads. */
+.well{aspect-ratio:4/3;max-width:100%;border-radius:6px;background:linear-gradient(180deg,#cfc7b6,#a79a83);
+      display:grid;place-items:center;font-family:var(--disp);font-size:.82rem;font-weight:600;
+      color:#2a2416;border:1px solid #6c624e}
+.pmain{min-width:0;display:flex;flex-direction:column;gap:.22rem}
+.prow{display:flex;align-items:baseline;gap:.4rem;min-width:0}
+.pname{font-size:.92rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:.07em;
+      padding:.08rem .3rem;border-radius:3px;color:#15120b;flex:0 0 auto}
+.pteam{font-family:var(--mono);font-size:.6rem;color:var(--dim);letter-spacing:.06em}
+.uv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.05rem;color:var(--pure)}
+.uv.neg{color:var(--crimson-b)}
+.uvu{font-family:var(--mono);font-size:.55rem;color:var(--dim);letter-spacing:.06em}
+.chips{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.05rem}
+.chip{font-family:var(--mono);font-size:.55rem;letter-spacing:.06em;padding:.1rem .32rem;
+      border-radius:3px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.chip.act{border-color:var(--crimson-b);color:var(--crimson-b)}
+.chip.cliff{border-color:var(--cliff-b);color:var(--cliff-b)}
+.chip.none{border-style:dashed;color:var(--dim)}
+
+/* ── the zoom, over a dimmed board. Clock stays lit above the dim. ────────────────────── */
+.zoom{position:fixed;inset:auto 0 0;z-index:20;display:none}
+.zoom.open{display:block}
+.zoomcard{max-width:min(680px,calc(100% - 32px));margin:0 auto 18px;
+          border:1px solid var(--gold);border-radius:14px;background:var(--surface);
+          box-shadow:0 -18px 60px -12px #000;padding:1rem 1.1rem 1.15rem}
+.zoomhead{display:flex;align-items:flex-start;gap:.8rem}
+.zoomhead .well{width:84px;flex:0 0 84px}
+.zx{margin-left:auto;background:none;border:1px solid var(--line-2);color:var(--muted);
+    border-radius:6px;font-family:var(--mono);font-size:.64rem;padding:.22rem .5rem;cursor:pointer}
+.zx:hover{color:var(--ink);border-color:var(--dim)}
+.ledger{margin-top:.85rem;border-top:1px solid var(--line);padding-top:.7rem;
+        display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem .9rem}
+.led{display:flex;flex-direction:column;gap:.1rem}
+.led .k{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;
+        color:var(--dim)}
+.led .v{font-family:var(--mono);font-size:.82rem;color:var(--ink)}
+.led .v.absent{color:var(--dim);font-style:italic}
+.led .b{font-size:.62rem;color:var(--dim)}
+.acts{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.85rem}
+.btn{font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;
+     border-radius:7px;padding:.45rem .8rem;cursor:pointer;border:1px solid var(--line-2);
+     background:var(--surface-2);color:var(--muted)}
+.btn.go{background:var(--gold-b);border-color:var(--gold-b);color:#15120b;font-weight:700}
+.btn.dis{opacity:.5;cursor:not-allowed}
+.hint{font-size:.68rem;color:var(--dim);margin-top:.5rem}
+.foot{margin-top:1.6rem;border-top:1px solid var(--line);padding-top:.8rem;color:var(--dim);
+      font-size:.72rem;max-width:86ch}
+.foot b{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:520px){.mast h1{font-size:1rem}.clockbar .big{font-size:1.2rem}}
+</style>
+
+<div class="wrap">
+  <div class="mast">
+    <h1>GOLDWYRM DRAFT ROOM</h1>
+    <span class="lg">Greatest Show on Paper 2 · 12-team · Superflex · TE premium</span>
+  </div>
+  <p class="note">Layout compass, built on real captures. The rail carries <b>GSOP2's actual
+    board</b> — real managers, real picks, and its real <b>third-round reversal</b> (round 2 and
+    round 3 both run 12→1). The candidate evidence below is a real engine snapshot from a
+    12-team superflex dynasty board. Two captures, both real, composited — said plainly rather
+    than passed off as one draft.</p>
+
+  <div class="railwrap">
+    <div class="railhead">
+      <span class="eyebrow">Pick order — pans with the draft, dim at both edges</span>
+      <button class="recenter" id="rc" hidden>↩ Re-center · <span id="rcn">0</span> since</button>
+    </div>
+    <div class="rail" id="rail"></div>
+  </div>
+
+  <div class="clockbar">
+    <div><div class="eyebrow">On the clock</div><div class="big" id="clk">3.03</div></div>
+    <div class="kv"><span class="eyebrow">Seat</span><span class="v">SPChocobo</span></div>
+    <div class="kv"><span class="eyebrow">Until your next turn</span><span class="v warn">16 picks</span></div>
+    <div class="kv"><span class="eyebrow">Regime</span><span class="v">decisive</span></div>
+    <div class="kv"><span class="eyebrow">Board</span><span class="v">12 candidates</span></div>
+  </div>
+
+  <div class="boardhead">
+    <span class="eyebrow">Candidates — click a plate to zoom</span>
+    <span class="eyebrow">Ranked by team-acquisition value</span>
+  </div>
+  <div class="board" id="board"></div>
+
+  <div class="foot">
+    <b>What this compass is testing.</b> Glow is spent once — the live pick owns the clock
+    treatment; your own seats carry a quieter persistent marker, so “it’s my turn” never reads
+    the same as “that one’s mine.” Upcoming turns are marked too, which is what makes
+    <b>3.03 → 4.10, sixteen picks away</b> legible without counting. The portrait well owns the
+    light grey Sleeper ships rather than masking it — the plate is a physical object on a dark
+    table. And the two IDP rows below say <b>not measured</b>, never 0.00: the engine never
+    priced them, and a zero would be a claim nobody made.
+  </div>
+</div>
+
+<div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="Candidate detail">
+  <div class="zoomcard" id="zc"></div>
+</div>
+
+<script>
+const PILL = {QB:"--QB",RB:"--RB",WR:"--WR",TE:"--TE",K:"--K",DEF:"--DEF",LB:"--LB",DL:"--DL",DB:"--DB"};
+const initials = n => n.split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase();
+
+/* GSOP2's real board, picks 1-26 plus SPChocobo's pending turns. 3RR: r2 AND r3 descend. */
+const RAIL = [
+ {l:"1.01",w:"WillyMo11",p:"Josh Allen",o:"QB"},{l:"1.02",w:"TitleTown4",p:"Jayden Daniels",o:"QB"},
+ {l:"1.03",w:"SPChocobo",p:"Drake Maye",o:"QB",mine:1},{l:"1.04",w:"LFG1298",p:"Puka Nacua",o:"WR"},
+ {l:"1.05",w:"Pepper1991",p:"Bijan Robinson",o:"RB"},{l:"1.06",w:"Snoopking51",p:"Joe Burrow",o:"QB"},
+ {l:"1.07",w:"BIGDADDYTRUMP08",p:"Lamar Jackson",o:"QB"},{l:"1.08",w:"TAmedic27",p:"Jahmyr Gibbs",o:"RB"},
+ {l:"1.09",w:"KobeLulu",p:"Malik Nabers",o:"WR"},{l:"1.10",w:"sam51087",p:"Jaxon Smith-Njigba",o:"WR"},
+ {l:"1.11",w:"CP3015",p:"Ja'Marr Chase",o:"WR"},{l:"1.12",w:"MatttyyIce",p:"Amon-Ra St. Brown",o:"WR"},
+ {l:"2.12",w:"MatttyyIce",p:"Trey McBride",o:"TE"},{l:"2.11",w:"CP3015",p:"Caleb Williams",o:"QB"},
+ {l:"2.10",w:"sam51087",p:"Brock Bowers",o:"TE"},{l:"2.09",w:"KobeLulu",p:"Ashton Jeanty",o:"RB"},
+ {l:"2.08",w:"TAmedic27",p:"CeeDee Lamb",o:"WR"},{l:"2.07",w:"BIGDADDYTRUMP08",p:"De'Von Achane",o:"RB"},
+ {l:"2.06",w:"Snoopking51",p:"James Cook",o:"RB"},{l:"2.05",w:"Pepper1991",p:"Justin Jefferson",o:"WR"},
+ {l:"2.04",w:"LFG1298",p:"Drake London",o:"WR"},{l:"2.03",w:"SPChocobo",p:"Jonathan Taylor",o:"RB",mine:1},
+ {l:"2.02",w:"TitleTown4",p:"Saquon Barkley",o:"RB"},{l:"2.01",w:"WillyMo11",p:"Brandon Aubrey",o:"K"},
+ {l:"3.12",w:"MatttyyIce",p:"Jalen Hurts",o:"QB"},{l:"3.11",w:"CP3015",p:"Jaxson Dart",o:"QB"},
+ {l:"3.10",w:"sam51087"},{l:"3.09",w:"KobeLulu"},{l:"3.08",w:"TAmedic27"},{l:"3.07",w:"BIGDADDYTRUMP08"},
+ {l:"3.06",w:"Snoopking51"},{l:"3.05",w:"Pepper1991"},{l:"3.04",w:"LFG1298"},
+ {l:"3.03",w:"SPChocobo",mine:1,clock:1},
+ {l:"3.02",w:"TitleTown4"},{l:"3.01",w:"WillyMo11"},{l:"4.01",w:"WillyMo11"},{l:"4.02",w:"TitleTown4"},
+ {l:"4.03",w:"SPChocobo",mine:1},{l:"4.04",w:"LFG1298"},{l:"4.05",w:"Pepper1991"},
+ {l:"4.06",w:"Snoopking51"},{l:"4.07",w:"BIGDADDYTRUMP08"},{l:"4.08",w:"TAmedic27"},
+ {l:"4.09",w:"KobeLulu"},{l:"4.10",w:"sam51087"}
+];
+
+/* Real engine snapshot -- mockups/_slice.json. proj:null is UNPRICED, not zero. */
+const CAND = [
+ {n:"M Stafford",o:"QB",t:"LAR",uv:101.83,tav:106.68,proj:302,nec:"PREFERRED",surv:.002,cliff:"LOW",fwd:34.88},
+ {n:"T Mcbride",o:"TE",t:"ARI",uv:98.20,tav:102.58,proj:253,nec:"STRONG ACTION",surv:.004,cliff:"HIGH",fwd:60.86},
+ {n:"C Lamb",o:"WR",t:"DAL",uv:92.07,tav:100.45,proj:301,nec:"STRONG ACTION",surv:.18,cliff:"HIGH",fwd:24.33},
+ {n:"B Mayfield",o:"QB",t:"TB",uv:94.77,tav:99.62,proj:295,nec:"PREFERRED",surv:.724,cliff:"MEDIUM",fwd:34.88},
+ {n:"D Achane",o:"RB",t:"MIA",uv:95.17,tav:95.55,proj:272,nec:"PREFERRED",surv:0,cliff:"LOW",fwd:29.61},
+ {n:"J Jefferson",o:"WR",t:"MIN",uv:83.18,tav:91.56,proj:292,nec:"PREFERRED",surv:.724,cliff:"HIGH",fwd:24.33},
+ {n:"K Walker",o:"RB",t:"KC",uv:90.94,tav:91.32,proj:270,nec:"PREFERRED",surv:.439,cliff:"LOW",fwd:29.61},
+ {n:"C Loveland",o:"TE",t:"CHI",uv:85.31,tav:89.69,proj:241,nec:"PREFERRED",surv:.724,cliff:"HIGH",fwd:60.86},
+ {n:"D Jones",o:"QB",t:"IND",uv:79.98,tav:84.83,proj:281,nec:"CLOSE CALL",surv:.724,cliff:"LOW",fwd:34.88},
+ {n:"C Schwesinger",o:"LB",t:"CLE",uv:11.00,tav:11.33,proj:null,nec:"PREFERRED",surv:.785,cliff:"HIGH",fwd:0},
+ {n:"M Garrett",o:"DL",t:"LAR",uv:10.00,tav:10.33,proj:null,nec:"PREFERRED",surv:.785,cliff:"HIGH",fwd:0},
+ {n:"T Bass",o:"K",t:"BUF",uv:-2.00,tav:-2.00,proj:103,nec:"CLOSE CALL",surv:.817,cliff:"LOW",fwd:0}
+];
+
+const rail = document.getElementById("rail");
+RAIL.forEach((c,i)=>{
+  const d=document.createElement("div");
+  d.className="cell"+(c.mine?" mine":"")+(c.clock?" clock":"")+(c.p?"":" pending");
+  const nxt=RAIL[i+1];
+  if(c.mine&&nxt&&nxt.mine) d.classList.add("turn");
+  const col=c.o?`var(${PILL[c.o]||"--K"})`:"var(--dim)";
+  d.innerHTML=`<div class="lbl"><span>${c.l}</span><span class="pos" style="color:${col}">${c.o||""}</span></div>
+    <div class="who">${c.w}</div>
+    <div class="plr">${c.p||(c.clock?"on the clock":"upcoming")}</div>`;
+  rail.appendChild(d);
+});
+
+const board=document.getElementById("board");
+const fmt=v=>v==null?null:(v>0?"+":"")+v.toFixed(2);
+CAND.forEach((c,i)=>{
+  const b=document.createElement("button");
+  b.className="plate"+(i===0?" top":"");
+  b.type="button";
+  const col=`var(${PILL[c.o]||"--K"})`;
+  b.innerHTML=`
+    <div class="well">${initials(c.n)}</div>
+    <div class="pmain">
+      <div class="prow"><span class="pill" style="background:${col}">${c.o}</span>
+        <span class="pname">${c.n}</span><span class="pteam">${c.t}</span></div>
+      <div class="prow"><span class="uv${c.uv<0?" neg":""}">${fmt(c.uv)}</span>
+        <span class="uvu">UV pts</span></div>
+      <div class="chips">
+        <span class="chip${c.nec==="STRONG ACTION"?" act":""}">${c.nec}</span>
+        ${c.cliff==="HIGH"?'<span class="chip cliff">CLIFF HIGH</span>':""}
+        ${c.proj==null?'<span class="chip none">points not measured</span>':""}
+      </div>
+    </div>`;
+  b.addEventListener("click",()=>open_(i));
+  board.appendChild(b);
+});
+
+const zoom=document.getElementById("zoom"), zc=document.getElementById("zc");
+function led(k,v,b,absent){return `<div class="led"><span class="k">${k}</span>
+  <span class="v${absent?" absent":""}">${v}</span>${b?`<span class="b">${b}</span>`:""}</div>`;}
+function open_(i){
+  const c=CAND[i], col=`var(${PILL[c.o]||"--K"})`;
+  zc.innerHTML=`
+    <div class="zoomhead">
+      <div class="well">${initials(c.n)}</div>
+      <div class="pmain">
+        <div class="prow"><span class="pill" style="background:${col}">${c.o}</span>
+          <span class="pname" style="font-size:1.1rem">${c.n}</span>
+          <span class="pteam">${c.t}</span></div>
+        <div class="prow"><span class="uv${c.uv<0?" neg":""}" style="font-size:1.4rem">${fmt(c.uv)}</span>
+          <span class="uvu">universal-value points</span></div>
+      </div>
+      <button class="zx" id="zx">ESC</button>
+    </div>
+    <div class="ledger">
+      ${led("Team acquisition value",fmt(c.tav),"universal value + roster fit")}
+      ${led("Season projection",c.proj==null?"not measured":c.proj.toFixed(0),
+            c.proj==null?"no priceable input — never 0.00":"season fantasy points",c.proj==null)}
+      ${led("Necessity",c.nec,"observable, not selection authority")}
+      ${led("Survives to 4.03",(c.surv*100).toFixed(1)+"%","16 intervening picks")}
+      ${led("Positional cliff",c.cliff,"tier gap vs typical")}
+      ${led("Forfeit if you wait",c.fwd?fmt(c.fwd):"0.00","cost at your next turn")}
+    </div>
+    <div class="acts">
+      <button class="btn go">Draft ${c.n}</button>
+      <button class="btn">Copy name for Sleeper</button>
+      <button class="btn dis" title="No API configured — the board works without one">Debate · unavailable</button>
+    </div>
+    <p class="hint">Debate is disabled here because no provider is configured. The board is
+      complete without it — the evidence above is the engine's own, computed with no network.</p>`;
+  zoom.classList.add("open");
+  board.classList.add("dimmed");
+  document.getElementById("zx").addEventListener("click",close_);
+  document.getElementById("zx").focus();
+}
+function close_(){zoom.classList.remove("open");board.classList.remove("dimmed");}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")close_();});
+zoom.addEventListener("click",e=>{if(e.target===zoom)close_();});
+
+/* Re-center: appears ONLY when off-centre; never yanks the view. */
+const rc=document.getElementById("rc"), rcn=document.getElementById("rcn");
+const clockCell=rail.children[RAIL.findIndex(c=>c.clock)];
+function centre(smooth){
+  rail.scrollTo({left:clockCell.offsetLeft-rail.clientWidth/2+clockCell.clientWidth/2,
+                 behavior:smooth?"smooth":"auto"});
+}
+rail.addEventListener("scroll",()=>{
+  const mid=rail.scrollLeft+rail.clientWidth/2;
+  const off=Math.abs(mid-(clockCell.offsetLeft+clockCell.clientWidth/2));
+  rc.hidden=off<90;
+  rcn.textContent=Math.round(off/132);
+});
+rc.addEventListener("click",()=>centre(true));
+requestAnimationFrame(()=>centre(false));
+</script>

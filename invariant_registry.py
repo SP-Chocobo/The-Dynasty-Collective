@@ -1,0 +1,636 @@
+"""Each stated invariant, and THE POPULATION IT WAS PROVEN OVER (#52 phase 6.3).
+
+WHY THIS EXISTS. Every finding in the `#52` audit that cost real work had one shape:
+
+    a repair expands a population
+      -> an invariant proven over the OLD population silently stops holding
+      -> the old test stays green, because it never enters the new domain.
+
+It happened six times in one audit, and not once did anything announce it:
+
+  * `displacement_adj <= 0` was proven over single-position probes. `#216` added per-slot
+    alternatives, which admitted MULTI-eligible ones, and the bound stopped holding -- while the
+    pinning test passed no per-slot alternatives and used single-position probes only, so it
+    could not fail.
+  * The board's absence contract was enforced over a HAND-LIST of 11 columns while its callers
+    selected 29. Every quantity added since inherited the gap.
+  * `depth_exposure`'s surplus flag was proven over rosters with no bench at all -- the one shape
+    in which a roster-wide boolean and a per-position one agree.
+  * The Python/JS rounding agreement held over every value that never landed on .5.
+  * `context_elevated`'s reachability was a property of which rows carried a priced third term,
+    and moved twice while the constant stayed put. It moved a third time, to ONE row across 36
+    formats, and the flag was retired at #25 rather than re-thresholded.
+  * `TEAM_SPECIFIC_CAPS` bounded three terms; a fourth was added and hand-exempted on a premise
+    that was false, and two shipped constants derive from the tuple.
+
+A test suite cannot catch this on its own. A green suite means "no test entered a domain where
+this fails", and that is exactly what it means when the domain has just grown.
+
+WHAT THIS IS, AND WHAT IT IS NOT. Not a theorem prover and not a second test suite: every claim
+here is already pinned by a real test, named in `pinned_by`. What it adds is the POPULATION as a
+first-class, COUNTED thing. Each entry carries a callable that enumerates the population and the
+size it had when the invariant was last verified against it. The guard in
+test_invariant_registry.py re-counts and fails when the number moves -- which is not an error, it
+is the notification this audit never got. The fix for a failure here is to re-verify the claim
+over the new population and update the census, in that order.
+
+DELIBERATELY SMALL. Seeded only with invariants this audit actually measured, because a registry
+padded with claims nobody checked is a hand-list wearing a ratchet's clothes (#126), and the
+entries that would rot first are the ones added for completeness.
+"""
+from __future__ import annotations
+
+import functools
+from dataclasses import dataclass
+from typing import Callable
+
+
+@dataclass(frozen=True)
+class Invariant:
+    """One claim, the population it ranges over, and who pins it."""
+
+    name: str
+    #: The claim, in one sentence, as it is stated where the code makes it.
+    claim: str
+    #: Why the size of this population is the thing to watch -- what growing it would admit.
+    population: str
+    #: Enumerates the population. Called by the guard; must be cheap and deterministic.
+    members: Callable[[], list]
+    #: The size when the claim was last verified against it.
+    census: int
+    #: Test ids that actually pin the claim. Checked for existence, not re-run here.
+    pinned_by: tuple[str, ...]
+
+
+# -- population enumerators ----------------------------------------------------------------
+#
+# Cheap, deterministic, and derived from the code rather than listed: an enumerator that hand-
+# lists its own members would make the census a tautology.
+
+def _tav_team_specific_terms() -> list[str]:
+    """The team-specific terms added on top of universal_value to make team_acquisition_value.
+
+    THE W4-02 POPULATION. `TEAM_SPECIFIC_CAPS` bounds the sum of the CAPPED ones; `#216` added a
+    fourth term and hand-exempted it on the premise that it is non-positive, which is false for a
+    multi-eligible candidate. Two shipped constants derive from that tuple. A fifth term arriving
+    is exactly the event that must not pass unnoticed.
+    """
+    import draft_room as dr
+    # The tuple itself, NOT an intersection with a set written here. The first version of this
+    # enumerator did intersect, which made the census a tautology -- a fifth term could arrive
+    # and the count could not move. That is the exact failure this module's own docstring warns
+    # about, committed inside the guard against it, and a mutation found it rather than review.
+    return sorted(dr.TEAM_SPECIFIC_TERMS)
+
+
+def _positions_with_a_level() -> list[str]:
+    """Positions a standard rulebook prices, i.e. the single-position probes `displacement_adj`'s
+    non-positivity is proven over. Multi-eligible probes are NOT in this population and the bound
+    is different for them -- see displacement_level's THE SIGN."""
+    import lineup_optimizer as lo
+    return sorted(lo.FANTASY_POSITIONS)
+
+
+def _board_emitted_columns() -> list[str]:
+    """Every column the board hands to a caller, in either mode. The absence contract is enforced
+    over ALL of them now; it used to be enforced over a named subset while this list grew."""
+    import draft_room as dr
+    return sorted(dr.board_emitted_columns())
+
+
+def _exposure_vocabulary() -> list[str]:
+    """The depth-exposure basis tokens. `worst_loss` is priced under exactly one of them, so a new
+    token is a new pricing decision whether or not anyone makes it deliberately."""
+    import lineup_optimizer as lo
+    return sorted(lo.EXPOSURE_BASIS_LABELS)
+
+
+def _python_rendered_figure_sites() -> list[str]:
+    """Streamlit render sites that put an engine figure on screen beside the Draft Room's own.
+    Both surfaces must round identically; they did not, and the rule now has one home.
+
+    COUNTS THE BYPASS ROUTE TOO, AND AN EARLIER VERSION DID NOT (I1). It counted calls to the
+    conforming `_figure` wrapper only -- so adding a CORRECT render site tripped this census and
+    adding the exact defect its own entry names left it green. Demonstrated with a control: a
+    planted bare f-string render held it at 8/8 and exit 0; a planted `_figure(...)` call moved it
+    to 9 and exited 1. A guard that fires on compliance and is silent on the violation is
+    inverted, which is worse than absent.
+
+    `design_system.figure(...)` called directly is the route with a LIVE offender today:
+    `_best_alternative_line` renders `team_acquisition_value` through it, which is why the census
+    is 9 and not 8. The call inside `_figure`'s own body is excluded -- the wrapper implementing
+    itself is not a second surface, and counting it would make the wrapper vouch for itself.
+
+    WHAT THIS STILL CANNOT SEE, stated rather than left for the next reader to discover: a render
+    built by f-string or `str.format` from an engine attribute, with no call to either function,
+    is invisible here. It is caught by `test_display_contract_boundary` on the attributes it
+    knows, not by this census. `_surfaces_consulting_the_withholding_policy` names its own limit
+    the same way, and that is the model this follows.
+    """
+    import ast
+    import ui_source
+    tree = ast.parse(ui_source.text())
+
+    #: The wrapper's own body, so `_figure` does not count the one call that implements it.
+    inside_wrapper = range(0, 0)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_figure":
+            inside_wrapper = range(node.lineno, (node.end_lineno or node.lineno) + 1)
+
+    sites = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        conforming = isinstance(func, ast.Name) and func.id == "_figure"
+        bypass = (isinstance(func, ast.Attribute) and func.attr == "figure"
+                  and node.lineno not in inside_wrapper)
+        if conforming or bypass:
+            sites.append(f"{node.lineno}")
+    return sorted(sites)
+
+
+def _surfaces_consulting_the_withholding_policy() -> list[str]:
+    """Call sites of `withheld_fields()` / `survival_is_presentable()` -- the surfaces that ASK
+    whether a quantity may be shown.
+
+    Counted in BOTH directions and each means something different. A DROP is a surface that
+    stopped asking, which is the regression this phase repaired four times over. A RISE is a new
+    surface wired correctly, and it needs a case in test_withheld_propagation.py -- the census
+    is what prompts that, since a new boundary with no test is a guard that silently stops
+    covering the thing it names.
+
+    It cannot, by construction, see a surface that never asks at all. That is what the guard
+    file's own boundary tests are for; this counts the wiring, they count the behaviour.
+    """
+    import ast
+    import pathlib
+    names = {"withheld_fields", "survival_is_presentable"}
+    out = []
+    for path in sorted(pathlib.Path(".").glob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name in names:
+                out.append(f"{path.name}:{node.lineno}:{name}")
+    return out
+
+
+def _take_model_consumers() -> list[str]:
+    """Call sites of the take model (`_take_probability` / `_board_take_probability`).
+
+    ONE PICK TAKES ONE PLAYER, so an opponent's take probabilities are mutually exclusive and
+    must sum to <= 1.0 across their board. `#206` established that and normalised the model --
+    for ONE of its two consumers. `positional_forfeits` went on summing the RAW table over each
+    opponent's top five, capped per position, which conserves nothing: four positions each
+    capped at 0.90 permit 3.6 players from a single pick. It returned 22.80 takes from 20 picks
+    on a real board.
+
+    A THIRD consumer is the event to catch. Each one either goes through this model or
+    reimplements it, and the second took years to notice because the model's own docstring
+    already claimed to be its only home.
+
+    COUNTS THE RAW SHAPE AS WELL AS THE MODEL, because the population above says "call sites of
+    the take model" and counting only the conforming entry points under-counts that (`#133`):
+    a reimplementation calls `_take_weight` and normalises it some other way -- which is exactly
+    what the consumer `#206` found had been doing -- and a census over the conforming names alone
+    does not move when one appears. `_take_weight` sites are reported with a `raw:` prefix so the
+    two kinds cannot be read as one number (`#245`). Measured: 2, and both are the normaliser's
+    own halves -- one inside `_take_probability` where the division happens, one inside the mass
+    function that produces the denominator it divides by. A THIRD is the event to catch.
+
+    AN UNNORMALISED CALL IS REPORTED AS A BREACH, not as a member. `_take_probability` returns a
+    WEIGHT rather than a probability when `total_weight` is omitted -- its own docstring says
+    "nothing should call this without one" -- so a call with fewer than three arguments and no
+    `total_weight` keyword is the 23.49-mass defect reappearing, and it is prefixed `UNNORMALISED:`
+    so it reads as a finding in the census list rather than as one more site. Measured: 0.
+
+    WHAT IT STILL CANNOT SEE: a consumer that reimplements the rank curve from scratch, touching
+    neither name. `test_draft_strategy.PositionalForfeitsTests` pins the BEHAVIOUR (the takes sum
+    to the pick count on a fully priced board), and that is what covers it; this counts the wiring.
+    """
+    import ast
+    import pathlib
+    names = {"_take_probability", "_board_take_probability"}
+    out = []
+    for path in sorted(pathlib.Path(".").glob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name == "_take_weight":
+                out.append(f"raw:{path.name}:{node.lineno}")
+            elif name == "_take_probability" and len(node.args) < 3 and not any(
+                    k.arg == "total_weight" for k in node.keywords):
+                out.append(f"UNNORMALISED:{path.name}:{node.lineno}")
+            elif name in names:
+                out.append(f"{path.name}:{node.lineno}:{name}")
+    return sorted(out)
+
+
+def _active_multi_eligible_players() -> list[str]:
+    """Every ACTIVE player the current capture lists at more than one fantasy position.
+
+    Registered because a term went inert here without anyone noticing, which is this registry's
+    whole reason to exist running in the direction nobody watches: a population SHRINKING.
+    `eligibility_bonus` prices what a player's multi-position eligibility unlocks, and
+    draft_room's own comment names the case it was built for -- "WR/TE dual eligibility, a
+    common real Sleeper listing", once measured at an 82.00 bonus.
+
+    Measured on the capture (#52, the 6.1b ruling): 178 players carry more than one fantasy
+    position, and every one that is OFFENCE-ONLY is retired -- Kelvin Benjamin, Vince Mayle,
+    the Thigpens. Not one reaches a board. The live population is IDP cross-family (DL/LB 127,
+    DB/LB 37) plus Travis Hunter (DB/WR), and flexibility between two IDP slots at similar
+    levels rarely moves an optimal lineup: measured across 36 board states and 46,020 rows,
+    the term is nonzero on FIVE, with a maximum of 0.84 against a bound of 12.00.
+
+    So a census that moves here is the signal to re-derive. A vendor refresh that reintroduces
+    an active WR/TE listing makes the retired term's population non-empty again, and the
+    ruling that retired it was made against an empty one.
+
+    Counted over the capture rather than a live board on purpose: a board filters by league
+    format, and this question is about who EXISTS, not who a particular rulebook admits.
+    """
+    import player_universe as pu
+    import run_draft_battery as rdb
+
+    players_db, _ = rdb.build_players_db_from_capture()
+    out = []
+    for player_id, info in (players_db or {}).items():
+        eligible = pu.player_eligible_positions(info or {})
+        if len(eligible) > 1:
+            out.append(f"{player_id}|{'/'.join(sorted(eligible))}")
+    return sorted(out)
+
+
+@functools.lru_cache(maxsize=4)
+def _the_one_homes_span() -> tuple[int, int]:
+    """`_merge_across_eligibility`'s own line span in `draft_room.py`, or `(0, -1)` if unreadable.
+
+    CACHED because the enumerator below asks this once per `merge_player` call site and the
+    registry guard runs the enumerator on every invocation -- re-parsing a 6,000-line module nine
+    times to answer one question is not the "cheap and deterministic" this file requires of its
+    enumerators. Derived from the AST rather than a line range written down here, for the usual
+    reason: a number copied beside the code it describes is a second home for it (`#126`).
+    """
+    import ast
+    import pathlib
+    try:
+        tree = ast.parse(pathlib.Path("draft_room.py").read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError, OSError):
+        return (0, -1)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_merge_across_eligibility":
+            return (node.lineno, node.end_lineno or node.lineno)
+    return (0, -1)
+
+
+def _inside_the_one_home(path, lineno: int) -> bool:
+    """Whether this call sits inside `_merge_across_eligibility`'s own body.
+
+    The two `merge_player` calls in there are the one home DOING its job, so counting them as
+    bypasses of itself would make the census report its own compliance as a breach.
+    """
+    import pathlib
+    if pathlib.Path(path).name != "draft_room.py":
+        return False
+    start, end = _the_one_homes_span()
+    return start <= lineno <= end
+
+
+def _vendor_record_resolutions() -> list[str]:
+    """Call sites of `_merge_across_eligibility` -- every place a player is resolved onto a
+    vendor record, and therefore every place that has to decide what a CONTESTED result means.
+
+    Two people resolving onto one record is a contested identity, and the one number neither may
+    claim is withheld. That refusal was made in the pool and nowhere else: the roster path went
+    back to the merger and got the price anyway, and the contest itself evaporated as soon as
+    either player was drafted, because it was counted over available rows. A fourth resolution
+    site is the event to catch -- each one either honours the refusal or quietly reopens it.
+
+    COUNTS THE DIRECT `merge_player` CALLS TOO, prefixed `direct:`, because the population above
+    says "sites that resolve a player onto a vendor record" and the conforming name was only ever
+    one route to that (`#133`). The whole defect this invariant exists for WAS a direct call, so a
+    census blind to them could not have moved when it appeared. Judged, 7 of them, none a live
+    breach -- but each is a site that would have to decide, so each is counted:
+
+      * `data_merger.py` x2 -- inside the merger itself, the implementation the rest call.
+      * `app.py` x2, the trade pad -- free text with no position hint at all, so there is no
+        eligible set to widen across and the one home could not be used even in principle.
+      * `app.py` x2, the free-agent table -- Sleeper rows carrying a single `position`.
+      * `app.py` x1, `positional_depth` -- the roster depth chart.
+
+    THE DEPTH CHART IS A RECORDED DECISION, NOT AN OVERSIGHT (2026-10-01). It resolves on the
+    row's primary bucket, so a two-way player is priced only at his first-listed position, where
+    the board prices him across every position he can be started at (`#172`). Left as it is, for a
+    reason that is about the question rather than the effort: that cell means "the value of this
+    team's DB room", and pricing it from a man's WIDE RECEIVER row would answer a different
+    question than the one the cell asks. Blast radius if the other reading is preferred: the
+    committed capture has 178 multi-position players, 39 resolving to a vendor row, and exactly
+    ONE who gains a match from widening -- Travis Hunter, whose trade value is therefore absent
+    from one display cell. Nothing says anything untrue; a cell shows no number where one could
+    be argued for. OVERTURNABLE: if the owner reads the cell as the man's value rather than the
+    room's, the repair is to resolve through `_merge_across_eligibility` here too.
+    """
+    import ast
+    import pathlib
+    out = []
+    for path in sorted(pathlib.Path(".").glob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name == "_merge_across_eligibility":
+                out.append(f"{path.name}:{node.lineno}")
+            elif name == "merge_player" and not _inside_the_one_home(path, node.lineno):
+                out.append(f"direct:{path.name}:{node.lineno}")
+    return sorted(out)
+
+
+REGISTRY: tuple[Invariant, ...] = (
+    Invariant(
+        name="team_acquisition_value is universal_value plus the team-specific terms",
+        claim="sum(TEAM_SPECIFIC_CAPS) bounds the sum of the CAPPED team-specific terms -- NOT "
+              "team_acquisition_value - universal_value, which the uncapped fourth term leaves "
+              "unbounded in both directions.",
+        population="One entry per team-specific term. A FIFTH term arriving is the event that "
+                   "broke this last time: #216 added a fourth, hand-exempted it on a premise "
+                   "measured false, and NECESSITY_DENIAL_SATURATION and "
+                   "CONTEXT_ELEVATED_THRESHOLD derived from the tuple -- the latter is GONE "
+                   "at #25 (2026-09-21), retired with its flag, so NECESSITY_DENIAL_SATURATION "
+                   "is now the ONLY shipped constant reading this tuple. That makes a fifth term "
+                   "cheaper to absorb and the tuple easier to misread as decorative; it is not. "
+                   "4 -> 3 at the 6.1b ruling (#52), which retired eligibility_bonus. Both "
+                   "constants KEPT THEIR VALUES through that removal, and the reason is worth "
+                   "recording here rather than rediscovering: TEAM_SPECIFIC_CAPS never held "
+                   "eligibility_bonus's cap, so the tuple went from a subset of the capped "
+                   "terms to all of them without moving. The census falling is still the event "
+                   "this watches -- a term leaving is as much a change as one arriving, and "
+                   "this registry exists because the shrinking direction is the unwatched one.",
+        members=_tav_team_specific_terms,
+        census=3,
+        pinned_by=("test_probability_bounds.TheCapsTupleBoundsWhatItActuallyBounds",),
+    ),
+    Invariant(
+        name="multi-position eligibility has a population to price",
+        claim="A term that prices multi-position eligibility is only meaningful while players "
+              "carry more than one position. Measured across 36 board states and 46,020 rows, "
+              "eligibility_bonus WAS nonzero on FIVE, at a maximum of 0.84 against a bound of "
+              "12.00 -- and every OFFENCE-ONLY multi-eligible player in the capture is retired, "
+              "so the WR/TE case the term was built for had no living members. THE TERM IS GONE "
+              "(6.1b, #52); THIS INVARIANT IS NOT, and that is deliberate. It is the standing "
+              "record of the population the removal was ruled against, so a vendor refresh that "
+              "brings active offence dual-eligibility back moves this census and reopens the "
+              "ruling. Retiring the watch along with the term would delete the only thing that "
+              "can tell anyone the ruling has expired.",
+        population="Every player the capture lists at more than one fantasy position. This is "
+                   "the registry watching a population SHRINK, which is the direction nobody "
+                   "checks: the term did not break, its subject left. A vendor refresh that "
+                   "reintroduces an active offence dual-eligibility listing makes this census "
+                   "move, and the 6.1b ruling that retired the term was made against the "
+                   "population as it stands here.",
+        members=_active_multi_eligible_players,
+        census=178,
+        pinned_by=("test_invariant_registry.TheRegistryIsWellFormedTests",),
+    ),
+    Invariant(
+        name="displacement_adj is non-positive for a single-position candidate",
+        claim="Every slot a one-position probe can reach is priced at or above his own anchor, "
+              "because shared_slot_alternatives prices a slot at max(level) over what it admits. "
+              "A MULTI-eligible probe is a different population with a different bound.",
+        population="The positions a rulebook can price. Growing it adds probes; what actually "
+                   "broke the older, stronger claim was not growth here but the arrival of "
+                   "per-slot alternatives, which admitted multi-eligible probes that this "
+                   "population does not contain.",
+        members=_positions_with_a_level,
+        census=9,
+        pinned_by=(
+            "test_216_displacement.DisplacementLevelDerivationTests"
+            ".test_a_single_position_candidate_is_never_lifted",
+            "test_216_displacement.DisplacementLevelDerivationTests"
+            ".test_the_one_bound_that_covers_both_populations",
+        ),
+    ),
+    Invariant(
+        name="an absent quantity reaches a caller as None, never as NaN",
+        claim="Every column the board emits has its missing values normalized to real None, so "
+              "`is None` is a sound absence test downstream (#187).",
+        population="Every emitted column. This was enforced over a HAND-LIST of 11 while the "
+                   "callers selected 29 -- identity_basis, displacement_adj and time_horizon_adj "
+                   "among the eighteen left out -- so the population growing was precisely how "
+                   "the gap opened. 30 -> 29 at the 6.1b ruling (#52): eligibility_bonus was an "
+                   "emitted column and its retirement removed it. NOTHING IS WEAKENED by that "
+                   "-- a column that no longer exists cannot carry a NaN -- but the census is "
+                   "moved deliberately rather than by a --write, because this registry's whole "
+                   "subject is populations moving without anyone noticing, and a shrink nobody "
+                   "signed for is the exact case it was built to catch. 29 -> 30 with "
+                   "`cannot_be_fielded`, the fieldability backstop's companion flag "
+                   "(draft_room.unfieldable_last): a bool the board always computes, never "
+                   "absent, so it widens the population without widening the claim -- and it is "
+                   "signed for here rather than absorbed by a --write, for the reason above. "
+                   "30 -> 31 with `replacement_level_capped` (#35), the anchor cap's companion "
+                   "flag (draft_room.cap_levels_at_best_remaining): also a bool the board always "
+                   "computes and never leaves absent, so it widens the population without "
+                   "widening the claim. It exists as a SEPARATE field rather than as a new "
+                   "`replacement_basis` token because the first attempt was a token and three "
+                   "tests caught it -- overwriting the basis made `predraft_anchor` unreachable, "
+                   "since a position that gets the anchor is very nearly the same population whose "
+                   "anchor the pool has drained past. Which authority selected a level and whether "
+                   "it was then corrected are two facts; one token carries one. "
+                   "31 -> 32 with `risk_basis` (R3), the health term's companion "
+                   "(draft_room.health_basis): WHICH of health_penalty's four paths "
+                   "produced `risk_adj`. Unlike the two flags above this one IS ABSENT "
+                   "on an unpriced row -- None exactly where `risk_adj` is NaN -- so it "
+                   "does not merely widen the population, it adds a member the claim is "
+                   "ABOUT. That is the point: an unpriced row has no health verdict "
+                   "either, and a string there would assert a measurement never taken "
+                   "(#187). Signed for here rather than absorbed by a --write, for the "
+                   "reason above. The repair it belongs to: `risk_adj == 0.0` has four "
+                   "causes and the chair was told the wrong one of the four.",
+        members=_board_emitted_columns,
+        census=32,
+        pinned_by=(
+            "test_identity_provenance.ItReachesTheBoardInBothModesTests"
+            ".test_no_emitted_value_on_the_board_is_a_nan",
+        ),
+    ),
+    Invariant(
+        name="depth_exposure numbers are depth evidence only under EXPOSURE_MEASURED",
+        claim="A position is measured only when every one of its starters could actually be "
+              "covered by a non-starting rostered player; draft_room prices worst_loss under "
+              "that basis and no other.",
+        population="The basis vocabulary. A new token is a new pricing decision at the consumer, "
+                   "whether or not anyone makes it deliberately -- which is how the roster-wide "
+                   "surplus flag came to stamp `measured` on positions with no backup at all. "
+                   "4 -> 5 (MANDATE 3.4): EXPOSURE_ROSTER_PARTIAL, and the pricing decision it "
+                   "forces was made deliberately and is NOT to spend the number. It can override "
+                   "`measured` (where worst_loss is a backup's job) or `no_surplus` (where it is a "
+                   "starter's whole value), and those are different scales, so under this token the "
+                   "quantity is no longer identifiable and the consumer's `== EXPOSURE_MEASURED` "
+                   "gate correctly withholds it. Measured on a complete 216-pick HEAVY_IDP draft: "
+                   "32 cells relabelled, 26 from `no_surplus` and 4 from `vacant` (both already "
+                   "withholding, both previously stating something false about the roster) and 2 "
+                   "from `measured`, which withdraws an over-credit of 2.16 and 1.44.",
+        members=_exposure_vocabulary,
+        census=5,
+        pinned_by=(
+            "test_depth_exposure.TheFourStatesOfKnowingTests"
+            ".test_a_real_bench_reports_measured_AT_THE_POSITIONS_THAT_HAVE_ONE",
+            "test_depth_exposure.TheFourStatesOfKnowingTests"
+            ".test_a_position_with_ONE_uncoverable_starter_is_not_depth_evidence",
+        ),
+    ),
+    Invariant(
+        name="one engine figure reads the same on every surface",
+        claim="design_system.figure states the screen's rounding rule once, and every Python "
+              "render site of a figure the Draft Room also renders goes through it.",
+        population="The Python render sites. A new one added with a bare f-string is the whole "
+                   "defect returning: Python rounds half-to-even and toFixed rounds half away "
+                   "from zero, so the two disagree on any figure landing on .5 above an even "
+                   "floor -- one player showed as 16 in one panel and 17 in the other.",
+        members=_python_rendered_figure_sites,
+        #: 9, NOT 8: eight conforming `_figure(...)` calls plus one live bypass,
+        #: `_best_alternative_line` rendering through `design_system.figure` directly. The 8 was
+        #: recorded while the enumerator could not see that route at all (I1).
+        census=9,
+        pinned_by=(
+            "test_216_room_integrity.TheDisplayRoundingRuleTests"
+            ".test_python_and_the_browser_round_the_boundary_class_identically",
+            "test_display_contract_boundary.TheTwoUnitsAreToldApartTests"
+            ".test_the_format_specs_are_still_identical_which_is_now_fine",
+        ),
+    ),
+    Invariant(
+        name="a withheld quantity does not reach a person on any surface",
+        claim="pick_synthesis.withheld_fields() names what may not be presented; every "
+              "presentation boundary filters through it, including deltas -- a delta of a "
+              "withheld quantity gives a reader its direction and its size.",
+        population="Surfaces that CONSULT the policy. Four did not and each leaked the whole "
+                   "family: the diff, the chair prompt, the three system prompts (which named "
+                   "it among 'real, already-computed numbers' and demonstrated citing it), and "
+                   "the Prytaneum seed. A drop here is a surface that stopped asking; a rise is "
+                   "a new one that needs a case in test_withheld_propagation.py.\n"
+                   "8 -> 11 (mandate 1.2). THIS CENSUS DID ITS JOB: repair 1.2 wired the live "
+                   "Draft Room's recommendation panel, which the count above could not see, "
+                   "because it never asked at all -- and this registry is what noticed the "
+                   "population had grown. The claim was re-verified over all 11 before the number "
+                   "moved. The three new members are app.py's survival card (which now shows the "
+                   "measured pick count in the withheld family's place), app.py's runner-up "
+                   "caption, and pick_synthesis.presentable_text, the function the two cards ask. "
+                   "Each has a case below; the last is value-based on both arms, which is what a "
+                   "Streamlit surface cannot be.",
+        members=_surfaces_consulting_the_withholding_policy,
+        census=11,
+        pinned_by=(
+            "test_withheld_propagation.TheDiffDoesNotReportAWithheldDeltaTests",
+            "test_withheld_propagation.TheChairPromptDoesNotCarryItTests",
+            "test_withheld_propagation.TheSystemPromptsDoNotInviteItTests",
+            "test_withheld_propagation.ThePrytaneumSeedDoesNotCarryItTests",
+            "test_withheld_propagation.TheBoardPayloadShipsThePolicyWithTheValueTests",
+            "test_withheld_propagation.TheFunctionTheDraftRoomCardsAskTests",
+            "test_withheld_propagation.TheDraftRoomPanelAsksTests",
+        ),
+    ),
+    Invariant(
+        name="expected takes cannot exceed the picks available to take them",
+        claim="An opponent makes ONE pick, so their take probabilities are mutually exclusive "
+              "and normalise to 1.0 across their board; summed over positions and intervening "
+              "picks, expected_taken cannot exceed the pick count.",
+        population="Call sites of the take model, AND of the raw shape underneath it. `#206` "
+                   "normalised the model and converted ONE of two consumers; the other summed the "
+                   "raw table over a top-5 window with a per-position cap, and returned 22.80 "
+                   "takes from 20 picks. A third consumer either goes through this model or "
+                   "quietly reimplements it -- and a reimplementation calls `_take_weight`, not "
+                   "the model, so counting only the conforming names could not have moved when "
+                   "the second consumer appeared. The 6 are 4 model call sites plus the 2 halves "
+                   "of the normaliser itself; `raw:` and `UNNORMALISED:` prefixes keep the kinds "
+                   "from reading as one number.",
+        members=_take_model_consumers,
+        census=6,
+        pinned_by=(
+            "test_draft_strategy.PositionalForfeitsTests"
+            ".test_expected_taken_cannot_exceed_the_picks_available_to_take_them",
+            "test_draft_strategy.PositionalForfeitsTests"
+            ".test_on_a_fully_priced_board_the_takes_sum_to_EXACTLY_the_pick_count",
+            "test_draft_strategy.PositionalForfeitsTests"
+            ".test_both_consumers_of_the_take_table_read_it_through_one_model",
+        ),
+    ),
+    Invariant(
+        name="a contested identity's borrowed price is refused on every path",
+        claim="Two players resolving onto one vendor record may neither claim its numbers. The "
+              "contest is a property of WHO THEY ARE, so it is counted over the identified "
+              "universe rather than the available subset, and the refusal is recorded so it can "
+              "propagate past the frame it was made on.",
+        population="Sites that resolve a player onto a vendor record, BY EITHER ROUTE. Each must "
+                   "decide what a contested result means; the roster path decided differently "
+                   "from the pool and handed a drafted player the very number the board refused "
+                   "him -- and it did that through a DIRECT `merge_player` call, which a census "
+                   "over the conforming name alone could not see. The 10 are 3 calls to the one "
+                   "home plus 7 direct resolutions, each judged in the enumerator's own "
+                   "docstring; none is a live breach and one is a recorded decision.",
+        members=_vendor_record_resolutions,
+        census=10,
+        pinned_by=(
+            "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
+            ".test_the_contest_survives_one_of_the_pair_being_DRAFTED",
+            "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
+            ".test_a_player_drafted_out_of_a_contested_pair_is_not_priced_on_his_own_roster",
+            "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
+            ".test_an_UNcontested_drafted_player_keeps_his_price",
+        ),
+    ),
+)
+
+
+def census_report() -> list[dict]:
+    """Each invariant with its recorded census and the size of its population right now."""
+    out = []
+    for entry in REGISTRY:
+        try:
+            members = list(entry.members())
+            observed, error = len(members), None
+        except Exception as exc:                      # an enumerator that cannot run is a finding
+            members, observed, error = [], None, f"{type(exc).__name__}: {exc}"
+        out.append({"name": entry.name, "recorded": entry.census, "observed": observed,
+                    "members": members, "error": error,
+                    "moved": error is None and entry.census is not None and observed != entry.census})
+    return out
+
+
+def main() -> int:
+    rows = census_report()
+    for row in rows:
+        mark = "MOVED" if row["moved"] else ("ERROR" if row["error"] else "ok")
+        print(f"{mark:5s}  recorded={row['recorded']!s:>5}  observed={row['observed']!s:>5}  {row['name']}")
+        if row["error"]:
+            print(f"        {row['error']}")
+    moved = [r for r in rows if r["moved"] or r["error"]]
+    print(f"\n{len(REGISTRY)} invariants registered, {len(moved)} needing re-verification")
+    return 1 if moved else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -27,6 +27,23 @@ import pick_synthesis as ps
 EPS = 0.01
 
 
+def _regime_gate_lifted(candidates):
+    """decision_regime's ARITHMETIC, with #206's calibration gate lifted.
+
+    Production returns "contested" unconditionally while SURVIVAL_IS_CALIBRATED is False --
+    two arms measured survival_probability losing to a constant predictor. The predicate
+    underneath is unchanged and is what these tests are about, so the gate is lifted here
+    EXPLICITLY: a test left asserting "decisive" against the live function would pass for the
+    gate's reason and stop exercising the thing its name claims.
+    test_threshold_reachability owns the separate question of what production does."""
+    original = ps.SURVIVAL_IS_CALIBRATED
+    try:
+        ps.SURVIVAL_IS_CALIBRATED = True
+        return ps.decision_regime(candidates)
+    finally:
+        ps.SURVIVAL_IS_CALIBRATED = original
+
+
 class NecessityLabelBoundaryTests(unittest.TestCase):
     """NECESSITY_LABEL_THRESHOLDS is a checked-top-down, first-match list -- must behave as a
     clean step function with no gaps or overlaps at any of its five internal boundaries."""
@@ -82,37 +99,37 @@ class DecisionRegimeBoundaryTests(unittest.TestCase):
         ]
 
     def test_both_conditions_cleared_is_decisive(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND + EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "decisive")
 
     def test_a_margin_exactly_at_the_band_is_a_tie_and_stays_contested(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "contested")
 
     def test_margin_just_short_stays_contested_even_with_survival_cleared(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD,
         ))
         self.assertEqual(regime, "contested")
 
     def test_survival_just_over_stays_contested_even_with_margin_cleared(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND + EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
         ))
         self.assertEqual(regime, "contested")
 
     def test_both_conditions_just_short_stays_contested(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND - EPS, ps.DECISIVE_SURVIVAL_THRESHOLD + EPS,
         ))
         self.assertEqual(regime, "contested")
 
     def test_both_conditions_cleared_with_room_to_spare_is_decisive(self):
-        regime = ps.decision_regime(self._candidates(
+        regime = _regime_gate_lifted(self._candidates(
             ps.NEAR_TIE_BAND + 10.0, ps.DECISIVE_SURVIVAL_THRESHOLD - 0.10,
         ))
         self.assertEqual(regime, "decisive")
@@ -178,14 +195,21 @@ class BlockOpportunityBoundaryTests(unittest.TestCase):
     2 * NEED_BONUS_PER_DEDICATED_SLOT -- checked directly against that exact multiple."""
 
     def _raw(self, premium: float) -> list[dict]:
-        # rival_premium_take_probability fixed at 1.0 (fully credible) -- this class isolates
-        # the PREMIUM MAGNITUDE boundary alone; the separate credible-path gate has its own
-        # dedicated boundary tests in test_pick_synthesis.py's DecisionPathFlagsTests.
+        # The credible-path input is fixed at its most credible value so this class isolates the
+        # PREMIUM MAGNITUDE boundary alone; that gate has its own boundary tests in
+        # test_pick_synthesis.py's DecisionPathFlagsTests.
+        #
+        # MANDATE 3.4: that input is now `rival_premium_take_rank`, and rank 1 is the credible end
+        # of it. It was `rival_premium_take_probability: 1.0`, which had stopped being reachable --
+        # `#206` normalised the model so one opponent's take probabilities sum to <= 1 across their
+        # whole board, and the largest value that can reach the gate is 0.028. A fixture supplying
+        # 1.0 was asserting the boundary against an input production cannot produce, which is how
+        # every boundary test here went on passing while the flag was dead in the field.
         return [
             {"universal_value": 100.0, "team_acquisition_value": 100.0, "positional_forfeit": None,
-             "rival_premium": premium, "rival_premium_take_probability": 1.0},
+             "rival_premium": premium, "rival_premium_take_rank": 1},
             {"universal_value": 90.0, "team_acquisition_value": 90.0, "positional_forfeit": None,
-             "rival_premium": 0.0, "rival_premium_take_probability": 1.0},
+             "rival_premium": 0.0, "rival_premium_take_rank": 1},
         ]
 
     def test_premium_exactly_at_two_slots_fires(self):

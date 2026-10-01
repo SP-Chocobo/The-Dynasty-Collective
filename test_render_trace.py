@@ -12,6 +12,7 @@ shape of thing this repository keeps finding: a check nobody has watched fail.
 """
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -29,32 +30,97 @@ class TheTraceReachesEveryViewTests(unittest.TestCase):
     def setUpClass(cls):
         cls.recorded = json.loads((_HERE / "RENDER_TRACE.json").read_text())["calls"]
 
-    def test_every_view_appears_in_the_recorded_trace(self):
-        for view in render_trace.VIEWS:
-            with self.subTest(view=view):
-                self.assertTrue([c for c in self.recorded if c.startswith(f"[{view}]")], view)
+    #: Iterated over PASSES rather than VIEWS, because a view whose branches are chosen by a
+    #: widget contributes one labelled pass per branch. Checking VIEWS would pass while an entire
+    #: branch went untraced -- which is how the Mock Draft stayed uncovered.
+    def _calls(self, label):
+        return [c for c in self.recorded if c.startswith(f"[{label}]")]
 
-    def test_no_view_stops_at_the_no_league_guard(self):
-        """st.stop() halting early is a real state, but if a VIEW's trace ends there the trace
+    def test_every_pass_appears_in_the_recorded_trace(self):
+        for label, _, _ in render_trace.TRACE_PASSES:
+            with self.subTest(label=label):
+                self.assertTrue(self._calls(label), label)
+
+    def test_no_pass_stops_at_the_no_league_guard(self):
+        """st.stop() halting early is a real state, but if a PASS's trace ends there the trace
         is covering the empty screen rather than the view."""
-        for view in render_trace.VIEWS:
-            with self.subTest(view=view):
-                calls = [c for c in self.recorded if c.startswith(f"[{view}]")]
-                self.assertNotIn("<st.stop>", calls[-1])
+        for label, _, _ in render_trace.TRACE_PASSES:
+            with self.subTest(label=label):
+                self.assertNotIn("<st.stop>", self._calls(label)[-1])
 
-    def test_each_view_renders_a_substantial_number_of_calls(self):
+    def test_each_pass_renders_a_substantial_number_of_calls(self):
         """A floor, not an exact count -- this is a smoke check that a view actually rendered,
         not a pin on how much UI it happens to draw."""
-        for view in render_trace.VIEWS:
-            with self.subTest(view=view):
-                calls = [c for c in self.recorded if c.startswith(f"[{view}]")]
-                self.assertGreater(len(calls), 50, f"{view} barely rendered")
+        for label, _, _ in render_trace.TRACE_PASSES:
+            with self.subTest(label=label):
+                self.assertGreater(len(self._calls(label)), 50, f"{label} barely rendered")
 
     def test_the_draft_room_trace_contains_its_own_furniture(self):
         """Non-vacuity: the Draft Room's trace must contain Draft-Room things, or the nav
         steering silently failed and every view traced the same default screen."""
-        draft = " ".join(c for c in self.recorded if c.startswith("[📋 Draft Room]"))
-        self.assertIn("Draft Room mode", draft)
+        for label, _, _ in render_trace.TRACE_PASSES:
+            if not label.startswith("📋 Draft Room"):
+                continue
+            with self.subTest(label=label):
+                self.assertIn("Draft Room mode", " ".join(self._calls(label)))
+
+    def test_both_draft_room_modes_are_traced_and_they_differ(self):
+        """The recorded fixture once covered only the Live branch, because the mode radio lists it
+        first and every stand-in widget returns options[0]. The Mock branch was not reported as
+        uncovered -- it was simply absent, and it is the branch that shipped a TypeError."""
+        live = self._calls("📋 Draft Room · Live")
+        mock = self._calls("📋 Draft Room · Mock")
+        self.assertTrue(live and mock, "one of the two Draft Room branches is missing")
+        self.assertNotEqual(live, mock,
+                            "both Draft Room passes recorded the same calls -- the mode steering "
+                            "is not working and one branch is untraced")
+
+    def test_each_draft_room_pass_reaches_THE_BOARD(self):
+        """THE DEFECT THIS FIXTURE EXISTED WITHOUT NOTICING. Every view was traced in its EMPTY
+        state: the seed carried `"rosters": [], "users": []`, so app.py found no roster and each
+        view fell to its guard. Measured on the old fixture: 619 calls, 3 empty-state guard
+        strings, and ZERO board, candidate or pick-synthesis calls. Breaking the live board left
+        the trace BYTE-IDENTICAL, while the instrument reported five views and 619 calls.
+
+        Verified by monkeypatching `compute_draft_board` to return nothing: the Live pass then
+        loses 9 calls and the Mock pass 11, where both previously lost none. This pins the
+        board's own furniture so the fixture cannot quietly return to covering empty screens."""
+        for label in ("📋 Draft Room · Live", "📋 Draft Room · Mock"):
+            joined = " ".join(self._calls(label))
+            with self.subTest(label=label):
+                self.assertIn("board_title_row", joined,
+                              f"{label} never reaches the board container")
+
+    def test_the_trace_carries_no_calendar_dependent_value(self):
+        """The freshness grade is `recency_grade(now - oldest_source_date)`, so it turns over on a
+        date with no UI change behind it -- this fixture was scheduled to go red on 2026-11-19 and
+        had already churned once inside an unrelated commit. An instrument that emits a false diff
+        on a timer teaches its readers to regenerate without looking."""
+        for call in self.recorded:
+            if "Data Freshness" in call:
+                self.assertIn("&lt;grade&gt;", call,
+                              "the freshness grade is recorded verbatim and will turn over with "
+                              "the calendar")
+                self.assertNotIn('class="status-ok"', call)
+                self.assertNotIn('class="status-bad"', call)
+
+    def test_no_ELAPSED_TIME_QUANTITY_of_any_kind_reaches_the_recorded_trace(self):
+        """THE RULE, not the two instances of it. The test above pins the freshness grade and
+        passed while a SECOND calendar-derived string escaped beside it -- `trade_ledger_ui`'s
+        "Values 34d stale", a raw day count, so it turned over every midnight rather than at a
+        grade boundary, and `--check` went red on 2026-09-29 with no code behind it.
+
+        A test that names the strings it knows about cannot catch the next one. This one states
+        what the trace may not contain: an elapsed-time quantity, in any unit. Long strings are
+        blurred to `str[long]` before they get here, so a static caption mentioning a number of
+        days is not in scope -- only the short, verbatim ones, which is exactly the population
+        that turns over on a timer."""
+        elapsed = re.compile(r"\b\d+\s*(?:d|day|days|hr|hrs|hour|hours|w|wk|weeks?|"
+                             r"months?|yr|yrs|years?)\b")
+        offenders = [call for call in self.recorded if elapsed.search(call)]
+        self.assertEqual(offenders, [],
+                         "an elapsed-time quantity is recorded verbatim and will turn over with "
+                         "the calendar; blur it in _Recorder._CALENDAR_DEPENDENT")
 
 
 class TheTraceIsCurrentTests(unittest.TestCase):
@@ -94,8 +160,38 @@ class WhatItCannotSeeIsStatedTests(unittest.TestCase):
     def test_argument_values_are_blurred_so_the_trace_is_about_structure(self):
         """A trace that churned whenever a projection changed would be measuring the data, not
         the refactor."""
-        self.assertEqual(render_trace._shape("x" * 200), "str[200]")
+        self.assertEqual(render_trace._shape("x" * 200), "str[long]")
         self.assertEqual(render_trace._shape("Retract"), "str:Retract")
+
+    def test_a_long_strings_own_length_is_not_recorded(self):
+        """#151, as its exact signature. This trace used to emit `str[97]`, and a length is a
+        VALUE -- so the committed reference went stale overnight on `str[97]` -> `str[98]`
+        when the Data Sources caption ticked from "(9d ago)" to "(10d ago)". No UI changed.
+
+        Asserted on _shape directly rather than by faking a clock, because a clock CANNOT be
+        faked in this process: any C extension imported during a capture runs PyDateTime_IMPORT,
+        which validates datetime's binary layout, so a subclass trips
+        "RuntimeWarning: datetime.datetime size changed" whether it is installed at the source
+        or behind a sys.modules shim. Two strings of different lengths that differ by nothing
+        else must be indistinguishable here -- that is the whole property, and it is exactly
+        testable without a clock."""
+        self.assertEqual(render_trace._shape("x" * 97), render_trace._shape("x" * 98))
+        self.assertEqual(render_trace._shape("updated 2026-08-26 (9d ago)" + "x" * 60),
+                         render_trace._shape("updated 2026-08-26 (10d ago)" + "x" * 60))
+
+    def test_the_boundary_between_kept_and_blurred_is_still_a_boundary(self):
+        """Non-vacuity for the test above: if _shape blurred EVERYTHING, it would pass while
+        the trace lost the labels and keys that are its actual structure."""
+        self.assertEqual(render_trace._shape("x" * 60), "str:" + "x" * 60)
+        self.assertEqual(render_trace._shape("x" * 61), "str[long]")
+
+    def test_the_module_records_why_the_clock_cannot_be_frozen_instead(self):
+        """The rejected option, kept in the source rather than only in a register entry -- the
+        next person to look at this will reach for a clock freeze first, and the reason it
+        fails is not guessable from the code."""
+        source = (_HERE / "render_trace.py").read_text()
+        self.assertIn("PyDateTime_IMPORT", source)
+        self.assertIn("size changed", source)
 
 
 if __name__ == "__main__":

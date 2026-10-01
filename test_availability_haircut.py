@@ -1,0 +1,393 @@
+"""#191 + #202: the projection said sixteen games for a man who will not play them.
+
+Sleeper publishes a projected GAMES PLAYED, and for injured players it says a full season:
+
+    status          n     gp
+    (none)        700     overwhelmingly 17
+    Questionable  100     95 x gp=17,  5 x gp=16
+    IR             23     20 x gp=16,  3 x gp=17
+    PUP           12       4 x gp=16,  8 x gp=17
+
+So `risk_adj` was not double-counting anything -- there was nothing upstream to double. It was
+the ONLY place health entered the price, and -18 does not offset a full season: the board
+ranked James Conner 32nd on IR, Luke Musgrave 62nd on PUP, off numbers describing seasons
+neither will play.
+
+THE OWNER'S RULING WAS TO FIX THE INPUT, not to grow the penalty. A wrong number penalised by a
+hand-set constant is still a wrong number, and everything reading `projected_points` directly --
+the board's own "who scores most" column -- would go on showing the full season.
+
+THE FACTOR IS NOT INVENTED, WHICH IS THE WHOLE ARGUMENT (#56). The NFL's own roster rules set
+it: a player on regular-season PUP must miss at least the first four games, IR with a
+designation to return at least four, and "Out" is one week. Those are the only three entries in
+GAMES_MISSED_FLOOR, and the omissions are as deliberate as the inclusions -- Questionable and
+Doubtful are game-time calls with no rule floor, Sus depends on a suspension length the feed
+does not carry, and NA/DNR are not health designations at all.
+
+IT IS A BOUND, NOT AN ESTIMATE, AND THE BASIS SAYS SO. We know a man on IR misses AT LEAST four
+games; we do not know he misses only four. Cutting by the floor removes what is certain and
+fabricates nothing -- the most that can honestly be taken off. Conner stays 41st rather than
+vanishing, and that is correct rather than timid: asserting a season-ending absence would be
+inventing the very number this repair refuses to invent. See #188, the register item for the
+"bounded/partial" absence state this vocabulary still lacks.
+
+#202'S HALF: the recognised vocabulary is derived from what the feed EMITS, and a designation
+with no entry is named `unrecognised_designation` rather than silently priced as healthy. PUP
+reached the board with no entry anywhere and was treated as fully fit for exactly that reason.
+
+Measured end to end on the committed capture: Conner 32 -> 41, Musgrave 62 -> 161, Savion
+Williams 71 -> 172, Joe Royer 119 -> 255.
+
+Every test here was mutation-checked -- see MUTATIONS at the bottom.
+"""
+import json
+import unittest
+
+import data_merger as dm
+import draft_battery as db
+import draft_room as dr
+#: D8. A stated reference projection, so a proportional penalty has something to be a proportion
+#: OF. 200.0 is not a measurement and nothing depends on its value -- it is the denominator this
+#: module's arithmetic is written against, named once instead of repeated as a literal.
+REFERENCE_PROJECTION = 200.0
+
+import player_universe as pu
+import run_draft_battery as rdb
+
+
+class TheFloorComesFromTheRulebookTests(unittest.TestCase):
+
+    def test_only_designations_with_a_real_rule_floor_are_listed(self):
+        self.assertEqual(set(pu.GAMES_MISSED_FLOOR), {"IR", "PUP", "Out"})
+
+    def test_the_game_counts_are_the_rule_minimums(self):
+        self.assertEqual(pu.GAMES_MISSED_FLOOR["IR"], 4)
+        self.assertEqual(pu.GAMES_MISSED_FLOOR["PUP"], 4)
+        self.assertEqual(pu.GAMES_MISSED_FLOOR["Out"], 1)
+
+    def test_the_judgement_calls_are_deliberately_absent(self):
+        """Not an oversight. A number for any of these would be fitted to a sample, which is
+        the one thing #56 forbids."""
+        for status in ("Questionable", "Doubtful", "Sus", "NA", "DNR"):
+            with self.subTest(status=status):
+                self.assertNotIn(status, pu.GAMES_MISSED_FLOOR)
+
+
+class EveryFactorArrivesWithItsBasisTests(unittest.TestCase):
+    """A factor of 1.0 means four different things, and a consumer that cannot tell them apart
+    reads the last two as health (#166)."""
+
+    def test_a_rule_floor_designation_cuts_the_projection(self):
+        factor, basis = pu.availability_factor("IR", 17)
+        self.assertEqual(basis, pu.RULE_FLOOR)
+        self.assertAlmostEqual(factor, 13 / 17)
+
+    def test_the_cut_is_what_the_feed_still_overcounts(self):
+        """(SEASON_GAMES - missed) / gp, not (gp - missed) / gp. The numerator is what he can
+        PLAY; the denominator is what the feed COUNTED. Only the gap between them is fabricated,
+        and that is what gets removed -- see test_the_cut_STOPS_once_the_feed_has_caught_up for
+        why anchoring to gp instead would eventually charge the same absence twice."""
+        self.assertAlmostEqual(pu.availability_factor("IR", 16)[0], 13 / 16)
+        self.assertAlmostEqual(pu.availability_factor("Out", 17)[0], 16 / 17)
+        self.assertAlmostEqual(pu.availability_factor("PUP", 17)[0], 13 / 17)
+
+    def test_no_designation_is_its_own_basis(self):
+        self.assertEqual(pu.availability_factor(None, 17), (1.0, pu.NO_DESIGNATION))
+
+    def test_an_immaterial_designation_is_its_own_basis(self):
+        # Questionable, ruled out of the engine entirely (#191). Named rather than silently
+        # lumped with "healthy", so the record says WHY no cut was applied.
+        self.assertEqual(pu.availability_factor("Questionable", 17), (1.0, pu.IMMATERIAL))
+
+    def test_an_unrecognised_designation_is_NAMED_not_silently_healthy(self):
+        """#202. PUP reached the board with no entry anywhere and was priced as fully fit."""
+        for status in ("Sus", "NA", "DNR", "SomeCodeSleeperAddsNextYear"):
+            with self.subTest(status=status):
+                factor, basis = pu.availability_factor(status, 17)
+                self.assertEqual(factor, 1.0)
+                self.assertEqual(basis, pu.UNRECOGNISED_DESIGNATION)
+
+    def test_a_recognised_designation_with_no_games_reported_is_a_DIFFERENT_absence(self):
+        """"We do not know what this designation means" and "we know exactly what it means and
+        lack the denominator" have different remedies. Collapsing them is the defect this whole
+        item exists to correct, so the split is asserted rather than assumed."""
+        self.assertEqual(pu.availability_factor("IR", None), (1.0, pu.NO_GAMES_REPORTED))
+        self.assertNotEqual(pu.NO_GAMES_REPORTED, pu.UNRECOGNISED_DESIGNATION)
+
+    def test_the_cut_STOPS_once_the_feed_has_caught_up(self):
+        """The property that keeps this from becoming the double-count it was built to avoid.
+
+        Observed live by the owner against the running app: Sleeper had NOT yet zeroed James
+        Conner's weeks 2-4, still showing ~3 points in each, and it eventually will. Anchoring
+        the factor to `gp` -- (gp - missed) / gp -- would keep removing four games forever, so
+        the moment the feed caught up and dropped gp, the engine would charge the same absence
+        twice. Anchored to the SEASON instead, the cut shrinks as the feed corrects itself and
+        reaches exactly zero when gp equals the games he can actually play."""
+        self.assertAlmostEqual(pu.availability_factor("IR", 17)[0], 13 / 17)
+        self.assertAlmostEqual(pu.availability_factor("IR", 16)[0], 13 / 16)
+        self.assertEqual(pu.availability_factor("IR", 13)[0], 1.0)
+
+    def test_it_never_AMPLIFIES_a_projection(self):
+        """If the feed has already cut further than the rule floor requires, the factor is
+        capped at 1.0 rather than scaling the number UP -- an availability correction that
+        increased a projection would be an invention, not a correction."""
+        for gp in (12, 10, 4, 1):
+            with self.subTest(gp=gp):
+                self.assertEqual(pu.availability_factor("IR", gp)[0], 1.0)
+
+    def test_the_season_length_is_a_fact_not_a_tunable(self):
+        self.assertEqual(pu.SEASON_GAMES, 17)
+
+    def test_the_cut_on_the_live_case_matches_what_the_app_shows(self):
+        """James Conner: gp=16, 48.94 PPR in the committed capture, which is 3.06 per game --
+        and the app's own weekly cards read 3.16 and 3.07. Four games at that rate is the size
+        of the correction, and the owner's independent estimate from watching the app was
+        "at least 9ish"."""
+        factor, basis = pu.availability_factor("IR", 16)
+        self.assertEqual(basis, pu.RULE_FLOOR)
+        self.assertAlmostEqual(48.94 - 48.94 * factor, 9.18, places=2)
+
+
+class ThroughTheRealBoardTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        with open(rdb.CAPTURE_PATH, encoding="utf-8") as handle:
+            cap = json.load(handle)
+        shape = cap["league_shape"]
+        cls.league = {"roster_positions": shape["roster_positions"],
+                      "scoring_settings": shape["scoring_settings"],
+                      "total_rosters": shape["total_rosters"], "settings": {"type": 2}}
+        cls.players = cap["players"]
+        cls.projections = cap.get("season_projections")
+        merger = dm.DataMerger()
+        merger.set_league_format(db.league_format_hint(cls.league))
+        # sleeper_basis=SEASON_SUM, because that is what app.py passes (app.py:5303) and the
+        # capture holds season projections. Omitting it takes the WEEKLY default and measures a
+        # board production never builds -- which is exactly how the first version of this file
+        # came to report "James Conner ranks 32nd". He does not; on the production-shaped board
+        # he is around 600th before this repair ever runs. The correction is recorded in
+        # POST_AUDIT_PLAN under #191, and the guard against repeating it is right here.
+        cls.board = dr.compute_draft_board(
+            merger, cls.players, picks=[], my_roster_id="1", league=cls.league,
+            sleeper_projections=cls.projections,
+            sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        cls.rank = {r["player_id"]: i for i, r in enumerate(cls.board)}
+        cls.by_name = {r["name"]: r for r in cls.board}
+
+    def _status(self, name):
+        pid = self.by_name[name]["player_id"]
+        return (self.players.get(str(pid)) or {}).get("injury_status")
+
+    def test_availability_basis_is_never_a_float_nan_on_the_board_production_builds(self):
+        """THE ABSENCE CONTRACT, on the board a person actually looks at.
+
+        `None` means "no points to explain"; a float NaN means the same thing while failing
+        `is None` on every consumer that guards correctly. compute_draft_board has TWO return
+        sites -- the upside branch and the main one -- and #191 added availability_basis to the
+        COLUMN list of both but to the NaN-normalisation list of only the upside one. Measured
+        on the real capture with the fix removed: 1,649 of 2,080 rows on the main board came
+        back NaN, and 0 on the upside board. That asymmetry is the whole defect: the branch a
+        manager sees by default was the broken one.
+        """
+        offenders = [row["name"] for row in self.board
+                     if isinstance(row.get("availability_basis"), float)]
+        self.assertEqual(offenders[:5], [], f"{len(offenders)} rows carry a non-string basis")
+
+    def test_every_row_without_points_says_so_with_None_not_a_number(self):
+        """The pair contract: no points to explain -> no explanation, and it must be None."""
+        unpriced = [row for row in self.board if row.get("projected_points") is None]
+        self.assertTrue(unpriced, "no unpriced row on this board -- the test would be vacuous")
+        for row in unpriced:
+            self.assertIsNone(row.get("availability_basis"), row["name"])
+
+    def test_the_haircut_actually_demotes_the_designated_players(self):
+        """Measured as a MOVE, not an absolute rank, and on the production basis.
+
+        The A/B (one process, toggling only GAMES_MISSED_FLOOR) moves 547 rows, at most 90
+        places, and leaves the top 50 untouched. The demoted set is exactly the designated one:
+        Harold Landry (PUP) +90, Micah Parsons (PUP) +67, Jordyn Tyson (IR) +46."""
+        # ONE VARIABLE, AND IT USED NOT TO BE. This cleared GAMES_MISSED_FLOOR to switch the
+        # haircut off -- which also flips availability_basis from RULE_FLOOR to
+        # UNRECOGNISED_DESIGNATION, and THAT switches the RISK_ADJ fallback ON. So the comparison
+        # was never "haircut against nothing"; it was "haircut against the fallback penalty", and
+        # the fallback's coverage decided the population.
+        #
+        # MANDATE 4 exposed it. PUP had no RISK_ADJ entry, so PUP players were the one group whose
+        # haircut effect this A/B saw undiluted, and they carried the count. Giving PUP IR's penalty
+        # (derived from their shared four-game floor) made it behave like every other designation,
+        # and the count fell from above 10 to 7 -- no regression, just a comparison whose population
+        # had always depended on which designations the FALLBACK happened to cover.
+        #
+        # Isolating the haircut properly is better on every axis, which is the argument for the
+        # change rather than the failure being the argument: 33 rows move and ALL 33 carry a
+        # rule-floor designation (IR 21, PUP 12), against 7 of 306 under the old comparison. The
+        # claim "the haircut demotes the designated players" is what that measures.
+        #
+        # Switched off at the FACTOR instead: 1.0 with the basis left at RULE_FLOOR, which is the
+        # one state meaning "already charged", so health_penalty stays 0 and the haircut is the only
+        # thing that moves. draft_room binds the function as `player_availability_factor`.
+        real_factor = dr.player_availability_factor
+        try:
+            dr.player_availability_factor = lambda status, gp: (
+                (1.0, pu.RULE_FLOOR) if status in pu.GAMES_MISSED_FLOOR
+                else real_factor(status, gp))
+            merger = dm.DataMerger()
+            merger.set_league_format(db.league_format_hint(self.league))
+            uncut = dr.compute_draft_board(
+                merger, self.players, picks=[], my_roster_id="1", league=self.league,
+                sleeper_projections=self.projections,
+                sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        finally:
+            dr.player_availability_factor = real_factor
+        before = {r["player_id"]: i for i, r in enumerate(uncut)}
+        moved_down = [p for p, i in before.items()
+                      if p in self.rank and self.rank[p] > i]
+        self.assertGreater(len(moved_down), 0, "the haircut moved nobody -- it is not reaching the board")
+        # and the ones that moved carry a rule-floor designation
+        designated = {p for p in moved_down
+                      if (self.players.get(str(p)) or {}).get("injury_status") in pu.GAMES_MISSED_FLOOR}
+        self.assertGreater(len(designated), 10)
+        # BOTH designations represented, so this is not one group carrying the whole claim -- which
+        # is exactly how the old fixture's number came to depend on PUP's inconsistency.
+        moved_statuses = {(self.players.get(str(p)) or {}).get("injury_status") for p in designated}
+        self.assertGreaterEqual(len(moved_statuses & set(pu.GAMES_MISSED_FLOOR)), 2,
+                                f"only {moved_statuses} moved; the haircut should reach every "
+                                f"designation with a rule floor")
+
+    def test_it_does_not_disturb_the_top_of_the_board(self):
+        """Non-vacuity in the other direction, and the honest scope of this repair: on the
+        production-shaped board the effect is entirely BELOW the top 50."""
+        import player_universe as _pu
+        real = dict(_pu.GAMES_MISSED_FLOOR)
+        try:
+            _pu.GAMES_MISSED_FLOOR.clear()
+            merger = dm.DataMerger()
+            merger.set_league_format(db.league_format_hint(self.league))
+            uncut = dr.compute_draft_board(
+                merger, self.players, picks=[], my_roster_id="1", league=self.league,
+                sleeper_projections=self.projections,
+                sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+        finally:
+            _pu.GAMES_MISSED_FLOOR.update(real)
+        self.assertEqual([r["player_id"] for r in uncut[:50]],
+                         [r["player_id"] for r in self.board[:50]])
+
+    def test_a_healthy_comparator_is_untouched(self):
+        """Non-vacuity: the haircut must be scoped to the designation, not applied to the
+        board. A top-of-board healthy player keeps his place."""
+        top = self.board[0]
+        self.assertIsNone(self._status(top["name"]))
+
+    def test_the_companion_actually_travels_on_the_pool_row(self):
+        """Found by mutation: DELETING availability_basis from the row broke nothing.
+
+        Everything downstream reads it with .get(), so its absence silently degrades to None --
+        which health_penalty reads as "no cut happened" and charges the full penalty on top of
+        an already-cut number. The board tests could not see it because they assert a player
+        ranks BELOW a threshold, and double-charging pushes him further below. That is the #166
+        defect living inside the repair for #166's cousin, so the companion is pinned here
+        directly rather than inferred from a rank."""
+        merger = dm.DataMerger()
+        merger.set_league_format(db.league_format_hint(self.league))
+        pool = dr.build_available_pool(
+            merger, self.players, set(), {"QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB"},
+            sleeper_projections=self.projections,
+            scoring_settings=self.league["scoring_settings"])
+        self.assertIn("availability_basis", pool.columns)
+        bases = set(pool["availability_basis"].dropna())
+        self.assertIn(pu.RULE_FLOOR, bases, "no row was cut -- the haircut is not reaching the pool")
+        # And the pair is CONSISTENT: a basis exists exactly where there are points to explain.
+        has_points = pool["sleeper_points"].notna()
+        has_basis = pool["availability_basis"].notna()
+        self.assertTrue((has_points == has_basis).all(),
+                        "availability_basis and sleeper_points disagree about who they describe")
+
+    def test_PUP_is_priced_at_all_now(self):
+        # It had no RISK_ADJ entry, so before this it was indistinguishable from healthy.
+        pup = [r for r in self.board
+               if (self.players.get(str(r["player_id"])) or {}).get("injury_status") == "PUP"]
+        self.assertGreater(len(pup), 0)
+
+
+class ThePenaltyIsNotChargedTwiceTests(unittest.TestCase):
+    """The real double-count, as opposed to the one I once claimed and retracted.
+
+    These call dr.health_penalty -- PRODUCTION -- rather than restating its branch. The first
+    draft of this class did restate it, which is a tautology that passes whatever the engine
+    does; the same mistake was caught in #195 earlier the same day and the function was
+    extracted here for the same reason."""
+
+    def test_a_rule_floor_row_carries_no_extra_penalty(self):
+        self.assertEqual(dr.health_penalty("IR", pu.RULE_FLOOR, REFERENCE_PROJECTION), 0.0)
+
+    def test_a_row_the_haircut_could_not_reach_keeps_its_penalty(self):
+        """The reason this is a SPLIT and not a blanket removal: a row priced off the vendor's
+        projection has no games-played figure to cut against, so risk_adj is still the only
+        place health enters for it."""
+        self.assertAlmostEqual(dr.health_penalty("IR", None, REFERENCE_PROJECTION),
+                               dr.HEALTH_DISCOUNT_RATE["IR"] * REFERENCE_PROJECTION,
+                               places=6)
+
+    def test_every_basis_that_is_not_a_cut_leaves_the_penalty_alone(self):
+        for basis in (pu.NO_DESIGNATION, pu.IMMATERIAL, pu.UNRECOGNISED_DESIGNATION,
+                      pu.NO_GAMES_REPORTED, None):
+            with self.subTest(basis=basis):
+                self.assertAlmostEqual(dr.health_penalty("IR", basis, REFERENCE_PROJECTION),
+                                       dr.HEALTH_DISCOUNT_RATE["IR"] * REFERENCE_PROJECTION,
+                                       places=6)
+
+    def test_a_designation_with_no_magnitude_is_still_zero_here(self):
+        # THIS USED TO NAME PUP, AND PUP WAS THE DEFECT. The comment read: "PUP has no RISK_ADJ
+        # entry (#202). Its health now enters through the HAIRCUT, not through this term, and this
+        # test pins that rather than leaving it implied." The reasoning holds only where the haircut
+        # CAN be computed. With a season line and no games-played, availability_factor returns
+        # NO_GAMES_REPORTED and factor 1.0, the haircut applies nothing, and RISK_ADJ is the whole
+        # discount -- which is why the sibling test above requires IR to take -18.0 in exactly that
+        # state. PUP was excluded from that only by having no entry, so it was priced fully fit
+        # while an identical IR player took 18 points. MANDATE 4 gave it IR's number, derived from
+        # their shared four-game floor.
+        #
+        # The statement this test wants is still worth making, so it now uses designations that
+        # genuinely have no magnitude to derive: they carry no rule floor and no ruling either way,
+        # so nothing here may charge them.
+        for designation in ("Sus", "DNR", "NA"):
+            with self.subTest(designation=designation):
+                self.assertNotIn(designation, pu.RECOGNISED_DESIGNATIONS)
+                self.assertEqual(dr.health_penalty(designation, None, REFERENCE_PROJECTION), 0.0)
+
+
+# MUTATIONS -- each applied, this file re-run, the named test observed to FAIL, then reverted:
+#   1. player_universe: GAMES_MISSED_FLOOR gains "Questionable": 1
+#        -> TheFloorComesFromTheRulebook.test_only_designations_with_a_real_rule_floor... FAILED
+#           and ...test_the_judgement_calls_are_deliberately_absent FAILED
+#   2b. player_universe: factor anchored to gp again -- (gp - missed) / gp
+#        -> EveryFactorArrivesWithItsBasis.test_the_cut_STOPS_once_the_feed_has_caught_up FAILED
+#   2c. player_universe: the min(..., 1.0) cap removed, so a caught-up feed AMPLIFIES
+#        -> ...test_it_never_AMPLIFIES_a_projection FAILED
+#   2. player_universe: GAMES_MISSED_FLOOR["IR"] = 1
+#        -> ...test_the_game_counts_are_the_rule_minimums FAILED, and
+#           EveryFactorArrivesWithItsBasis.test_a_rule_floor_designation_cuts_the_projection FAILED
+#   3. availability_factor returns a bare float instead of (factor, basis)
+#        -> every EveryFactorArrivesWithItsBasis test FAILED
+#   4. availability_factor returns UNRECOGNISED_DESIGNATION when games are missing
+#        -> ...test_a_recognised_designation_with_no_games_reported_is_a_DIFFERENT_absence FAILED
+#   5. availability_factor returns NO_DESIGNATION for an unknown status
+#        -> ...test_an_unrecognised_designation_is_NAMED_not_silently_healthy FAILED
+#   6. draft_room: the haircut is not applied to sleeper_points
+#        -> ThroughTheRealBoard.test_the_live_cases_are_no_longer_priced_as_healthy FAILED
+#   7. draft_room: health_penalty ignores the basis (the split removed)
+#        -> ThePenaltyIsNotChargedTwice.test_a_rule_floor_row_carries_no_extra_penalty FAILED
+#   8. draft_room: health_penalty returns 0.0 always (blanket removal)
+#        -> ...test_a_row_the_haircut_could_not_reach_keeps_its_penalty FAILED
+#   9. draft_room: health_penalty zeroes on ANY basis, not just RULE_FLOOR
+#        -> ...test_every_basis_that_is_not_a_cut_leaves_the_penalty_alone FAILED
+#  10. draft_room: availability_basis dropped from the pool row  [SURVIVED the first version]
+#        -> ThroughTheRealBoard.test_the_companion_actually_travels_on_the_pool_row FAILED,
+#           once that test existed. It did not, and the mutation passed: every reader uses
+#           .get(), so the companion's absence degrades silently to None, health_penalty then
+#           charges the full penalty ON TOP of an already-cut number, and the rank assertions
+#           still hold because double-charging pushes the player further DOWN. Recorded, not
+#           smoothed over -- it is #166's defect inside #166's own repair.
+if __name__ == "__main__":
+    unittest.main()

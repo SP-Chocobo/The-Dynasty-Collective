@@ -1,0 +1,2072 @@
+{
+ "arms": {
+  "12T_ppr_BN6": {
+   "teams": 12,
+   "total_picks": 168,
+   "round_points": 26250.06,
+   "crossing_points": 26250.06,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": null,
+   "latest_starter_pick": 99,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 85
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 14,
+      "latest_starter_pick": 85
+     }
+    }
+   }
+  },
+  "12T_ppr_BN10": {
+   "teams": 12,
+   "total_picks": 216,
+   "round_points": 26250.06,
+   "crossing_points": 26250.06,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 171,
+   "latest_starter_pick": 99,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 85
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 18,
+      "latest_starter_pick": 85
+     }
+    }
+   }
+  },
+  "12T_ppr_BN14": {
+   "teams": 12,
+   "total_picks": 264,
+   "round_points": 26250.06,
+   "crossing_points": 26250.06,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 171,
+   "latest_starter_pick": 99,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 85
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 22,
+      "latest_starter_pick": 85
+     }
+    }
+   }
+  },
+  "12T_ppr_BN18": {
+   "teams": 12,
+   "total_picks": 312,
+   "round_points": 26250.06,
+   "crossing_points": 26250.06,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 171,
+   "latest_starter_pick": 99,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 85
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 85
+     }
+    }
+   }
+  },
+  "12T_ppr_BN22": {
+   "teams": 12,
+   "total_picks": 360,
+   "round_points": 26250.06,
+   "crossing_points": 26250.06,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 171,
+   "latest_starter_pick": 99,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 85
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 30,
+      "latest_starter_pick": 85
+     }
+    }
+   }
+  },
+  "12T_ppr_BN26": {
+   "teams": 12,
+   "total_picks": 408,
+   "round_points": 26250.06,
+   "crossing_points": 26250.06,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 171,
+   "latest_starter_pick": 99,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 85
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2225.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 96
+     },
+     "2": {
+      "starting_points": 2229.68,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 95
+     },
+     "3": {
+      "starting_points": 2225.11,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 99
+     },
+     "4": {
+      "starting_points": 2170.99,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 93
+     },
+     "5": {
+      "starting_points": 2171.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 92
+     },
+     "6": {
+      "starting_points": 2186.85,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 91
+     },
+     "7": {
+      "starting_points": 2176.03,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 90
+     },
+     "8": {
+      "starting_points": 2169.0,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 89
+     },
+     "9": {
+      "starting_points": 2161.12,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 88
+     },
+     "10": {
+      "starting_points": 2170.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 87
+     },
+     "11": {
+      "starting_points": 2168.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 86
+     },
+     "12": {
+      "starting_points": 2193.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 34,
+      "latest_starter_pick": 85
+     }
+    }
+   }
+  },
+  "8T_ppr_BN18": {
+   "teams": 8,
+   "total_picks": 208,
+   "round_points": 18960.8,
+   "crossing_points": 18960.8,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 115,
+   "latest_starter_pick": 85,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2407.62,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 64
+     },
+     "2": {
+      "starting_points": 2410.66,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 66
+     },
+     "3": {
+      "starting_points": 2375.21,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 67
+     },
+     "4": {
+      "starting_points": 2374.19,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 61
+     },
+     "5": {
+      "starting_points": 2329.39,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 85
+     },
+     "6": {
+      "starting_points": 2342.32,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 59
+     },
+     "7": {
+      "starting_points": 2353.05,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 58
+     },
+     "8": {
+      "starting_points": 2368.36,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 57
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2407.62,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 64
+     },
+     "2": {
+      "starting_points": 2410.66,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 66
+     },
+     "3": {
+      "starting_points": 2375.21,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 67
+     },
+     "4": {
+      "starting_points": 2374.19,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 61
+     },
+     "5": {
+      "starting_points": 2329.39,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 85
+     },
+     "6": {
+      "starting_points": 2342.32,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 59
+     },
+     "7": {
+      "starting_points": 2353.05,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 58
+     },
+     "8": {
+      "starting_points": 2368.36,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 57
+     }
+    }
+   }
+  },
+  "10T_ppr_BN18": {
+   "teams": 10,
+   "total_picks": 260,
+   "round_points": 22732.52,
+   "crossing_points": 22732.52,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 142,
+   "latest_starter_pick": 82,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2298.62,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 81
+     },
+     "2": {
+      "starting_points": 2311.69,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 82
+     },
+     "3": {
+      "starting_points": 2291.57,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 78
+     },
+     "4": {
+      "starting_points": 2264.05,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 77
+     },
+     "5": {
+      "starting_points": 2248.49,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 76
+     },
+     "6": {
+      "starting_points": 2273.07,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 75
+     },
+     "7": {
+      "starting_points": 2274.23,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 74
+     },
+     "8": {
+      "starting_points": 2271.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 73
+     },
+     "9": {
+      "starting_points": 2252.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 72
+     },
+     "10": {
+      "starting_points": 2246.32,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 71
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2298.62,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 81
+     },
+     "2": {
+      "starting_points": 2311.69,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 82
+     },
+     "3": {
+      "starting_points": 2291.57,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 78
+     },
+     "4": {
+      "starting_points": 2264.05,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 77
+     },
+     "5": {
+      "starting_points": 2248.49,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 76
+     },
+     "6": {
+      "starting_points": 2273.07,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 75
+     },
+     "7": {
+      "starting_points": 2274.23,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 74
+     },
+     "8": {
+      "starting_points": 2271.64,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 73
+     },
+     "9": {
+      "starting_points": 2252.84,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 72
+     },
+     "10": {
+      "starting_points": 2246.32,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 71
+     }
+    }
+   }
+  },
+  "14T_ppr_BN18": {
+   "teams": 14,
+   "total_picks": 364,
+   "round_points": 29492.26,
+   "crossing_points": 29492.26,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 198,
+   "latest_starter_pick": 170,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2142.4,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 140
+     },
+     "2": {
+      "starting_points": 2111.92,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 170
+     },
+     "3": {
+      "starting_points": 2162.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 115
+     },
+     "4": {
+      "starting_points": 2130.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 116
+     },
+     "5": {
+      "starting_points": 2111.75,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 108
+     },
+     "6": {
+      "starting_points": 2126.96,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 118
+     },
+     "7": {
+      "starting_points": 2100.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 106
+     },
+     "8": {
+      "starting_points": 2074.44,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 120
+     },
+     "9": {
+      "starting_points": 2084.26,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 121
+     },
+     "10": {
+      "starting_points": 2087.37,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 103
+     },
+     "11": {
+      "starting_points": 2093.66,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 102
+     },
+     "12": {
+      "starting_points": 2099.5,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 101
+     },
+     "13": {
+      "starting_points": 2096.23,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 100
+     },
+     "14": {
+      "starting_points": 2068.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 99
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2142.4,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 140
+     },
+     "2": {
+      "starting_points": 2111.92,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 170
+     },
+     "3": {
+      "starting_points": 2162.95,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 115
+     },
+     "4": {
+      "starting_points": 2130.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 116
+     },
+     "5": {
+      "starting_points": 2111.75,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 108
+     },
+     "6": {
+      "starting_points": 2126.96,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 118
+     },
+     "7": {
+      "starting_points": 2100.97,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 106
+     },
+     "8": {
+      "starting_points": 2074.44,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 120
+     },
+     "9": {
+      "starting_points": 2084.26,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 121
+     },
+     "10": {
+      "starting_points": 2087.37,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 103
+     },
+     "11": {
+      "starting_points": 2093.66,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 102
+     },
+     "12": {
+      "starting_points": 2099.5,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 101
+     },
+     "13": {
+      "starting_points": 2096.23,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 100
+     },
+     "14": {
+      "starting_points": 2068.88,
+      "slots_filled": 8,
+      "slots": 8,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 99
+     }
+    }
+   }
+  },
+  "CAPTURE_fourth_and_forever": {
+   "teams": 12,
+   "total_picks": 312,
+   "round_points": 33998.73,
+   "crossing_points": 33998.73,
+   "delta": 0.0,
+   "delta_pct": 0.0,
+   "first_divergent_pick": 171,
+   "latest_starter_pick": 127,
+   "switch_touches_a_starter": false,
+   "unpriced": {
+    "round": 0,
+    "crossing": 0
+   },
+   "per_seat": {
+    "round": {
+     "1": {
+      "starting_points": 2904.74,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 120
+     },
+     "2": {
+      "starting_points": 2885.98,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 122
+     },
+     "3": {
+      "starting_points": 2877.08,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 118
+     },
+     "4": {
+      "starting_points": 2835.95,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 124
+     },
+     "5": {
+      "starting_points": 2819.26,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 116
+     },
+     "6": {
+      "starting_points": 2821.44,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 115
+     },
+     "7": {
+      "starting_points": 2797.42,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 127
+     },
+     "8": {
+      "starting_points": 2806.46,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 113
+     },
+     "9": {
+      "starting_points": 2798.3,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 112
+     },
+     "10": {
+      "starting_points": 2794.05,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 111
+     },
+     "11": {
+      "starting_points": 2838.56,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 110
+     },
+     "12": {
+      "starting_points": 2819.49,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 109
+     }
+    },
+    "crossing": {
+     "1": {
+      "starting_points": 2904.74,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 120
+     },
+     "2": {
+      "starting_points": 2885.98,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 122
+     },
+     "3": {
+      "starting_points": 2877.08,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 118
+     },
+     "4": {
+      "starting_points": 2835.95,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 124
+     },
+     "5": {
+      "starting_points": 2819.26,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 116
+     },
+     "6": {
+      "starting_points": 2821.44,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 115
+     },
+     "7": {
+      "starting_points": 2797.42,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 127
+     },
+     "8": {
+      "starting_points": 2806.46,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 113
+     },
+     "9": {
+      "starting_points": 2798.3,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 112
+     },
+     "10": {
+      "starting_points": 2794.05,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 111
+     },
+     "11": {
+      "starting_points": 2838.56,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 110
+     },
+     "12": {
+      "starting_points": 2819.49,
+      "slots_filled": 10,
+      "slots": 10,
+      "unpriced_picks": 0,
+      "picks": 26,
+      "latest_starter_pick": 109
+     }
+    }
+   }
+  }
+ },
+ "switch_touches_a_starter_in": [],
+ "control_selfcheck": "ok"
+}

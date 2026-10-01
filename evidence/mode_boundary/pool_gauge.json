@@ -1,0 +1,1369 @@
+{
+ "span": 16,
+ "stride": 10,
+ "bands": [
+  "ELITE",
+  "MID",
+  "DEPTH",
+  "MEH"
+ ],
+ "arms": {
+  "12T_ppr_BN18": {
+   "pool_size": {
+    "RB": 126,
+    "WR": 198,
+    "TE": 115,
+    "QB": 42
+   },
+   "band_sizes": {
+    "QB": {
+     "ELITE": 12,
+     "MID": 13,
+     "DEPTH": 7,
+     "MEH": 10
+    },
+    "RB": {
+     "ELITE": 7,
+     "MID": 21,
+     "DEPTH": 25,
+     "MEH": 73
+    },
+    "TE": {
+     "ELITE": 9,
+     "MID": 17,
+     "DEPTH": 26,
+     "MEH": 63
+    },
+    "WR": {
+     "ELITE": 16,
+     "MID": 44,
+     "DEPTH": 46,
+     "MEH": 92
+    }
+   },
+   "bar_points": {
+    "RB": 185.64,
+    "WR": 216.25,
+    "TE": 172.69,
+    "QB": 328.6
+   },
+   "rows_on_board": {
+    "RB": 256,
+    "WR": 452,
+    "TE": 256,
+    "QB": 155
+   },
+   "coverage": {
+    "RB": 0.4921875,
+    "WR": 0.43805309734513276,
+    "TE": 0.44921875,
+    "QB": 0.2709677419354839
+   },
+   "starter_line_rank": {
+    "QB": 12,
+    "RB": 32,
+    "TE": 20,
+    "WR": 32
+   },
+   "marks": {
+    "RB": [
+     {
+      "pid": "13287",
+      "rank": 7,
+      "band_below": "MID",
+      "size": 21,
+      "mean_points": 248.8
+     },
+     {
+      "pid": "12489",
+      "rank": 28,
+      "band_below": "DEPTH",
+      "size": 25,
+      "mean_points": 141.7
+     },
+     {
+      "pid": "6039",
+      "rank": 53,
+      "band_below": "MEH",
+      "size": 73,
+      "mean_points": 26.5
+     }
+    ],
+    "WR": [
+     {
+      "pid": "12526",
+      "rank": 16,
+      "band_below": "MID",
+      "size": 44,
+      "mean_points": 210.6
+     },
+     {
+      "pid": "7049",
+      "rank": 60,
+      "band_below": "DEPTH",
+      "size": 46,
+      "mean_points": 97.3
+     },
+     {
+      "pid": "13317",
+      "rank": 106,
+      "band_below": "MEH",
+      "size": 92,
+      "mean_points": 19.7
+     }
+    ],
+    "TE": [
+     {
+      "pid": "12506",
+      "rank": 9,
+      "band_below": "MID",
+      "size": 17,
+      "mean_points": 172.5
+     },
+     {
+      "pid": "8172",
+      "rank": 26,
+      "band_below": "DEPTH",
+      "size": 26,
+      "mean_points": 79.5
+     },
+     {
+      "pid": "13349",
+      "rank": 52,
+      "band_below": "MEH",
+      "size": 63,
+      "mean_points": 20.0
+     }
+    ],
+    "QB": [
+     {
+      "pid": "6804",
+      "rank": 12,
+      "band_below": "MID",
+      "size": 13,
+      "mean_points": 304.0
+     },
+     {
+      "pid": "9228",
+      "rank": 25,
+      "band_below": "DEPTH",
+      "size": 7,
+      "mean_points": 242.6
+     },
+     {
+      "pid": "11559",
+      "rank": 32,
+      "band_below": "MEH",
+      "size": 10,
+      "mean_points": 41.9
+     }
+    ]
+   },
+   "grades": {
+    "RB": {
+     "staged": false,
+     "bands_on_points": 93.7,
+     "even_slices_on_points": 88.1,
+     "top_band": {
+      "size": 7,
+      "mean_points": 362.6
+     }
+    },
+    "WR": {
+     "staged": false,
+     "bands_on_points": 93.9,
+     "even_slices_on_points": 89.4,
+     "top_band": {
+      "size": 16,
+      "mean_points": 320.5
+     }
+    },
+    "TE": {
+     "staged": false,
+     "bands_on_points": 94.3,
+     "even_slices_on_points": 87.9,
+     "top_band": {
+      "size": 9,
+      "mean_points": 250.1
+     }
+    },
+    "QB": {
+     "staged": true,
+     "bands_on_points": 96.3,
+     "even_slices_on_points": 95.5,
+     "top_band": {
+      "size": 12,
+      "mean_points": 346.6
+     }
+    }
+   },
+   "samples": [
+    {
+     "after_picks": 0,
+     "_band_left": {
+      "QB": {
+       "ELITE": 12,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 7,
+       "MID": 21,
+       "DEPTH": 25,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 9,
+       "MID": 17,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 16,
+       "MID": 44,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 20,
+     "_band_left": {
+      "QB": {
+       "ELITE": 12,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 18,
+       "DEPTH": 25,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 7,
+       "MID": 17,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 8,
+       "MID": 44,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 40,
+     "_band_left": {
+      "QB": {
+       "ELITE": 12,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 9,
+       "DEPTH": 25,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 4,
+       "MID": 17,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 44,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 60,
+     "_band_left": {
+      "QB": {
+       "ELITE": 9,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 4,
+       "DEPTH": 25,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 16,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 37,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 80,
+     "_band_left": {
+      "QB": {
+       "ELITE": 3,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 2,
+       "DEPTH": 25,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 14,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 27,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 100,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 13,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 25,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 12,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 13,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 120,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 7,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 20,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 9,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 8,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 140,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 17,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 5,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 46,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 160,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 11,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 26,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 42,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 180,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 2,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 7,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 23,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 31,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 200,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 2,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 2,
+       "MEH": 73
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 18,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 21,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 220,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 71
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 13,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 12,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 240,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 67
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 6,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 3,
+       "MEH": 92
+      }
+     }
+    },
+    {
+     "after_picks": 260,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 63
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 62
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 85
+      }
+     }
+    },
+    {
+     "after_picks": 280,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 58
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 55
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 78
+      }
+     }
+    },
+    {
+     "after_picks": 300,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 51
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 49
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 71
+      }
+     }
+    }
+   ],
+   "census": {
+    "RB": {
+     "starter": 32,
+     "bench": 47,
+     "first_bench": 118
+    },
+    "WR": {
+     "starter": 32,
+     "bench": 100,
+     "first_bench": 79
+    },
+    "TE": {
+     "starter": 20,
+     "bench": 49,
+     "first_bench": 139
+    },
+    "QB": {
+     "starter": 12,
+     "bench": 20,
+     "first_bench": 102
+    }
+   }
+  },
+  "CAPTURE_fourth_and_forever": {
+   "pool_size": {
+    "RB": 126,
+    "WR": 198,
+    "TE": 115,
+    "QB": 42
+   },
+   "band_sizes": {
+    "QB": {
+     "ELITE": 10,
+     "MID": 15,
+     "DEPTH": 7,
+     "MEH": 10
+    },
+    "RB": {
+     "ELITE": 6,
+     "MID": 22,
+     "DEPTH": 24,
+     "MEH": 74
+    },
+    "TE": {
+     "ELITE": 9,
+     "MID": 18,
+     "DEPTH": 25,
+     "MEH": 63
+    },
+    "WR": {
+     "ELITE": 20,
+     "MID": 41,
+     "DEPTH": 46,
+     "MEH": 91
+    }
+   },
+   "bar_points": {
+    "RB": 170.81,
+    "WR": 217.75,
+    "TE": 149.17,
+    "QB": 243.29
+   },
+   "rows_on_board": {
+    "RB": 256,
+    "WR": 452,
+    "TE": 256,
+    "QB": 155
+   },
+   "coverage": {
+    "RB": 0.4921875,
+    "WR": 0.43805309734513276,
+    "TE": 0.44921875,
+    "QB": 0.2709677419354839
+   },
+   "starter_line_rank": {
+    "QB": 32,
+    "RB": 37,
+    "TE": 25,
+    "WR": 37
+   },
+   "marks": {
+    "RB": [
+     {
+      "pid": "9224",
+      "rank": 6,
+      "band_below": "MID",
+      "size": 22,
+      "mean_points": 263.6
+     },
+     {
+      "pid": "5967",
+      "rank": 28,
+      "band_below": "DEPTH",
+      "size": 24,
+      "mean_points": 150.2
+     },
+     {
+      "pid": "5995",
+      "rank": 52,
+      "band_below": "MEH",
+      "size": 74,
+      "mean_points": 28.0
+     }
+    ],
+    "WR": [
+     {
+      "pid": "12519",
+      "rank": 20,
+      "band_below": "MID",
+      "size": 41,
+      "mean_points": 209.7
+     },
+     {
+      "pid": "4039",
+      "rank": 61,
+      "band_below": "DEPTH",
+      "size": 46,
+      "mean_points": 97.5
+     },
+     {
+      "pid": "12499",
+      "rank": 107,
+      "band_below": "MEH",
+      "size": 91,
+      "mean_points": 19.5
+     }
+    ],
+    "TE": [
+     {
+      "pid": "12506",
+      "rank": 9,
+      "band_below": "MID",
+      "size": 18,
+      "mean_points": 179.6
+     },
+     {
+      "pid": "4993",
+      "rank": 27,
+      "band_below": "DEPTH",
+      "size": 25,
+      "mean_points": 82.0
+     },
+     {
+      "pid": "13349",
+      "rank": 52,
+      "band_below": "MEH",
+      "size": 63,
+      "mean_points": 20.9
+     }
+    ],
+    "QB": [
+     {
+      "pid": "4046",
+      "rank": 10,
+      "band_below": "MID",
+      "size": 15,
+      "mean_points": 341.4
+     },
+     {
+      "pid": "9228",
+      "rank": 25,
+      "band_below": "DEPTH",
+      "size": 7,
+      "mean_points": 280.2
+     },
+     {
+      "pid": "11559",
+      "rank": 32,
+      "band_below": "MEH",
+      "size": 10,
+      "mean_points": 43.3
+     }
+    ]
+   },
+   "grades": {
+    "RB": {
+     "staged": false,
+     "bands_on_points": 93.8,
+     "even_slices_on_points": 88.0,
+     "top_band": {
+      "size": 6,
+      "mean_points": 387.7
+     }
+    },
+    "WR": {
+     "staged": false,
+     "bands_on_points": 94.1,
+     "even_slices_on_points": 89.5,
+     "top_band": {
+      "size": 20,
+      "mean_points": 318.1
+     }
+    },
+    "TE": {
+     "staged": false,
+     "bands_on_points": 94.5,
+     "even_slices_on_points": 87.6,
+     "top_band": {
+      "size": 9,
+      "mean_points": 267.5
+     }
+    },
+    "QB": {
+     "staged": true,
+     "bands_on_points": 96.7,
+     "even_slices_on_points": 96.1,
+     "top_band": {
+      "size": 10,
+      "mean_points": 382.9
+     }
+    }
+   },
+   "samples": [
+    {
+     "after_picks": 0,
+     "_band_left": {
+      "QB": {
+       "ELITE": 10,
+       "MID": 15,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 6,
+       "MID": 22,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 9,
+       "MID": 18,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 20,
+       "MID": 41,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 20,
+     "_band_left": {
+      "QB": {
+       "ELITE": 4,
+       "MID": 15,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 21,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 6,
+       "MID": 18,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 16,
+       "MID": 41,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 40,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 11,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 14,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 5,
+       "MID": 18,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 12,
+       "MID": 41,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 60,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 4,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 10,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 18,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 8,
+       "MID": 41,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 80,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 5,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 16,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 39,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 100,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 7,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 2,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 15,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 23,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 120,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 6,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 24,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 11,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 11,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 140,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 18,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 5,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 5,
+       "DEPTH": 46,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 160,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 2,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 10,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 1,
+       "DEPTH": 25,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 45,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 180,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 6,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 23,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 34,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 200,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 2,
+       "MEH": 74
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 17,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 24,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 220,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 71
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 11,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 15,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 240,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 68
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 4,
+       "MEH": 63
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 5,
+       "MEH": 91
+      }
+     }
+    },
+    {
+     "after_picks": 260,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 63
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 61
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 1,
+       "MEH": 85
+      }
+     }
+    },
+    {
+     "after_picks": 280,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 57
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 53
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 81
+      }
+     }
+    },
+    {
+     "after_picks": 300,
+     "_band_left": {
+      "QB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 10
+      },
+      "RB": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 51
+      },
+      "TE": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 49
+      },
+      "WR": {
+       "ELITE": 0,
+       "MID": 0,
+       "DEPTH": 0,
+       "MEH": 71
+      }
+     }
+    }
+   ],
+   "census": {
+    "RB": {
+     "starter": 37,
+     "bench": 43,
+     "first_bench": 147
+    },
+    "WR": {
+     "starter": 37,
+     "bench": 95,
+     "first_bench": 100
+    },
+    "TE": {
+     "starter": 25,
+     "bench": 43,
+     "first_bench": 160
+    },
+    "QB": {
+     "starter": 32,
+     "bench": 0,
+     "first_bench": null
+    }
+   }
+  }
+ },
+ "selfcheck": "ok"
+}

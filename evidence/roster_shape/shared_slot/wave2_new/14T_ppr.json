@@ -1,0 +1,2303 @@
+{
+ "commit": "7aa1227",
+ "format": "14T_ppr",
+ "universe": {
+  "source": "data/fixtures/sleeper_capture.json",
+  "captured_at": "2026-09-07T08:14:10.990206+00:00",
+  "season": "2026",
+  "players_in_capture": 6595,
+  "players_in_pool": 6595,
+  "injury_statuses_present": [
+   "DNR",
+   "IR",
+   "NA",
+   "Out",
+   "PUP",
+   "Questionable",
+   "Sus"
+  ]
+ },
+ "roster_positions": [
+  "QB",
+  "RB",
+  "RB",
+  "WR",
+  "WR",
+  "TE",
+  "FLEX",
+  "FLEX",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN",
+  "BN"
+ ],
+ "drafts": [
+  {
+   "arm": "SELF",
+   "seat": "1",
+   "sequence": [
+    {
+     "round": 1,
+     "player": "Jahmyr Gibbs",
+     "position": "RB",
+     "projected_points": 411.9,
+     "fills_required_slot": false
+    },
+    {
+     "round": 2,
+     "player": "Brock Bowers",
+     "position": "TE",
+     "projected_points": 310.2,
+     "fills_required_slot": false
+    },
+    {
+     "round": 3,
+     "player": "Trey McBride",
+     "position": "TE",
+     "projected_points": 300.9,
+     "fills_required_slot": false
+    },
+    {
+     "round": 4,
+     "player": "Tyler Warren",
+     "position": "TE",
+     "projected_points": 245.1,
+     "fills_required_slot": false
+    },
+    {
+     "round": 5,
+     "player": "Josh Jacobs",
+     "position": "RB",
+     "projected_points": 245.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 6,
+     "player": "Michael Wilson",
+     "position": "WR",
+     "projected_points": 213.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 7,
+     "player": "Rome Odunze",
+     "position": "WR",
+     "projected_points": 212.4,
+     "fills_required_slot": false
+    },
+    {
+     "round": 8,
+     "player": "Bo Nix",
+     "position": "QB",
+     "projected_points": 316.0,
+     "fills_required_slot": false
+    },
+    {
+     "round": 9,
+     "player": "Justin Herbert",
+     "position": "QB",
+     "projected_points": 315.1,
+     "fills_required_slot": false
+    },
+    {
+     "round": 10,
+     "player": "Rashid Shaheed",
+     "position": "WR",
+     "projected_points": 170.2,
+     "fills_required_slot": false
+    },
+    {
+     "round": 11,
+     "player": "Keenan Allen",
+     "position": "WR",
+     "projected_points": 167.2,
+     "fills_required_slot": false
+    },
+    {
+     "round": 12,
+     "player": "De'Zhaun Stribling",
+     "position": "WR",
+     "projected_points": 134.6,
+     "fills_required_slot": false
+    },
+    {
+     "round": 13,
+     "player": "Makai Lemon",
+     "position": "WR",
+     "projected_points": 129.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 14,
+     "player": "Jahan Dotson",
+     "position": "WR",
+     "projected_points": 95.0,
+     "fills_required_slot": false
+    }
+   ],
+   "states": [
+    {
+     "round": 1,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "9221",
+      "name": "Jahmyr Gibbs",
+      "position": "RB",
+      "projected_points": 411.89,
+      "bpa": 249.76999999999998,
+      "time_horizon_adj": -1.99,
+      "universal_value": 247.78,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 256.45,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "9221",
+      "name": "Jahmyr Gibbs",
+      "position": "RB",
+      "projected_points": 411.89,
+      "bpa": 249.76999999999998,
+      "time_horizon_adj": -1.99,
+      "universal_value": 247.78,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 256.45,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "RB": 39.09,
+      "WR": 149.1,
+      "TE": 73.87,
+      "QB": 305.69
+     },
+     "waiting_cost_of_chosen": 372.8,
+     "my_counts_before": {}
+    },
+    {
+     "round": 2,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "11604",
+      "name": "Brock Bowers",
+      "position": "TE",
+      "projected_points": 310.18,
+      "bpa": 158.74,
+      "time_horizon_adj": -0.17,
+      "universal_value": 158.57,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 163.24,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11604",
+      "name": "Brock Bowers",
+      "position": "TE",
+      "projected_points": 310.18,
+      "bpa": 158.74,
+      "time_horizon_adj": -0.17,
+      "universal_value": 158.57,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 163.24,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "TE": 76.7,
+      "RB": 47.29,
+      "WR": 155.76,
+      "QB": 215.37
+     },
+     "waiting_cost_of_chosen": 233.48,
+     "my_counts_before": {
+      "RB": 1
+     }
+    },
+    {
+     "round": 3,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "8130",
+      "name": "Trey McBride",
+      "position": "TE",
+      "projected_points": 300.85,
+      "bpa": 149.41000000000003,
+      "time_horizon_adj": 0.18,
+      "universal_value": 149.59,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 150.26,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "8130",
+      "name": "Trey McBride",
+      "position": "TE",
+      "projected_points": 300.85,
+      "bpa": 149.41000000000003,
+      "time_horizon_adj": 0.18,
+      "universal_value": 149.59,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 150.26,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "TE": 76.17,
+      "RB": 47.29,
+      "WR": 155.76,
+      "QB": 215.37
+     },
+     "waiting_cost_of_chosen": 224.68,
+     "my_counts_before": {
+      "RB": 1,
+      "TE": 1
+     }
+    },
+    {
+     "round": 4,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "12518",
+      "name": "Tyler Warren",
+      "position": "TE",
+      "projected_points": 245.07,
+      "bpa": 96.63,
+      "time_horizon_adj": -1.79,
+      "universal_value": 94.84,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 94.84,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "12518",
+      "name": "Tyler Warren",
+      "position": "TE",
+      "projected_points": 245.07,
+      "bpa": 96.63,
+      "time_horizon_adj": -1.79,
+      "universal_value": 94.84,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 94.84,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "TE": 76.7,
+      "RB": 47.29,
+      "WR": 150.99,
+      "QB": 239.1
+     },
+     "waiting_cost_of_chosen": 168.37,
+     "my_counts_before": {
+      "RB": 1,
+      "TE": 2
+     }
+    },
+    {
+     "round": 5,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "5850",
+      "name": "Josh Jacobs",
+      "position": "RB",
+      "projected_points": 245.69,
+      "bpa": 90.97,
+      "time_horizon_adj": -3.22,
+      "universal_value": 87.75,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 92.42,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "5850",
+      "name": "Josh Jacobs",
+      "position": "RB",
+      "projected_points": 245.69,
+      "bpa": 90.97,
+      "time_horizon_adj": -3.22,
+      "universal_value": 87.75,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 92.42,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "RB": 47.43,
+      "WR": 150.99,
+      "QB": 239.1,
+      "TE": 76.7
+     },
+     "waiting_cost_of_chosen": 198.26,
+     "my_counts_before": {
+      "RB": 1,
+      "TE": 3
+     }
+    },
+    {
+     "round": 6,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "10232",
+      "name": "Michael Wilson",
+      "position": "WR",
+      "projected_points": 213.65,
+      "bpa": 12.01000000000002,
+      "time_horizon_adj": -2.03,
+      "universal_value": 9.98,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 18.65,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "10232",
+      "name": "Michael Wilson",
+      "position": "WR",
+      "projected_points": 213.65,
+      "bpa": 12.01000000000002,
+      "time_horizon_adj": -2.03,
+      "universal_value": 9.98,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 18.65,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 138.97,
+      "QB": 252.27,
+      "TE": 77.01,
+      "RB": 45.97
+     },
+     "waiting_cost_of_chosen": 74.68,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3
+     }
+    },
+    {
+     "round": 7,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "11620",
+      "name": "Rome Odunze",
+      "position": "WR",
+      "projected_points": 212.38,
+      "bpa": 10.740000000000009,
+      "time_horizon_adj": -1.59,
+      "universal_value": 9.15,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 13.82,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11620",
+      "name": "Rome Odunze",
+      "position": "WR",
+      "projected_points": 212.38,
+      "bpa": 10.740000000000009,
+      "time_horizon_adj": -1.59,
+      "universal_value": 9.15,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 13.82,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 135.49,
+      "QB": 252.27,
+      "TE": 77.01,
+      "RB": 47.29
+     },
+     "waiting_cost_of_chosen": 76.89,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 1
+     }
+    },
+    {
+     "round": 8,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "11563",
+      "name": "Bo Nix",
+      "position": "QB",
+      "projected_points": 315.98,
+      "bpa": 0.0,
+      "time_horizon_adj": -0.27,
+      "universal_value": -0.27,
+      "need_bonus": 4.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 3.73,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11563",
+      "name": "Bo Nix",
+      "position": "QB",
+      "projected_points": 315.98,
+      "bpa": 0.0,
+      "time_horizon_adj": -0.27,
+      "universal_value": -0.27,
+      "need_bonus": 4.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 3.73,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "QB": 262.49,
+      "WR": 127.51,
+      "TE": 87.06,
+      "RB": 48.76
+     },
+     "waiting_cost_of_chosen": 53.49,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 2
+     }
+    },
+    {
+     "round": 9,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "6797",
+      "name": "Justin Herbert",
+      "position": "QB",
+      "projected_points": 315.15,
+      "bpa": -0.8300000000000409,
+      "time_horizon_adj": 0.0,
+      "universal_value": -0.83,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -0.83,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "6797",
+      "name": "Justin Herbert",
+      "position": "QB",
+      "projected_points": 315.15,
+      "bpa": -0.8300000000000409,
+      "time_horizon_adj": 0.0,
+      "universal_value": -0.83,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -0.83,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "QB": 262.49,
+      "WR": 127.51,
+      "TE": 87.06,
+      "RB": 48.76
+     },
+     "waiting_cost_of_chosen": 52.66,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 2,
+      "QB": 1
+     }
+    },
+    {
+     "round": 10,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "8676",
+      "name": "Rashid Shaheed",
+      "position": "WR",
+      "projected_points": 170.24,
+      "bpa": 0.0,
+      "time_horizon_adj": -2.15,
+      "universal_value": -2.15,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 3.84,
+      "displacement_adj": -42.14,
+      "displacement_basis": "measured",
+      "final_score": -39.78,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "8676",
+      "name": "Rashid Shaheed",
+      "position": "WR",
+      "projected_points": 170.24,
+      "bpa": 0.0,
+      "time_horizon_adj": -2.15,
+      "universal_value": -2.15,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 3.84,
+      "displacement_adj": -42.14,
+      "displacement_basis": "measured",
+      "final_score": -39.78,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 129.49,
+      "RB": 64.3,
+      "TE": 89.15,
+      "QB": 30.0
+     },
+     "waiting_cost_of_chosen": 40.75,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 2,
+      "QB": 2
+     }
+    },
+    {
+     "round": 11,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "1479",
+      "name": "Keenan Allen",
+      "position": "WR",
+      "projected_points": 167.15,
+      "bpa": -45.22999999999999,
+      "time_horizon_adj": 0.0,
+      "universal_value": -45.23,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.28,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -42.95,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "1479",
+      "name": "Keenan Allen",
+      "position": "WR",
+      "projected_points": 167.15,
+      "bpa": -45.22999999999999,
+      "time_horizon_adj": 0.0,
+      "universal_value": -45.23,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.28,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -42.95,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 129.49,
+      "RB": 64.3,
+      "TE": 89.15,
+      "QB": 30.0
+     },
+     "waiting_cost_of_chosen": 37.66,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 3,
+      "QB": 2
+     }
+    },
+    {
+     "round": 12,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "13417",
+      "name": "De'Zhaun Stribling",
+      "position": "WR",
+      "projected_points": 134.63,
+      "bpa": -77.75,
+      "time_horizon_adj": -1.84,
+      "universal_value": -79.59,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.28,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -77.31,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "13417",
+      "name": "De'Zhaun Stribling",
+      "position": "WR",
+      "projected_points": 134.63,
+      "bpa": -77.75,
+      "time_horizon_adj": -1.84,
+      "universal_value": -79.59,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.28,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -77.31,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 118.73,
+      "RB": 65.86,
+      "TE": 89.15,
+      "QB": 34.0
+     },
+     "waiting_cost_of_chosen": 15.9,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 4,
+      "QB": 2
+     }
+    },
+    {
+     "round": 13,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "13294",
+      "name": "Makai Lemon",
+      "position": "WR",
+      "projected_points": 129.65,
+      "bpa": -82.72999999999999,
+      "time_horizon_adj": -1.03,
+      "universal_value": -83.76,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 1.68,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -82.08,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "13294",
+      "name": "Makai Lemon",
+      "position": "WR",
+      "projected_points": 129.65,
+      "bpa": -82.72999999999999,
+      "time_horizon_adj": -1.03,
+      "universal_value": -83.76,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 1.68,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -82.08,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 118.6,
+      "RB": 66.06,
+      "TE": 89.15,
+      "QB": 34.0
+     },
+     "waiting_cost_of_chosen": 11.05,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 5,
+      "QB": 2
+     }
+    },
+    {
+     "round": 14,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "8119",
+      "name": "Jahan Dotson",
+      "position": "WR",
+      "projected_points": 94.97,
+      "bpa": -117.41,
+      "time_horizon_adj": 0.0,
+      "universal_value": -117.41,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 1.56,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -115.85,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "8119",
+      "name": "Jahan Dotson",
+      "position": "WR",
+      "projected_points": 94.97,
+      "bpa": -117.41,
+      "time_horizon_adj": 0.0,
+      "universal_value": -117.41,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 1.56,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -115.85,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 94.97,
+      "RB": 89.41,
+      "TE": 89.15,
+      "QB": 95.19
+     },
+     "waiting_cost_of_chosen": 0.0,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 3,
+      "WR": 6,
+      "QB": 2
+     }
+    }
+   ],
+   "composition": {
+    "RB": 2,
+    "TE": 3,
+    "WR": 7,
+    "QB": 2
+   },
+   "bench_composition_by_pick_order": {
+    "QB": 1,
+    "WR": 5
+   },
+   "verdict_full_roster": {
+    "WR>=RB": true,
+    "RB>TE": false,
+    "RB>=TE": false,
+    "QB<=4": true,
+    "pass_strict": false,
+    "pass_tendency": false,
+    "te_is_de_facto_receiver": false
+   },
+   "verdict_bench": {
+    "WR>=RB": true,
+    "RB>TE": false,
+    "RB>=TE": true,
+    "QB<=4": true,
+    "pass_strict": false,
+    "pass_tendency": true,
+    "te_is_de_facto_receiver": false
+   },
+   "band": {
+    "league_fielded_load": {
+     "RB": 32,
+     "TE": 18,
+     "WR": 48,
+     "QB": 14
+    },
+    "league_fielded_total": 112,
+    "share": {
+     "RB": 0.2857,
+     "TE": 0.1607,
+     "WR": 0.4286,
+     "QB": 0.125
+    },
+    "my_fielded_load": {
+     "RB": 2,
+     "TE": 3,
+     "WR": 2,
+     "QB": 1
+    },
+    "bench_slots": 6,
+    "target_total": {
+     "RB": 4.0,
+     "TE": 2.25,
+     "WR": 6.0,
+     "QB": 1.75
+    },
+    "bench_target": {
+     "RB": 2.0,
+     "TE": 0.0,
+     "WR": 4.0,
+     "QB": 0.75
+    },
+    "derived_ordering": [
+     "WR",
+     "RB",
+     "TE",
+     "QB"
+    ]
+   },
+   "missing_dedicated": {},
+   "unfillable_starting_slots": [],
+   "forced": 0,
+   "pure_bench_states": 6,
+   "lineup_points": 2255.69,
+   "control_lineup_points": 2142.09,
+   "g9_engine": {
+    "cdme_total_value": 357.28,
+    "cdme_starter_value": 724.88,
+    "cdme_unpriced": 0,
+    "points_starter_value": 2255.69,
+    "mean_age": 25.86,
+    "age_n": 14,
+    "mean_predraft_horizon_adj": -0.93,
+    "horizon_n": 14,
+    "players": 14
+   },
+   "g9_control": {
+    "cdme_total_value": 184.1,
+    "cdme_starter_value": 489.24,
+    "cdme_unpriced": 0,
+    "points_starter_value": 2142.09,
+    "mean_age": 27.29,
+    "age_n": 14,
+    "mean_predraft_horizon_adj": -4.77,
+    "horizon_n": 14,
+    "players": 14
+   },
+   "qb_rounds": [
+    8,
+    9
+   ],
+   "all_rosters": {
+    "1": [
+     "9221",
+     "11604",
+     "8130",
+     "12518",
+     "5850",
+     "10232",
+     "11620",
+     "11563",
+     "6797",
+     "8676",
+     "1479",
+     "13417",
+     "13294",
+     "8119"
+    ],
+    "2": [
+     "4034",
+     "6804",
+     "8112",
+     "12481",
+     "10222",
+     "2449",
+     "8134",
+     "8210",
+     "421",
+     "3214",
+     "13286",
+     "7571",
+     "11610",
+     "12536"
+    ],
+    "3": [
+     "9509",
+     "4046",
+     "5859",
+     "12519",
+     "2216",
+     "12514",
+     "7611",
+     "11603",
+     "7523",
+     "12484",
+     "8408",
+     "12474",
+     "11559",
+     "7090"
+    ],
+    "4": [
+     "9488",
+     "12508",
+     "8144",
+     "8167",
+     "8228",
+     "9487",
+     "12490",
+     "5022",
+     "4943",
+     "10236",
+     "13298",
+     "11618",
+     "13285",
+     "12492"
+    ],
+    "5": [
+     "9493",
+     "3163",
+     "10229",
+     "8148",
+     "8146",
+     "12529",
+     "12506",
+     "7594",
+     "5849",
+     "7567",
+     "11834",
+     "7600",
+     "9511",
+     "8188"
+    ],
+    "6": [
+     "7547",
+     "11564",
+     "13287",
+     "5892",
+     "11635",
+     "4983",
+     "9756",
+     "5001",
+     "6768",
+     "10213",
+     "12533",
+     "11783",
+     "13281",
+     "13274"
+    ],
+    "7": [
+     "4984",
+     "6794",
+     "8137",
+     "7588",
+     "11632",
+     "7553",
+     "13279",
+     "5967",
+     "4892",
+     "12501",
+     "5844",
+     "8111",
+     "12469",
+     "13311"
+    ],
+    "8": [
+     "6770",
+     "9224",
+     "6801",
+     "5927",
+     "12512",
+     "5846",
+     "4037",
+     "8131",
+     "12545",
+     "8126",
+     "11583",
+     "10219",
+     "8172",
+     "13296"
+    ],
+    "9": [
+     "7564",
+     "11566",
+     "9997",
+     "8155",
+     "7543",
+     "11646",
+     "9754",
+     "7002",
+     "9758",
+     "8121",
+     "9504",
+     "9508",
+     "4981",
+     "9501"
+    ],
+    "10": [
+     "4881",
+     "8138",
+     "8151",
+     "8150",
+     "9500",
+     "11584",
+     "11631",
+     "8110",
+     "8161",
+     "5947",
+     "9480",
+     "12534",
+     "4993",
+     "12498"
+    ],
+    "11": [
+     "6813",
+     "11560",
+     "7525",
+     "12526",
+     "9484",
+     "4217",
+     "6819",
+     "8136",
+     "5870",
+     "13269",
+     "8180",
+     "2505",
+     "13346",
+     "6865"
+    ],
+    "12": [
+     "8183",
+     "9226",
+     "12507",
+     "12517",
+     "10859",
+     "8142",
+     "5045",
+     "11624",
+     "9228",
+     "4017",
+     "4199",
+     "4039",
+     "9486",
+     "4035"
+    ],
+    "13": [
+     "6904",
+     "7569",
+     "7526",
+     "3198",
+     "2133",
+     "1466",
+     "11628",
+     "12489",
+     "96",
+     "1373",
+     "11586",
+     "6806",
+     "11625",
+     "8132"
+    ],
+    "14": [
+     "3294",
+     "6786",
+     "12527",
+     "4866",
+     "7021",
+     "6790",
+     "5872",
+     "5012",
+     "12522",
+     "3257",
+     "12502",
+     "7049",
+     "6783",
+     "12509"
+    ]
+   },
+   "my_ids": [
+    "9221",
+    "11604",
+    "8130",
+    "12518",
+    "5850",
+    "10232",
+    "11620",
+    "11563",
+    "6797",
+    "8676",
+    "1479",
+    "13417",
+    "13294",
+    "8119"
+   ],
+   "seconds": 8.7
+  },
+  {
+   "arm": "SHARED",
+   "seat": "1",
+   "sequence": [
+    {
+     "round": 1,
+     "player": "Jahmyr Gibbs",
+     "position": "RB",
+     "projected_points": 411.9,
+     "fills_required_slot": false
+    },
+    {
+     "round": 2,
+     "player": "Brock Bowers",
+     "position": "TE",
+     "projected_points": 310.2,
+     "fills_required_slot": false
+    },
+    {
+     "round": 3,
+     "player": "Jeremiyah Love",
+     "position": "RB",
+     "projected_points": 288.5,
+     "fills_required_slot": false
+    },
+    {
+     "round": 4,
+     "player": "Mike Evans",
+     "position": "WR",
+     "projected_points": 246.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 5,
+     "player": "Garrett Wilson",
+     "position": "WR",
+     "projected_points": 244.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 6,
+     "player": "Michael Wilson",
+     "position": "WR",
+     "projected_points": 213.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 7,
+     "player": "Rome Odunze",
+     "position": "WR",
+     "projected_points": 212.4,
+     "fills_required_slot": false
+    },
+    {
+     "round": 8,
+     "player": "Bo Nix",
+     "position": "QB",
+     "projected_points": 316.0,
+     "fills_required_slot": false
+    },
+    {
+     "round": 9,
+     "player": "Justin Herbert",
+     "position": "QB",
+     "projected_points": 315.1,
+     "fills_required_slot": false
+    },
+    {
+     "round": 10,
+     "player": "Jadarian Price",
+     "position": "RB",
+     "projected_points": 171.0,
+     "fills_required_slot": false
+    },
+    {
+     "round": 11,
+     "player": "Rashid Shaheed",
+     "position": "WR",
+     "projected_points": 170.2,
+     "fills_required_slot": false
+    },
+    {
+     "round": 12,
+     "player": "De'Zhaun Stribling",
+     "position": "WR",
+     "projected_points": 134.6,
+     "fills_required_slot": false
+    },
+    {
+     "round": 13,
+     "player": "Makai Lemon",
+     "position": "WR",
+     "projected_points": 129.7,
+     "fills_required_slot": false
+    },
+    {
+     "round": 14,
+     "player": "Isaiah Davis",
+     "position": "RB",
+     "projected_points": 96.1,
+     "fills_required_slot": false
+    }
+   ],
+   "states": [
+    {
+     "round": 1,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "9221",
+      "name": "Jahmyr Gibbs",
+      "position": "RB",
+      "projected_points": 411.89,
+      "bpa": 249.76999999999998,
+      "time_horizon_adj": -1.99,
+      "universal_value": 247.78,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 256.45,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "9221",
+      "name": "Jahmyr Gibbs",
+      "position": "RB",
+      "projected_points": 411.89,
+      "bpa": 249.76999999999998,
+      "time_horizon_adj": -1.99,
+      "universal_value": 247.78,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 256.45,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "RB": 39.09,
+      "WR": 149.1,
+      "TE": 73.87,
+      "QB": 305.69
+     },
+     "waiting_cost_of_chosen": 372.8,
+     "my_counts_before": {}
+    },
+    {
+     "round": 2,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "11604",
+      "name": "Brock Bowers",
+      "position": "TE",
+      "projected_points": 310.18,
+      "bpa": 158.74,
+      "time_horizon_adj": -0.17,
+      "universal_value": 158.57,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 163.24,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11604",
+      "name": "Brock Bowers",
+      "position": "TE",
+      "projected_points": 310.18,
+      "bpa": 158.74,
+      "time_horizon_adj": -0.17,
+      "universal_value": 158.57,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 163.24,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "TE": 76.7,
+      "RB": 47.29,
+      "WR": 155.76,
+      "QB": 215.37
+     },
+     "waiting_cost_of_chosen": 233.48,
+     "my_counts_before": {
+      "RB": 1
+     }
+    },
+    {
+     "round": 3,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "13287",
+      "name": "Jeremiyah Love",
+      "position": "RB",
+      "projected_points": 288.47,
+      "bpa": 126.35000000000002,
+      "time_horizon_adj": -0.94,
+      "universal_value": 125.41,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 130.08,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "13287",
+      "name": "Jeremiyah Love",
+      "position": "RB",
+      "projected_points": 288.47,
+      "bpa": 126.35000000000002,
+      "time_horizon_adj": -0.94,
+      "universal_value": 125.41,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 130.08,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "RB": 47.29,
+      "WR": 155.76,
+      "TE": 76.17,
+      "QB": 215.37
+     },
+     "waiting_cost_of_chosen": 241.18,
+     "my_counts_before": {
+      "RB": 1,
+      "TE": 1
+     }
+    },
+    {
+     "round": 4,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "2216",
+      "name": "Mike Evans",
+      "position": "WR",
+      "projected_points": 246.73,
+      "bpa": 36.00999999999999,
+      "time_horizon_adj": -2.28,
+      "universal_value": 33.73,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 42.4,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "2216",
+      "name": "Mike Evans",
+      "position": "WR",
+      "projected_points": 246.73,
+      "bpa": 36.00999999999999,
+      "time_horizon_adj": -2.28,
+      "universal_value": 33.73,
+      "need_bonus": 8.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 42.4,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 150.99,
+      "TE": 76.7,
+      "RB": 47.29,
+      "QB": 239.1
+     },
+     "waiting_cost_of_chosen": 95.74,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1
+     }
+    },
+    {
+     "round": 5,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "8146",
+      "name": "Garrett Wilson",
+      "position": "WR",
+      "projected_points": 244.74,
+      "bpa": 34.02000000000001,
+      "time_horizon_adj": -1.02,
+      "universal_value": 33.0,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 37.67,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "8146",
+      "name": "Garrett Wilson",
+      "position": "WR",
+      "projected_points": 244.74,
+      "bpa": 34.02000000000001,
+      "time_horizon_adj": -1.02,
+      "universal_value": 33.0,
+      "need_bonus": 4.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 37.67,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 150.99,
+      "TE": 76.7,
+      "RB": 47.29,
+      "QB": 239.1
+     },
+     "waiting_cost_of_chosen": 93.75,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1,
+      "WR": 1
+     }
+    },
+    {
+     "round": 6,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "10232",
+      "name": "Michael Wilson",
+      "position": "WR",
+      "projected_points": 213.65,
+      "bpa": 9.280000000000001,
+      "time_horizon_adj": -2.03,
+      "universal_value": 7.25,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 7.92,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "10232",
+      "name": "Michael Wilson",
+      "position": "WR",
+      "projected_points": 213.65,
+      "bpa": 9.280000000000001,
+      "time_horizon_adj": -2.03,
+      "universal_value": 7.25,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 7.92,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 138.97,
+      "QB": 252.27,
+      "TE": 78.11,
+      "RB": 44.42
+     },
+     "waiting_cost_of_chosen": 74.68,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1,
+      "WR": 2
+     }
+    },
+    {
+     "round": 7,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "11620",
+      "name": "Rome Odunze",
+      "position": "WR",
+      "projected_points": 212.38,
+      "bpa": 8.009999999999991,
+      "time_horizon_adj": -1.59,
+      "universal_value": 6.42,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 6.42,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11620",
+      "name": "Rome Odunze",
+      "position": "WR",
+      "projected_points": 212.38,
+      "bpa": 8.009999999999991,
+      "time_horizon_adj": -1.59,
+      "universal_value": 6.42,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 6.42,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 138.97,
+      "QB": 252.27,
+      "TE": 87.06,
+      "RB": 44.42
+     },
+     "waiting_cost_of_chosen": 73.41,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1,
+      "WR": 3
+     }
+    },
+    {
+     "round": 8,
+     "pure_bench": false,
+     "chosen": {
+      "player_id": "11563",
+      "name": "Bo Nix",
+      "position": "QB",
+      "projected_points": 315.98,
+      "bpa": 0.0,
+      "time_horizon_adj": -0.27,
+      "universal_value": -0.27,
+      "need_bonus": 4.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 3.73,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11563",
+      "name": "Bo Nix",
+      "position": "QB",
+      "projected_points": 315.98,
+      "bpa": 0.0,
+      "time_horizon_adj": -0.27,
+      "universal_value": -0.27,
+      "need_bonus": 4.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": 3.73,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "QB": 262.49,
+      "WR": 125.3,
+      "TE": 89.15,
+      "RB": 47.43
+     },
+     "waiting_cost_of_chosen": 53.49,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1,
+      "WR": 4
+     }
+    },
+    {
+     "round": 9,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "6797",
+      "name": "Justin Herbert",
+      "position": "QB",
+      "projected_points": 315.15,
+      "bpa": -0.8300000000000409,
+      "time_horizon_adj": 0.0,
+      "universal_value": -0.83,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -0.83,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "6797",
+      "name": "Justin Herbert",
+      "position": "QB",
+      "projected_points": 315.15,
+      "bpa": -0.8300000000000409,
+      "time_horizon_adj": 0.0,
+      "universal_value": -0.83,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 0.0,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -0.83,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "QB": 262.49,
+      "WR": 125.3,
+      "TE": 89.15,
+      "RB": 47.43
+     },
+     "waiting_cost_of_chosen": 52.66,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1,
+      "WR": 4,
+      "QB": 1
+     }
+    },
+    {
+     "round": 10,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "13286",
+      "name": "Jadarian Price",
+      "position": "RB",
+      "projected_points": 171.04,
+      "bpa": 21.039999999999992,
+      "time_horizon_adj": -2.87,
+      "universal_value": 18.17,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 11.4,
+      "displacement_adj": -62.38,
+      "displacement_basis": "measured",
+      "final_score": -32.14,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "13286",
+      "name": "Jadarian Price",
+      "position": "RB",
+      "projected_points": 171.04,
+      "bpa": 21.039999999999992,
+      "time_horizon_adj": -2.87,
+      "universal_value": 18.17,
+      "need_bonus": 0.67,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 11.4,
+      "displacement_adj": -62.38,
+      "displacement_basis": "measured",
+      "final_score": -32.14,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "RB": 64.0,
+      "WR": 129.65,
+      "TE": 89.15,
+      "QB": 30.0
+     },
+     "waiting_cost_of_chosen": 107.04,
+     "my_counts_before": {
+      "RB": 2,
+      "TE": 1,
+      "WR": 4,
+      "QB": 2
+     }
+    },
+    {
+     "round": 11,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "8676",
+      "name": "Rashid Shaheed",
+      "position": "WR",
+      "projected_points": 170.24,
+      "bpa": -42.139999999999986,
+      "time_horizon_adj": -2.23,
+      "universal_value": -44.37,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.52,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -41.85,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "8676",
+      "name": "Rashid Shaheed",
+      "position": "WR",
+      "projected_points": 170.24,
+      "bpa": -42.139999999999986,
+      "time_horizon_adj": -2.23,
+      "universal_value": -44.37,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.52,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -41.85,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 129.65,
+      "RB": 64.0,
+      "TE": 89.15,
+      "QB": 30.0
+     },
+     "waiting_cost_of_chosen": 40.59,
+     "my_counts_before": {
+      "RB": 3,
+      "TE": 1,
+      "WR": 4,
+      "QB": 2
+     }
+    },
+    {
+     "round": 12,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "13417",
+      "name": "De'Zhaun Stribling",
+      "position": "WR",
+      "projected_points": 134.63,
+      "bpa": -77.75,
+      "time_horizon_adj": -1.84,
+      "universal_value": -79.59,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.52,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -77.07,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "13417",
+      "name": "De'Zhaun Stribling",
+      "position": "WR",
+      "projected_points": 134.63,
+      "bpa": -77.75,
+      "time_horizon_adj": -1.84,
+      "universal_value": -79.59,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.52,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -77.07,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 118.73,
+      "RB": 65.86,
+      "TE": 89.15,
+      "QB": 34.0
+     },
+     "waiting_cost_of_chosen": 15.9,
+     "my_counts_before": {
+      "RB": 3,
+      "TE": 1,
+      "WR": 5,
+      "QB": 2
+     }
+    },
+    {
+     "round": 13,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "13294",
+      "name": "Makai Lemon",
+      "position": "WR",
+      "projected_points": 129.65,
+      "bpa": -82.72999999999999,
+      "time_horizon_adj": -1.03,
+      "universal_value": -83.76,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.52,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -81.24,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "13294",
+      "name": "Makai Lemon",
+      "position": "WR",
+      "projected_points": 129.65,
+      "bpa": -82.72999999999999,
+      "time_horizon_adj": -1.03,
+      "universal_value": -83.76,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 2.52,
+      "displacement_adj": 0.0,
+      "displacement_basis": "measured",
+      "final_score": -81.24,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "WR": 118.6,
+      "RB": 65.86,
+      "TE": 89.15,
+      "QB": 34.0
+     },
+     "waiting_cost_of_chosen": 11.05,
+     "my_counts_before": {
+      "RB": 3,
+      "TE": 1,
+      "WR": 6,
+      "QB": 2
+     }
+    },
+    {
+     "round": 14,
+     "pure_bench": true,
+     "chosen": {
+      "player_id": "11571",
+      "name": "Isaiah Davis",
+      "position": "RB",
+      "projected_points": 96.08,
+      "bpa": 0.0,
+      "time_horizon_adj": 0.0,
+      "universal_value": 0.0,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 8.76,
+      "displacement_adj": -116.3,
+      "displacement_basis": "measured",
+      "final_score": -107.54,
+      "fills_required_slot": false
+     },
+     "note": "",
+     "board_top": {
+      "player_id": "11571",
+      "name": "Isaiah Davis",
+      "position": "RB",
+      "projected_points": 96.08,
+      "bpa": 0.0,
+      "time_horizon_adj": 0.0,
+      "universal_value": 0.0,
+      "need_bonus": 0.0,
+      "eligibility_bonus": 0.0,
+      "depth_exposure": 8.76,
+      "displacement_adj": -116.3,
+      "displacement_basis": "measured",
+      "final_score": -107.54,
+      "fills_required_slot": false
+     },
+     "horizon_floors": {
+      "RB": 89.41,
+      "TE": 89.15,
+      "WR": 94.97,
+      "QB": 95.19
+     },
+     "waiting_cost_of_chosen": 6.67,
+     "my_counts_before": {
+      "RB": 3,
+      "TE": 1,
+      "WR": 7,
+      "QB": 2
+     }
+    }
+   ],
+   "composition": {
+    "RB": 4,
+    "TE": 1,
+    "WR": 7,
+    "QB": 2
+   },
+   "bench_composition_by_pick_order": {
+    "QB": 1,
+    "RB": 2,
+    "WR": 3
+   },
+   "verdict_full_roster": {
+    "WR>=RB": true,
+    "RB>TE": true,
+    "RB>=TE": true,
+    "QB<=4": true,
+    "pass_strict": true,
+    "pass_tendency": true,
+    "te_is_de_facto_receiver": false
+   },
+   "verdict_bench": {
+    "WR>=RB": true,
+    "RB>TE": true,
+    "RB>=TE": true,
+    "QB<=4": true,
+    "pass_strict": true,
+    "pass_tendency": true,
+    "te_is_de_facto_receiver": false
+   },
+   "band": {
+    "league_fielded_load": {
+     "RB": 33,
+     "TE": 16,
+     "WR": 49,
+     "QB": 14
+    },
+    "league_fielded_total": 112,
+    "share": {
+     "RB": 0.2946,
+     "TE": 0.1429,
+     "WR": 0.4375,
+     "QB": 0.125
+    },
+    "my_fielded_load": {
+     "RB": 2,
+     "TE": 1,
+     "WR": 4,
+     "QB": 1
+    },
+    "bench_slots": 6,
+    "target_total": {
+     "RB": 4.12,
+     "TE": 2.0,
+     "WR": 6.12,
+     "QB": 1.75
+    },
+    "bench_target": {
+     "RB": 2.12,
+     "TE": 1.0,
+     "WR": 2.12,
+     "QB": 0.75
+    },
+    "derived_ordering": [
+     "WR",
+     "RB",
+     "TE",
+     "QB"
+    ]
+   },
+   "missing_dedicated": {},
+   "unfillable_starting_slots": [],
+   "forced": 0,
+   "pure_bench_states": 6,
+   "lineup_points": 2244.02,
+   "control_lineup_points": 2147.6,
+   "g9_engine": {
+    "cdme_total_value": 326.56,
+    "cdme_starter_value": 598.48,
+    "cdme_unpriced": 0,
+    "points_starter_value": 2244.02,
+    "mean_age": 25.0,
+    "age_n": 14,
+    "mean_predraft_horizon_adj": -1.12,
+    "horizon_n": 14,
+    "players": 14
+   },
+   "g9_control": {
+    "cdme_total_value": 139.91,
+    "cdme_starter_value": 486.98,
+    "cdme_unpriced": 0,
+    "points_starter_value": 2147.6,
+    "mean_age": 28.5,
+    "age_n": 14,
+    "mean_predraft_horizon_adj": -4.45,
+    "horizon_n": 14,
+    "players": 14
+   },
+   "qb_rounds": [
+    8,
+    9
+   ],
+   "all_rosters": {
+    "1": [
+     "9221",
+     "11604",
+     "13287",
+     "2216",
+     "8146",
+     "10232",
+     "11620",
+     "11563",
+     "6797",
+     "13286",
+     "8676",
+     "13417",
+     "13294",
+     "11571"
+    ],
+    "2": [
+     "4034",
+     "6804",
+     "8112",
+     "12481",
+     "10222",
+     "2449",
+     "8134",
+     "5022",
+     "421",
+     "3214",
+     "1479",
+     "7571",
+     "11610",
+     "12536"
+    ],
+    "3": [
+     "9509",
+     "4046",
+     "5859",
+     "12519",
+     "8228",
+     "12529",
+     "9756",
+     "5001",
+     "7523",
+     "12484",
+     "8408",
+     "12474",
+     "11559",
+     "7090"
+    ],
+    "4": [
+     "9488",
+     "12508",
+     "8130",
+     "8167",
+     "5850",
+     "12514",
+     "13279",
+     "7567",
+     "4943",
+     "10236",
+     "13298",
+     "11618",
+     "13285",
+     "12492"
+    ],
+    "5": [
+     "9493",
+     "3163",
+     "8144",
+     "8148",
+     "12518",
+     "9487",
+     "7611",
+     "7594",
+     "5849",
+     "8210",
+     "11834",
+     "7600",
+     "9511",
+     "8188"
+    ],
+    "6": [
+     "7547",
+     "11564",
+     "10229",
+     "5892",
+     "11635",
+     "4983",
+     "12490",
+     "8131",
+     "6768",
+     "11603",
+     "12533",
+     "11783",
+     "13281",
+     "13274"
+    ],
+    "7": [
+     "4984",
+     "6794",
+     "8137",
+     "7588",
+     "11632",
+     "7553",
+     "4037",
+     "5967",
+     "4892",
+     "10213",
+     "5844",
+     "8111",
+     "12469",
+     "13311"
+    ],
+    "8": [
+     "6770",
+     "9224",
+     "6801",
+     "5927",
+     "12512",
+     "5846",
+     "9754",
+     "7002",
+     "12545",
+     "12501",
+     "11583",
+     "10219",
+     "8172",
+     "13296"
+    ],
+    "9": [
+     "7564",
+     "11566",
+     "9997",
+     "8155",
+     "7543",
+     "11646",
+     "11631",
+     "8110",
+     "9758",
+     "8126",
+     "9504",
+     "9508",
+     "4981",
+     "9501"
+    ],
+    "10": [
+     "4881",
+     "8138",
+     "8151",
+     "8150",
+     "9500",
+     "11584",
+     "12506",
+     "5947",
+     "8161",
+     "8121",
+     "9480",
+     "12534",
+     "4993",
+     "12498"
+    ],
+    "11": [
+     "6813",
+     "11560",
+     "7525",
+     "12526",
+     "9484",
+     "4217",
+     "6819",
+     "8136",
+     "5870",
+     "13269",
+     "8180",
+     "2505",
+     "13346",
+     "6865"
+    ],
+    "12": [
+     "8183",
+     "9226",
+     "12507",
+     "12517",
+     "10859",
+     "8142",
+     "5045",
+     "11624",
+     "9228",
+     "4017",
+     "4199",
+     "4039",
+     "9486",
+     "4035"
+    ],
+    "13": [
+     "6904",
+     "7569",
+     "7526",
+     "3198",
+     "2133",
+     "1466",
+     "11628",
+     "12489",
+     "96",
+     "1373",
+     "11586",
+     "6806",
+     "11625",
+     "8132"
+    ],
+    "14": [
+     "3294",
+     "6786",
+     "12527",
+     "4866",
+     "7021",
+     "6790",
+     "5872",
+     "5012",
+     "12522",
+     "3257",
+     "12502",
+     "7049",
+     "6783",
+     "12509"
+    ]
+   },
+   "my_ids": [
+    "9221",
+    "11604",
+    "13287",
+    "2216",
+    "8146",
+    "10232",
+    "11620",
+    "11563",
+    "6797",
+    "13286",
+    "8676",
+    "13417",
+    "13294",
+    "11571"
+   ],
+   "seconds": 8.8
+  }
+ ]
+}

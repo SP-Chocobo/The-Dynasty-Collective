@@ -1,0 +1,285 @@
+{
+  "_comment": "#35 Formulation C (cap each slot's free-player alternative at the best REMAINING player eligible for that slot) vs the shipped construction, graded on realized weekly outcomes. One process, one commit, one thing toggled. See evidence/design_35/phantom_cap_experiment.py.",
+  "arm_order": [
+    "control",
+    "capped",
+    "capped_floor_exempt",
+    "capped_floor_exempt_no_backstop"
+  ],
+  "arms": {
+    "capped": {
+      "cap_stats": {
+        "backstop_suppressed_calls": 0,
+        "capped_by_position": {
+          "DEF": 2748,
+          "K": 2748,
+          "QB": 1136,
+          "RB,TE,WR": 2664,
+          "WR": 2664
+        },
+        "max_reduction": 225.48999999999998,
+        "no_reach": 0,
+        "pool_missing": 0,
+        "reduction_sum": 493257.85999997007,
+        "slots_capped": 11960,
+        "slots_floor_exempt": 0,
+        "slots_priced": 27500
+      },
+      "distinct_rosters": 12,
+      "engine_totals": {
+        "1": 2920.64,
+        "10": 2764.56,
+        "11": 2809.96,
+        "12": 2895.96,
+        "2": 2831.66,
+        "3": 2720.56,
+        "4": 2718.36,
+        "5": 2773.28,
+        "6": 2680.08,
+        "7": 2758.86,
+        "8": 2874.96,
+        "9": 2776.16
+      },
+      "first_kdst_round": {
+        "1": 7,
+        "10": 7,
+        "11": 7,
+        "12": 7,
+        "2": 7,
+        "3": 7,
+        "4": 7,
+        "5": 7,
+        "6": 7,
+        "7": 7,
+        "8": 6,
+        "9": 7
+      },
+      "mean_delta": 45.76,
+      "median_delta": 26.19,
+      "report": "/tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/c4_2024/capped_2024.json",
+      "seats": 12,
+      "seconds": 1359.1,
+      "wins": 9
+    },
+    "capped_floor_exempt": {
+      "cap_stats": {
+        "backstop_suppressed_calls": 0,
+        "capped_by_position": {
+          "QB": 1496,
+          "RB,TE,WR": 2852,
+          "WR": 2852
+        },
+        "max_reduction": 225.48999999999998,
+        "no_reach": 0,
+        "pool_missing": 0,
+        "reduction_sum": 385883.7399999922,
+        "slots_capped": 7200,
+        "slots_floor_exempt": 5496,
+        "slots_priced": 27500
+      },
+      "distinct_rosters": 12,
+      "engine_totals": {
+        "1": 2927.94,
+        "10": 2823.54,
+        "11": 2844.44,
+        "12": 2884.24,
+        "2": 2902.24,
+        "3": 2825.44,
+        "4": 2826.74,
+        "5": 2751.74,
+        "6": 2686.06,
+        "7": 2890.54,
+        "8": 2938.04,
+        "9": 2863.44
+      },
+      "first_kdst_round": {
+        "1": 12,
+        "10": 13,
+        "11": 8,
+        "12": 13,
+        "2": 12,
+        "3": 12,
+        "4": 12,
+        "5": 13,
+        "6": 8,
+        "7": 8,
+        "8": 8,
+        "9": 8
+      },
+      "mean_delta": 97.74,
+      "median_delta": 104.43,
+      "report": "/tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/c4_2024/capped_floor_exempt_2024.json",
+      "seats": 12,
+      "seconds": 1411.5,
+      "wins": 10
+    },
+    "capped_floor_exempt_no_backstop": {
+      "cap_stats": {
+        "backstop_suppressed_calls": 1375,
+        "capped_by_position": {
+          "QB": 1496,
+          "RB,TE,WR": 2852,
+          "WR": 2852
+        },
+        "max_reduction": 225.48999999999998,
+        "no_reach": 0,
+        "pool_missing": 0,
+        "reduction_sum": 385825.8199999918,
+        "slots_capped": 7200,
+        "slots_floor_exempt": 5496,
+        "slots_priced": 27500
+      },
+      "distinct_rosters": 12,
+      "engine_totals": {
+        "1": 2905.74,
+        "10": 2847.54,
+        "11": 2844.94,
+        "12": 2908.24,
+        "2": 2884.14,
+        "3": 2781.74,
+        "4": 2757.24,
+        "5": 2797.74,
+        "6": 2613.56,
+        "7": 2819.74,
+        "8": 2878.44,
+        "9": 2785.64
+      },
+      "first_kdst_round": {
+        "1": 12,
+        "10": 13,
+        "11": 8,
+        "12": 13,
+        "2": 12,
+        "3": 12,
+        "4": 12,
+        "5": 13,
+        "6": 8,
+        "7": 8,
+        "8": 8,
+        "9": 8
+      },
+      "mean_delta": 73.76,
+      "median_delta": 90.22,
+      "report": "/tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/c4_2024/capped_floor_exempt_no_backstop_2024.json",
+      "seats": 12,
+      "seconds": 1409.5,
+      "wins": 11
+    },
+    "control": {
+      "cap_stats": {
+        "backstop_suppressed_calls": 0,
+        "capped_by_position": {},
+        "max_reduction": 0.0,
+        "no_reach": 0,
+        "pool_missing": 0,
+        "reduction_sum": 0.0,
+        "slots_capped": 0,
+        "slots_floor_exempt": 0,
+        "slots_priced": 0
+      },
+      "distinct_rosters": 12,
+      "engine_totals": {
+        "1": 2907.54,
+        "10": 2755.74,
+        "11": 2839.24,
+        "12": 2796.64,
+        "2": 2934.84,
+        "3": 2764.64,
+        "4": 2821.94,
+        "5": 2807.96,
+        "6": 2733.66,
+        "7": 2811.04,
+        "8": 2933.74,
+        "9": 2797.04
+      },
+      "first_kdst_round": {
+        "1": 12,
+        "10": 12,
+        "11": 8,
+        "12": 12,
+        "2": 9,
+        "3": 9,
+        "4": 12,
+        "5": 10,
+        "6": 8,
+        "7": 8,
+        "8": 8,
+        "9": 8
+      },
+      "mean_delta": 82.89,
+      "median_delta": 66.54,
+      "report": "/tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/c4_2024/control_2024.json",
+      "seats": 12,
+      "seconds": 1337.6,
+      "wins": 11
+    }
+  },
+  "baseline_arm": "control",
+  "paired": {
+    "capped_floor_exempt_minus_control": {
+      "by_seat": {
+        "1": 20.4,
+        "10": 67.8,
+        "11": 5.2,
+        "12": 87.6,
+        "2": -32.6,
+        "3": 60.8,
+        "4": 4.8,
+        "5": -56.22,
+        "6": -47.6,
+        "7": 79.5,
+        "8": 4.3,
+        "9": 66.4
+      },
+      "improved": 9,
+      "mean": 21.7,
+      "total": 260.38,
+      "unchanged": 0,
+      "worsened": 3
+    },
+    "capped_floor_exempt_no_backstop_minus_control": {
+      "by_seat": {
+        "1": -1.8,
+        "10": 91.8,
+        "11": 5.7,
+        "12": 111.6,
+        "2": -50.7,
+        "3": 17.1,
+        "4": -64.7,
+        "5": -10.22,
+        "6": -120.1,
+        "7": 8.7,
+        "8": -55.3,
+        "9": -11.4
+      },
+      "improved": 5,
+      "mean": -6.61,
+      "total": -79.32,
+      "unchanged": 0,
+      "worsened": 7
+    },
+    "capped_minus_control": {
+      "by_seat": {
+        "1": 13.1,
+        "10": 8.82,
+        "11": -29.28,
+        "12": 99.32,
+        "2": -103.18,
+        "3": -44.08,
+        "4": -103.58,
+        "5": -34.68,
+        "6": -53.58,
+        "7": -52.18,
+        "8": -58.78,
+        "9": -20.88
+      },
+      "improved": 3,
+      "mean": -31.58,
+      "total": -378.98,
+      "unchanged": 0,
+      "worsened": 9
+    }
+  },
+  "season": "2024",
+  "streaming_floor": true
+}

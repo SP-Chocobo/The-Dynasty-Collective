@@ -1,0 +1,294 @@
+{
+  "commit": "1455975",
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "formats": [
+    {
+      "format": "12T_ppr",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "num_teams": 12,
+      "pool": 481,
+      "slots_filled": 96,
+      "slots_total": 96,
+      "flex_occupancy": {
+        "RB": {
+          "RB": 24
+        },
+        "FLEX": {
+          "RB": 4,
+          "WR": 20
+        },
+        "WR": {
+          "WR": 24
+        },
+        "TE": {
+          "TE": 12
+        },
+        "QB": {
+          "QB": 12
+        }
+      },
+      "assumed_per_team": {
+        "RB": 2.666666666666667,
+        "WR": 2.666666666666667,
+        "TE": 1.6666666666666665,
+        "DL": 0.0,
+        "LB": 0.0,
+        "QB": 1.0,
+        "DEF": 0.0,
+        "DB": 0.0,
+        "K": 0.0
+      },
+      "derived_per_team": {
+        "RB": 2.3333333333333335,
+        "WR": 3.666666666666667,
+        "TE": 1.0,
+        "DL": 0.0,
+        "LB": 0.0,
+        "QB": 1.0,
+        "DEF": 0.0,
+        "DB": 0.0,
+        "K": 0.0
+      },
+      "dedicated": {
+        "RB": 2,
+        "WR": 2,
+        "TE": 1,
+        "DL": 0,
+        "LB": 0,
+        "QB": 1,
+        "DEF": 0,
+        "DB": 0,
+        "K": 0
+      },
+      "ranks": {
+        "assumed": {
+          "QB": 12,
+          "RB": 32,
+          "WR": 32,
+          "TE": 20
+        },
+        "derived": {
+          "QB": 12,
+          "RB": 28,
+          "WR": 44,
+          "TE": 12
+        }
+      }
+    },
+    {
+      "format": "12T_ppr_SF",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "SUPER_FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "num_teams": 12,
+      "pool": 481,
+      "slots_filled": 108,
+      "slots_total": 108,
+      "flex_occupancy": {
+        "RB": {
+          "RB": 24
+        },
+        "FLEX": {
+          "WR": 20,
+          "RB": 4
+        },
+        "WR": {
+          "WR": 24
+        },
+        "QB": {
+          "QB": 12
+        },
+        "SUPER_FLEX": {
+          "QB": 12
+        },
+        "TE": {
+          "TE": 12
+        }
+      },
+      "assumed_per_team": {
+        "RB": 2.716666666666667,
+        "WR": 2.716666666666667,
+        "TE": 1.7166666666666666,
+        "DL": 0.0,
+        "LB": 0.0,
+        "QB": 1.85,
+        "DEF": 0.0,
+        "DB": 0.0,
+        "K": 0.0
+      },
+      "derived_per_team": {
+        "RB": 2.3333333333333335,
+        "WR": 3.666666666666667,
+        "TE": 1.0,
+        "DL": 0.0,
+        "LB": 0.0,
+        "QB": 2.0,
+        "DEF": 0.0,
+        "DB": 0.0,
+        "K": 0.0
+      },
+      "dedicated": {
+        "RB": 2,
+        "WR": 2,
+        "TE": 1,
+        "DL": 0,
+        "LB": 0,
+        "QB": 1,
+        "DEF": 0,
+        "DB": 0,
+        "K": 0
+      },
+      "ranks": {
+        "assumed": {
+          "QB": 22,
+          "RB": 33,
+          "WR": 33,
+          "TE": 21
+        },
+        "derived": {
+          "QB": 24,
+          "RB": 28,
+          "WR": 44,
+          "TE": 12
+        }
+      }
+    },
+    {
+      "format": "OWNER_3RR_SF_noTE",
+      "roster_positions": [
+        "QB",
+        "WR",
+        "WR",
+        "RB",
+        "RB",
+        "FLEX",
+        "FLEX",
+        "WRRB_FLEX",
+        "SUPER_FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "num_teams": 12,
+      "pool": 481,
+      "slots_filled": 108,
+      "slots_total": 108,
+      "flex_occupancy": {
+        "RB": {
+          "RB": 24
+        },
+        "FLEX": {
+          "RB": 1,
+          "WR": 5,
+          "TE": 18
+        },
+        "WR": {
+          "WR": 24
+        },
+        "WRRB_FLEX": {
+          "RB": 1,
+          "WR": 11
+        },
+        "SUPER_FLEX": {
+          "QB": 12
+        },
+        "QB": {
+          "QB": 12
+        }
+      },
+      "assumed_per_team": {
+        "RB": 3.216666666666667,
+        "WR": 3.216666666666667,
+        "TE": 0.7166666666666667,
+        "DL": 0.0,
+        "LB": 0.0,
+        "QB": 1.85,
+        "DEF": 0.0,
+        "DB": 0.0,
+        "K": 0.0
+      },
+      "derived_per_team": {
+        "RB": 2.166666666666667,
+        "WR": 3.333333333333333,
+        "TE": 1.5,
+        "DL": 0.0,
+        "LB": 0.0,
+        "QB": 2.0,
+        "DEF": 0.0,
+        "DB": 0.0,
+        "K": 0.0
+      },
+      "dedicated": {
+        "RB": 2,
+        "WR": 2,
+        "TE": 0,
+        "DL": 0,
+        "LB": 0,
+        "QB": 1,
+        "DEF": 0,
+        "DB": 0,
+        "K": 0
+      },
+      "ranks": {
+        "assumed": {
+          "QB": 22,
+          "RB": 39,
+          "WR": 39,
+          "TE": 9
+        },
+        "derived": {
+          "QB": 24,
+          "RB": 26,
+          "WR": 40,
+          "TE": 18
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,25 @@
 # CDME Semantic Contracts
 
+> **WHERE CURRENT STATE LIVES — not in this file.** This document is long-lived and does
+> not track the live path. `FREEZE_CHECKLIST.md`'s top block carries the current state and
+> what is outstanding; `POST_AUDIT_PLAN.md` is the numbered record and wins over any status
+> flag anywhere, including the session task list (`#292`). A pointer rather than a copied
+> status, deliberately: a copy goes stale silently, a pointer cannot (`#126`).
+
+> **Status: PART LIVE CONTRACT, PART ARCHIVED INVESTIGATION. Read the section you are in.**
+> Annotated 2026-09-12; nothing below has been edited or removed.
+>
+> - **§1–§3 (`universal_value`, `waiting_cost`, `pick_necessity`) are the live contracts** and
+>   are cited as authority elsewhere in the record.
+> - **Everything from "Appendix — the decision-path investigation" onward is history kept in
+>   place**: investigations, forks and rulings recorded as they happened. Several reach
+>   conclusions that were later measured and changed. They are correct as a record of what was
+>   thought and when; they are not a description of today's engine.
+> - **"Proposed Phase 2 interface" was measured and REJECTED.** It carries its own note. Do not
+>   implement from it.
+> - The original DRAFT banner below **has not been lifted by the owner** and stands as written.
+>   It is preserved because the gate it names is the owner's to open, not this document's.
+
 What each load-bearing quantity in the Contextual Decision Matrix Engine **means** — stated
 before it is read, combined, or wired into anything new.
 
@@ -59,19 +79,157 @@ of the current architecture, not a bug in this quantity, and is tracked separate
 consumer asking a team-agnostic question: `draft_counterfactual.bpa_row`'s BPA argmax,
 `roster_diagnostics`' replacement levels, `draft_strategy`'s opponent-board ranking.
 
-**Must NEVER influence, or be influenced by** — anything roster-specific. `need_bonus` and
-`eligibility_bonus` are added *on top of* it to make `team_acquisition_value`; they must never
-be folded *into* it. This split is the engine's central architectural commitment: conflating
+**Must NEVER influence, or be influenced by** — anything roster-specific. The four
+team-specific terms — `need_bonus`, `eligibility_bonus`, `depth_exposure` (#139) and
+`displacement_adj` (#216) — are added *on top of* it to make `team_acquisition_value`; they must
+never be folded *into* it. (This sentence named only the first two until #222 audited it; the
+class has grown twice since it was written.) This split is the engine's central architectural commitment: conflating
 "how good is this player" with "how good is this player for this roster" is the specific
 failure the additive layering exists to prevent.
 
 **Invariants**
-1. `team_acquisition_value == universal_value + need_bonus + eligibility_bonus`, in every mode.
+1. `team_acquisition_value == universal_value + need_bonus + eligibility_bonus +
+   depth_exposure + displacement_adj`, in every mode. (`depth_exposure` joined the sum in #139
+   and `displacement_adj` in #216; every earlier measurement in this document that states the
+   two- or three-term form was correct when taken and is marked where it is load-bearing.
+   **CORRECTED in #222:** this invariant recorded the #139 expansion and missed #216's, so it
+   stated the three-term identity while `draft_room.py`'s own module docstring already carried
+   the four-term one. The code was never wrong; this line was.)
 2. Identical for a given player across every roster on the same board, by construction.
 3. In upside mode it equals `final_score` — the *role* is filled, but by a different formula.
-   **Cross-mode comparison of this number is meaningless** and must never be done.
-4. Neither `need_bonus` nor `eligibility_bonus` may flip a large `universal_value` gap; both
-   are capped for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`).
+   **Cross-mode comparison of this number is meaningless** and must never be done. Upside mode
+   never computes `depth_exposure` at all, and emits no column for it rather than emitting
+   `0.0`, which would fabricate a measurement.
+4. **RESTATED in #222, because as written this was false of the class it named.** The original
+   read *"none of the three team-specific terms may flip a large `universal_value` gap; each is
+   capped for exactly this reason."* There are four, and the fourth is uncapped **by design**.
+   The accurate statement is two statements:
+
+   **4a. The three BOUNDED NUDGES may not flip a large `universal_value` gap**, and each is
+   capped for exactly this reason (`NEED_BONUS_MAX`, `ELIGIBILITY_BONUS_MAX`,
+   `DEPTH_EXPOSURE_MAX` — the same number three times, deliberately: they are one class of term,
+   and giving them different magnitudes would be inventing a ranking among them that no
+   measurement supports). `TEAM_SPECIFIC_CAPS` remains a correct upper bound on their sum.
+
+   **4b. `displacement_adj` MAY move a large gap, and for a single-position candidate only
+   downward, which is its purpose.** #216 exists because *"no bounded nudge could span the 43-60
+   point bias"* — with the legality backstop off, the board drafted eleven tight ends and no
+   receiver in a one-TE league. See `displacement_adjustments` for the derivation.
+
+   > **CORRECTION (`#52` phase 6, W1-01 / W4-02).** This clause used to read *"It is non-positive
+   > by construction, so it can only ever remove credit, never add it; that is why
+   > `TEAM_SPECIFIC_CAPS` needs no fourth entry and why `displacement_adj` needs no cap."* **The
+   > premise is false**, and it became false when `#216`'s second half added per-slot
+   > alternatives — not through a defect in that change, but because the change expanded the
+   > population the term ranges over and this invariant was never re-checked against the new one.
+   >
+   > What holds is two statements, both derived from `shared_slot_alternatives` pricing a slot at
+   > `max(level)` over the positions it admits:
+   >
+   > - a **single-position** candidate is never lifted, because every slot he can reach is priced
+   >   at or above his own anchor;
+   > - a **multi-eligible** candidate is anchored on his PRIMARY level but reaches slots through a
+   >   second eligibility that need not admit the primary, and those may be priced below the
+   >   anchor. The bound is `free_alternative − min(alternative over reachable slots)`, which is
+   >   `0.0` in the single-position case, so it is one invariant and not two.
+   >
+   > Measured: Travis Hunter (WR primary, WR/DB) carries `+79.44` on the owner's IDP board, with
+   > `team_acquisition_value − universal_value` at `87.82` against a claimed ceiling of `36.0`.
+   > It is not IDP-only — on a plain one-TE rulebook with the owner's pool shape an RB/TE anchored
+   > on TE is lifted `158.0`, and three RB/TE players sit in the real capture.
+   >
+   > **Consequently `TEAM_SPECIFIC_CAPS` is NOT an upper bound on `team_acquisition_value −
+   > universal_value`**; it bounds the sum of the three capped terms, a weaker statement. Two
+   > shipped constants (`NECESSITY_DENIAL_SATURATION`, `CONTEXT_ELEVATED_THRESHOLD`) derive from
+   > that tuple on the exempted premise. **The claim is corrected here; no VALUE is changed.**
+   >
+   > **OPEN OWNER DECISION.** Whether the lift is the right price is genuinely arguable — the
+   > candidate really can occupy the cheap slot while the free alternative still fills his
+   > primary's (the phantoms are pinned per slot so that is the lineup solved), and equally it
+   > may be double payment, since `eligibility_bonus` already prices multi-eligibility and is
+   > CAPPED for that reason. Choosing is a valuation change under `#56`, not a repair, so the
+   > engine's behaviour is unchanged until it is ruled on. Re-deriving the two constants waits on
+   > the same ruling.
+
+   **The two halves of this invariant are not the same kind of claim**, and #222 recorded the
+   consequence: `displacement_adj` is classified both as a team-specific term (which places it
+   under upside mode's "zero every team-specific term" rule) and as a correction to the
+   universal anchor (which is the stated reason it carries no cap). Those readings are not
+   reconciled anywhere, and the reconciliation is an open owner decision — see
+   `evidence/roster_shape/ff_rulebook/CONTRACT_what_upside_mode_is_meant_to_drop.md`.
+5. **A quantity may enter a dynasty valuation only if its lifetime is at least as long as the
+   asset's horizon.** This is a category rule, not a magnitude rule: it disqualifies a term
+   regardless of how large its effect measures.
+
+   The distinction that makes it usable, since all four team-specific terms are transient
+   in some sense:
+
+   | transient in | example | admissible? |
+   |---|---|---|
+   | **roster state** | `need_bonus`, `eligibility_bonus`, `depth_exposure`, `displacement_adj` | **yes** — TAV is a *decision* number, priced in the state the decision is made in |
+   | **the calendar** | bye-week collision | **no** — it expires on a schedule unrelated to the roster or the player, and the asset outlives it |
+
+   Worked case (#142). Bye overlap is real, measurable, and was measured: worst-week losses of
+   41–127 trade_value across twelve rosters, concentration 0.25–0.62, a reachable tail of ~7
+   bpa. None of that matters here. **The NFL reassigns bye weeks every season**, so a collision
+   is a property of the (player, season) pair and dissolves in months while the dynasty asset
+   does not. It is therefore inadmissible to `universal_value` and to `team_acquisition_value`
+   at any magnitude. The same reasoning excludes a draft-time *flag*: a flag describes a
+   transient property of a permanent decision, and in a startup draft it would invite trading
+   multi-year asset value for one season's tidiness.
+
+   Where such a quantity legitimately lives instead: a **single-season** surface. Bye collision
+   is read by `roster_diagnostics`, whose questions ("which week am I thin, who should I trade
+   for") are this-season questions with this-season answers.
+
+   **THE COROLLARY, AND IT IS NOT A CONSOLATION PRIZE — IN REDRAFT, BYE WEEK IS ADMISSIBLE.**
+   The rule cuts both ways from one principle: in a redraft league the asset's horizon *is* one
+   season, so a bye collision's lifetime exactly matches the horizon it would price. Everything
+   that disqualifies it under `type == 2` qualifies it under redraft, and none of the measured
+   magnitude has to be re-established — it was measured on this data and stands.
+
+   That is buildable rather than aspirational. `draft_room` already reads
+   `is_dynasty = (league.get("settings") or {}).get("type") == 2` and already gates
+   `time_horizon_adj` on it, so a format-gated term has precedent in this engine. The inputs
+   exist too: `DataMerger.bye_week_by_team` (99.1% coverage) and
+   `lineup_optimizer.bye_collision`. What was deleted was `bye_stack_penalty`, the
+   candidate-level counterfactual — it would need rebuilding, and its docstring's warning about
+   the confounded first version should be rebuilt with it.
+
+   **APPLIED RETROACTIVELY, AND IT FOUND ONE (#147).** A rule that settles one case and then
+   lives only in prose will not settle the next, so it is mechanised in `term_lifetimes.py`
+   with `test_term_lifetimes.py` reading the AST of the actual sum — a term added to the
+   valuation without a declared lifetime fails the suite. Result over the six shipped terms:
+
+   | term | lifetime | verdict |
+   |---|---|---|
+   | `bpa` | season | **OPEN — #147** |
+   | `time_horizon_adj` | multi-year | admissible |
+   | `risk_adj` | week | mitigated (#35) |
+   | `need_bonus` / `eligibility_bonus` / `depth_exposure` | roster state | admissible |
+
+   `bpa` is VOR in raw projected points **for the current season**, and #76 measured the anchor
+   carrying **94.5%** of `universal_value`'s movement — so a one-season quantity dominates a
+   multi-year price, with a ±10 clamp on a ~500 scale as the only correction. This reframes
+   #50/#81 from "the horizon layer is undersized" to "the anchor is wrong-lifetime and the
+   horizon layer is a patch on it", which changes what the repair is. Note the inversion:
+   `bpa`'s own fallback (`position_relative_trade_value_vor`) is built from `trade_value`,
+   which *is* a dynasty price carrying the aging discount — the fallback is lifetime-correct
+   and the primary path is not.
+
+   `risk_adj` is the precedent worth copying: the same defect (a current-week status applied
+   identically in dynasty and redraft) fixed in #35 by scaling per-player against
+   `time_horizon_adj` rather than by a flat constant — a lifetime-aware mitigation reached
+   before the rule was named.
+
+   This rule is the reason to check any proposed term's LIFETIME before its magnitude. The
+   magnitude work on #142 was done first, and the category question settles the dynasty case
+   either way — worth recording so the next term is checked in the right order. Note that the
+   magnitude work is not wasted: it is exactly what the redraft case will need.
+6. `depth_exposure` contributes only where `depth_basis == "measured"`. Its other three states
+   (`no_surplus`, `vacant`, `not_applicable`) contribute `0.0`, and that zero means **"not
+   measured here"**, never "this roster's depth at this position is safe". Read `depth_basis`
+   before reading the value.
 
 **Boundary cases that are legitimate, not bugs**
 - Negative, for a declining player with an injury flag.
@@ -321,9 +479,13 @@ necessity "has least to work with" late. `standout` dies at round 6 (the VOR sat
 18**. A new term would be entering a contested field, not a vacuum — except at round 20, where
 only `run` survives and any admitted term would dominate outright.
 
-**Authority bound.** `NECESSITY_WAITING_WEIGHT` must not exceed `NECESSITY_SURVIVAL_WEIGHT`
-(20.0), so the term can at most tie the strongest live pressure and never exceed it in any
-regime where survival is live. Its dominance at round 20 is accepted and stated rather than
+**Authority bound — ITS ANCHOR IS GONE (#24).** This read: "`NECESSITY_WAITING_WEIGHT` must not
+exceed `NECESSITY_SURVIVAL_WEIGHT` (20.0), so the term can at most tie the strongest live pressure
+and never exceed it in any regime where survival is live." #24 retired the survival term, so the
+bound now names a constant that does not exist and a regime that cannot occur. `NECESSITY_WAITING_WEIGHT`
+is itself pinned as NEVER IMPLEMENTED by `test_superseded_proposals`, so nothing is unbounded in the
+tree today — but any future proposal to add it needs a NEW anchor derived from the terms that remain,
+not this one. Its dominance at round 20 is accepted and stated rather than
 engineered away — at the final pick there is genuinely nothing else to differentiate on.
 
 ---
@@ -353,6 +515,30 @@ timing fix it cannot deliver.
 
 ## Proposed Phase 2 interface — for sign-off, not yet implemented
 
+> ⛔ **SUPERSEDED BY MEASUREMENT (#48 / #71). NOT IMPLEMENTED, AND NOT TO BE IMPLEMENTED FROM
+> HERE.** Left unedited beneath this banner, as the record requires.
+>
+> This section proposes wiring `waiting_cost` into `pick_necessity`. That was measured and the
+> answer went the other way: **the item named the wrong cost.** `pick_necessity` reads
+> `positional_forfeit` instead, and `pick_synthesis.py` records why at the site
+> (search `WHY THIS TERM AND NOT waiting_cost`):
+>
+> - **Horizon.** Necessity asks "act now, or next turn?". `positional_forfeit` is exactly the
+>   next-turn cost. `waiting_cost` prices deferral to the END OF THE DRAFT — a different
+>   question.
+> - **Double-count.** `r(waiting_cost, bpa) = +0.847`. Necessity's standout component is already
+>   bpa-anchored, so wiring `waiting_cost` would re-add it under another name.
+>   `r(positional_forfeit, bpa) = +0.364`.
+> - **Coverage.** `positional_forfeit` is present on 100% of candidates; `waiting_cost` is not.
+>
+> Verifiable today: **neither `WAITING_PRESSURE_REFERENCE` nor `NECESSITY_WAITING_WEIGHT` exists
+> anywhere in this codebase.** The `51.0` derivation below was never wrong as arithmetic — it
+> prices a term nothing decided to admit.
+>
+> The three sub-questions this section raises (`LO`'s sign, the TE-coherence prerequisite,
+> late-draft authority) did not go away with it; they belong to whatever term is actually wired,
+> and `#50`/Phase 3 owns them.
+
 ```text
 ELIGIBILITY  (per position P, evaluated per board)
     floor_known(P)     = horizon_replacement[P].certain
@@ -371,7 +557,7 @@ CONTRIBUTION  (only when admitted)
 CONSTANTS
     WAITING_PRESSURE_REFERENCE = WAITING_STEEP_PER_WEEK * SLEEPER_WEEKLY_TO_SEASON_FACTOR
                                = 3.0 * 17 = 51.0 season points
-    NECESSITY_WAITING_WEIGHT  <= NECESSITY_SURVIVAL_WEIGHT (20.0)     [authority bound]
+    NECESSITY_WAITING_WEIGHT  <= ???                                  [anchor RETIRED at #24]
     LO                         = 0.0  or  -1.0                        [OPEN — see below]
 ```
 
@@ -398,6 +584,99 @@ reach full weight. Sensitive enough to register, not so sensitive that everythin
 **Recommendation:** `LO = 0.0` for the first implementation. It admits the quantity without
 simultaneously changing necessity's shape, and `LO = −1.0` remains available as a separate,
 individually testable follow-up once the term's behavior has been observed in real drafts.
+
+---
+
+## Owner rulings — `#52` blind pass, all seven carried decisions
+
+Recorded **2026-09-19**, with the measurement that decided each. These were carried out of
+phases 1-7 deliberately: every one is a judgement about what a number should be, which `#56`
+(derive, never calibrate) and `#184` (engine design belongs to the owner) put outside a repair.
+Ruled via the decision docket built for the purpose.
+
+The rulings are binding on the implementation; the **measurements** below are what they were
+ruled against, so a later reader can tell whether a ruling still applies to a tree that has
+moved.
+
+| # | question | ruling | measured against |
+|---|---|---|---|
+| `6.1b` | the multi-eligible displacement lift | **unify** the two terms into one multi-eligibility price | no value moved by the repair; the reachable-floor clamp binds at 0 of 642 probes |
+| `I-06/J-06` | pricing a `no_surplus` position | **separate basis token with its own scale** | 22 of 48 cells flip, 45.8%; every number unchanged |
+| `6.1d.1` | what lights `context_elevated` | **derive a threshold from the sum's own ceiling** | max gap 8.33 vs 13.21; share >= 12 goes 7.72% -> 0.00% |
+| `W1-07` | `NECESSITY_SURVIVAL_WEIGHT` | **REMOVE it; the proposed `intervening_picks` substitute was NOT taken** (it is per-TURN, so it takes one value across every candidate in a snapshot and cannot re-rank) | LANDED at #24. Re-measured on a real 12-team 16-round draft: 112 of 8,312 necessity rows flip label (1.35%) — 99 `PREFERRED -> CLOSE CALL`, 10 `STRONG ACTION -> PREFERRED`, 3 `MUST TAKE -> STRONG ACTION`; 83.2% of scores move at all, mean 0.42, max 9.80. The earlier "12 of 384 (3.1%), max 8.50, 2x `MUST TAKE`" measured the SUBSTITUTE arm on a smaller population and is kept for that reason |
+| `W4-01` | the rookie population | **promote `years_exp`** | 654 players enter, 31 leave; a rookie draft goes 95 -> 718 |
+| `J-12` | `draft_history` wired to nothing | **wire it narrowly** — record a snapshot only when a debate ran on it | 0 non-test importers; `_NEVER_IMPORTED` guards a store nothing writes |
+| `J-13` | `get_players()` returning `{}` | **raise** | 91,956 empty reads of 98,405 under one concurrent writer |
+
+### Three of these are not simple substitutions, and the difference is recorded here
+
+**`6.1b` UNIFY is a redesign, not a deletion.** It is the largest of the seven. Neither
+`displacement_adj` nor `eligibility_bonus` survives as-is: the ruling is that multi-eligibility
+gets **one** derived price rather than two terms that may each be charging for it.
+
+> **EXECUTED AS A RETIREMENT, AND THE DIVERGENCE IS RECORDED RATHER THAN SMOOTHED OVER (#52).**
+> Measurement changed the shape of the work before it was done: `eligibility_bonus` turned out
+> to price **0.24%** of the multi-eligibility credit (nonzero on five of 46,020 rows, max 0.84,
+> against `displacement_adj`'s 118.31 on the same lifted rows), and every OFFENCE-ONLY
+> multi-eligible player in the capture is retired — so the term is inert because **its
+> population is empty, not because the term is wrong**. `evidence/blind_pass/RULINGS_EXECUTION.md`
+> records that reasoning and set the retirement as the executable form of "one price, not two".
+> What shipped is therefore the *effect* the ruling asked for — multi-eligibility now has a
+> single price, `displacement_adj` — and **not** the new derived term the wording describes.
+> `displacement_adj` survives as-is. If the owner wanted a fresh derivation rather than the
+> surviving one, that work is still open and this paragraph is where it is recorded.
+>
+> **The line below about the two constants is now OUT OF DATE, and deliberately kept**:
+> `NECESSITY_DENIAL_SATURATION` has moved, 36.0 → 24.0, because `eligibility_bonus`'s cap was a
+> member of `TEAM_SPECIFIC_CAPS` and the SUM lost a 12.0 member. That is the same derivation
+> over a smaller input, not a re-derivation, so `#56` is not engaged — but it is exactly the
+> thing the sentence below said would wait, and striking the sentence would hide that it did
+> not. `CONTEXT_ELEVATED_THRESHOLD` is a MEAN over equal caps and is unchanged at 12.0, so
+> `6.1d.1` still waits as written.
+
+Until that derivation exists, `NECESSITY_DENIAL_SATURATION` and `CONTEXT_ELEVATED_THRESHOLD` stay
+un-re-derived — they are known to rest on the false premise, and `6.1d.1` below waits on the
+same work.
+
+**`W1-07` SUBSTITUTE needs a scale that does not yet exist.** Removing the withheld term is the
+easy half. `intervening_picks` is a COUNT, not a probability: it has no natural 0-20 mapping,
+and choosing one by looking at which mapping reproduces today's labels is precisely `#56`'s
+prohibition. The scale must be derived from the quantity's own bounds, and the 12 label flips
+above are the *before* measurement it will be checked against — not the target it is fitted to.
+
+**`I-06/J-06` SEPARATE was ruled with the note *"I don't know what the best option is here. So
+defer to your judgment."*** Recorded verbatim because the ruling is the owner's and the
+reasoning under it is not. The reasoning, for the record:
+
+  The quantity is *not* unmeasurable. Phase 6.1d measured it — with no cover, removing the
+  starter returns **his entire value**, "the number saying plainly that nothing covered him
+  while the basis claimed depth." So the defect was never that it cannot be measured; it is
+  that a starter's whole value is not a DEPTH price. It sits on a different scale, and the old
+  code smuggled it onto the depth scale by calling it `measured`.
+
+  That is why zero is wrong: zero is a NUMBER, not an absence. Under `no_surplus` the term
+  contributes exactly what a position with perfect cover and no marginal loss contributes —
+  `#187`'s shape, a value standing where there is no measurement.
+
+  And it is why the scale cannot be chosen today: picking one now is `#56`'s prohibition with
+  extra steps. So this executes in TWO steps, the same shape as `pool_truncated` (`#52` phase
+  7.3): **introduce the basis token carrying the measured uncovered quantity, price nothing.**
+  The board stops claiming zero depth for its most exposed state; pricing returns as its own
+  decision with its own evidence.
+
+### Implementation order, set by dependency and not by preference
+
+1. `6.1b` unify — two constants wait on it.
+2. `6.1d.1` derive the `context_elevated` threshold — against the distribution (1) produces.
+3. `W1-07` substitute — independent of (1), own derivation.
+4. `W4-01` promote `years_exp` — independent; the 95 -> 718 rookie-draft change is a visible
+   product consequence and lands in its own commit so it can be reverted alone.
+5. `I-06/J-06` the uncovered basis token — independent.
+6. `J-12` wire `draft_history` narrowly, and `J-13` raise — both small, both independent.
+
+Each lands as its own commit with its own mutation battery. A constant that changes is
+**derived** from the ruling and checked against the measurement above; it is never fitted to
+reproduce a result. None of this blocks Phase 8, which certifies the tree as it stands.
 
 ---
 
@@ -1573,8 +1852,11 @@ measured on the real 12x20 board.
 ## The finding that makes a coherent policy possible
 
 CDME's central commitment is `team_acquisition_value = universal_value + need_bonus +
-eligibility_bonus` — team-agnostic value plus roster-specific context. Measured across the whole
-draft:
+eligibility_bonus` — team-agnostic value plus roster-specific context. **Stated in the three-term
+form this measurement was taken against**; the live invariant is §1's five-term form
+(`+ depth_exposure` from #139, `+ displacement_adj` from #216). The table below measures the
+three columns that existed then, and the identity result it reports is unaffected by the later
+terms. Measured across the whole draft:
 
 | round | rows | `universal_value` live | `need_bonus` live | `eligibility_bonus` live | identity holds | max error |
 |---|---|---|---|---|---|---|
@@ -3105,6 +3387,13 @@ And a second purpose, stated separately:
 > position with almost no real roster demand correctly can't compete … it has to actually clear
 > the same bar."*
 
+*(Quoted as the docstring stood when this appendix was written. Both halves have since changed
+in the code and the docstring: the 0-100 scale was removed outright (#74/#75 — `bpa` is now raw
+signed VOR, so "one linear scale" is a number line rather than a rescale), and the word
+"correctly" was withdrawn under #152 — the ceiling on the trade_value fallback is partly a unit
+artifact, not wholly a demand judgment. The quote is left as-is because the investigation below
+reasons about the scale that existed at the time; it is not a live claim about current code.)*
+
 So `bpa` is **not** absolute production above a baseline, and **not** a bounded rank. Its contract
 is:
 
@@ -3503,8 +3792,34 @@ those three terms is locally correct, and their sum stops meaning what it says.
 
 ## The horizon is priced on a ruler that shrinks under it
 
+> **HALF RESOLVED AT D8 (2026-09-29), and the half that is resolved is the one this section is
+> sharpest about.** `RISK_ADJ` no longer exists. It held flat POINTS sized against the old bounded
+> scale, which made the health discount regressive in the player's own value once `bpa` became real
+> points — the same designation charging 10.4% of a 173-point player and 4.5% of a 400-point one.
+> It is replaced by `HEALTH_DISCOUNT_RATE`, a share of the player's own projection DERIVED from
+> `player_universe.GAMES_MISSED_PRICED` (`games_missed / SEASON_GAMES`), so no magnitude is chosen
+> except the one `Doubtful` assumption that table names as such. Renamed rather than repurposed,
+> because a name saying `RISK_ADJ` while holding a fraction is this section's own thesis repeated.
+>
+> The check that the derivation is the right one: `availability_factor`'s haircut path and this
+> penalty path give the SAME `universal_value` for one fact, to 6 decimal places, **when the feed
+> reports a full slate** (`gp == SEASON_GAMES`). Before, the two readings differed by −22.71 points
+> for a 173-point IR player and −76.12 for a 400-point one.
+>
+> **The condition is not a footnote and was missing here (A-F1).** The feed reports `gp=16` for most
+> IR players, and 0 of the 13 rule-floor IR rows on the committed capture satisfy the equality. Below
+> a full slate the paths diverge by design: `availability_factor` divides a season-anchored numerator
+> by `gp` so the cut is self-limiting, while the penalty path fires only when `gp` is absent and
+> therefore cannot see the games the feed has already removed. Measured worst case, 2.25 points. The
+> direction and the bound are what the suite pins.
+>
+> **`NEED_BONUS_MAX`, `DEPTH_EXPOSURE_MAX` and `TIME_HORIZON_CLAMP` are NOT resolved** and stay on
+> this section's account. They inherited a SCALE; `RISK_ADJ` inherited a UNIT, which is why D8
+> separated them and re-derived only the second. The caps' open question — which spread to size
+> them against — is recorded as D8(a) in `OWNER_DECISIONS_PENDING.md`.
+
 `TIME_HORIZON_SLOPE = 0.20` on a percentile difference, clamped to `±10.0` **bpa points**;
-`RISK_ADJ` is `−1.5 … −18.0` on the same scale. Both are documented as *"small, bounded, additive
+`RISK_ADJ` was `−1.5 … −18.0` on the same scale. Both are documented as *"small, bounded, additive
 nudges … deliberately incapable of overriding a real VOR gap on their own."* Measured over the
 priced rows of the audit board:
 
@@ -4682,7 +4997,8 @@ data without them would give kickers a systematically negative dynasty adjustmen
 
 The downstream repair phase opened here because every other downstream quantity is denominated
 in this one. `universal_value = bpa + time_horizon_adj + risk_adj`;
-`team_acquisition_value = universal_value + need_bonus + eligibility_bonus`. If `bpa` has no
+`team_acquisition_value = universal_value + need_bonus + eligibility_bonus` (the identity **as
+it stood** when this repair ran; §1 carries the live five-term form). If `bpa` has no
 fixed unit, none of the additive constants in those two lines has a fixed meaning either.
 
 ## What the code did
@@ -5279,7 +5595,18 @@ named. After D1 both are real projected points. That work is now expressible; it
 
 ## `upside_score`'s growth term — checked, and sound
 
-`upside_score` is `bpa + UPSIDE_GROWTH_WEIGHT * growth`, where `growth` is a **percentile**
+> **SUPERSEDED IN PART AT D4 (2026-09-29).** This section's MEASUREMENTS stand and its conclusion
+> that the term "still does real ordering work at every round" was **confirmed** — re-measured at
+> 37.9% of 4584 rows carrying `growth > 0` and the top-1 pick moving on 5 of 39 boards over three
+> league shapes, rounds 10–22. What is superseded is the last line, *"`UPSIDE_GROWTH_WEIGHT` is not
+> on the open-decisions list"*: it went onto that list as D4, and the constant **no longer exists**.
+> One percentile pair had two conversion rates — this term's 0.50 against `time_horizon_adj`'s
+> `TIME_HORIZON_SLOPE` of 0.20 — and the earlier repair that unified their CLAMP left the SLOPE
+> alone. Growth now converts at `TIME_HORIZON_SLOPE`, so the numbers in the table below are at the
+> old rate and the term's magnitudes are 2.5× smaller than shown. The measured cost of the change
+> is the top-1 pick moving on 2 of those 39 boards.
+
+`upside_score` is `bpa + TIME_HORIZON_SLOPE * growth`, where `growth` is a **percentile**
 difference and `bpa` is now real points. That is the same additive-unit shape as
 `universal_value`, so it was measured rather than assumed:
 
@@ -5294,8 +5621,8 @@ difference and `bpa` is now real points. That is the same additive-unit shape as
 The growth term's share of *magnitude* is small, but it still does real ordering work at every
 round, and the top 12 differs from a pure-`bpa` ordering at all of them — because the median
 adjacent gap (0.34–1.33 points) is smaller than the growth term itself. A small share of a score
-is not the same as a small influence on its order. **`UPSIDE_GROWTH_WEIGHT` is not on the
-open-decisions list.**
+is not the same as a small influence on its order. **This conclusion is why D4 did NOT price the
+term at zero** — see the correction block at the head of this section.
 
 ## D1 independently killed a previously-documented pathology
 
@@ -5444,7 +5771,8 @@ is not one contract with four numbers.
 | | threshold (aliased as `CLIFF_MIN_MATERIAL_GAP`) | bpa gap **within one position** |
 | `NEED_BONUS_MAX` 12.0 | **cap** | `need_bonus` itself |
 | | **divisor** | `rival_premium` (necessity's denial term) |
-| | threshold | `TAV − UV` (`context_elevated`) |
+| | **cap** | `eligibility_bonus`, and `depth_exposure` (#139) |
+| | threshold | `TAV − UV` (`context_elevated`) — now the sum of **three** capped terms |
 | `NECESSITY_STANDOUT_REFERENCE_GAP` 15.0 | **divisor** | leader-vs-field TAV margin (necessity's standout term) |
 | | threshold | leader−second TAV margin (`decision_regime`) |
 | | threshold | `positional_forfeit` (`cliff_protection`) |
@@ -5456,7 +5784,8 @@ Measured distributions, on the repaired unit across eight real board states:
 | TAV adjacent gap | 2061 | 0.54 | 2.88 | 21.67 | 56.85 | 15.7% |
 | UV adjacent gap | 2061 | 0.54 | 2.88 | 20.54 | 56.85 | 16.1% |
 | bpa gap within a position | 2020 | **2.00** | 10.00 | 34.00 | 71.00 | 58.5% |
-| `TAV − UV` | 2070 | 4.00 | 8.33 | 8.33 | **8.33** | **0.0%** |
+| `TAV − UV` | 2070 | 4.00 | 8.33 | 8.33 | **8.33** | **0.0%** | *(superseded — see below)* |
+| `TAV − UV` *(re-measured 2026-09-03, three terms)* | 1992 | 6.12 | 9.24 | 13.21 | **13.21** | **7.8%** |
 | leader−second TAV margin | 9 | 0.35 | 4.99 | 11.92 | **12.69** | **0.0%** |
 | `positional_forfeit` | 72 | **54.81** | 121.89 | 154.94 | 154.94 | **73.6%** |
 | `rival_premium` | 72 | 4.33 | 8.33 | 8.33 | 8.33 | 0.0% |
@@ -5508,13 +5837,32 @@ diverge later."* The concept split is already made explicitly. No change.
 product decision and nothing in this repository determines it. Both are now pinned by tests that
 assert the measured state, so the numbers here cannot silently rot:
 
-1. `context_elevated` (`TAV − UV >= NEED_BONUS_MAX`). Unreachable. Max observed `TAV − UV` is
-   **8.33** on the standard board and **8.67** across **1020 rows** of a real IDP league with
-   genuine multi-eligibility; a deliberately constructed triple-eligible candidate on a
-   saturated roster reached only **3.55**. `NEED_BONUS_MAX` is three dedicated slots' worth and
-   this roster shape has at most two.
-2. `cliff_protection` (`positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`). Fires 73.6% of
-   the time against a quantity whose median is 3.6× the threshold.
+1. `context_elevated` (`TAV − UV >= NEED_BONUS_MAX`). **No longer unreachable — and nothing was
+   repaired.** The original measurement stands as written: max observed `TAV − UV` was **8.33**
+   on the standard board and **8.67** across **1020 rows** of a real IDP league with genuine
+   multi-eligibility; a deliberately constructed triple-eligible candidate on a saturated roster
+   reached only **3.55**. `NEED_BONUS_MAX` is three dedicated slots' worth and that roster shape
+   has at most two.
+
+   What changed is the *quantity*, not the constant. #139 added `depth_exposure` as a **third**
+   team-specific term, each capped at `NEED_BONUS_MAX`, so the gap's ceiling went from ~2× that
+   cap to 3×. Re-measured 2026-09-03 across the same eight board states: p50 **6.12**, max
+   **13.21**, firing on **7.8%** of 1992 priced rows — concentrated entirely in rounds 6–8, the
+   window where a bench exists for depth to be a real question about and positional holes are
+   still open.
+
+   This is filed as a bound that became a discriminator *by accident*, not as a threshold anyone
+   has argued for. The category error §A(#56) names is unchanged: `NEED_BONUS_MAX` is still the
+   cap on one of three terms being read as a firing threshold on their sum. **The product
+   decision about what should light this badge remains open.** What is now pinned, in
+   `ContextElevatedBecameReachableTests`, is that neither failure mode is currently present —
+   the rule is asserted to fire, and asserted not to fire for most candidates.
+2. `cliff_protection` (`positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`). Fired 73.6% of
+   the time against a quantity whose median was 3.6× the threshold. **Re-measured after #216:
+   35.4% (17 of 48) on the same board states.** The constant did not move; the population did
+   -- the top six rows are no longer a hoarded position's steep tail, and the receivers that
+   replaced them forfeit less. The threshold is exactly as borrowed as before; the pin in
+   `test_threshold_reachability` now records the new neighbourhood rather than "fires for most".
 
 ## Two corrections to the constants' own documented basis
 
@@ -5846,6 +6194,18 @@ rare rather than systemic.
 # Appendix — H2 settled: the contract for `marginal_lineup_value`
 
 **Conclusion: category 2 — represented, stranded, and *correctly* stranded.**
+
+> **CORRECTION (#216).** The "correctly" above rested on the claim that in the displacement
+> regime the quantity "never disagrees with team_acquisition_value". That was measured on sane
+> rosters and stopped holding once the engine drifted into building rosters that were not: at
+> the states the engine actually reaches, the board's own top row agreed with a
+> replacement-filled lineup marginal in only 4-7 of 14-15 states per seat, with 8-10 of the top
+> ten reordering through rounds 5-11 (`evidence/roster_shape/REVIEW_216_fable.md` §3). The
+> premise expired; the ruling is withdrawn. What was wired (#216) is not the raw marginal but its
+> displacement half, phrased as a per-position LEVEL -- `lineup_optimizer.displacement_level` ->
+> `draft_room.displacement_adj`, the fourth team-specific term -- so it invents no constant and
+> stays a per-position constant at a board state. The empty-slot half of the original reasoning
+> (raw points) still stands and is still not wired.
 
 Nothing is wired. `lineup_optimizer.py` is untouched. The deliverable of this pass is the
 contract itself, pinned by `test_lineup_marginal_contract.py` (7 tests), so the conclusion can be
@@ -6800,16 +7160,82 @@ At both real boundary states the curve is flat enough around that index that a o
 `drop` leaves the forfeit — and the flag — untouched. **The mechanism is real and demonstrable;
 it is not currently a live defect.**
 
-### Why this is DEFERRED and not fixed
+### RESOLVED (#86) — fractional interpolation, and this deferral's own reasoning was partly stale
 
-The correct contract is **not clear**, and inventing one would change live behaviour:
+**The deferral said, and it was reasonable at the time:** half-up, floor and fractional
+interpolation are three different product answers; whichever is chosen moves 0.3% of forfeit
+computations by a whole curve step; choosing a rounding rule or an epsilon is the constant-tuning
+this phase excludes. The mechanism was pinned by a characterization test rather than repaired.
 
-* half-up, floor, or fractional interpolation of the curve are three different product answers;
-* whichever is chosen moves 0.3% of forfeit computations by a whole curve step;
-* choosing a rounding rule or an epsilon here is exactly the constant-tuning this phase excludes.
+**TWO OF THIS PART'S CLAIMS HAVE SINCE GONE STALE, and both are corrected here rather than left
+to mislead the next reader:**
 
-Pinned by a characterization test instead, so a future change to the rounding rule, the curve
-shapes, or the take-probability table is deliberate and visible.
+1. **`cliff_protection` no longer flips.** The paragraph above says the flag is read as
+   `forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP`. `#160` moved `cliff_protection` onto the cliff
+   machinery, and `pick_synthesis` now reads `(positional_cliff or {}).get("tier")`. The
+   "worse, a decision-path flag flips" escalation no longer holds. The freeze checklist repeats
+   the same stale dependency.
+2. **The zero-impact sweep answered a NARROWER QUESTION than the defect.** Those 627
+   computations measured *exact* boundary landings — does float noise flip the rounding at x.5 —
+   and found 2, both immaterial. That result stands and is not contradicted. It simply never
+   asked the general question: does quantising a continuous expectation to a whole player
+   misreport the forfeit at all? Re-measured on Fourth and Forever, **14 of 44 observations move
+   by more than 1.0 point, the largest by 14.72**.
+
+**WHAT DECIDED IT WAS NOT A PREFERENCE AMONG THE THREE ANSWERS.** `round()` sent every
+`expected_taken` below 0.5 to `drop=0`, so the forfeit came back as **exactly 0.00 while the
+model expected a fraction of a player to go** — 4 of 44 observations, all at WR, with 0.48
+reporting 0.00 and 0.60 reporting 9.44. In this engine 0.00 means *measured, and the cost is
+nothing*. That is an absence-contract breach reached by arithmetic rather than by a substituted
+default (the `#187` class). Interpolation introduces **no constant**, which is why `#56` is not
+engaged: it removes the arbitrary rule already present (nothing justified banker's rounding for a
+"how many will be taken" quantity — `round(0.5)=0`, `round(1.5)=2`, `round(2.5)=2`) instead of
+adding a new one.
+
+**RATIFIED 2026-09-16 (owner), SUBJECT TO AN INDEPENDENT REVIEW WHICH CORRECTED FOUR CLAIMS
+ABOVE.** The repair stands — the reviewer found no reachable defect in `_curve_at` and killed 9
+of 9 mutants against its tests. What did not survive is some of the prose around it:
+
+1. ~~"Of the three candidate contracts only interpolation removes it, so the choice is forced by
+   the contract rather than picked on taste."~~ **Overclaimed.** Ceil also removes every
+   manufactured zero and adds no constant; so does the exact expectation. The candidate set was
+   narrowed to the three the old deferral happened to list. What the contract forces is that a
+   fractional expectation must not report a *measured* zero; which rule satisfies that is a
+   modelling choice, and interpolation was CHOSEN.
+2. ~~"the true statement was about 4.5 points"~~ **Not the true statement.** Interpolation reads
+   the curve at the MEAN count, `curve[E[N]]`; the honest quantity is `E[curve[N]]`, and on a
+   non-linear curve they differ. Exact Poisson-binomial on the same fixture gives **5.48 against
+   the shipped 4.53**, max divergence 3.55 over 44 rows, with P(no WR taken) = 0.61. The repair
+   is a better approximation than 0.00, not the truth. The exact expectation is equally
+   constant-free and stays available.
+3. **"4 of 44 observations" is ONE pre-draft board state** read at 11 gap lengths, not 44
+   independent observations — every nonzero `expected_taken` there is `0.06n` or `0.9n`, so "4 of
+   44, all WR" is arithmetic (`0.06n < 0.5` for `n <= 8`). True, but its evidentiary weight was
+   overstated.
+4. **"a fractional expectation never reports a forfeit of zero"** is false of the shipped
+   function: `positional_forfeits` rounds to 2dp, so a near-flat curve returns exactly `0.0` for
+   `expected_taken=0.06`. Harmless — the cost really is under half a cent — but the universal is
+   not delivered. The property that IS delivered is *not quantised to a whole player*, and the
+   test now carries that name.
+
+**AND THE LARGEST CORRECTION, which is about where this quantity goes.** `positional_forfeits`'
+own docstring said it was *"deliberately NOT an input to pick_necessity"*. That has been **false
+since `7655fb1`**: `compute_pick_necessity` reads `positional_forfeit` and folds
+`forfeit_component` into `raw_score` at weight 10 of 100, which reaches `necessity_label`, the
+Draft Room display, and the debate prompt — where an exactly-zero forfeit is rendered as the
+STRONGEST EVIDENCE FOR WAITING. So the manufactured zero was being handed to the debate as an
+affirmative claim, which is the concrete harm this repair removes. It still has **no selection
+authority** (`_board_order` sorts on `final_score` alone, computed before forfeits exist; `#55`
+ruled necessity observable), so the repair changes what the app SAYS, not which player it PICKS.
+
+**THE OWNER SHOULD KNOW THIS OVERRODE A STANDING DEFERRAL.** This part, the freeze checklist and
+the characterization test all said *deferred, open product question*. The evidence above is why
+it was taken anyway; reverting is a one-line change to `_curve_at`'s caller if the ruling goes the
+other way.
+
+The characterization test is **rewritten, not deleted** — it keeps the same adversarial fixture
+(0.24 + 0.60 + 0.66, summing to 1.5 in one order and 1.5 − 1ulp in the other) and now asserts the
+two orders agree, plus that a fractional expectation is not quantised to a whole player.
 
 ## Part 4 — `RANK_TAKE_PROBABILITY.get(rank, 0.0)` vs `RANK_TAKE_PROBABILITY_FLOOR`
 
@@ -6846,7 +7272,7 @@ boundary incidence, and should not be cited as the latter.
 | unpriced influence on survival, rank, probability mass, ordering | **already fixed** — no contamination measurable |
 | pace / take-probability for unpriced players | **already fixed** — intentionally excluded, `None` not zero |
 | insertion order at `draft_strategy.py:310`, within a pick | **not an issue** — one realizable order, and order-immune anyway |
-| `round(expected_taken)` boundary across picks | **latent** — demonstrable, 0 of 627 real impact, **deferred** |
+| `round(expected_taken)` boundary across picks | **RESOLVED (#86)** — fractional interpolation; the 0-of-627 sweep measured exact boundary landings, not the quantisation error (14 of 44 move >1.0) |
 | `RANK_TAKE_PROBABILITY.get(rank, 0.0)` | **latent/unreachable** — correct default, coupling now enforced |
 | my "8.2% one step from crossing" figure | **measurement artifact** — withdrawn above |
 
@@ -7085,7 +7511,9 @@ rather than asserted by docstring.**
 ## Part 2 — what actually decides
 
 `TAV = universal_value + need_bonus + eligibility_bonus`, and
-`universal_value = bpa + time_horizon_adj + risk_adj`. Ablated at board level:
+`universal_value = bpa + time_horizon_adj + risk_adj` — the identity **as it stood** when this
+ablation was run; §1 carries the live five-term form, and the later terms were not present to
+ablate. Ablated at board level:
 
 | component removed | leader changed | top-3 set changed | leader changed, near-tie states |
 |---|---:|---:|---:|

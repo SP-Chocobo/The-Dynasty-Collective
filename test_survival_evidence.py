@@ -171,10 +171,41 @@ class UnevidencedRiskTests(_LateBoardFixture):
         self.assertTrue(result["risk_by_team"], "an unpriced target drew no risk at all")
         self.assertLess(result["survival_probability"], 1.0)
 
-    def test_every_take_probability_for_an_unpriced_target_is_the_floor(self):
+    def test_every_take_probability_for_an_unpriced_target_is_the_NORMALISED_floor(self):
+        """UPDATED BY #206 (2026-09-16). This asserted the raw `RANK_TAKE_PROBABILITY_FLOOR`
+        (0.02) came back unchanged as a probability. After the mass repair the floor is a
+        WEIGHT: every row's weight is divided by the board's total, so an unpriced target now
+        reports floor/total -- about 0.0047 on this board -- and the board's probabilities sum
+        to exactly 1.0 instead of 23.49.
+
+        The PROPERTY the test was written for is unchanged and still asserted: every unpriced
+        row gets the same number as every other unpriced row, and it is the smallest weight in
+        the table, because there is no rank to read and no evidence of elevated risk. Only the
+        scale moved, so the assertion is expressed against the floor's share rather than against
+        a literal."""
         result = self._survival(self._an_unpriced_target()["player_id"])
+        probabilities = {risk["take_probability"] for risk in result["risk_by_team"]}
+        self.assertEqual(len(probabilities), 1, "unpriced rows must all get the same number")
+        only = probabilities.pop()
+        self.assertLess(only, ds.RANK_TAKE_PROBABILITY_FLOOR,
+                        "the floor is a weight now -- normalising can only shrink it")
+        self.assertGreater(only, 0.0, "but an unpriced player can still be drafted (#206/#187)")
+        # AND IT REALLY IS THE FLOOR'S SHARE, not some other number that happens to be small.
+        # The first version of this update asserted only that the number was small and
+        # unevidenced, while its own prose claimed the assertion was "expressed against the
+        # floor's share" -- a test weaker than its docstring, which `assertion_floors` caught
+        # as `assertAlmostEqual 3 -> 2` rather than letting it pass as a wash. The share is
+        # recomputed here from the same public function the engine uses, against each
+        # consulted board rather than one of them, so a change to the floor OR to the
+        # normalising denominator moves this assertion.
         for risk in result["risk_by_team"]:
-            self.assertAlmostEqual(risk["take_probability"], ds.RANK_TAKE_PROBABILITY_FLOOR)
+            self.assertIsNone(risk["rank_on_their_board"])
+            self.assertFalse(risk["evidenced"])
+            board = self.boards[str(risk["roster_id"])]
+            total = ds.board_take_mass(board, None)["total_weight"]
+            self.assertAlmostEqual(risk["take_probability"],
+                                   round(ds.RANK_TAKE_PROBABILITY_FLOOR / total, 6), places=6,
+                                   msg="an unpriced row is not carrying the floor's share")
 
     def test_the_unevidenced_rows_say_so_instead_of_reporting_a_rank(self):
         result = self._survival(self._an_unpriced_target()["player_id"])
@@ -321,20 +352,27 @@ class PricedBehaviourIsUnchangedTests(_LateBoardFixture):
 
 
 class ForfeitReadsTheSameRegisterTests(_LateBoardFixture):
-    """The second consumer of rank_by_id. expected_positional_forfeit sums
-    RANK_TAKE_PROBABILITY over every row inside FORFEIT_OPPONENT_BOARD_DEPTH -- the same
-    table, the same register error, and it is fixed by the same change rather than
-    separately."""
+    """The second consumer of rank_by_id -- which, since #52 phase 7.2, reads the SAME take
+    model as the first rather than the raw table over a top-N window."""
 
     def test_no_unpriced_row_can_contribute_to_expected_taken(self):
+        """Stated without the window (#52 phase 7.2). This asked whether an unpriced row sits
+        inside FORFEIT_OPPONENT_BOARD_DEPTH, and that constant is gone -- positional_forfeits
+        now sums the normalised probability over every priced row of the position. The claim
+        underneath never depended on the window: `rank_by_id` is a VALUATION ordinal built over
+        priced rows only, so an unpriced row must not appear in it at ALL. Asserting that
+        directly is both simpler and stronger than asserting it of a prefix."""
         _, unpriced = self._split()
         unpriced_ids = {r["player_id"] for r in unpriced}
+        self.assertTrue(unpriced_ids, "no unpriced rows in this fixture -- nothing is proven")
         for roster_id, board in self.boards.items():
-            inside_depth = {pid for pid, rank in board["rank_by_id"].items()
-                            if rank <= ds.FORFEIT_OPPONENT_BOARD_DEPTH}
-            self.assertEqual(inside_depth & unpriced_ids, set(),
-                             f"roster {roster_id}: an unpriced row sits inside the forfeit "
-                             "window and is being read as a top-of-board valuation")
+            ranked = set(board["rank_by_id"])
+            self.assertEqual(ranked & unpriced_ids, set(),
+                             f"roster {roster_id}: an unpriced row carries a valuation ordinal "
+                             "and is being read as a top-of-board rank")
+            # ...and they are declared separately rather than dropped, so a consumer can still
+            # see them and say they could not be priced.
+            self.assertTrue(unpriced_ids & set(board.get("unpriced_ids", ())))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,11 @@
 # Engineering Doctrine — semantic integrity
 
+> **WHERE CURRENT STATE LIVES — not in this file.** This document is long-lived and does
+> not track the live path. `FREEZE_CHECKLIST.md`'s top block carries the current state and
+> what is outstanding; `POST_AUDIT_PLAN.md` is the numbered record and wins over any status
+> flag anywhere, including the session task list (`#292`). A pointer rather than a copied
+> status, deliberately: a copy goes stale silently, a pointer cannot (`#126`).
+
 Standing doctrine for this repository. It governs how audits are conducted and how changes are
 justified. It was written after an audit that found a class of defect the previous audit could
 not have found, and it exists so that class is looked for deliberately rather than stumbled into.
@@ -236,6 +242,43 @@ trace proves it is a claim about *magnitude*.
 Tuning a coefficient to remove a symptom whose cause is semantic does not fix the defect. It
 hides the evidence that would have found it.
 
+### The inverse: when a coefficient cannot move what it names
+
+The rule above catches tuning a number whose cause is semantic. #184 is that failure inverted,
+and it is the harder one to see because the number is *correct* and still does nothing.
+
+`SUPER_FLEX_QB_SHARE` sets QB starter demand. `replacement_levels` forks on `startable_floors`
+to pick the rank it prices against:
+
+```python
+if floor is not None:  rank = <count above the cliff>       # taken in every superflex league
+else:                  rank = _remaining_demand_rank(...)   # the demand answer
+```
+
+Two mechanisms answer one question — *what is the QB replacement level in a superflex league?* —
+and the fork has no join. In the only format that reads the constant, the demand-derived answer
+is **never computed at all**: not overridden, not logged, not available to compare. Deriving a
+better value for that constant (#178 derived 1.000, soundly) could not move a single QB price,
+and its whole surviving effect was to make the other positions cheaper.
+
+**The rule: a constant that cannot move the quantity it is named for is not a tuning parameter,
+it is a dead wire, and the finding is architectural rather than numerical.** Before deriving,
+tightening, or defending any constant, prove it reaches the thing it claims to set — perturb it
+and measure the layer it is supposed to govern, not merely the layer it is read in.
+
+Two corollaries this cost real cycles to learn:
+
+- **Measure on the path production takes.** The first two measurements here passed
+  `startable_floors=None` and showed the constant working perfectly. That is a real code path;
+  it is not the one any superflex league uses. A number measured off the live branch is a
+  plausible number about something else.
+- **When two mechanisms can answer one question, the loser must leave a record.** This engine
+  already does that well in three places — `bpa_source` names which of four anchors priced a
+  row, `replacement_basis` separates a live level from a pre-draft anchor, `horizon_basis` was
+  repaired in #166 for exactly this. The floor fork has no such record, which is why the
+  behaviour survived this long: nothing anywhere in the system says QB was priced by the cliff
+  rather than by demand. Silent precedence is how a dead wire stays invisible.
+
 ---
 
 ## The re-audit cadence
@@ -260,3 +303,203 @@ run gets its own weaker or stronger standard.
 `test_audit_cadence.py` holds this paragraph and that cron to each other, because a documented
 cadence and a configured one that disagree is worse than either alone — the document is the one
 that gets believed, and it is the one that cannot run anything.
+
+## The instrument standard
+
+The engine is held to a full test suite, per-name assertion floors, mutation checks and a
+full-suite push gate. (This sentence used to state a test COUNT -- 2267 -- in the present tense
+with no date attached. The suite passed 3,000 and the sentence went on reading as current, which
+is the `#182` failure mode exactly. `ASSERTION_FLOORS.json` is the count's one home; it is
+regenerated on every close and a test fails when it is stale, so nothing here needs to restate
+it.) The code that MEASURES the engine has had none of that -- and on 2026-09-06 a single
+experiment produced three separate measurement failures, two of which were caught only because
+someone went looking. Every headline number that day came from an instrument written the same
+day. The freeze decision was resting on the least-tested code in the repository.
+
+Each rule below is derived from an incident in this repository, cited. None is invented.
+
+**M1 -- A FINDING REPRODUCES BEFORE IT IS QUOTED.** Run the measurement a second time, from a
+fresh process, and diff the result. A number that has been produced once has not been measured;
+it has been observed. *(#176: the stored roster proof reported `[7,7,8,8,8,7]` for a partition
+that two independent reproductions rendered `[8,8,8,8,8,8]`. The finding was published before
+anyone tried to get it twice.)*
+
+**M2 -- BOTH ARMS REACH THE SAME SCOREABLE UNIVERSE.** In any A/B, verify that each arm can
+access everything the metric is able to score. An arm that draws from a wider pool than the
+scorer can price is penalised by the scorer, not by its own decisions. *(#176 attempt 1: 61% of
+the pool had no `projection`; only the engine drafted those, and `score_roster` excluded them.
+A ~10% deficit existed before either drafter made a choice.)*
+
+**M3 -- PARTIAL RESULTS ARE DURABLE.** Persist after every unit of work, never at the end of a
+batch. A long run WILL die. *(#176 attempt 1 wrote its report per-format and died seven runs
+into the first one, discarding every completed run.)*
+
+**M3b -- DURABLE IS NOT COMPLETE, AND RECOVERY IS NOT PROMOTION.** M3 makes partial results
+survive a crash; it does not make them results. Every long run declares its completion condition
+BEFORE it starts, and an artifact that has not met it is treated as nonexistent for citation --
+"the file is on disk" is not "the experiment finished". When a run dies partway, reading its log
+to understand what happened is recovery and is fine; RECONSTRUCTING the artifact from that log
+and citing it is not. That manufactures completeness from partial output and creates a second,
+parallel artifact format that reads as canonical and cannot be told apart later. Rerun instead.
+*(Surfaced as a new failure mode -- artifact completeness ambiguity -- while two experiments were
+in flight and the session's runway was uncertain. The remedy is a completion contract written
+next to the artifact, not another mechanism.)*
+
+**M4 -- PRINT n, AND PROVE THE POPULATION CAN PRODUCE THE PHENOMENON.** A rate over an empty or
+structurally impossible population is not a rate. Before reporting "X% of rows do Y", confirm a
+row COULD do Y. *(#172: `eligibility_bonus` measured 0.0 at every percentile across five
+formats. It cannot be anything else -- `build_players_db` gives every player exactly one
+`fantasy_positions` entry, so the dual-eligibility term is structurally zero in every automated
+arm. A perfect measurement of nothing.)*
+
+**M5 -- PROVE THE THING UNDER TEST ACTUALLY FIRED.** If ON and OFF produce identical output, it
+did not fire; find out why before concluding it has no effect. *(#167: `reach_label` ablation
+returned 0 of 36 board states changed. The correct reading was not "a weak effect" but "no
+effect exists" -- `quantity_readers` shows it has zero scoring readers. A null result about a
+wire that does not exist is not the same claim as a null result about one that does.)*
+
+**M6 -- ABSENCE IN THE INSTRUMENT, TOO.** `if value:` conflates never-computed with a measured
+zero. Count `is not None` and `> 0` separately, in the measuring code, not only in the engine.
+*(The absence contract has been re-found by hand a dozen times; a reporting function that
+counted a legitimate `growth_signal == 0.0` as "not measured" is how it entered the instruments.)*
+
+**M7 -- ONE PROCESS, ONE CODE VERSION, FOR BOTH ARMS.** Never compare a fresh run against a
+saved baseline from different code. Record which commit produced any stored baseline.
+*(A tier-3 change was once reported as fixing a format 2 findings -> 0; the 2 came from a run
+predating an unrelated scoring repair, and the improvement was that repair.)*
+
+**M7b -- AN INVALIDATED RUN IS NOT INVALIDATED UNTIL IT IS DEAD.** Renaming its log does not
+stop it writing. A long probe found to be measuring the wrong thing must be KILLED, and its
+output paths must be moved out of the way, before the corrected run is launched -- and the
+corrected run writes to a DIFFERENT path. Two versions of a harness that share an output path
+race, and the loser is whichever finishes first, not whichever is right.
+*(#176: a pre-fix roster proof was diagnosed mid-flight as invalid and its log was renamed
+`..._INVALID_run1.log`. The process was never killed. The corrected run finished at 21:00 and
+wrote the valid result; the invalid run finished at 21:13 and overwrote it, aggregate and
+per-format alike. The finding filed from that file -- "the engine loses 48 of 48 drafts" --
+was the dead run's, inverted in sign from the truth, and it survived long enough to be
+written down twice. Three of the four per-format `.part` files still held the valid numbers,
+which is the only reason it was recoverable at all.)*
+
+**M8 -- STATE THE ARTIFACT HYPOTHESIS BEFORE REPORTING.** Write down what would have to be true
+for this number to be about a different question, then check that specific thing. This is the
+rule that caught M2 and M4; it is the cheapest of all of them and the one most often skipped
+because the number already looks like an answer.
+
+**M9 -- EVERY PERCENTAGE CARRIES ITS POPULATION AND ITS SCOPE.** "34%" means nothing without
+"of all priced board rows, across three formats". Single-format figures are labelled as such.
+*(#160: an in-code comment recorded `context_elevated` firing "~7.8% of priced rows". Across
+five formats it fires 0.0% on four and 4.4% on the fifth. The measurement was not wrong; its
+scope was never stated, so it read as general.)*
+
+### What this does not claim
+
+These are a checklist, not a ratchet. Nothing here is enforced by a test, and a measurement can
+satisfy all nine and still be about the wrong question. They are the nine failures this
+repository has actually suffered, written down so the tenth is a new one.
+
+**The standing consequence:** a finding from an instrument that has not cleared M1 is reported
+as PROVISIONAL and may not be used as an input to the freeze decision. Suspending #176 was that
+rule being applied before it was written down.
+
+## Two freezes, and they are not the same question
+
+A finding that blocks shipping does not necessarily block freezing the decision engine, and the
+reverse is also true. Conflating them produced arguments that went nowhere, because the same
+finding was being weighed against two different bars at once. So the vocabulary is fixed:
+
+**ENGINE FREEZE.** The deterministic machinery is stable and its blocker state is known. Asks:
+*can the decision procedure still change under us?* A defect qualifies if it can alter what the
+engine picks, given the same inputs -- ordering, pricing, selection, the constants that feed
+them.
+
+**PRODUCT FREEZE.** The engine is receiving and displaying the user's actual league semantics
+correctly. Asks: *is the machine answering the question the user asked?* A defect qualifies if
+the engine is correct about the wrong league, or reports its answer in a way that misleads.
+
+The test to apply, in order: does this change what the engine picks from identical inputs
+(engine), or does it change whether the inputs describe the user's real league (product)? Some
+findings are both -- #180 is, because the scoring transformation lives INSIDE the valuation path
+rather than upstream of it, so a scoring-regime substitution changes pick ordering.
+
+Worked examples from this register:
+  #154/#155  ENGINE. A chair finishes unable to field a legal lineup. Pure machinery.
+  #179       PRODUCT, not engine. A vendor's aging curve is an input property; the engine's
+             arithmetic on it is correct. Remedy is an input, not code.
+  #183 (#6)  PRODUCT. A failed chair rendered as a report misleads the reader; it does not
+             change a pick.
+  #180       BOTH. See above.
+
+WHY THE COUNT IS NOT THE METRIC. A dozen small bounded findings that reproduce and do not touch
+the architecture is a healthier state than zero findings from a shallow audit. What matters is
+whether the findings are still ARCHITECTURAL (the design is wrong) or now RESIDUAL (the design is
+right, a specific boundary is not yet proven). Watch the kind, not the number. A register that
+stops growing has usually stopped looking.
+
+
+## A gate in front of the evidence
+
+#180 and #193 are the same defect at two different layers, and the shape is worth naming because
+it does not look like a bug in review. Both times, a cheap early test stood in front of the
+expensive real one and answered the question on the strength of the weaker fact:
+
+  #180  Offence never routed through the league-scored path, because a `no vendor projection`
+        precondition was checked before the league's own scoring was consulted. The better
+        number existed and was never reached.
+  #193  A player was removed from the universe if a paid vendor had not matched him, and
+        removed again if Sleeper's `status` field said he was not currently playing -- both
+        decided before anything that actually knew whether he was a real, relevant footballer
+        had been read. Measured: 451-466 players with a real league-scored projection dropped
+        by the first, 304 players carrying a positive signal dropped by the second.
+
+The tell is structural, not numerical. A gate returns EARLY and returns a DECISION, using an
+input that is cheaper, older, or narrower than the inputs below it. It reads as defensive
+("obviously we skip retired players"), and its cost is invisible because the rows it removes
+never appear anywhere to be counted. Nobody files a bug about a player who is not on a list.
+
+Two rules follow.
+
+**Read the evidence, then decide.** If several independent facts bear on a question, none of them
+gets to short-circuit the others by being listed first. Express the decision as a union or a
+ranking over all of them, so that adding a new source of evidence widens the answer instead of
+being pre-empted by a check written before that source existed. This is what makes an engine that
+"cleanly integrates updating information" actually do so: new information has to be able to REACH
+the decision.
+
+**When two facts from one feed disagree, freshness decides, and the ordering is written down.**
+Sleeper reporting a man as Inactive while also projecting him 32.92 points for the season ahead is
+a feed contradicting itself. There is no neutral answer, so pick one on a stated principle -- the
+more recent and more specific statement wins -- and record WHY in the code, because the next
+reader will otherwise assume the ordering was arbitrary and reverse it.
+
+**Corollary: admission and pricing are different questions.** Whether a row should exist is not
+the same as whether anyone has put a number on it. Collapsing them lets a pricing source silently
+define the boundary of the universe. Keep them separate, admit on evidence of existence, and let
+the absence contract carry the rows nobody has priced yet -- None, never 0.0, ordered last, and
+labelled for what they are.
+
+## A guard's evidence must be about the thing it claims
+
+Two guards in this suite assert that a quantity has no production reader: `snapshot_is_current`
+(a freshness certifier built deliberately and wired to nothing) and `baseline_provenance` (a
+record that is documentation and must never become an input). Both proved the claim the cheap
+way -- search each production module's raw text for the name, fail if it appears at all.
+
+That is a strictly stronger claim than the one they mean, and on 2026-09-07 the difference came
+due. A measurement tool's docstring EXPLAINS that the input layer already has machinery for
+freshness, and names both as examples. No call, no import, no read: prose. Both guards went red,
+and no repair to the code could clear them, because there was nothing wrong with the code.
+
+**A check that cannot be satisfied is worse than no check.** It is not merely useless -- it
+teaches everyone who runs the suite that some red is normal, which is the one belief that makes
+every other guard in the file stop working. A standing failure is a defect with the same urgency
+as a wrong number, and it is fixed in the guard, not by silencing it and not by contorting the
+code to avoid a word.
+
+**State the claim, then find evidence that matches it exactly.** "No module CALLS this" and "this
+string does not appear" are different propositions, and the gap between them is where the false
+alarm lives. Here the fix was to scan the code with comments and docstrings blanked -- and,
+just as deliberately, to leave ordinary string literals in place, because `baseline_provenance`
+is the stem of a filename and a real reader looks like `open(".../baseline_provenance.json")`.
+Narrowing the evidence to kill a false alarm is only correct while the guard can still see its
+own target; the failure mode one step past the repair is a green check that proves nothing.

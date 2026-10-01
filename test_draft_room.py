@@ -13,6 +13,7 @@ have enough depth (or, for the third bug, enough real multi-position eligibility
 reproduce any of them.
 """
 
+import collections
 import time
 import unittest
 
@@ -23,6 +24,24 @@ import draft_room as dr
 import draft_strategy as ds
 import lineup_optimizer as lo
 import pick_synthesis as ps
+import player_universe as pu
+
+
+def _priced(board):
+    """The rows this board actually put a price on.
+
+    Since the admission widening (#193), a player can reach the board on evidence that he is a
+    real, currently relevant footballer -- a rookie, or a man on an NFL roster -- while nobody
+    has yet published a number for him. Those rows carry universal_value None by contract and
+    are ordered last; they are not a defect and must not be silently dropped from the board.
+
+    But a test about ORDER, about a VALUE GAP, or about which row out-ranks which is a test
+    about the priced field. An unpriced row has no position on that number line at all, so
+    including it does not make such a test stricter -- it makes it crash on None, or compare
+    against a value that was never produced. Every use of this helper is a test whose subject
+    is the priced ordering; a test whose subject is admission or absence must NOT use it.
+    """
+    return [r for r in board if r.get("universal_value") is not None]
 
 
 def _build_pool_players_db(positions=("QB", "RB", "WR", "TE", "DL", "LB", "DB")):
@@ -312,6 +331,65 @@ class CliffAnchoredQBReplacementTests(unittest.TestCase):
         self.assertEqual(with_floors["RB"], without["RB"])
         self.assertNotEqual(with_floors["QB"], without["QB"])
 
+    def test_the_floor_makes_SUPER_FLEX_QB_SHARE_inert_at_QB_and_live_only_elsewhere(self):
+        """CHARACTERIZATION OF A DEFECT (#184), not an endorsement of it.
+
+        Two constants answer the same question -- "what is the QB replacement level in a
+        superflex league?" -- and they do not compose: SUPER_FLEX_QB_SHARE sets QB starter
+        demand, the startable floor overrides that answer unconditionally, so raising the
+        share cannot make a QB more valuable. Its ONLY surviving effect is to take demand
+        AWAY from RB/WR/TE, which raises their replacement level and makes them cheaper.
+        Every superflex league takes this path -- compute_draft_board passes a QB floor
+        whenever SUPER_FLEX is in roster_positions -- so the share is half-dead in the only
+        format that reads it.
+
+        Measured consequence on real data (12T_ppr_SF, empty board, anchor cache cleared
+        between arms): moving the share 0.85 -> 1.00 moved QB bpa on 0 of 39 rows, and moved
+        RB/TE/WR bpa on 225 of 225, all downward. That one-sidedness is why #178's derived
+        1.000 was reverted at the pre-registered gate despite the derivation being sound.
+
+        THIS TEST IS EXPECTED TO FAIL when the two are made to compose. That failure is the
+        point: it is the tripwire that sends whoever fixes it to #184 rather than letting
+        them rediscover the collision. Do not "repair" it by loosening the assertions.
+        """
+        pool = pd.DataFrame({
+            "position": ["QB"] * 28 + ["RB"] * 30,
+            "value": self.CLIFF_CURVE + [300 - i * 5 for i in range(30)],
+        })
+        roster = ["QB", "RB", "RB", "SUPER_FLEX"]
+
+        def levels(share, floors):
+            original = dr.SUPER_FLEX_QB_SHARE
+            dr.SUPER_FLEX_QB_SHARE = share
+            try:
+                return dr.replacement_levels(pool, "value", roster, num_teams=12,
+                                             startable_floors=floors)
+            finally:
+                dr.SUPER_FLEX_QB_SHARE = original
+
+        floors = {"QB": 150.0}
+        low, high = levels(0.85, floors), levels(1.0, floors)
+        self.assertEqual(
+            low["QB"], high["QB"],
+            "#184: the floor no longer overrides QB demand. If that is deliberate, this "
+            "constant is now live at QB and the reverted #178 derivation (share = 1.000) "
+            "should be re-run against the behavioural gate before this test is changed.")
+
+        # The other half of the same defect: the share is not inert, it is inert ONLY at QB.
+        self.assertNotEqual(
+            low["RB"], high["RB"],
+            "#184: the share stopped reaching RB. It is supposed to be live on the "
+            "flex-eligible complement -- that is the whole of its surviving effect.")
+        self.assertGreater(
+            high["RB"], low["RB"],
+            "#184: raising QB's slot share must RAISE the RB replacement level (less RB "
+            "demand => a shallower starter pool => a higher bar), which is what makes every "
+            "RB cheaper without making any QB dearer.")
+
+        # And without the floor the constant works as designed at QB, which is what makes
+        # this a composition defect rather than a broken constant.
+        self.assertNotEqual(levels(0.85, None)["QB"], levels(1.0, None)["QB"])
+
     def test_real_baseline_threshold_band_still_holds(self):
         # The cheap validation the mechanism's own spec calls for: if a future season's
         # projection curve loses its sharp cliff, the 0.45-0.60 threshold band stops agreeing
@@ -401,9 +479,19 @@ class DemandPicksSplitTests(unittest.TestCase):
         lower_tier = [r for r in board if r["player_id"] not in exclude_ids][20:]
         picks = []
         pick_no = 1
-        wr_rb = [r for r in lower_tier if r["position"] in ("WR", "RB")][:80]
+        # WR AND RB TAKEN SEPARATELY, in counts that MAKE the premise rather than hoping the
+        # board's own ordering happens to supply it. This used to slice the top 80 WR/RB rows in
+        # board order, so which of the two positions the history exhausted was a property of how
+        # the board happened to rank them -- and when the flex share stopped being an even split
+        # (#216) the mix shifted and WR stopped being exhausted, failing a test whose SUBJECT
+        # (demand_picks' scope) had not changed at all. 60 receivers round-robin over 12 rosters
+        # is 5 each, past any team's WR starting demand; 20 running backs is at most 2 each,
+        # inside it. The consuming test asserts both, so a future ordering change cannot quietly
+        # take the premise away again.
+        wr = [r for r in lower_tier if r["position"] == "WR"][:60]
+        rb = [r for r in lower_tier if r["position"] == "RB"][:20]
         qb = [r for r in lower_tier if r["position"] == "QB"][:1]
-        for row in wr_rb + qb:
+        for row in wr + rb + qb:
             roster_id = str((pick_no - 1) % 12 + 1)
             picks.append({"pick_no": pick_no, "round": 1, "roster_id": roster_id, "player_id": row["player_id"]})
             pick_no += 1
@@ -441,6 +529,21 @@ class DemandPicksSplitTests(unittest.TestCase):
         wr_rb_drafted = sum(1 for p in history if self.players_db[p["player_id"]]["position"] in ("WR", "RB"))
         self.assertLessEqual(qb_drafted, 1, "fixture must leave QB demand essentially untouched")
         self.assertGreater(wr_rb_drafted, 60, "fixture must genuinely exceed real WR/RB league-wide demand")
+        # THE PREMISE, asserted rather than assumed. Every roster must be past its WR starting
+        # demand (so WR is DECLINED below) and short of its RB demand (so RB stays priced at a
+        # shallower rank). Without this the test can fail for a reason that has nothing to do
+        # with demand_picks -- which is exactly how it failed once.
+        per_team = collections.Counter()
+        for p in history:
+            per_team[(p["roster_id"], self.players_db[p["player_id"]]["position"])] += 1
+        rosters = {p["roster_id"] for p in history}
+        wr_slots = dr.starter_slot_counts(self.league["roster_positions"])["WR"]
+        rb_slots = dr.starter_slot_counts(self.league["roster_positions"])["RB"]
+        for roster_id in rosters:
+            self.assertGreaterEqual(per_team[(roster_id, "WR")], wr_slots,
+                                    f"roster {roster_id} must be past its WR starting demand")
+            self.assertLess(per_team[(roster_id, "RB")], rb_slots,
+                            f"roster {roster_id} must still be short of its RB starting demand")
 
         pool = dr.build_available_pool(
             self.merger, self.players_db, set(), {"QB", "RB", "WR"},
@@ -595,14 +698,14 @@ class RookieDraftRosterContextTieredGateTests(unittest.TestCase):
             self.merger, self.players_db, history, my_roster_id="test", league=self.league, mode="balanced",
             pool_scope="rookies_only", demand_picks=[],
         )
-        return sorted(board, key=lambda r: -r["final_score"])
+        return sorted(_priced(board), key=lambda r: -r["final_score"])
 
     def _baseline_board(self) -> list[dict]:
         return sorted(
-            dr.compute_draft_board(
+            _priced(dr.compute_draft_board(
                 self.merger, self.players_db, [], my_roster_id="test", league=self.league, mode="balanced",
                 pool_scope="rookies_only", demand_picks=[],
-            ),
+            )),
             key=lambda r: -r["universal_value"],
         )
 
@@ -710,7 +813,7 @@ class SuperflexRookieDraftRosterContextTieredGateTests(RookieDraftRosterContextT
 
     This matters as its own case, not just a parameterization: SUPER_FLEX gives QB a real
     flex share via SUPER_FLEX_QB_SHARE (0.85 of a slot, not an even split -- see that
-    constant's own docstring), so a rookie QB's need_bonus ceiling here is meaningfully
+    constant's own comment), so a rookie QB's need_bonus ceiling here is
     higher than in the standard-1QB class above. Real superflex rookie drafts see QB
     desperation far more often and more severely than 1QB drafts do (this was the user's own
     domain point motivating this audit item), so the standout-protection contract has to be
@@ -942,7 +1045,7 @@ class RealBaselineIDPBugRegressionTests(unittest.TestCase):
         )
         top_by_position = {}
         for pos in ("DL", "LB", "DB"):
-            rows = [r for r in board if r["position"] == pos]
+            rows = [r for r in _priced(board) if r["position"] == pos]
             if rows:
                 top_by_position[pos] = max(r["bpa"] for r in rows)
         self.assertGreaterEqual(len(top_by_position), 2, "need at least two IDP positions represented")
@@ -951,6 +1054,229 @@ class RealBaselineIDPBugRegressionTests(unittest.TestCase):
             f"every IDP position's top player pinned to the maximum score again: {top_by_position}",
         )
 
+
+class TradeValueAnchorBranchTests(unittest.TestCase):
+    """#123. compute_draft_board has three anchors, and only two of them were ever tested
+    DIRECTLY. The trade_value branch (`if (~has_proj).any()`) is wired identically to the
+    points branch above it, but every synthetic universe in this suite is built FROM the
+    projection set, so nothing in it ever entered that branch on purpose -- the class above
+    exercises the branch's CONSEQUENCES (rank order, differentiation) without ever naming the
+    branch or checking its arithmetic.
+
+    It is reachable on real committed data: 76 rows in the real baseline carry a trade_value
+    with no projection of any kind (DL 24, LB 29, DB 23), so these tests price them and read
+    the branch's own output rather than a downstream effect of it.
+
+    Deliberately NOT tested here, with the reason, because the alternative is a fixture that
+    pretends: the branch's own NaN arm (`if r["position"] in tv_replacement else nan`) is
+    unreachable. _fill_omitted_from_anchor fills every position replacement_levels omits from
+    the PRE-DRAFT pool, and the pre-draft pool is a superset of the live one, so a position
+    that reaches this branch always has a level by the time the lambda runs. Measured across
+    four demand states (see the exhaustion test below): 0 unpriced rows in every one. The
+    absence contract is exercised in this branch at build_available_pool's EXCLUDE arm
+    instead, which is the last test in the class."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db()
+        cls.heavy_league = dict(LIGHT_IDP_LEAGUE, roster_positions=[
+            "QB", "RB", "RB", "WR", "WR", "TE", "DL", "DL", "LB", "LB", "DB", "DB", "BN",
+        ])
+        cls.light_board = cls._board(LIGHT_IDP_LEAGUE, [])
+        cls.heavy_board = cls._board(cls.heavy_league, [])
+
+    @classmethod
+    def _board(cls, league, picks):
+        return dr.compute_draft_board(
+            cls.merger, cls.players_db, picks, my_roster_id="99", league=league, mode="balanced",
+        )
+
+    @staticmethod
+    def _branch(board):
+        return [r for r in board if r["bpa_source"] == "position_relative_trade_value_vor"]
+
+    @staticmethod
+    def _points(board):
+        """Rows anchored on POINTS. Deliberately not "everything that is not the trade_value
+        branch": since #193 bpa_source is a three-way space -- a points source, the trade_value
+        branch, or NO_PRICEABLE_INPUT for a row admitted on evidence the player is real with no
+        number attached. Defining this arm by negation would silently sweep that third state in
+        and make the partition assertion below false for the wrong reason."""
+        return [r for r in board if str(r["bpa_source"]).startswith("points_vor")]
+
+    @staticmethod
+    def _unpriced(board):
+        return [r for r in board if r["bpa_source"] == dr.NO_PRICEABLE_INPUT]
+
+    def test_the_trade_value_branch_is_taken_and_labels_itself(self):
+        # Non-vacuity for every other test in this class: if the real baseline ever gains IDP
+        # projections (#49), this branch stops firing and these tests lose their subject --
+        # loudly, here, rather than by silently passing on an empty population.
+        rows = self._branch(self.light_board)
+        self.assertGreater(len(rows), 50, "the trade_value branch did not fire on real data")
+        self.assertEqual({r["position"] for r in rows}, {"DL", "LB", "DB"})
+        # The branch's precondition, read off the output: no points source had anything.
+        # projected_points is None here, never fabricated -- see compute_draft_board's docstring.
+        self.assertTrue(all(r["projected_points"] is None for r in rows))
+        # And the converse, so the label is a partition rather than a one-way marker.
+        self.assertTrue(all(r["projected_points"] is not None for r in self._points(self.light_board)))
+        # The third arm, and the proof the partition is exhaustive: every row lands in exactly
+        # one of the three, and the no-number arm carries no points either.
+        self.assertEqual(
+            len(self._branch(self.light_board)) + len(self._points(self.light_board))
+            + len(self._unpriced(self.light_board)),
+            len(self.light_board), "bpa_source is not a partition of the board")
+        self.assertTrue(all(r["projected_points"] is None for r in self._unpriced(self.light_board)))
+
+    def test_bpa_on_the_branch_is_trade_value_minus_one_level_per_position(self):
+        """The arithmetic itself, which nothing else in the suite reads. bpa is unscaled VOR
+        (see _scale_vor_to_bpa), so `trade_value - bpa` must recover a SINGLE replacement level
+        per position -- a per-row or per-subgroup constant would mean the branch is computing
+        something other than one position-relative VOR."""
+        proj = self.merger.projections
+        trade_value = {
+            (row["norm_name"], row["position"]): row["trade_value"]
+            for _, row in proj.iterrows()
+        }
+        implied = collections.defaultdict(set)
+        for r in self._branch(self.light_board):
+            key = (r["name"].lower(), r["position"])
+            self.assertIn(key, trade_value, f"{r['name']} did not join back to its source row")
+            implied[r["position"]].add(round(trade_value[key] - r["bpa"], 6))
+        self.assertEqual(sorted(implied), ["DB", "DL", "LB"])
+        for position, levels in implied.items():
+            self.assertEqual(
+                len(levels), 1,
+                f"{position} implies more than one replacement level: {sorted(levels)}",
+            )
+            # A level of 0.0 would mean "replacement is a worthless player", which for a
+            # position with real starter demand is the degenerate anchor, not a measurement.
+            self.assertGreater(next(iter(levels)), 0.0)
+
+    def test_the_branch_keeps_below_replacement_players_negative(self):
+        """The same signed-measurement rule the points branch is held to (#74/#75). A clip at
+        zero here would flatten every below-replacement IDP into one indistinguishable value
+        AND make them indistinguishable from a genuine boundary zero."""
+        priced = [r["bpa"] for r in self._branch(self.light_board)]
+        self.assertTrue(any(v < 0 for v in priced), "no below-replacement row survived the branch")
+        self.assertTrue(any(v > 0 for v in priced), "no above-replacement row in the branch")
+        self.assertGreater(len(set(priced)), 20, "the branch collapsed real players onto too few values")
+
+    def test_the_branch_is_priced_against_this_leagues_own_demand(self):
+        """The branch shares replacement_levels with the points path, so its level has to move
+        with the league's real IDP demand -- not sit on a fixed positional constant. The class
+        above pins the RANK consequence of this; this pins the branch's own number."""
+        light = sorted(r["bpa"] for r in self._branch(self.light_board))
+        heavy = sorted(r["bpa"] for r in self._branch(self.heavy_board))
+        self.assertEqual(len(light), len(heavy), "the two leagues priced different populations")
+        # Six IDP starters per team instead of a third of one shared flex slot: replacement
+        # level is a far worse player, so the same pool prices out higher throughout.
+        self.assertGreater(heavy[len(heavy) // 2], light[len(light) // 2])
+        self.assertGreater(max(heavy), max(light))
+
+    def test_a_trade_value_row_does_not_out_compete_a_projected_one(self):
+        """The half of the original IDP bug this branch exists to not re-introduce: a locally
+        renormalized handful reaching the top of the whole board.
+
+        Recorded honestly, because the test would otherwise read as proof of something it does
+        not prove: the two branches share a NUMBER LINE, not a UNIT. A points VOR is in
+        projected points (real max 379); a trade_value VOR is in Draft Sharks' 0-100 trade
+        scale, and within that scale IDP is capped far lower again (real per-position maxima
+        30/35/15 against 100 for WR). So the ceiling below is partly a demand judgment and
+        partly a unit artifact, and in the heavy-IDP league -- 72 IDP starters against 76
+        priceable IDP players -- it is mostly the artifact. That is #51's supply defect
+        (no IDP points source at all), whose remedy is an input, not this arithmetic; see
+        #152 for the measurement. The assertion here is the narrow one the branch does
+        guarantee, not the broad one the old prose claimed."""
+        for label, board in (("light", self.light_board), ("heavy", self.heavy_board)):
+            branch, points = self._branch(board), self._points(board)
+            self.assertLess(
+                max(r["bpa"] for r in branch), max(r["bpa"] for r in points),
+                f"{label}: a trade_value row out-priced every projected player",
+            )
+            top = board[:25]
+            self.assertEqual(
+                0, sum(1 for r in top if r["bpa_source"] == "position_relative_trade_value_vor"),
+                f"{label}: a trade_value fallback row reached the top 25 of the board",
+            )
+
+    def test_both_replacement_bases_are_reachable_inside_this_branch(self):
+        """_fill_omitted_from_anchor is called on the trade_value path too, and its effect is
+        recorded rather than folded into an indistinguishable price. Both states have to be
+        reachable here or the column is decorative on this branch."""
+        by_position = collections.defaultdict(list)
+        for pid, p in self.players_db.items():
+            by_position[p["position"]].append(pid)
+        picks = []
+        for position in ("DL", "LB", "DB"):
+            for pid in by_position[position][:10]:
+                picks.append({"player_id": pid, "roster_id": str(len(picks) % 12 + 1),
+                              "round": len(picks) // 12 + 1, "pick_no": len(picks) + 1})
+        exhausted = self._branch(self._board(LIGHT_IDP_LEAGUE, picks))
+        self.assertGreater(len(exhausted), 20, "drafting emptied the branch's population")
+        self.assertEqual({r["replacement_basis"] for r in self._branch(self.light_board)},
+                         {"live_starter_demand"})
+        self.assertEqual({r["replacement_basis"] for r in exhausted}, {"predraft_anchor"})
+
+    def test_no_row_reaching_this_branch_is_left_unpriced(self):
+        """The measurement behind the class docstring's claim that the branch's NaN arm is
+        unreachable. Four demand states, from untouched to nearly drained; if a repair ever
+        makes an unpriced row reachable here, this fires and the docstring above needs
+        rewriting -- which is the point of asserting a negative rather than assuming it."""
+        by_position = collections.defaultdict(list)
+        for pid, p in self.players_db.items():
+            by_position[p["position"]].append(pid)
+        for taken in (0, 4, 10, 20):
+            picks = []
+            for position in ("DL", "LB", "DB"):
+                for pid in by_position[position][:taken]:
+                    picks.append({"player_id": pid, "roster_id": str(len(picks) % 12 + 1),
+                                  "round": len(picks) // 12 + 1, "pick_no": len(picks) + 1})
+            rows = self._branch(self._board(LIGHT_IDP_LEAGUE, picks))
+            self.assertGreater(len(rows), 10, f"{taken} taken: the branch stopped firing")
+            self.assertEqual(
+                [], [r["name"] for r in rows if r["bpa"] is None],
+                f"{taken} taken: the trade_value branch left rows unpriced",
+            )
+
+    def test_a_player_with_neither_number_is_admitted_unpriced_rather_than_priced_at_zero(self):
+        """Where the absence contract actually lives on this path -- RESTATED for #193.
+
+        This test used to assert EXCLUSION: a player with no number of any kind never reached
+        the board at all. That was the old admission gate's guarantee and the owner has ruled it
+        out, for a reason this test's own population illustrates -- "no vendor number" was
+        standing in for "not a real player", and it is not the same claim. Most of the real IDP
+        field has no trade_value, and a rostered linebacker is a real footballer whether or not
+        a paid export got round to him.
+
+        So the contract moves from EXCLUDE to PROPAGATE-AND-ORDER-LAST, which is the arm the
+        absence contract prefers everywhere else in this engine. The thing that must never
+        happen is unchanged and is what this still pins: the branch is never handed a row it
+        would have to invent a number for. Such a row is admitted, priced at None, ordered last,
+        and labelled NO_PRICEABLE_INPUT rather than borrowing the trade_value branch's name.
+
+        Matched on (name, position) rather than name alone: the baseline abbreviates to a first
+        initial, so a bare-name check reports false hits across positions (13 of them, all
+        spurious, on this exact fixture)."""
+        proj = self.merger.projections
+        by_key = {(r["name"].lower(), r["position"]): r for r in self.light_board}
+        unnumbered = 0
+        reached = 0
+        for position in ("DL", "LB", "DB"):
+            sub = proj[proj["position"] == position]
+            neither = sub[sub["trade_value"].isna() & sub["projection"].isna()]
+            unnumbered += len(neither)
+            for name in neither["norm_name"]:
+                row = by_key.get((name, position))
+                if row is None:
+                    continue    # not every baseline name resolves back through the fixture
+                reached += 1
+                self.assertIsNone(row["bpa"], f"{name} ({position}) was priced from nothing")
+                self.assertIsNone(row["universal_value"], f"{name} ({position})")
+                self.assertIsNone(row["confidence"], f"{name} ({position})")
+                self.assertEqual(row["bpa_source"], dr.NO_PRICEABLE_INPUT, f"{name} ({position})")
+        self.assertGreater(unnumbered, 100, "no unnumbered IDP rows in the baseline at all")
+        self.assertGreater(reached, 0, "vacuous: no unnumbered row reached the board to check")
 
 class InvariantTests(unittest.TestCase):
     """The hard invariants named in draft_room.py's own module docstring, enforced as real
@@ -961,17 +1287,64 @@ class InvariantTests(unittest.TestCase):
         cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR"))
 
     def test_need_bonus_cannot_flip_a_large_universal_value_gap(self):
-        board = dr.compute_draft_board(
+        """MANDATE 3.3: THE OLD BODY WAS A TAUTOLOGY, not merely vacuous on this fixture.
+
+        It took the TOP and BOTTOM priced rows, asserted their gap exceeded NEED_BONUS_MAX, then
+        asserted `top - (bottom + NEED_BONUS_MAX) > 0` -- which is the same statement rearranged.
+        The second assertion could not fail unless the first already had, and neither one ever read
+        a `need_bonus` the board had actually computed. It also picked the widest pair on the board
+        (a gap near 380 against a cap of 12), so even as a claim about the extremes it was asking
+        whether 380 beats 12.
+
+        What the invariant actually says: if two priced rows differ in universal_value by more than
+        the cap, no need_bonus either of them can earn may reverse their order. So it is tested
+        over EVERY qualifying pair, with the board's own numbers, on a roster where need_bonus
+        genuinely varies -- three RBs already taken, which collapses RB need to 0.33 while WR stays
+        at 8.33. A flat need_bonus cannot reverse anything, so a board carrying one value everywhere
+        would make this pass no matter what the code did."""
+        opening = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        top, bottom = board[0], board[-1]
-        self.assertGreater(top["universal_value"] - bottom["universal_value"], dr.NEED_BONUS_MAX,
-                            "fixture's own value spread is too small to exercise this invariant")
-        # Even at max possible need_bonus, the universal-value gap must still dominate.
-        self.assertGreater(
-            top["universal_value"] + 0 - (bottom["universal_value"] + dr.NEED_BONUS_MAX),
-            0,
+        taken = [row for row in _priced(opening) if row["position"] == "RB"][:3]
+        self.assertEqual(len(taken), 3, "fixture has too few priced RBs to move need off its flat value")
+        board = dr.compute_draft_board(
+            self.merger, self.players_db,
+            [{"player_id": row["player_id"], "roster_id": "99"} for row in taken],
+            my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
+        rows = [(row["universal_value"], row["need_bonus"]) for row in _priced(board)
+                if row.get("need_bonus") is not None]
+        self.assertGreater(len(rows), 50, "vacuous: too few priced rows carrying a need_bonus")
+
+        # THE CAP IS WHAT MAKES THE INVARIANT POSSIBLE, so it is asserted rather than assumed.
+        for _value, bonus in rows:
+            self.assertGreaterEqual(bonus, 0.0)
+            self.assertLessEqual(bonus, dr.NEED_BONUS_MAX)
+
+        # NON-VACUITY, both halves: the term must vary, and there must be qualifying pairs.
+        spread = max(bonus for _v, bonus in rows) - min(bonus for _v, bonus in rows)
+        self.assertGreater(spread, 1.0,
+                            "need_bonus is flat across this board, so nothing here could reverse "
+                            "an order and the test would pass against any implementation")
+
+        qualifying = tightest = 0
+        for high_value, high_bonus in rows:
+            for low_value, low_bonus in rows:
+                gap = high_value - low_value
+                if gap <= dr.NEED_BONUS_MAX:
+                    continue
+                qualifying += 1
+                if tightest == 0 or gap < tightest:
+                    tightest = gap
+                self.assertGreater(
+                    (high_value + high_bonus) - (low_value + low_bonus), 0,
+                    f"a universal_value gap of {gap:.3f} -- wider than the {dr.NEED_BONUS_MAX} cap "
+                    f"-- was reversed by need_bonus ({high_bonus} against {low_bonus})")
+        self.assertGreater(qualifying, 1000, "vacuous: almost no pair exceeds the cap")
+        # And the population reaches the EDGE of the cap, so this is not only testing easy pairs.
+        self.assertLess(tightest, dr.NEED_BONUS_MAX * 1.5,
+                        f"the tightest qualifying gap is {tightest:.3f}, far above the "
+                        f"{dr.NEED_BONUS_MAX} cap -- the boundary case is not being exercised")
 
     def test_bpa_magnitude_tracks_the_real_vor_gap_not_a_percentile_rank(self):
         # An independent audit caught this directly: percentile-ranking VOR (rather than
@@ -984,14 +1357,48 @@ class InvariantTests(unittest.TestCase):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        top8 = board[:8]
-        big_gap = top8[0]["bpa"] - top8[3]["bpa"]  # #1 vs #4: real tier gap expected
-        small_gap = top8[3]["bpa"] - top8[7]["bpa"]  # #4 vs #8: shallower part of the pool
-        self.assertGreater(top8[0]["bpa"] - top8[-1]["bpa"], 10.0, "fixture's spread too flat to exercise this")
-        # Not a strict inequality in every possible fixture shape, but percentile-ranking
-        # would make these two gaps nearly identical (rank-based spacing is ~uniform) --
-        # linear VOR scaling should not.
-        self.assertNotAlmostEqual(big_gap, small_gap, delta=0.5)
+        # THE OLD PROXY IS WITHDRAWN, AND IT IS WORTH SAYING WHY. This test used to compare two
+        # four-player windows -- (#1 - #4) against (#4 - #8) -- and require them to differ by
+        # more than 0.5, on the reasoning that rank-based spacing is ~uniform and linear VOR
+        # scaling is not. It went red when both windows came back 33.0 (188.0 -> 155.0 -> 122.0):
+        # a coincidence, in a pool where bpa was a perfectly linear points scale the whole time.
+        # Whether two arbitrary windows happen to be equal says nothing about linear-vs-rank, so
+        # the proxy could fail on a healthy engine and pass on a percentile-ranked one. It is
+        # replaced below by the property itself.
+        #
+        # `bpa` is now `_vor` verbatim (`_scale_vor_to_bpa` returns `vor.astype(float)`), and
+        # every player at one position is measured against ONE replacement level. So within a
+        # position the level cancels and the difference between two players' bpa must equal the
+        # difference between their projected points EXACTLY. A percentile rank cannot satisfy
+        # that for a single pair, let alone all of them; a rescaled-to-100 bpa could not either.
+        # Measured here: 8161 same-position pairs, worst deviation 0.0.
+        by_position = {}
+        for row in board:
+            if (row.get("bpa") is not None and row.get("projected_points") is not None
+                    and row.get("bpa_source") == "points_vor_draftsharks"):
+                by_position.setdefault(row["position"], []).append(
+                    (row["name"], float(row["bpa"]), float(row["projected_points"])))
+        pairs = 0
+        for position, rows in by_position.items():
+            for i in range(len(rows)):
+                for j in range(i + 1, len(rows)):
+                    pairs += 1
+                    self.assertAlmostEqual(
+                        rows[i][1] - rows[j][1], rows[i][2] - rows[j][2], delta=0.01,
+                        msg=(f"{position}: {rows[i][0]} vs {rows[j][0]} -- bpa gap "
+                             f"{rows[i][1] - rows[j][1]} does not match the real points gap "
+                             f"{rows[i][2] - rows[j][2]}, so bpa is no longer the real VOR"))
+        self.assertGreater(pairs, 1000, "vacuous: too few same-position priced pairs to check")
+
+        # And the other half of the same claim, stated positively: a rank scale spaces players
+        # ~uniformly, so its consecutive gaps would all be about equal. Real VOR gaps are not.
+        gaps = [a[1] - b[1] for rows in by_position.values() for a, b in zip(rows, rows[1:])]
+        self.assertGreater(len(gaps), 50, "vacuous: no consecutive pairs to measure spacing over")
+        self.assertGreater(max(gaps) - min(gaps), 10.0,
+                            "consecutive bpa gaps are near-uniform, which is what a percentile "
+                            "rank produces and what real points-above-replacement does not")
+        self.assertGreater(board[0]["bpa"] - board[7]["bpa"], 10.0,
+                            "fixture's spread too flat to exercise this")
 
     def test_replacement_level_reflects_remaining_demand_not_static_league_demand(self):
         # An independent audit caught this directly: with a STATIC target rank (num_teams x
@@ -1073,10 +1480,21 @@ class InvariantTests(unittest.TestCase):
         # RISK_ADJ documented as the intended penalty. Only "IR" worked, since it's already an
         # abbreviation in Sleeper's own real vocabulary too -- exactly the one status the
         # pre-existing injury test (immediately above) happened to cover, so nothing caught this.
-        self.assertEqual(dr.RISK_ADJ.get("Out"), -10.0)
-        self.assertEqual(dr.RISK_ADJ.get("Doubtful"), -5.0)
-        self.assertEqual(dr.RISK_ADJ.get("Questionable"), -1.5)
-        self.assertEqual(dr.RISK_ADJ.get("IR"), -18.0)
+        # D8 renamed the table and changed its unit from points to a share of the player's own
+        # projection, so the magnitudes below are gone. WHAT THIS TEST IS ACTUALLY ABOUT SURVIVES
+        # INTACT: the keys are Sleeper's real full words, not abbreviations. That is the bug it was
+        # written for -- "Out" matching nothing -- and it is asserted on the keys, which is where
+        # the bug lived, rather than on numbers that were never its subject.
+        self.assertIsNotNone(dr.HEALTH_DISCOUNT_RATE.get("Out"))
+        self.assertIsNotNone(dr.HEALTH_DISCOUNT_RATE.get("Doubtful"))
+        self.assertIsNotNone(dr.HEALTH_DISCOUNT_RATE.get("IR"))
+        for abbreviation in ("O", "D", "Q", "PU"):
+            self.assertIsNone(dr.HEALTH_DISCOUNT_RATE.get(abbreviation),
+                              f"{abbreviation!r} is an abbreviation Sleeper never sends")
+        # "Questionable" was here at -1.5 and is GONE by owner ruling (#191) -- inverted, not
+        # deleted, so the vocabulary repair this test records stays pinned for the statuses
+        # that survived it.
+        self.assertIsNone(dr.HEALTH_DISCOUNT_RATE.get("Questionable"))
 
         healthy = dict(self.players_db)
         pid = next(iter(healthy))
@@ -1104,10 +1522,18 @@ class InvariantTests(unittest.TestCase):
             # time_horizon_adj -- not hardcoded to any one player's number.
             th = healthy_row["time_horizon_adj"]
             expected_scale = 1.0 if th <= 0 else 1.0 - (1.0 - dr.DYNASTY_RISK_ADJ_MIN_SCALE) * (th / dr.TIME_HORIZON_CLAMP[1])
+            #: D8: the discount is a share of HIS OWN projection, so the expected loss is built
+            #: from the healthy row instead of from the literal 10.0 the flat table used to hold.
+            expected_loss = abs(dr.HEALTH_DISCOUNT_RATE["Out"]
+                                * healthy_row["projected_points"]) * expected_scale
+            #: delta, not places: `universal_value` is rounded to 2 decimals, so a DIFFERENCE of
+            #: two of them carries up to 0.01 of rounding error. The old flat magnitudes were whole
+            #: numbers and hid that; a share of a projection does not divide evenly, so the
+            #: tolerance has to be stated. 0.02 is two rounding steps and nothing looser.
             self.assertAlmostEqual(
-                uv_healthy - uv_out, 10.0 * expected_scale,
-                msg="a player marked 'Out' should lose the -10.0 RISK_ADJ discount, scaled by "
-                "experiment D's trajectory-aware factor in this dynasty-league fixture",
+                uv_healthy - uv_out, expected_loss, delta=0.02,
+                msg="a player marked 'Out' should lose his own Out-share of projected points, "
+                "scaled by experiment D's trajectory-aware factor in this dynasty-league fixture",
             )
 
     def test_trajectory_aware_risk_adj_fixes_the_thin_bpa_sign_flip_this_test_used_to_flag(self):
@@ -1147,7 +1573,13 @@ class InvariantTests(unittest.TestCase):
         # d_scale IS DYNASTY_RISK_ADJ_MIN_SCALE (the floor), and the flag must move his
         # universal_value by exactly that scaled penalty and by nothing else -- risk_adj is the
         # only term an injury status is allowed to touch.
-        self.assertAlmostEqual(row_ir["risk_adj"], dr.RISK_ADJ["IR"] * dr.DYNASTY_RISK_ADJ_MIN_SCALE)
+        #: D8: the penalty is a share of HIS OWN projection, so the expected value is built from
+        #: the row rather than looked up. The claim is unchanged -- at the positive clamp his
+        #: d_scale is the floor, and risk_adj must be exactly the floored penalty.
+        self.assertAlmostEqual(
+            row_ir["risk_adj"],
+            dr.HEALTH_DISCOUNT_RATE["IR"] * row_ir["projected_points"]
+            * dr.DYNASTY_RISK_ADJ_MIN_SCALE, places=6)
         self.assertAlmostEqual(row_ir["universal_value"],
                                young_rising["universal_value"] + row_ir["risk_adj"], places=2)
 
@@ -1161,7 +1593,10 @@ class InvariantTests(unittest.TestCase):
         # an injury flag, and asserting "universal_value >= 0" there would be asserting his
         # position's scarcity, not experiment D. If the real pool contains no such player this
         # run, that is a reportable fixture limitation, not a pass.
-        thin_bound = abs(dr.RISK_ADJ["IR"]) * dr.DYNASTY_RISK_ADJ_MIN_SCALE
+        #: D8: "thin bpa" is bounded by what the IR discount can actually take off THIS player,
+        #: which is a share of his own projection rather than a table entry.
+        thin_bound = abs(dr.HEALTH_DISCOUNT_RATE["IR"] * young_rising["projected_points"]) \
+            * dr.DYNASTY_RISK_ADJ_MIN_SCALE
         if abs(young_rising["bpa"]) > thin_bound or young_rising["universal_value"] < 0.0:
             self.skipTest(
                 "no max-positive-trajectory player in the current real pool is also thin-bpa "
@@ -1177,17 +1612,49 @@ class InvariantTests(unittest.TestCase):
             "flag alone -- if this regresses, either the D formula or its constants changed",
         )
 
-    def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
+    def _wr_need_bonus_after(self, held: int):
         board = dr.compute_draft_board(
             self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
         )
-        wr_ids = [r["player_id"] for r in board if r["position"] == "WR"][:3]
+        wr_ids = [r["player_id"] for r in board if r["position"] == "WR"][:held]
         my_picks = [{"roster_id": "99", "player_id": pid, "round": 1} for pid in wr_ids]
         board2 = dr.compute_draft_board(
-            self.merger, self.players_db, my_picks, my_roster_id="99", league=LIGHT_IDP_LEAGUE, mode="balanced",
+            self.merger, self.players_db, my_picks, my_roster_id="99", league=LIGHT_IDP_LEAGUE,
+            mode="balanced",
         )
-        remaining_wr = [r for r in board2 if r["position"] == "WR"]
-        self.assertTrue(all(r["need_bonus"] == 0 for r in remaining_wr))
+        return [r["need_bonus"] for r in board2 if r["position"] == "WR"]
+
+    def test_need_bonus_is_zero_once_a_position_is_fully_satisfied(self):
+        """FULLY SATISFIED MEANS EVERY SLOT A WR COULD OCCUPY, and this league declares FOUR of
+        them: two dedicated WR slots and TWO FLEX. The fixture used to hold three WRs and assert
+        zero, which the old arithmetic granted because it charged each pick beyond the dedicated
+        slots a WHOLE flex share -- so the third WR consumed 1.0 against a remaining WR flex share
+        of 0.667 and the position read as satisfied while one FLEX slot sat empty.
+
+        Mandate 2.6 reads the slots instead of the picks, so it takes four."""
+        self.assertTrue(all(nb == 0 for nb in self._wr_need_bonus_after(4)))
+
+    def test_and_it_is_NOT_zero_while_a_flex_slot_a_WR_could_fill_is_still_open(self):
+        """The other side of the same invariant, which is the part that changed. Three WRs cover
+        WR, WR and one FLEX; the second FLEX is open and a fourth WR could start in it, so WR need
+        is not zero -- it is that slot's own share of WR, and no more."""
+        after_three = self._wr_need_bonus_after(3)
+        self.assertTrue(after_three, "no WR rows survived the fixture; the test proves nothing")
+        self.assertTrue(all(nb > 0 for nb in after_three))
+        self.assertTrue(all(nb < dr.NEED_BONUS_PER_FLEX_SHARE for nb in after_three),
+                        "one third of one FLEX appearance is the whole remaining claim")
+
+    def test_the_need_ladder_falls_by_slots_and_reaches_zero(self):
+        """Monotone in the slots covered, which is what makes it a demand reading rather than a
+        pick count: 1 -> 2 closes the dedicated slot, 2 -> 3 and 3 -> 4 close one FLEX each, and a
+        FIFTH WR changes nothing because there is nothing left for him to open up."""
+        ladder = [self._wr_need_bonus_after(n) for n in (1, 2, 3, 4, 5)]
+        for rows in ladder:
+            self.assertTrue(rows, "a rung of the ladder has no WR rows")
+        tops = [max(rows) for rows in ladder]
+        self.assertEqual(tops, sorted(tops, reverse=True), f"need rose as slots filled: {tops}")
+        self.assertEqual(tops[3], 0.0)
+        self.assertEqual(tops[4], 0.0)
 
     def test_need_bonus_is_the_only_thing_that_differs_between_two_teams_at_the_same_draft_state(self):
         # universal_value has to be genuinely team-agnostic -- what ANY manager watching this
@@ -1232,7 +1699,7 @@ class InvariantTests(unittest.TestCase):
             # the invariant under test is "confidence isn't in this sum at all", not exact
             # float reproduction of an already-rounded display field.
             self.assertAlmostEqual(
-                row["final_score"], row["bpa"] + dr.UPSIDE_GROWTH_WEIGHT * row["growth_signal"], delta=0.1,
+                row["final_score"], row["bpa"] + dr.TIME_HORIZON_SLOPE * row["growth_signal"], delta=0.1,
             )
 
 
@@ -1258,29 +1725,85 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
     def setUpClass(cls):
         cls.merger, cls.players_db = _build_pool_players_db(("RB", "WR"))
 
-    def _risk_adj_for_status(self, league: dict, status: str, pid: str) -> float:
+    def _row_for_status(self, league: dict, status, pid: str) -> dict:
         pdb = dict(self.players_db)
         pdb[pid] = dict(pdb[pid], injury_status=status)
         board = dr.compute_draft_board(self.merger, pdb, [], my_roster_id="99", league=league, mode="balanced")
-        row = next(r for r in board if r["player_id"] == pid)
-        return row["risk_adj"]
+        return next(r for r in board if r["player_id"] == pid)
+
+    def _risk_adj_for_status(self, league: dict, status, pid: str) -> float:
+        return self._row_for_status(league, status, pid)["risk_adj"]
+
+    def _unscaled_penalty(self, league: dict, status: str, pid: str) -> float:
+        """D8: the discount is a share of THIS player's projection, so the number experiment D
+        scales cannot be looked up in a table any more -- it has to be built from the same row the
+        board priced. That is the whole of what changed in these four tests; the claims are the
+        same. Reading the projection off the row rather than recomputing it also keeps the
+        comparison honest if the pricing path ever adjusts points before the discount applies."""
+        row = self._row_for_status(league, status, pid)
+        return dr.HEALTH_DISCOUNT_RATE[status] * row["projected_points"]
 
     def _expected_d_scale(self, time_horizon_adj: float) -> float:
         if time_horizon_adj <= 0:
             return 1.0
         return 1.0 - (1.0 - dr.DYNASTY_RISK_ADJ_MIN_SCALE) * (time_horizon_adj / dr.TIME_HORIZON_CLAMP[1])
 
-    def test_the_four_magnitudes_are_unchanged_by_this_experiment(self):
-        # The vocabulary itself was explicitly NOT touched -- only whether/how it's applied.
-        self.assertEqual(dr.RISK_ADJ, {"IR": -18.0, "Out": -10.0, "Doubtful": -5.0, "Questionable": -1.5})
+    def test_the_magnitudes_are_unchanged_by_this_experiment(self):
+        """Experiment D changed only WHETHER/HOW the penalties apply, never their sizes.
+
+        The set is three, not four: "Questionable" was removed later and for an unrelated
+        reason (#191 -- it is not really an injury status, and Sleeper projects such players
+        for a full season). That removal is a change to the VOCABULARY, which is exactly what
+        this test says experiment D did not make -- so it is recorded here rather than allowed
+        to look like drift in D's own scope.
+
+        AND THE ASSERTION IS NOW PER DESIGNATION, for the same reason. It compared the whole table
+        to a three-entry literal and so failed when MANDATE 4 added "PUP", whose magnitude is IR's
+        because GAMES_MISSED_FLOOR gives them the same four-game floor. That is a membership change
+        with no new number in it -- exactly the thing this test is NOT about -- while a dict equality
+        cannot tell a resize from an addition.
+
+        AND THE MAGNITUDES THEMSELVES MOVED AT D8, on an owner ruling, which is the one thing this
+        test was written to forbid -- so it can no longer be expressed as points. What experiment D
+        must not do is change the SIZE of the discount; what D8 did was change its UNIT, from flat
+        points to a share of the player's own projection. Those are different claims.
+
+        THE PREVIOUS VERSION OF THIS TEST CHECKED NOTHING, and it was written in this range by the
+        same hand that is now fixing it (D-F6). It read, for each designation,
+        `HEALTH_DISCOUNT_RATE[d] == -(games / SEASON_GAMES)` -- and `HEALTH_DISCOUNT_RATE` IS that
+        expression, comprehended over `GAMES_MISSED_PRICED`. Both sides moved together: raising IR
+        from four games to eight passed. The docstring called that "pinning the derivation", which
+        is exactly the error -- a derivation compared to itself pins nothing, and the claim being
+        made here is about MAGNITUDES, so magnitudes are what must be literal.
+
+        Coverage was never lost (two sibling tests pin the literal game counts), but this test's
+        stated claim was not the one it checked, which is `#133`'s shape in a test body.
+        """
+        expected = {"IR": -4 / 17, "PUP": -4 / 17, "Out": -1 / 17, "Doubtful": -0.5 / 17}
+        # MEMBERSHIP FIRST, and separately: an ADDED designation is a vocabulary change, which is
+        # the thing this test says experiment D did not make, and it must not read as a resize.
+        self.assertEqual(set(dr.HEALTH_DISCOUNT_RATE), set(expected),
+                         "the priced designations changed -- that is a VOCABULARY change, not the "
+                         "magnitude change this test forbids; update the literals deliberately")
+        for designation, rate in sorted(expected.items()):
+            with self.subTest(designation=designation):
+                self.assertAlmostEqual(
+                    dr.HEALTH_DISCOUNT_RATE[designation], rate, places=9,
+                    msg=f"{designation}'s discount SIZE moved, which experiment D must not do")
+        # AND THE SEASON ITSELF IS A LITERAL, because the rates above are shares of it: a changed
+        # SEASON_GAMES rescales every discount while leaving the game counts alone, and no
+        # assertion over the table alone would see it.
+        self.assertEqual(pu.SEASON_GAMES, 17)
 
     def test_redraft_league_is_byte_identical_to_before_this_change(self):
         # A non-dynasty league must see EXACTLY the old flat discount -- this experiment is
         # explicitly dynasty-scoped, per the user's own instruction.
         pid = next(iter(self.players_db))
-        for status, expected in dr.RISK_ADJ.items():
+        for status in dr.HEALTH_DISCOUNT_RATE:
             with self.subTest(status=status):
-                self.assertEqual(self._risk_adj_for_status(self.REDRAFT_LEAGUE, status, pid), expected)
+                self.assertAlmostEqual(
+                    self._risk_adj_for_status(self.REDRAFT_LEAGUE, status, pid),
+                    self._unscaled_penalty(self.REDRAFT_LEAGUE, status, pid), places=6)
 
     def test_dynasty_league_gives_full_penalty_to_a_flat_or_declining_trajectory_player(self):
         board = dr.compute_draft_board(
@@ -1289,11 +1812,13 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         declining = next((r for r in board if r["time_horizon_adj"] <= 0), None)
         if declining is None:
             self.skipTest("fixture has no real flat/declining-trajectory player to exercise this")
-        for status, base in dr.RISK_ADJ.items():
+        for status in dr.HEALTH_DISCOUNT_RATE:
             with self.subTest(status=status):
                 self.assertAlmostEqual(
-                    self._risk_adj_for_status(self.DYNASTY_LEAGUE, status, declining["player_id"]), base,
-                    msg="a flat/declining trajectory should keep the FULL flat penalty under D",
+                    self._risk_adj_for_status(self.DYNASTY_LEAGUE, status, declining["player_id"]),
+                    self._unscaled_penalty(self.DYNASTY_LEAGUE, status, declining["player_id"]),
+                    places=6,
+                    msg="a flat/declining trajectory should keep the FULL penalty under D",
                 )
 
     def test_dynasty_league_scales_a_positive_trajectory_player_by_the_d_formula(self):
@@ -1304,11 +1829,12 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         if rising["time_horizon_adj"] <= 0:
             self.skipTest("fixture has no real positive-trajectory player to exercise this")
         expected_scale = self._expected_d_scale(rising["time_horizon_adj"])
-        for status, base in dr.RISK_ADJ.items():
+        for status in dr.HEALTH_DISCOUNT_RATE:
             with self.subTest(status=status):
                 self.assertAlmostEqual(
                     self._risk_adj_for_status(self.DYNASTY_LEAGUE, status, rising["player_id"]),
-                    base * expected_scale,
+                    self._unscaled_penalty(self.DYNASTY_LEAGUE, status, rising["player_id"])
+                    * expected_scale, places=6,
                 )
 
     def test_healthy_players_are_unaffected_in_either_league_type(self):
@@ -1335,12 +1861,17 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
                 )
                 healthy_uv = next(r["universal_value"] for r in healthy_board if r["player_id"] == pid)
                 pdb_hurt = dict(pdb)
-                pdb_hurt[pid] = dict(pdb_hurt[pid], injury_status="Questionable")
+                # "Out", not "Questionable". Questionable was removed from RISK_ADJ by owner
+                # ruling (#191), so using it here would compare a player against himself and
+                # pass with hurt_uv == healthy_uv -- a vacuous test of a real invariant.
+                pdb_hurt[pid] = dict(pdb_hurt[pid], injury_status="Out")
                 hurt_board = dr.compute_draft_board(
                     self.merger, pdb_hurt, [], my_roster_id="99", league=league, mode="balanced",
                 )
                 hurt_uv = next(r["universal_value"] for r in hurt_board if r["player_id"] == pid)
                 self.assertLessEqual(hurt_uv, healthy_uv)
+                self.assertLess(hurt_uv, healthy_uv,
+                                "no penalty was applied at all -- the invariant is untested here")
 
     def test_d_never_gives_full_forgiveness_even_at_the_positive_clamp(self):
         # The floor: even the most extreme forward trajectory keeps DYNASTY_RISK_ADJ_MIN_SCALE
@@ -1350,244 +1881,36 @@ class RiskAdjTrajectoryScalingTests(unittest.TestCase):
         self.assertAlmostEqual(self._expected_d_scale(dr.TIME_HORIZON_CLAMP[1]), dr.DYNASTY_RISK_ADJ_MIN_SCALE)
 
 
-class EligibilityBonusWiringTests(unittest.TestCase):
-    """End-to-end coverage for lineup_optimizer.py's wiring into team_acquisition_value --
-    not just the standalone module (see test_lineup_optimizer.py's own suite), but through
-    the real compute_draft_board pipeline: a real roster's actual drafted players, a real
-    league's actual roster_positions, and a real Draft-Sharks-matched candidate."""
+# `EligibilityBonusWiringTests` WAS HERE -- 6 tests, DELETED at the 6.1b ruling (#52).
+#
+# It covered lineup_optimizer's wiring of eligibility_bonus INTO team_acquisition_value: the
+# bonus is positive when a multi-eligible candidate unlocks an open IDP_FLEX, is expressed in
+# bpa units rather than trade_value units, never exceeds the candidate's own trade_value, is
+# bounded by ELIGIBILITY_BONUS_MAX, and cannot flip a large universal_value gap.
+#
+# DELETED, NOT PATCHED, and the distinction is the same one the invariant registry makes: every
+# one of those assertions is about a term the board no longer computes. There is no weaker
+# version of them to keep -- a test of a retired subject is not a guarantee being lowered, it is
+# a guarantee whose subject left. Rewriting them to assert "the term is absent" would pin the
+# removal rather than any behaviour, and `test_term_lifetimes` plus the registry's
+# "multi-position eligibility has a population to price" invariant already hold that ground.
+#
+# WHAT SURVIVES, deliberately: `lineup_optimizer.eligibility_bonus` is untouched and its own
+# suite in `test_lineup_optimizer.py` still covers it. 6.1b retired a BOARD TERM, not the
+# calculation -- so the function keeps its tests and only the wiring lost its own.
+#
+# ONE OF THE SIX WAS NOT A TERM TEST, and it is the one to think about before assuming this
+# deletion is pure subtraction: `test_full_board_stays_fast_even_when_most_candidates_are_
+# multi_eligible` was a PERFORMANCE guard. It existed because pricing the term called
+# lineup_optimizer once per multi-eligible candidate, so a board thick with them got slow.
+# Retiring the term removes those calls entirely, which is why the guard goes with it -- the
+# cost it watched cannot be incurred any more. The retirement should therefore make boards
+# slightly FASTER in IDP-heavy formats, which is a claim nobody has measured and which no
+# longer has a test watching it either way.
+#
+# The invariant registry is what would reopen this: if a vendor refresh restores active
+# offence dual-eligibility, its census moves and the ruling that deleted these tests expires.
 
-    @classmethod
-    def setUpClass(cls):
-        cls.merger, cls.players_db = _build_pool_players_db(("WR", "DB"))
-
-    def test_multi_eligible_candidate_gets_a_positive_bonus_when_it_unlocks_an_open_idp_flex(self):
-        league = {
-            "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
-            "total_rosters": 12, "settings": {"type": 2},
-        }
-        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"]
-        # Fill WR, WR, FLEX with three ordinary single-position WRs -- no open WR/FLEX room left.
-        roster_wrs = wr_ids[:3]
-        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in roster_wrs]
-
-        # A Travis-Hunter-shaped candidate: a real WR the app already has a Draft Sharks match
-        # for, flagged (via a players_db copy, same isolation convention as
-        # test_injury_never_increases_universal_value above) as also DB-eligible.
-        candidate_id = wr_ids[3]
-        control_id = wr_ids[4]  # an ordinary single-position WR, otherwise treated identically
-        players_db = dict(self.players_db)
-        players_db[candidate_id] = dict(players_db[candidate_id], fantasy_positions=["WR", "DB"])
-
-        board = dr.compute_draft_board(
-            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
-        )
-        by_id = {r["player_id"]: r for r in board}
-        self.assertGreater(
-            by_id[candidate_id]["eligibility_bonus"], 0.0,
-            "WR/DB eligibility should unlock the open IDP_FLEX slot a WR-only player of similar value could not reach",
-        )
-        self.assertEqual(by_id[control_id]["eligibility_bonus"], 0.0)
-        # The wiring invariant itself: final_score must equal the documented three-term sum,
-        # not a silently-dropped term.
-        row = by_id[candidate_id]
-        self.assertAlmostEqual(
-            row["final_score"], row["universal_value"] + row["need_bonus"] + row["eligibility_bonus"], places=2,
-        )
-
-    def test_full_board_stays_fast_even_when_most_candidates_are_multi_eligible(self):
-        # eligibility_bonus solves a real assignment problem per candidate row -- this guards
-        # against the exact class of regression draft_strategy.py's own perf bug was (see that
-        # module's docstring): a stress scenario where roughly a third of a ~175-player pool
-        # is multi-eligible (skips eligibility_bonus's single-position fast path) against a
-        # roster that already has 15 drafted players to optimize against.
-        merger, players_db = self.merger, {}
-        proj = merger.projections
-        pid = 0
-        for pos in ("QB", "RB", "WR", "TE"):
-            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False).head(80)
-            for _, row in sub.iterrows():
-                pid += 1
-                parts = row["norm_name"].split()
-                fantasy_positions = ["RB", "WR", "TE"] if pos in ("RB", "WR", "TE") and pid % 3 == 0 else [pos]
-                players_db[str(pid)] = {
-                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
-                    "position": pos, "fantasy_positions": fantasy_positions, "team": row.get("team"),
-                }
-        league = {
-            "roster_positions": ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "FLEX", "BN", "BN", "BN", "BN", "BN"],
-            "total_rosters": 12, "settings": {"type": 2}, "scoring_settings": {},
-        }
-        board_ids = list(players_db.keys())
-        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in board_ids[:15]]
-        t0 = time.time()
-        dr.compute_draft_board(merger, players_db, picks, my_roster_id="1", league=league, mode="balanced")
-        elapsed = time.time() - t0
-        self.assertLess(elapsed, 15.0, f"compute_draft_board took {elapsed:.1f}s with heavy multi-eligibility -- eligibility_bonus regression")
-
-    def test_eligibility_bonus_never_exceeds_the_candidates_own_trade_value(self):
-        # Kept as a weaker outer bound. It is no longer the BINDING constraint: the board's
-        # eligibility_bonus is now rescaled from trade_value units into the bpa-scale sum it
-        # is added to (see draft_room.TRADE_VALUE_SCALE_MAX/ELIGIBILITY_BONUS_MAX), so the
-        # real bound is ELIGIBILITY_BONUS_MAX -- asserted directly in
-        # test_eligibility_bonus_is_bounded_by_its_own_max below. This assertion still holds
-        # because the rescale only ever shrinks the raw value.
-        league = {
-            "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
-            "total_rosters": 12, "settings": {"type": 2},
-        }
-        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"]
-        roster_wrs = wr_ids[:3]
-        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in roster_wrs]
-        candidate_id = wr_ids[3]
-        players_db = dict(self.players_db)
-        players_db[candidate_id] = dict(players_db[candidate_id], fantasy_positions=["WR", "DB"])
-
-        board = dr.compute_draft_board(
-            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
-        )
-        row = next(r for r in board if r["player_id"] == candidate_id)
-        match = self.merger.merge_player(row["name"], position="WR", team=row["team"])
-        self.assertLessEqual(row["eligibility_bonus"], match["trade_value"] + 1e-6)
-
-    # ---------------------------------------------------------------------------------
-    # The three tests below close a real, demonstrated production defect found by an
-    # adversarial audit pass. eligibility_bonus was denominated in Draft Sharks trade_value
-    # units but added directly into team_acquisition_value, whose other two terms
-    # (universal_value, need_bonus) both live on the bpa scale. Those two 0-100 scales are
-    # NOT interchangeable on real data (mean |bpa - trade_value| = 11.7, max 63.0,
-    # correlation 0.829), and unlike need_bonus this term had no cap -- so it was the one
-    # contextual term that could override a genuine value gap outright.
-    #
-    # Reproduced on the committed baseline in BOTH a standard 1QB league (WR/TE dual
-    # eligibility) and an IDP league (WR/DB): an 82.00 bonus, 6.8x NEED_BONUS_MAX, flipping a
-    # 35-point universal_value gap and lifting a #10 board player to #1. The same empty roster
-    # slot was priced 19-248x differently depending on which term happened to price it.
-    #
-    # The entire pre-existing validation corpus was blind to this: every harness and every
-    # other test file builds players_db with single-position fantasy_positions, for which
-    # eligibility_bonus is exactly 0.0 by construction.
-    # ---------------------------------------------------------------------------------
-
-    def _saturated_idp_flex_scenario(self):
-        """A real roster whose WR/FLEX slots are all occupied by players MORE valuable than
-        the candidate, leaving only an IDP_FLEX the candidate can reach solely via secondary
-        eligibility. This is the scenario where the term is at its genuine maximum -- if it is
-        bounded here, it is bounded everywhere."""
-        league = {
-            "roster_positions": ["WR", "WR", "FLEX", "IDP_FLEX", "BN", "BN"],
-            "total_rosters": 12, "settings": {"type": 2},
-        }
-        wr_ids = [pid for pid, info in self.players_db.items() if info["position"] == "WR"]
-        picks = [{"roster_id": "1", "player_id": pid, "round": 1} for pid in wr_ids[:3]]
-        candidate_id = wr_ids[3]
-        players_db = dict(self.players_db)
-        players_db[candidate_id] = dict(players_db[candidate_id], fantasy_positions=["WR", "DB"])
-        return league, players_db, picks, candidate_id
-
-    def test_eligibility_bonus_is_bounded_by_its_own_max(self):
-        league, players_db, picks, candidate_id = self._saturated_idp_flex_scenario()
-        board = dr.compute_draft_board(
-            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
-        )
-        for row in board:
-            self.assertLessEqual(
-                row["eligibility_bonus"], dr.ELIGIBILITY_BONUS_MAX + 1e-9,
-                f"{row['name']} exceeded ELIGIBILITY_BONUS_MAX -- the units rescale regressed",
-            )
-        self.assertGreater(
-            next(r for r in board if r["player_id"] == candidate_id)["eligibility_bonus"], 0.0,
-            "the rescale must shrink the term, not zero it out -- real flexibility still counts",
-        )
-
-    def test_eligibility_bonus_is_expressed_in_bpa_units_not_trade_value_units(self):
-        """The units contract itself: the board's bonus must be the raw trade_value-denominated
-        assignment-problem answer rescaled by ELIGIBILITY_BONUS_MAX/TRADE_VALUE_SCALE_MAX. Pinned
-        against a direct lineup_optimizer call so the two can never silently drift apart."""
-        league, players_db, picks, candidate_id = self._saturated_idp_flex_scenario()
-        board = dr.compute_draft_board(
-            self.merger, players_db, picks, my_roster_id="1", league=league, mode="balanced",
-        )
-        row = next(r for r in board if r["player_id"] == candidate_id)
-        raw = lo.eligibility_bonus(
-            dr._team_roster_players(picks, players_db, "1", self.merger),
-            candidate_id=candidate_id,
-            candidate_value=float(self.merger.merge_player(row["name"], position="WR", team=row["team"])["trade_value"]),
-            candidate_full_eligible={"WR", "DB"}, candidate_primary_position="WR",
-            roster_positions=league["roster_positions"],
-        )["eligibility_bonus"]
-        self.assertGreater(raw, dr.ELIGIBILITY_BONUS_MAX, "fixture too weak to prove the rescale actually bites")
-        self.assertAlmostEqual(
-            row["eligibility_bonus"],
-            round(raw * (dr.ELIGIBILITY_BONUS_MAX / dr.TRADE_VALUE_SCALE_MAX), 2), places=2,
-        )
-
-    def test_eligibility_bonus_cannot_flip_a_large_universal_value_gap(self):
-        """The missing mirror of test_need_bonus_cannot_flip_a_large_universal_value_gap. Both
-        terms answer "how good is this player FOR THIS ROSTER"; the architecture bounds that
-        class so it can inform a close call but never override a real value gap. Only
-        need_bonus had that invariant enforced -- this is the sibling that did not.
-
-        This is the EXACT scenario that reproduced the original defect: a full real pool, a
-        real 12-slot IDP league, and a mid-board WR made WR/DB-eligible against a roster whose
-        WR/FLEX slots are already filled by strictly better players. Pre-fix this awarded an
-        82.00 bonus and took the candidate from board rank #10 to #1 over a 32-point gap."""
-        merger, players_db = _build_pool_players_db()  # full pool -- needs real value spread
-        league = LIGHT_IDP_LEAGUE
-        base = dr.compute_draft_board(merger, players_db, [], my_roster_id="99", league=league, mode="balanced")
-        by_uv = sorted(base, key=lambda r: -r["universal_value"])
-
-        def trade_value_of(row):
-            return merger.merge_player(row["name"], position=row["position"], team=row.get("team")).get("trade_value")
-
-        wrs = [r for r in by_uv if r["position"] == "WR"]
-        best_wr = wrs[0]
-
-        # The candidate is chosen by the properties this fixture actually REQUIRES, not by a
-        # magic universal_value threshold. The previous version searched for the first WR more
-        # than 25.0 behind the best WR -- a number written when bpa was rescaled onto 0-100, so
-        # 25.0 meant "a quarter of the whole board" and landed deep in the WR field. bpa is now
-        # vor in real projected points, where 25.0 is roughly the WR3-to-WR4 step, so the same
-        # search returned WR #3 -- too good for six strictly-better RB/WR fillers to exist, the
-        # WR/FLEX slots never saturated, and the eligibility term never fired. The two things
-        # the scenario needs are stated directly instead: a gap larger than the combined
-        # context bound, and enough strictly-better RB/WR to actually fill every WR/FLEX-
-        # reachable slot.
-        def fillers_for(row):
-            tv = trade_value_of(row)
-            if not tv:
-                return []
-            return [r for r in by_uv
-                    if r["position"] in ("RB", "WR")
-                    and r["player_id"] not in (best_wr["player_id"], row["player_id"])
-                    and (trade_value_of(r) or 0) > tv][:6]
-
-        cand_row, fillers = None, []
-        for row in wrs[1:]:
-            if best_wr["universal_value"] - row["universal_value"] <= dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX:
-                continue
-            candidate_fillers = fillers_for(row)
-            if len(candidate_fillers) == 6:
-                cand_row, fillers = row, candidate_fillers
-                break
-        self.assertIsNotNone(cand_row, "real baseline should contain a WR well behind the best WR")
-        picks = [{"pick_no": i + 1, "round": 1, "roster_id": "99", "player_id": r["player_id"]}
-                 for i, r in enumerate(fillers)]
-        db = dict(players_db)
-        db[cand_row["player_id"]] = dict(db[cand_row["player_id"]], fantasy_positions=["WR", "DB"])
-
-        board = {r["player_id"]: r for r in dr.compute_draft_board(
-            merger, db, picks, my_roster_id="99", league=league, mode="balanced")}
-        cand, leader = board[cand_row["player_id"]], board[best_wr["player_id"]]
-        gap = leader["universal_value"] - cand["universal_value"]
-        self.assertGreater(gap, dr.NEED_BONUS_MAX + dr.ELIGIBILITY_BONUS_MAX,
-                           "fixture must present a gap larger than the combined context bound to be meaningful")
-        self.assertGreater(cand["eligibility_bonus"], 0.0,
-                           "fixture must actually trigger the eligibility term to be meaningful")
-        self.assertGreater(
-            leader["final_score"], cand["final_score"],
-            f"context ({cand['need_bonus']:.2f} need + {cand['eligibility_bonus']:.2f} elig) overrode a "
-            f"{gap:.2f}-point universal_value gap -- the bound regressed",
-        )
 
 
 class ProjectedPointsTests(unittest.TestCase):
@@ -1771,9 +2094,15 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         }
 
         def board_mode(round_no):
+            # round_no is the round BEING DECIDED, so the board it is given has the
+            # PRECEDING rounds complete -- round 15 is decided off 14 finished rounds, not
+            # 15. This fixture used to build 8 * round_no picks and call that round_no,
+            # which is the same off-by-one the board itself carried: reading the count of
+            # completed rounds as the current round. Both are corrected together; the claim
+            # the two assertions below make is unchanged.
             picks = [
                 {"pick_no": i + 1, "round": i // 8 + 1, "roster_id": str(i % 8 + 1), "player_id": pid}
-                for i, pid in enumerate(list(db)[:8 * round_no])
+                for i, pid in enumerate(list(db)[:8 * (round_no - 1)])
             ]
             rows = dr.compute_draft_board(
                 merger, db, picks, my_roster_id="1", league=league, mode="auto",
@@ -1789,7 +2118,13 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         # number M1's cliff-anchored QB replacement rests on: QB starter demand in a
         # superflex league sets where replacement lands, which sets every QB's VOR.
         # The claim being pinned is the one the constant's own comment makes -- the slot is
-        # filled by a QB the LARGE majority of the time, not close to a coin flip.
+        # filled by a QB the LARGE majority of the time, not close to a coin flip. #178
+        # derived that majority as the WHOLE slot (1.000 in both SF formats, both yardsticks),
+        # but #184 found the derived value cannot be APPLIED -- the startable floor pins the
+        # superflex QB replacement level and this share only ever reaches RB/WR/TE -- so the
+        # committed value stayed 0.85. This test deliberately pins the weaker "large majority"
+        # claim, which both values satisfy, so it survives that argument being settled either
+        # way and keeps finding a drift toward the even split.
         counts = dr.starter_slot_counts(["QB", "RB", "RB", "WR", "WR", "TE", "SUPER_FLEX"])
         qb_share_of_the_superflex_slot = counts["QB"] - 1.0
         self.assertGreater(
@@ -1824,6 +2159,247 @@ class CalibrationConstantsDoNotDriftSilentlyTests(unittest.TestCase):
         # an offensive pool that was never rescaled, reintroducing exactly the cross-source
         # unit mismatch this conversion exists to remove.
         self.assertEqual(dr.SLEEPER_WEEKLY_TO_SEASON_FACTOR, 17)
+
+
+class EveryBasisLabelHasTheQuantityItDescribesTests(unittest.TestCase):
+    """#166. A basis column explains how a NUMBER was produced. Where no number was produced it
+    has nothing to explain, and a label that speaks anyway asserts a production that did not
+    happen.
+
+    MEASURED, before this existed: on a HEAVY_IDP opening board, 76 of 340 rows (LB 29, DL 24,
+    DB 23) carried horizon_basis="imputed" beside horizon_floor=None and waiting_cost=None --
+    and draft_board_ui renders "That floor is an estimate: ... the average of the positions that
+    still can be measured is assumed for it" on exactly that value. Zero of the 76 carried
+    APPETITE_UNAVAILABLE, which already existed and is the honest answer.
+
+    The cause was two functions with different coverage domains, one labelling the other's
+    output: positional_bench_appetite_basis answers "could this position's decay rate be
+    measured", horizon_replacement answers "is there a floor here at all". IDP answers no to both
+    but only the first produces a label.
+
+    WHY IT NEEDS AN IDP LEAGUE. Every offensive-only format is all-measured AND all-floored, so
+    the pairing holds vacuously there -- checked directly across three states of a real 10T_ppr
+    draft (264 / 194 / 125 rows): zero rows with any of these quantities absent, so zero
+    violations possible. A version of this test written against an offensive board would pass
+    forever without ever exercising the property. It takes IDP to make the domains diverge."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.merger, cls.players_db = _build_pool_players_db()
+
+    #: basis column -> the quantity whose production it explains.
+    #:
+    #: identity_basis is deliberately ABSENT, and the exclusion is a ruling rather than an
+    #: oversight: it records the provenance of the row's IDENTITY (which match path produced
+    #: this player, and whether it was verified -- #107), not the production of a number. Its
+    #: partner is the row's own existence, and every row on a board exists by construction, so
+    #: pairing it here would assert a property that cannot fail.
+    PAIRS = (("horizon_basis", "horizon_floor"),
+             ("replacement_basis", "universal_value"),
+             ("depth_basis", "depth_exposure"))
+
+    def _board(self):
+        return dr.compute_draft_board(
+            self.merger, self.players_db, [], my_roster_id="99", league=LIGHT_IDP_LEAGUE,
+            mode="balanced",
+        )
+
+    def test_no_row_carries_a_basis_label_for_a_quantity_it_does_not_have(self):
+        board = self._board()
+        self.assertGreater(len(board), 50, "vacuous: no real board to check")
+        for basis, quantity in self.PAIRS:
+            with self.subTest(basis=basis):
+                offenders = [r for r in board
+                             if r.get(quantity) is None
+                             and r.get(basis) not in (None, dr.APPETITE_UNAVAILABLE,
+                                                      lo.EXPOSURE_NOT_APPLICABLE)]
+                self.assertEqual(
+                    [(r["position"], r["name"], r.get(basis)) for r in offenders[:3]], [],
+                    f"{basis} explains how {quantity} was produced, and {len(offenders)} row(s) "
+                    f"carry it where {quantity} is absent",
+                )
+
+    def test_the_idp_rows_that_have_no_floor_say_unavailable_rather_than_imputed(self):
+        """The specific regression, named. Not folded into the sweep above because a sweep that
+        went vacuous would still pass, and this states the actual measured population."""
+        board = self._board()
+        floorless = [r for r in board if r.get("horizon_floor") is None]
+        self.assertGreater(len(floorless), 0,
+                           "vacuous: this league produced no floorless rows, so the property "
+                           "under test was never exercised")
+        self.assertEqual(
+            sorted({str(r.get("horizon_basis")) for r in floorless}), [dr.APPETITE_UNAVAILABLE])
+
+    def test_a_row_that_HAS_a_floor_still_reports_a_real_appetite_basis(self):
+        """Non-vacuity in the other direction: forcing every row to 'unavailable' would satisfy
+        both tests above while destroying the signal. The floored rows must still discriminate."""
+        board = self._board()
+        floored = [r for r in board if r.get("horizon_floor") is not None]
+        self.assertGreater(len(floored), 50, "vacuous: no floored rows")
+        bases = {str(r.get("horizon_basis")) for r in floored}
+        self.assertTrue(
+            bases & {dr.APPETITE_MEASURED, dr.APPETITE_IMPUTED},
+            f"floored rows report only {bases} -- the appetite basis has stopped saying anything",
+        )
+
+
+SUPERFLEX_LEAGUE = {
+    "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX"] + ["BN"] * 7,
+    "total_rosters": 12, "settings": {"type": 2},
+}
+
+
+class WhereTheAbsenceContractIsReachableTests(unittest.TestCase):
+    """#165. Unpriced rows live at ONE position in ONE league shape, and several write-ups in
+    this register -- including my own first two probes -- reasoned about them somewhere else.
+
+    `_fill_omitted_from_anchor` fills every position `replacement_levels` omitted for EXHAUSTED
+    DEMAND from the pre-draft anchor, and pointedly refuses to fill the one the
+    `startable_floors` branch declined. `startable_floors` is set in exactly one place: QB, when
+    SUPER_FLEX is in roster_positions. So `universal_value` is None only at QB, only in a
+    superflex league, and only once no remaining QB clears `qb_startable_floor`.
+
+    MEASURED before this existed. HEAVY_IDP, LIGHT_IDP, 10T_ppr and 12T_ppr carry ZERO unpriced
+    rows -- on the opening board and at every depth of a full draft's consumption (216 and 132
+    picks). In a 12-team superflex the floor is 163.5, 28 of 39 QBs clear it, and draining 27
+    leaves 0 unpriced while draining 28 leaves 11. The battery agrees from the other side: all
+    33 formats report "every player priced" -- though see #170: that battery line measures
+    against the PRE-DRAFT ruler and is 0 by construction, so it corroborates nothing here. The
+    knife-edge below stands on its own.
+
+    WHAT THIS PREVENTS, stated against the over-hardening rule. Not "the implementation should
+    stay as written". The demonstrated failure is reasoning about the absence contract against a
+    population that does not contain it: #165's own write-up and #168's both located unpriced
+    players in IDP formats, where the trade_value fallback prices every row, and the conclusions
+    drawn there were about nothing. Anchoring the declined branch would make the contract
+    unreachable and every absence test below it vacuous; widening absence to another position
+    would move the population out from under the register's conclusions without saying so.
+
+    MUTATION-CHECKED 5 of 6, and the sixth is stated rather than hidden. Caught: anchoring the
+    declined floor (2 tests), dropping the not-missing early return, never setting
+    startable_floors, an anchor that fills nothing, and replacement_levels declining every
+    demand-ranked position (2 tests). NOT caught: an anchor that omits IDP positions from its
+    COVERAGE. The reason is a real limit of reach, not an oversight -- in LIGHT_IDP no position
+    is missing from replacement_levels in the first place, so the anchor is never asked to cover
+    one and a hole in its coverage cannot show. Pinning that would need a league where a
+    position's demand genuinely exhausts, which is a different fixture and a different finding."""
+
+    @classmethod
+    def setUpClass(cls):
+        # Format FIRST, then the pool -- set_league_format reloads, so a players_db built
+        # before it can describe a different export than the board is scored against.
+        cls.merger = dm.DataMerger()
+        cls.merger.set_league_format(
+            {"scoring": "ppr", "superflex": True, "te_premium": False})
+        proj, players_db, pid = cls.merger.projections, {}, 0
+        for pos in ("QB", "RB", "WR", "TE", "DL", "LB", "DB"):
+            sub = proj[proj["position"] == pos].sort_values("trade_value", ascending=False)
+            for _, row in sub.iterrows():
+                pid += 1
+                parts = row["norm_name"].split()
+                players_db[str(pid)] = {
+                    "first_name": parts[0].upper(), "last_name": " ".join(parts[1:]).title(),
+                    "position": pos, "fantasy_positions": [pos], "team": row.get("team"),
+                }
+        cls.players_db = players_db
+
+    def _board(self, league, picks=()):
+        return dr.compute_draft_board(self.merger, self.players_db, list(picks),
+                                      my_roster_id="99", league=league, mode="balanced")
+
+    def test_the_anchor_fills_exhausted_demand_and_never_the_declined_floor(self):
+        """The branch rule itself, in isolation. WR was omitted because its demand ran out and
+        is anchorable; QB was omitted because nobody cleared its floor, which is a different
+        claim -- "there is no startable replacement here" -- and anchoring it would answer a
+        question the engine deliberately declined."""
+        levels = {"RB": 100.0}
+        filled = dr._fill_omitted_from_anchor(
+            levels, {"QB", "RB", "WR"}, {"QB": 163.5},
+            lambda: {"QB": 150.0, "WR": 90.0},
+        )
+        self.assertEqual(filled, {"WR"})
+        self.assertEqual(levels, {"RB": 100.0, "WR": 90.0})
+        self.assertNotIn(
+            "QB", levels,
+            "the startable_floors branch declined QB; anchoring it would convert 'no startable "
+            "replacement exists' into a price, which is the conflation replacement_levels "
+            "returns None to avoid",
+        )
+
+    def test_no_anchor_is_built_when_nothing_was_omitted(self):
+        """Guards the cost, which is the reason the early return exists: building the pre-draft
+        anchor is a second full pool construction (~544ms)."""
+        built = []
+
+        def _anchor():
+            built.append(1)
+            return {"QB": 150.0}
+
+        filled = dr._fill_omitted_from_anchor({"QB": 1.0}, {"QB"}, None, _anchor)
+        self.assertEqual((filled, built), (set(), []))
+
+    def test_a_league_without_superflex_prices_every_row(self):
+        """The negative half, and the one that makes the register's IDP reasoning checkable:
+        with no SUPER_FLEX there is no startable floor, so every position replacement_levels
+        omits is anchorable and nothing can go unpriced."""
+        board = self._board(LIGHT_IDP_LEAGUE)
+        self.assertGreater(len(board), 50, "vacuous: no real board to check")
+        # Scoped to rows that HAD something to price. Since #193 there is a second, entirely
+        # independent route to unpriced -- a player admitted on evidence he is real, with no
+        # number attached -- and it has nothing to do with startable floors. Counting those
+        # here would not make the check stricter; it would make it a different check, and the
+        # class's subject is what the FLOOR does. The no-number arm is pinned separately by
+        # TradeValueAnchorBranchTests, and is excluded by its own label rather than by a
+        # value test, so a floor-induced absence can never hide inside this filter.
+        priceable = [r for r in board if r["bpa_source"] != dr.NO_PRICEABLE_INPUT]
+        self.assertGreater(len(priceable), 50, "vacuous: nothing priceable on this board")
+        unpriced = [r for r in priceable if r.get("universal_value") is None]
+        self.assertEqual(
+            [(r["position"], r["name"]) for r in unpriced[:5]], [],
+            f"{len(unpriced)} priceable row(s) unpriced in a league with no startable floor",
+        )
+
+    def test_superflex_qb_goes_unpriced_only_once_none_clears_the_floor(self):
+        """The knife-edge, which is also this class's non-vacuity proof: the same predicate that
+        reports zero above reports a real population here, so the zeros are a measurement and
+        not a broken check."""
+        floor = dr.qb_startable_floor(self.merger)
+        self.assertIsNotNone(floor, "vacuous: no QB startable floor, so the branch never runs")
+
+        opening = self._board(SUPERFLEX_LEAGUE)
+        qbs = sorted((r for r in opening if r["position"] == "QB"),
+                     key=lambda r: r.get("projected_points") or -1.0, reverse=True)
+        clearing = [r for r in qbs if (r.get("projected_points") or -1.0) >= floor]
+        self.assertGreater(len(clearing), 1, "vacuous: fewer than two QBs clear the floor")
+        # Priceable rows only -- see the sibling test above for why the no-number arm (#193)
+        # is a different question than the startable floor's.
+        self.assertEqual([r["name"] for r in opening
+                          if r.get("universal_value") is None
+                          and r["bpa_source"] != dr.NO_PRICEABLE_INPUT], [],
+                         "the opening board should price every priceable row")
+
+        def _drain(n):
+            picks = [{"player_id": str(r["player_id"]), "roster_id": "1"} for r in qbs[:n]]
+            return [r for r in self._board(SUPERFLEX_LEAGUE, picks)
+                    if r.get("universal_value") is None
+                    and r["bpa_source"] != dr.NO_PRICEABLE_INPUT]
+
+        one_left = _drain(len(clearing) - 1)
+        none_left = _drain(len(clearing))
+        self.assertEqual(
+            [(r["position"], r["name"]) for r in one_left[:3]], [],
+            "one QB still clears the floor, so QB still has a replacement level",
+        )
+        self.assertGreater(
+            len(none_left), 0,
+            "with no QB left above the floor, replacement_levels declines QB and the anchor "
+            "refuses to fill it -- the rows below must be unpriced, not priced against a "
+            "fabricated level",
+        )
+        self.assertEqual(
+            sorted({r["position"] for r in none_left}), ["QB"],
+            "absence must stay confined to the position whose floor was declined",
+        )
 
 
 if __name__ == "__main__":

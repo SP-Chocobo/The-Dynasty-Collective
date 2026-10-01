@@ -97,10 +97,18 @@ class PreDraftAnchorEquivalence(unittest.TestCase):
         seen = {}
         original = dr.replacement_levels
 
+        # The spy MIRRORS the real signature, including #214/F3's truncated_out. A stand-in
+        # that accepts fewer arguments than the function it replaces turns a caller change into
+        # a TypeError in an unrelated test rather than a finding here.
         def spy(pool, value_col, roster_positions, num_teams, remaining_demand=None,
-                startable_floors=None):
+                startable_floors=None, truncated_out=None, **kwargs):
+            # **kwargs, not a growing positional list. The comment above is the reason -- a
+            # stand-in narrower than the function it replaces turns a caller change into a
+            # TypeError in an unrelated test instead of a finding here -- and #30 added two
+            # keyword-only inputs (flex_occupancy, streaming_floors) that this spy has no
+            # opinion about and must simply carry through.
             levels = original(pool, value_col, roster_positions, num_teams, remaining_demand,
-                              startable_floors)
+                              startable_floors, truncated_out=truncated_out, **kwargs)
             for position, level in levels.items():
                 seen.setdefault((value_col, position), level)
             return levels
@@ -186,8 +194,17 @@ class ExhaustedDemandKeepsItsPrice(unittest.TestCase):
 
     def test_every_row_records_which_anchor_its_price_rests_on(self):
         self.assertTrue(self.board)
-        bases = {r.get("replacement_basis") for r in self.board}
+        # replacement_basis explains a PRICE, so it is paired with one: a row that got a price
+        # names the anchor it rests on, and a row that got none carries None rather than a
+        # basis for a number that was never produced (#193).
+        priced = [r for r in self.board if r.get("final_score") is not None]
+        self.assertTrue(priced, "vacuous: no priced row on this board")
+        bases = {r.get("replacement_basis") for r in priced}
         self.assertTrue(bases <= {"live_starter_demand", "predraft_anchor"}, bases)
+        self.assertEqual(
+            [r["name"] for r in self.board
+             if r.get("final_score") is None and r.get("replacement_basis") is not None],
+            [], "an unpriced row named an anchor for a price it does not have")
         self.assertIn("predraft_anchor", bases,
                       "vacuous: no row in this state rests on the pre-draft anchor")
 
@@ -314,10 +331,18 @@ class TradeValueBranchIsAnchoredToo(unittest.TestCase):
                            "exercise the demand-exhausted case on the trade_value branch")
 
     def test_idp_keeps_its_price_once_league_demand_is_exhausted(self):
-        idp = [r for r in self.board if r["position"] in ("LB", "DL", "DB")]
-        self.assertGreater(len(idp), 0, "no IDP rows on the board at all")
+        # Scoped to rows the trade_value branch can actually price. Since the admission
+        # widening (#193) the IDP field also carries rows admitted on evidence the player is
+        # real (rostered, or a rookie) with no number of any kind attached; those were never
+        # priced, so "kept its price" is not a claim that can be made about them. The subject
+        # here is a row that HAD a price surviving demand exhaustion.
+        idp = [r for r in self.board
+               if r["position"] in ("LB", "DL", "DB")
+               and r.get("bpa_source") == "position_relative_trade_value_vor"]
+        self.assertGreater(len(idp), 0, "no priceable IDP rows on the board at all")
         unpriced = [r for r in idp if r["final_score"] is None]
-        self.assertEqual(unpriced, [], "IDP rows fell off the board despite the anchor")
+        self.assertEqual([r["name"] for r in unpriced], [],
+                         "IDP rows fell off the board despite the anchor")
         anchored = [r for r in idp if r.get("replacement_basis") == "predraft_anchor"]
         self.assertGreater(len(anchored), 0,
                            "no IDP row rests on the pre-draft anchor, so demand has not "
@@ -326,6 +351,13 @@ class TradeValueBranchIsAnchoredToo(unittest.TestCase):
     def test_the_anchor_adds_idp_prices_without_changing_any_other(self):
         control = {r["player_id"]: r["final_score"] for r in self._control_board()}
         after = {r["player_id"]: r["final_score"] for r in self.board}
+        # VACUOUS BY CONSTRUCTION, AND REGISTERED AS SUCH. `_control_board` disables the anchor,
+        # and with it disabled NOTHING is priced -- measured: 514 rows, 0 carrying a final_score,
+        # which is exactly what `test_the_control_really_does_lose_prices` asserts. So this test
+        # asks "did any existing price change?" of a control that has no prices, and the loop below
+        # skips every row. It has never compared one. Closing it needs a DIFFERENT control -- the
+        # anchor enabled with IDP absent, say -- which is a design question about what the control
+        # should be, not something to guess at here. Recorded in ASSERTION_EXECUTION.json.
         for player_id, before in control.items():
             if before is None:
                 continue

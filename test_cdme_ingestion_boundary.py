@@ -1,6 +1,6 @@
 """Adversarial ingestion-boundary audit: can output from an LLM (a Prytaneum role's finding,
 surfaced via bot_research.py) ever reach CDME's own computation inputs (universal_value, Team
-Acquisition Value, need_bonus, eligibility_bonus, positional cliff, consensus_reach, rookie
+Acquisition Value, need_bonus, eligibility_bonus, positional cliff, consensus_standing, rookie
 flagging)?
 
 Mapped end-to-end (see README.md's "The Draft Engine" and "The Prytaneum" sections for the
@@ -95,7 +95,7 @@ SUPERFLEX_LEAGUE = dr.build_mock_league(teams=12, superflex=True, scoring="ppr",
 CDME_FIELDS = (
     # final_score IS team_acquisition_value (draft_room.py's own board dict aliases it) --
     # see compute_draft_board's score_row: "final_score": team_acquisition_value.
-    "universal_value", "final_score", "need_bonus", "eligibility_bonus",
+    "universal_value", "final_score", "need_bonus",
     "bpa", "bpa_source", "confidence",
 )
 
@@ -146,7 +146,12 @@ class ExternalValuesFilterTests(unittest.TestCase):
         # None of the keys in the rookie lookup can have come from the bot_research row --
         # the lookup must be built exclusively from keeptradecut rows.
         ktc_only = merger.external_values[merger.external_values["source_name"] == "keeptradecut"]
-        self.assertEqual(set(lookup.keys()) - set(ktc_only.get("_name_key", [])), set())
+        # The lookup is keyed on (name_key, identity_namespace) since #52 phase 1.2 -- Jordan
+        # Love and Jeremiyah Love share a _name_key, and last-row-wins let one inherit the
+        # other's rookie status. The BOUNDARY this test guards is unchanged, so the assertion
+        # is unchanged too; only the projection onto the key's name component is new.
+        self.assertEqual(
+            {key[0] for key in lookup} - set(ktc_only.get("_name_key", [])), set())
 
     def test_consensus_lookup_ignores_a_bot_research_only_row(self):
         _inject("Zzz Fabricated Player", "top consensus rank")
@@ -256,7 +261,7 @@ class CascadeInjectionTests(unittest.TestCase):
         veteran_ids_after = {r["player_id"] for r in board_after}
         self.assertEqual(veteran_ids_before, veteran_ids_after)
 
-    def test_consensus_reach_unaffected_by_adversarial_injection(self):
+    def test_consensus_standing_unaffected_by_adversarial_injection(self):
         from pick_synthesis import _consensus_lookup
 
         merger_before = dm.DataMerger()

@@ -1,0 +1,41 @@
+tive_roster_term_on_todays_board_is_a_measured_displacement (test_216_room_integrity.TheRealBoardStillRunsTests.test_every_negative_roster_term_on_todays_board_is_a_measured_displacement)
+The non-vacuity partner of the deduction test above, REWRITTEN BY THE #216
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_room_integrity.py", line 480, in test_every_negative_roster_term_on_todays_board_is_a_measured_displacement
+    self.assertTrue(negative, "no candidate is deducted on a four-tight-end roster: the term did not fire")
+AssertionError: [] is not true : no candidate is deducted on a four-tight-end roster: the term did not fire
+
+======================================================================
+FAIL: test_the_snapshot_identity_includes_the_depth_term_where_it_is_measured (test_216_room_integrity.TheRealBoardStillRunsTests.test_the_snapshot_identity_includes_the_depth_term_where_it_is_measured)
+Non-vacuous where test_pick_synthesis's identity check is not: at round 1 depth is
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_room_integrity.py", line 457, in test_the_snapshot_identity_includes_the_depth_term_where_it_is_measured
+    self.assertTrue(with_displacement, f"no candidate of {len(snap.candidates)} carries displacement_adj")
+AssertionError: [] is not true : no candidate of 48 carries displacement_adj
+
+======================================================================
+FAIL: test_1QB_the_roster_terms_can_span_the_positional_bias (test_216_value_board_falsification.C_MagnitudeTests.test_1QB_the_roster_terms_can_span_the_positional_bias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 398, in test_1QB_the_roster_terms_can_span_the_positional_bias
+    self._assert_reaches(False)
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 390, in _assert_reaches
+    self.assertGreaterEqual(
+AssertionError: 4.950000000000001 not greater than or equal to 58.47 : Sam LaPorta TE proj 230.85 uv 68.14 final 71.86 vs Davante Adams WR proj 230.5 uv 12.31 final 20.98: roster-term separation 4.95 against bias level_WR - level_TE = 58.47; levels {'RB': (185.64, 185.64, 126), 'WR': (216.25, 216.25, 198), 'TE': (157.78, 157.78, 110), 'QB': (328.6, 328.6, 42)}
+
+======================================================================
+FAIL: test_superflex_the_roster_terms_can_span_the_positional_bias (test_216_value_board_falsification.C_MagnitudeTests.test_superflex_the_roster_terms_can_span_the_positional_bias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 401, in test_superflex_the_roster_terms_can_span_the_positional_bias
+    self._assert_reaches(True)
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 390, in _assert_reaches
+    self.assertGreaterEqual(
+AssertionError: 8.72 not greater than or equal to 63.610000000000014 : Sam LaPorta TE proj 230.85 uv 74.44 final 74.44 vs Davante Adams WR proj 230.5 uv 13.47 final 22.19: roster-term separation 8.72 against bias level_WR - level_TE = 63.61; levels {'RB': (176.98, 176.98, 126), 'WR': (215.05, 215.05, 198), 'QB': (207.5, 207.5, 42), 'TE': (151.44, 151.44, 110)}
+
+----------------------------------------------------------------------
+Ran 24 tests in 75.041s
+
+FAILED (failures=8)

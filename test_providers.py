@@ -23,8 +23,9 @@ import bot_config
 import llm_engine
 import provider_meter
 import providers
+import ui_source
 
-_APP = (Path(__file__).parent / "app.py").read_text()
+_APP = ui_source.text()
 
 
 class TheRegistryIsTheOneListTests(unittest.TestCase):

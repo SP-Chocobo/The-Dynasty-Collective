@@ -1,0 +1,15 @@
+commit bfc3d47 | universe 6595 players
+
+12T_ppr  starts ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN']
+  POOL {'RB': 126, 'WR': 197, 'TE': 115, 'QB': 42, 'DB': 1}
+  seat   1  engine {'RB': 3, 'TE': 8, 'WR': 2, 'QB': 1}   control {'RB': 6, 'QB': 2, 'WR': 5, 'TE': 1}
+  seat   6  engine {'RB': 3, 'TE': 8, 'WR': 2, 'QB': 1}   control {'WR': 6, 'QB': 3, 'RB': 3, 'TE': 2}
+  seat  12  engine {'TE': 2, 'RB': 9, 'WR': 2, 'QB': 1}   control {'RB': 4, 'QB': 2, 'TE': 1, 'WR': 7}
+
+12T_ppr_SF  starts ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'SUPER_FLEX', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN']
+  POOL {'RB': 126, 'WR': 197, 'QB': 42, 'TE': 115, 'DB': 1}
+  seat   1  engine {'RB': 3, 'TE': 6, 'QB': 4, 'WR': 2}   control {'RB': 3, 'QB': 2, 'WR': 9, 'TE': 1}
+  seat   6  engine {'RB': 2, 'TE': 7, 'QB': 4, 'WR': 2}   control {'WR': 6, 'QB': 3, 'TE': 2, 'RB': 4}
+  seat  12  engine {'TE': 5, 'QB': 5, 'RB': 3, 'WR': 2}   control {'RB': 3, 'QB': 2, 'WR': 9, 'TE': 1}
+
+-> /tmp/claude-0/-home-user-The-Dynasty-Collective/90289f87-1d2a-5009-8163-038c3cedfc5f/scratchpad/ROSTER_SHAPE.json

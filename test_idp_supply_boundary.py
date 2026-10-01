@@ -85,8 +85,15 @@ class IDPSourceCoverageTests(unittest.TestCase):
         return self.proj[self.proj["position"].isin(positions)]
 
     def test_no_committed_source_projects_a_single_idp_player(self):
+        # RE-BASELINED AFTER THE #52 PHASE 1.1 IDENTITY REPAIR, which is the whole reason these
+        # are exact numbers rather than inequalities: the within-file dedup keyed on norm_name
+        # alone, so a first-initial export collided across positions and the lower-ranked
+        # namesake was deleted from every file. Ten real players were being deleted, six of them
+        # IDP -- so the IDP universe was understated by exactly six, and so was the count of
+        # matched-but-numberless rows, since none of the six has a number either. The FINDING is
+        # untouched: no committed source projects a single IDP player, before or after.
         idp = self._slice(IDP)
-        self.assertEqual(len(idp), 415, "the IDP universe moved; re-read this whole module")
+        self.assertEqual(len(idp), 421, "the IDP universe moved; re-read this whole module")
         self.assertEqual(idp["projection"].notna().sum(), 0)
         self.assertEqual(idp["proj_3yr"].notna().sum(), 0)
 
@@ -144,7 +151,10 @@ class IDPPoolAdmissionTests(unittest.TestCase):
                 tally["admitted"] += 1
         self.assertEqual(tally["unmatched"], 0,
                          "an identity failure appeared -- that is a DIFFERENT defect from this one")
-        self.assertEqual(tally["matched_but_numberless"], 339)
+        # 339 before #52 phase 1.1; the six recovered IDP namesakes are matched and numberless
+        # like every other IDP row, so they land here. `admitted` is unchanged at 76, which is
+        # the check that the recovery added rows to the pool without inventing numbers for them.
+        self.assertEqual(tally["matched_but_numberless"], 345)
         self.assertEqual(tally["admitted"], 76)
 
 
@@ -157,8 +167,18 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         cls.players_db = _build_pool_players_db(cls.merger)
         cls.board = dr.compute_draft_board(
             cls.merger, cls.players_db, [], my_roster_id="1", league=IDP_LEAGUE, mode="balanced")
+        # PRICED supply, not admitted supply -- the two stopped being the same thing at #193.
+        # A player is now admitted on evidence he is a real, currently relevant footballer (on
+        # an NFL roster, or a rookie) rather than on evidence that someone published a number
+        # for him, so the IDP field carries 415 admitted rows of which 76 can be priced. The
+        # finding this class states has always been about the field the engine can RANK: a row
+        # it cannot price cannot fill a starting slot in any recommendation it makes. Scoping
+        # to priced reproduces every number in this class unchanged (76 total; LB 29, DL 24,
+        # DB 23; offense 264), which is the evidence that the widening moved admission and left
+        # the finding itself exactly where it was.
+        cls.priced = [row for row in cls.board if row["final_score"] is not None]
         cls.supply = collections.Counter(
-            row["position"] for row in cls.board if row["position"] in IDP)
+            row["position"] for row in cls.priced if row["position"] in IDP)
         slots = collections.Counter(p for p in IDP_LEAGUE["roster_positions"] if p != "BN")
         teams = IDP_LEAGUE["total_rosters"]
         cls.demand = {position: slots[position] * teams for position in IDP}
@@ -185,10 +205,33 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         fact about fantasy football. Same board, same call, same fixture, same league: offense
         clears its own starter demand 2.75x while IDP comes in at 0.90x. The pool is not
         globally thin; it is thin at exactly the position family no committed source projects."""
-        offense_supply = sum(1 for row in self.board if row["position"] in OFFENSE)
+        offense_supply = sum(1 for row in self.priced if row["position"] in OFFENSE)
         slots = collections.Counter(p for p in IDP_LEAGUE["roster_positions"] if p != "BN")
         offense_demand = (sum(slots[p] for p in OFFENSE) + slots["FLEX"]) * IDP_LEAGUE["total_rosters"]
-        self.assertEqual((offense_supply, offense_demand), (264, 96))
+        # 264 before #52 phase 1.1 and 2 MORE after it, which is a net of two opposite effects
+        # and worth stating because the number alone hides both. Four offensive players came
+        # back (Jordan Love among them, a startable superflex QB the loader had been deleting
+        # outright). Two did not, and the reason recorded here was WRONG -- see below.
+        #
+        # 266 -> 267 (MANDATE 2.3), AND THE OLD EXPLANATION IS WITHDRAWN. This comment used to
+        # say the pool carried "two K Williams rows at the SAME position on the SAME club, which
+        # no name, position or team test can split", so the contested-identity guard withheld the
+        # one price belonging to exactly one of them -- "that refusal is the engine working, not a
+        # shortfall". Measured at dc2de79, there were THREE rows named K Williams:
+        #
+        #     RB  LAR  fantasy_football_dynasty_rankings.csv   hint ""
+        #     RB  LAR  te_premium_dynasty_rankings.csv         hint "RB"
+        #     WR  NE   te_premium_dynasty_rankings.csv         hint "WR"
+        #
+        # The first two are ONE PLAYER from two files. They failed to collapse only because
+        # `_identity_hint` was stamped per file, so the same man carried "" in one and "RB" in the
+        # other and the dedup key saw two people. The guard was withholding a price from a player
+        # who deserved one, and this comment had rationalised that as correct behaviour.
+        #
+        # 2.3 propagates the hint across files; the duplicate collapses, the surviving RB/LAR row
+        # prices, and supply is 267. The WR/NE row is a different man and still stands apart. The
+        # ratio claim below is what this test is actually about and is untouched either way.
+        self.assertEqual((offense_supply, offense_demand), (267, 96))
         offense_ratio = offense_supply / offense_demand
         idp_ratio = sum(self.supply.values()) / self.total_demand
         self.assertGreater(offense_ratio, 2.0)
@@ -199,14 +242,21 @@ class IDPSupplyCannotFillTheLeagueTests(unittest.TestCase):
         confidence is 35.0 against offense's 80.0. Pinned because #51's whole premise was that
         the trade_value branch IS the IDP path, and an untested branch on a hostile domain is
         exactly where a silent change would land."""
-        idp_rows = [row for row in self.board if row["position"] in IDP]
+        idp_rows = [row for row in self.priced if row["position"] in IDP]
         self.assertEqual(len(idp_rows), 76)
         self.assertEqual({row["bpa_source"] for row in idp_rows},
                          {"position_relative_trade_value_vor"})
         self.assertEqual({row["confidence"] for row in idp_rows}, {35.0})
-        self.assertTrue(all(row["final_score"] is not None for row in idp_rows),
-                        "an admitted row must be priced -- admission is 'we have a number'")
-        offense_rows = [row for row in self.board if row["position"] in OFFENSE]
+        # The converse half, restated for the post-#193 contract: admission is no longer "we
+        # have a number", so the invariant is not "every admitted row is priced" but "every row
+        # that is NOT priced says exactly that, and never borrows a pricing branch's label".
+        unpriced_idp = [row for row in self.board
+                        if row["position"] in IDP and row["final_score"] is None]
+        self.assertGreater(len(unpriced_idp), 0,
+                           "vacuous: no unpriced IDP row, so the absence label is untested here")
+        self.assertEqual({row["bpa_source"] for row in unpriced_idp}, {dr.NO_PRICEABLE_INPUT})
+        self.assertEqual({row["confidence"] for row in unpriced_idp}, {None})
+        offense_rows = [row for row in self.priced if row["position"] in OFFENSE]
         self.assertEqual({row["bpa_source"] for row in offense_rows}, {"points_vor_draftsharks"})
         self.assertEqual({row["confidence"] for row in offense_rows}, {80.0})
 

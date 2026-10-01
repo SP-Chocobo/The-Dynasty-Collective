@@ -1,0 +1,345 @@
+{
+  "commit": "7efb423",
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "source": "evidence/roster_shape/fix_216",
+  "reproduces_recorded": true,
+  "formats": [
+    {
+      "format": "12T_ppr",
+      "arms": [
+        {
+          "arm": "BASE_ON",
+          "seat": "1",
+          "total": 408.71,
+          "floored": 719.55,
+          "starter": 333.68,
+          "unpriced": 0,
+          "recorded": {
+            "total": 408.71,
+            "starter": 333.68
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_OFF",
+          "seat": "1",
+          "total": 609.35,
+          "floored": 719.55,
+          "starter": 634.24,
+          "unpriced": 0,
+          "recorded": {
+            "total": 609.35,
+            "starter": 634.24
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_ON",
+          "seat": "1",
+          "total": 392.05,
+          "floored": 634.53,
+          "starter": 632.4,
+          "unpriced": 0,
+          "recorded": {
+            "total": 392.05,
+            "starter": 632.4
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_OFF",
+          "seat": "1",
+          "total": 392.05,
+          "floored": 634.53,
+          "starter": 632.4,
+          "unpriced": 0,
+          "recorded": {
+            "total": 392.05,
+            "starter": 632.4
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_ON",
+          "seat": "6",
+          "total": 307.61,
+          "floored": 645.52,
+          "starter": 238.9,
+          "unpriced": 0,
+          "recorded": {
+            "total": 307.61,
+            "starter": 238.9
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_OFF",
+          "seat": "6",
+          "total": 563.3,
+          "floored": 645.52,
+          "starter": 567.9,
+          "unpriced": 0,
+          "recorded": {
+            "total": 563.3,
+            "starter": 567.9
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_ON",
+          "seat": "6",
+          "total": 317.0,
+          "floored": 580.35,
+          "starter": 578.9,
+          "unpriced": 0,
+          "recorded": {
+            "total": 317.0,
+            "starter": 578.9
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_OFF",
+          "seat": "6",
+          "total": 317.0,
+          "floored": 580.35,
+          "starter": 578.9,
+          "unpriced": 0,
+          "recorded": {
+            "total": 317.0,
+            "starter": 578.9
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_ON",
+          "seat": "12",
+          "total": 209.65,
+          "floored": 564.68,
+          "starter": 191.1,
+          "unpriced": 0,
+          "recorded": {
+            "total": 209.65,
+            "starter": 191.1
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_OFF",
+          "seat": "12",
+          "total": 255.05,
+          "floored": 567.44,
+          "starter": 233.74,
+          "unpriced": 0,
+          "recorded": {
+            "total": 255.05,
+            "starter": 233.74
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_ON",
+          "seat": "12",
+          "total": 244.18,
+          "floored": 526.59,
+          "starter": 521.8,
+          "unpriced": 0,
+          "recorded": {
+            "total": 244.18,
+            "starter": 521.8
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_OFF",
+          "seat": "12",
+          "total": 244.18,
+          "floored": 526.59,
+          "starter": 521.8,
+          "unpriced": 0,
+          "recorded": {
+            "total": 244.18,
+            "starter": 521.8
+          },
+          "reproduced": true
+        }
+      ]
+    },
+    {
+      "format": "12T_ppr_SF",
+      "arms": [
+        {
+          "arm": "BASE_ON",
+          "seat": "1",
+          "total": 857.97,
+          "floored": 1046.77,
+          "starter": 757.16,
+          "unpriced": 0,
+          "recorded": {
+            "total": 857.97,
+            "starter": 757.16
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_OFF",
+          "seat": "1",
+          "total": 888.98,
+          "floored": 1046.77,
+          "starter": 838.53,
+          "unpriced": 0,
+          "recorded": {
+            "total": 888.98,
+            "starter": 838.53
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_ON",
+          "seat": "1",
+          "total": 576.54,
+          "floored": 888.57,
+          "starter": 877.56,
+          "unpriced": 0,
+          "recorded": {
+            "total": 576.54,
+            "starter": 877.56
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_OFF",
+          "seat": "1",
+          "total": 576.54,
+          "floored": 888.57,
+          "starter": 877.56,
+          "unpriced": 0,
+          "recorded": {
+            "total": 576.54,
+            "starter": 877.56
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_ON",
+          "seat": "6",
+          "total": 809.4,
+          "floored": 990.4,
+          "starter": 663.45,
+          "unpriced": 0,
+          "recorded": {
+            "total": 809.4,
+            "starter": 663.45
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_OFF",
+          "seat": "6",
+          "total": 897.5,
+          "floored": 990.4,
+          "starter": 832.61,
+          "unpriced": 0,
+          "recorded": {
+            "total": 897.5,
+            "starter": 832.61
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_ON",
+          "seat": "6",
+          "total": 497.28,
+          "floored": 832.61,
+          "starter": 823.03,
+          "unpriced": 0,
+          "recorded": {
+            "total": 497.28,
+            "starter": 823.03
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_OFF",
+          "seat": "6",
+          "total": 497.28,
+          "floored": 832.61,
+          "starter": 823.03,
+          "unpriced": 0,
+          "recorded": {
+            "total": 497.28,
+            "starter": 823.03
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_ON",
+          "seat": "12",
+          "total": 738.95,
+          "floored": 930.46,
+          "starter": 557.67,
+          "unpriced": 0,
+          "recorded": {
+            "total": 738.95,
+            "starter": 557.67
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "BASE_OFF",
+          "seat": "12",
+          "total": 781.78,
+          "floored": 930.46,
+          "starter": 659.02,
+          "unpriced": 0,
+          "recorded": {
+            "total": 781.78,
+            "starter": 659.02
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_ON",
+          "seat": "12",
+          "total": 418.82,
+          "floored": 732.51,
+          "starter": 724.19,
+          "unpriced": 0,
+          "recorded": {
+            "total": 418.82,
+            "starter": 724.19
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "FIX_OFF",
+          "seat": "12",
+          "total": 418.82,
+          "floored": 732.51,
+          "starter": 724.19,
+          "unpriced": 0,
+          "recorded": {
+            "total": 418.82,
+            "starter": 724.19
+          },
+          "reproduced": true
+        }
+      ]
+    }
+  ]
+}

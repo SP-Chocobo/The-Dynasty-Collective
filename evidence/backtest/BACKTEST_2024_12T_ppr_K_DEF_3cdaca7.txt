@@ -1,0 +1,18 @@
+12T_ppr_K_DEF: 674 priced, K/DEF slots ['K', 'DEF'], grading 12 seats on 2024 outcomes
+   seat  1: engine   2600.7 vs field   2552.3  delta    +48.4  first K/DST rd 5
+   seat  2: engine   2439.6 vs field   2563.8  delta   -124.3  first K/DST rd 4
+   seat  3: engine   2439.6 vs field   2563.8  delta   -124.3  first K/DST rd 4
+   seat  4: engine   2374.3 vs field   2565.1  delta   -190.8  first K/DST rd 5
+   seat  5: engine   2507.7 vs field   2574.6  delta    -66.8  first K/DST rd 5
+   seat  6: engine   2611.2 vs field   2566.0  delta    +45.2  first K/DST rd 5
+   seat  7: engine   2868.6 vs field   2543.7  delta   +324.8  first K/DST rd 5
+   seat  8: engine   2782.6 vs field   2552.3  delta   +230.3  first K/DST rd 5
+   seat  9: engine   2711.6 vs field   2557.6  delta   +153.9  first K/DST rd 5
+   seat 10: engine   2553.3 vs field   2539.2  delta    +14.1  first K/DST rd 5
+   seat 11: engine   2538.3 vs field   2530.8  delta     +7.5  first K/DST rd 5
+   seat 12: engine   2092.6 vs field   2595.9  delta   -503.3  first K/DST rd 5
+
+=== BACKTEST GRADE, 2024 realized outcomes ===
+12T_ppr_K_DEF: engine wins 7 of 12 seats | mean -15.4 | median +10.8
+
+-> BACKTEST_GRADE.json

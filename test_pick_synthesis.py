@@ -7,6 +7,7 @@ support.
 """
 
 import unittest
+from pathlib import Path
 
 import dataclasses
 
@@ -14,6 +15,8 @@ import data_merger as dm
 import draft_room as dr
 import draft_strategy as ds
 import pick_synthesis as ps
+
+_HERE = Path(__file__).parent
 
 SUPERFLEX_LEAGUE = {
     "roster_positions": ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX", "BN", "BN", "BN", "BN"],
@@ -210,11 +213,18 @@ class PositionViewDepthTests(unittest.TestCase):
 
 
 def _raw_candidate(team_acquisition_value, survival_probability=1.0, positional_cliff=None,
-                    position_run_detected=False, rival_premium=0.0, need_bonus=0.0, eligibility_bonus=0.0):
+                    position_run_detected=False, rival_premium=0.0, need_bonus=0.0,
+                    depth_exposure=None, positional_forfeit=None):
+    # depth_exposure defaults to None rather than 0.0 so this helper keeps producing the shape
+    # a row with no depth measurement actually has -- the distinction the whole basis idiom
+    # exists to preserve. Passing 0.0 explicitly would test a different case.
     return {
         "team_acquisition_value": team_acquisition_value, "survival_probability": survival_probability,
         "positional_cliff": positional_cliff, "position_run_detected": position_run_detected,
-        "rival_premium": rival_premium, "need_bonus": need_bonus, "eligibility_bonus": eligibility_bonus,
+        "rival_premium": rival_premium, "need_bonus": need_bonus, "depth_exposure": depth_exposure,
+        # None, not 0.0: a back-to-back snake turn has no intervening picks, so there is no
+        # wait to price. See DepthExposureStopsAtTheValueLayerTests' sibling below.
+        "positional_forfeit": positional_forfeit,
     }
 
 
@@ -244,8 +254,7 @@ class ComputePickNecessityTests(unittest.TestCase):
     def test_a_real_standout_with_full_scarcity_pressure_reaches_must_take(self):
         standout = _raw_candidate(
             120.0, survival_probability=0.02, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2},
-            position_run_detected=True, rival_premium=12.0, need_bonus=10.0, eligibility_bonus=5.0,
-        )
+            position_run_detected=True, rival_premium=12.0, need_bonus=10.0)
         distant_second = _raw_candidate(60.0)
         results = ps.compute_pick_necessity([standout, distant_second], round_num=3)
         self.assertGreaterEqual(results[0][0], 90.0)
@@ -305,30 +314,56 @@ class ComputePickNecessityTests(unittest.TestCase):
     def test_denial_component_is_take_probability_free(self):
         # The double-count this fixed, measured at r = +0.82 between the survival and denial
         # components before the split: denial_value carried the same p_take that already
-        # compounds into survival_probability. The necessity denial term now reads ONLY the
-        # p_take-free rival_premium -- so two candidates with the identical premium but very
-        # different survival must differ by exactly their survival components and nothing
-        # else, and the premium itself caps at draft_room's own NEED_BONUS_MAX scale.
+        # compounded into a survival term in this score. The necessity denial term reads ONLY
+        # the p_take-free rival_premium, and the premium saturates at its own structural
+        # bound (#144).
+        #
+        # THIS ASSERTION IS INVERTED AT #24, not deleted. It used to read "two candidates with
+        # the identical premium but very different survival must differ by EXACTLY their
+        # survival components" -- `assertAlmostEqual(delta, 0.5 * NECESSITY_SURVIVAL_WEIGHT)`.
+        # #24 retired that term, so the same two candidates must now be IDENTICAL, and the
+        # stronger statement is the one that survives: no probability of any kind reaches this
+        # score, so a difference in survival cannot move it at all. Left as the old assertion
+        # with the weight zeroed it would have passed vacuously.
         import draft_room as dr
         same_premium_safe = _raw_candidate(100.0, survival_probability=1.0, rival_premium=6.0)
         same_premium_risky = _raw_candidate(100.0, survival_probability=0.5, rival_premium=6.0)
         results = ps.compute_pick_necessity([same_premium_safe, same_premium_risky], round_num=3)
-        survival_delta = 0.5 * ps.NECESSITY_SURVIVAL_WEIGHT
-        self.assertAlmostEqual(results[1][0] - results[0][0], survival_delta, places=6)
+        self.assertAlmostEqual(
+            results[1][0], results[0][0], places=6,
+            msg="survival moved necessity -- #24 retired that term, so two candidates differing "
+                "only in survival must score identically")
 
-        # Premium scales the component linearly up to the NEED_BONUS_MAX cap, then saturates.
-        half = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX / 2)
-        full = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX)
-        beyond = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX * 10)
+        # Premium scales the component linearly up to its own saturation point, then flattens.
+        # #144 moved that point from NEED_BONUS_MAX -- the cap on ONE of the three terms
+        # rival_premium sums -- to the sum of all three, which is the quantity's actual bound.
+        # The RATE is unchanged: the ceiling moved by the same factor as the divisor, so the
+        # step from half-saturation to saturation is still half the ramp's full height.
+        half = _raw_candidate(100.0, rival_premium=ps.NECESSITY_DENIAL_SATURATION / 2)
+        full = _raw_candidate(100.0, rival_premium=ps.NECESSITY_DENIAL_SATURATION)
+        beyond = _raw_candidate(100.0, rival_premium=ps.NECESSITY_DENIAL_SATURATION * 10)
         r = ps.compute_pick_necessity([half, full, beyond], round_num=3)
-        self.assertAlmostEqual(r[1][0] - r[0][0], ps.NECESSITY_DENIAL_WEIGHT / 2, places=6)
+        self.assertAlmostEqual(r[1][0] - r[0][0], ps.NECESSITY_DENIAL_CEILING / 2, places=6)
         self.assertAlmostEqual(r[2][0], r[1][0], places=6)
+
+        # The rate itself, pinned separately from the ramp's endpoints -- this is the number
+        # #144 held fixed, and holding it is what made the repair surgical rather than a 3x
+        # re-weighting of the whole term.
+        self.assertAlmostEqual(
+            ps.NECESSITY_DENIAL_CEILING / ps.NECESSITY_DENIAL_SATURATION,
+            ps.NECESSITY_DENIAL_WEIGHT / dr.NEED_BONUS_MAX, places=9,
+            msg="the denial rate moved -- the ceiling and the saturation point are ONE slope",
+        )
+        # And a premium at one team-term's worth still contributes exactly what it always did.
+        one_term = _raw_candidate(100.0, rival_premium=dr.NEED_BONUS_MAX)
+        none_at_all = _raw_candidate(100.0, rival_premium=0.0)
+        r2 = ps.compute_pick_necessity([one_term, none_at_all], round_num=3)
+        self.assertAlmostEqual(r2[0][0] - r2[1][0], ps.NECESSITY_DENIAL_WEIGHT, places=6)
 
     def test_necessity_never_leaves_the_0_to_100_range(self):
         extreme = _raw_candidate(
             1000.0, survival_probability=0.0, positional_cliff={"tier": "HIGH", "gap": 999, "typical_gap": 1},
-            position_run_detected=True, rival_premium=1000.0, need_bonus=50.0, eligibility_bonus=50.0,
-        )
+            position_run_detected=True, rival_premium=1000.0, need_bonus=50.0)
         results = ps.compute_pick_necessity([extreme, _raw_candidate(1.0)], round_num=3)
         for score, _label in results:
             self.assertGreaterEqual(score, 0.0)
@@ -336,8 +371,10 @@ class ComputePickNecessityTests(unittest.TestCase):
 
 
 class NecessityComponentIsolationTests(unittest.TestCase):
-    """Mutation testing zeroed NECESSITY_SURVIVAL_WEIGHT and NECESSITY_ROSTER_FIT_WEIGHT --
-    deleting two of pick_necessity's terms outright -- and all 963 tests still passed. The
+    """Mutation testing zeroed the survival weight and NECESSITY_ROSTER_FIT_WEIGHT --
+    deleting two of pick_necessity's terms outright -- and all 963 tests still passed. (The
+    survival weight has since been retired outright by #24, which is why it is named here in
+    prose rather than as a live constant.) The
     existing tests all stack several pressures at once and assert the total, so any single
     term can vanish while the totals still order correctly.
 
@@ -346,20 +383,15 @@ class NecessityComponentIsolationTests(unittest.TestCase):
     the only thing that can separate the scores is the term under test.
     """
 
-    def test_survival_pressure_alone_changes_the_score(self):
-        # "Likely to be gone by your next pick" is one of the two things necessity exists to
-        # say. Equal players, one at real risk.
-        at_risk = _raw_candidate(100.0, survival_probability=0.1)
-        safe = _raw_candidate(100.0, survival_probability=0.95)
-        (risk_score, _), (safe_score, _) = ps.compute_pick_necessity([at_risk, safe], round_num=3)
-        self.assertGreater(
-            risk_score, safe_score,
-            "survival probability had no effect on necessity -- the term is not reaching the score",
-        )
+    # `test_survival_pressure_alone_changes_the_score` WAS HERE, deleted at #24 / W1-07.
+    # It pinned that survival_probability moved necessity on its own. The ruling retired that
+    # term, so the property it protected is now the OPPOSITE property, and that one is asserted
+    # in test_denial_component_is_take_probability_free above rather than left implicit -- a
+    # deleted test whose inverse nobody writes is a contract that quietly stops existing.
 
     def test_roster_fit_alone_changes_the_score(self):
         # The other one: an identical player who actually fills a hole on THIS roster is a
-        # more necessary pick than one who does not. need_bonus and eligibility_bonus are the
+        # more necessary pick than one who does not. need_bonus is the
         # only team-specific inputs necessity gets.
         fits = _raw_candidate(100.0, need_bonus=10.0)
         does_not_fit = _raw_candidate(100.0, need_bonus=0.0)
@@ -369,14 +401,12 @@ class NecessityComponentIsolationTests(unittest.TestCase):
             "need_bonus had no effect on necessity -- the roster-fit term is not reaching the score",
         )
 
-    def test_eligibility_flexibility_alone_changes_the_score(self):
-        # eligibility_bonus enters through the same term, and is the half that carries a
-        # multi-position player's lineup flexibility. Pinned separately so zeroing either
-        # input is caught, not just the shared weight.
-        flexible = _raw_candidate(100.0, eligibility_bonus=8.0)
-        rigid = _raw_candidate(100.0, eligibility_bonus=0.0)
-        (flex_score, _), (rigid_score, _) = ps.compute_pick_necessity([flexible, rigid], round_num=3)
-        self.assertGreater(flex_score, rigid_score)
+    # `test_eligibility_flexibility_alone_changes_the_score` WAS HERE, deleted at 6.1b (#52).
+    # It pinned that the eligibility half of roster_fit moved necessity on its own, so that
+    # zeroing EITHER input was caught rather than only the shared weight. With one input left
+    # there is no "either" to protect, and the surviving half is covered by the need_bonus test
+    # above and by test_every_pressure_term_is_individually_reachable, which derives its
+    # variants and therefore needed no edit when the term left.
 
     def test_every_pressure_term_is_individually_reachable(self):
         # The general form of the two tests above, so a future term added to the sum starts
@@ -384,12 +414,10 @@ class NecessityComponentIsolationTests(unittest.TestCase):
         # from a completely neutral candidate.
         neutral = dict(_raw_candidate(100.0))
         variants = {
-            "survival": dict(neutral, survival_probability=0.05),
             "cliff": dict(neutral, positional_cliff={"tier": "HIGH", "gap": 20, "typical_gap": 2}),
             "run": dict(neutral, position_run_detected=True),
             "denial": dict(neutral, rival_premium=12.0),
             "need_bonus": dict(neutral, need_bonus=10.0),
-            "eligibility_bonus": dict(neutral, eligibility_bonus=10.0),
         }
         base = ps.compute_pick_necessity([dict(neutral), dict(neutral)], round_num=3)[0][0]
         for name, variant in variants.items():
@@ -431,22 +459,52 @@ class DecisionPathFlagsTests(unittest.TestCase):
     pin that reuse (each boundary is asserted against the constant itself, not a copied
     literal) and the rule that the flags classify without ever changing a score."""
 
-    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0):
-        # take_prob defaults to 1.0 (fully credible) so every PRE-EXISTING test in this class
-        # -- none of which cares about the credible-path gate -- keeps exercising exactly the
-        # boundary it was written to test, undisturbed by that gate's addition.
+    def _cand(self, uv, tav, forfeit=None, premium=0.0, take_prob=1.0, take_rank=1, cliff=None):
+        # take_rank defaults to 1 (the most credible path there is) so every PRE-EXISTING test in
+        # this class -- none of which cares about the credible-path gate -- keeps exercising
+        # exactly the boundary it was written to test, undisturbed by that gate's presence.
+        #
+        # MANDATE 3.4: the gate reads the RANK now. `take_prob` is still carried because the field
+        # still exists and is still observable, but nothing gates on it -- `#206` normalised the
+        # probability model out from under the threshold that used to.
         return {"universal_value": uv, "team_acquisition_value": tav,
                 "positional_forfeit": forfeit, "rival_premium": premium,
-                "rival_premium_take_probability": take_prob}
+                "rival_premium_take_probability": take_prob,
+                "rival_premium_take_rank": take_rank,
+                "positional_cliff": ({"tier": cliff} if cliff is not None else None)}
 
-    def test_cliff_protection_at_the_standout_gap_boundary(self):
-        below = self._cand(90, 95, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP - 0.1)
-        at = self._cand(80, 85, forfeit=ps.NECESSITY_STANDOUT_REFERENCE_GAP)
-        missing = self._cand(70, 75, forfeit=None)
-        flags = ps.decision_path_flags([below, at, missing])
+    def test_cliff_protection_fires_on_the_material_cliff_tiers_and_no_others(self):
+        # REPLACES the old standout-gap boundary test, which pinned a rule #160 deliberately
+        # removed: cliff_protection used to read `positional_forfeit >=
+        # NECESSITY_STANDOUT_REFERENCE_GAP`, a normalizer's reference applied to a quantity
+        # twenty times its range. Deleting that test without replacing it would have dropped
+        # this flag's only behavioural coverage, so the boundary moved rather than vanished.
+        high = self._cand(90, 95, cliff="HIGH")
+        medium = self._cand(85, 90, cliff="MEDIUM")
+        low = self._cand(80, 85, cliff="LOW")
+        no_cliff = self._cand(75, 80, cliff=None)
+        flags = ps.decision_path_flags([high, medium, low, no_cliff])
+        self.assertTrue(flags[0]["cliff_protection"], "HIGH is a material cliff")
+        self.assertTrue(flags[1]["cliff_protection"], "MEDIUM is a material cliff")
+        self.assertFalse(flags[2]["cliff_protection"], "LOW earns no necessity points")
+        self.assertFalse(flags[3]["cliff_protection"],
+                         "no computable cliff means nothing to protect against, not True")
+
+    def test_forfeit_alone_no_longer_lights_cliff_protection(self):
+        # The specific regression #160 repaired, pinned directly: an enormous forfeit with no
+        # detected cliff used to fire this flag and must not any more. Without this, reverting
+        # the flag to the old forfeit rule would still pass the tier test above.
+        huge_forfeit_no_cliff = self._cand(90, 95, forfeit=1000.0, cliff=None)
+        flags = ps.decision_path_flags([huge_forfeit_no_cliff])
         self.assertFalse(flags[0]["cliff_protection"])
-        self.assertTrue(flags[1]["cliff_protection"])
-        self.assertFalse(flags[2]["cliff_protection"])
+
+    def test_the_material_tier_set_is_derived_from_the_points_table(self):
+        # CLIFF_PROTECTION_TIERS must stay the tiers the engine actually prices into necessity.
+        # Hand-listing them in either place lets the two definitions drift apart silently, which
+        # is the whole reason it is derived.
+        self.assertEqual(
+            set(ps.CLIFF_PROTECTION_TIERS),
+            {tier for tier, points in ps.NECESSITY_CLIFF_POINTS.items() if points > 0})
 
     def test_block_opportunity_at_the_two_dedicated_slots_premium_boundary(self):
         # 2x, not 1x, deliberately: one slot's worth of rival need fired for 73% of
@@ -466,21 +524,36 @@ class DecisionPathFlagsTests(unittest.TestCase):
     def test_block_opportunity_requires_a_credible_rival_path_not_premium_magnitude_alone(self):
         # The REFINE production change: a premium big enough to clear the 2x-dedicated-slot
         # boundary is necessary but no longer sufficient -- the specific rival driving that
-        # premium must ALSO have a credible real chance of taking the player
-        # (take_probability >= CREDIBLE_RIVAL_PATH_THRESHOLD), per the denial-semantics audit
-        # finding that ~1 in 5 premium-qualifying flags had no such rival path (both real
-        # trial formats).
+        # premium must ALSO have a credible real chance of taking the player, per the
+        # denial-semantics audit finding that ~1 in 5 premium-qualifying flags had no such rival
+        # path (both real trial formats).
+        #
+        # MANDATE 3.4: THE BAR IS NOW A RANK, and the boundary cases move with it. It was
+        # `take_probability >= 0.10`, and 0.10 is the rank-4 entry of draft_strategy's own raw
+        # RANK_TAKE_PROBABILITY table -- but `#206` normalised that model so one opponent's take
+        # probabilities sum to <= 1 across their whole board, leaving the threshold in raw units.
+        # Measured: the largest take_probability that can reach this gate is 0.028, so the flag was
+        # False on every candidate and the "Denies {team}" label never appeared. Stated as a rank it
+        # is the same bar and cannot drift when the probability model is renormalised again.
         import draft_room as dr
         boundary = 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT
-        no_path = self._cand(80, 85, premium=boundary + 5.0, take_prob=0.02)
-        missing_take_prob = self._cand(80, 85, premium=boundary + 5.0, take_prob=None)
-        at_threshold = self._cand(80, 85, premium=boundary + 5.0, take_prob=ps.CREDIBLE_RIVAL_PATH_THRESHOLD)
-        just_below_threshold = self._cand(80, 85, premium=boundary + 5.0, take_prob=ps.CREDIBLE_RIVAL_PATH_THRESHOLD - 0.001)
-        flags = ps.decision_path_flags([no_path, missing_take_prob, at_threshold, just_below_threshold])
+        no_path = self._cand(80, 85, premium=boundary + 5.0, take_rank=40)
+        missing_take_rank = self._cand(80, 85, premium=boundary + 5.0, take_rank=None)
+        at_the_bar = self._cand(80, 85, premium=boundary + 5.0,
+                                take_rank=ps.CREDIBLE_RIVAL_PATH_MAX_RANK)
+        just_beyond = self._cand(80, 85, premium=boundary + 5.0,
+                                 take_rank=ps.CREDIBLE_RIVAL_PATH_MAX_RANK + 1)
+        flags = ps.decision_path_flags([no_path, missing_take_rank, at_the_bar, just_beyond])
         self.assertFalse(flags[0]["block_opportunity"], "high premium alone must not fire DENIAL without a credible rival path")
-        self.assertFalse(flags[1]["block_opportunity"], "a missing take_probability must not default to credible")
-        self.assertTrue(flags[2]["block_opportunity"], "the credible-path threshold itself is inclusive (>=)")
+        self.assertFalse(flags[1]["block_opportunity"],
+                         "a missing rank means no rival board priced him, which is not credible -- "
+                         "it must not default to credible")
+        self.assertTrue(flags[2]["block_opportunity"], "the credible-path bar itself is inclusive (<=)")
         self.assertFalse(flags[3]["block_opportunity"])
+        # AND THE FLAG IS REACHABLE AT ALL, which is what 3.4 found it was not. A bar no input can
+        # clear is not a gate, and this pins that at least one of these cases fires.
+        self.assertTrue(any(flag["block_opportunity"] for flag in flags),
+                        "no candidate clears the credible-path bar, so the flag is dead again")
 
     def test_credible_gate_does_not_touch_rival_premiums_own_value(self):
         # The user's explicit constraint: the continuous rival_premium contribution (and the
@@ -498,12 +571,10 @@ class DecisionPathFlagsTests(unittest.TestCase):
 
         others = [70.0]
         necessity_credible = ps.compute_pick_necessity(
-            [dict(credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, eligibility_bonus=0.0,
-                  survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
+            [dict(credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
         )
         necessity_not_credible = ps.compute_pick_necessity(
-            [dict(not_credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, eligibility_bonus=0.0,
-                  survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
+            [dict(not_credible, player_id="a", team_acquisition_value=85.0, need_bonus=0.0, survival_probability=0.5, positional_cliff=None, position_run_detected=False)], round_num=3,
         )
         self.assertEqual(necessity_credible, necessity_not_credible,
                           "pick_necessity's denial_component must be identical regardless of credible-path status -- "
@@ -536,26 +607,20 @@ class DecisionPathFlagsTests(unittest.TestCase):
     def test_empty_input(self):
         self.assertEqual(ps.decision_path_flags([]), [])
 
-    def test_context_elevated_at_the_need_bonus_max_boundary(self):
-        import draft_room as dr
-        below = self._cand(70.0, 70.0 + dr.NEED_BONUS_MAX - 0.1)
-        at = self._cand(70.0, 70.0 + dr.NEED_BONUS_MAX)
-        flags = ps.decision_path_flags([below, at])
-        self.assertFalse(flags[0]["context_elevated"])
-        self.assertTrue(flags[1]["context_elevated"])
+    def test_context_elevated_is_retired_and_not_merely_always_false(self):
+        """#25, ruled: RETIRED, not re-thresholded. Two tests lived here -- a boundary test at
+        NEED_BONUS_MAX and one pinning that the two Context Gap directions were independent --
+        and both are gone with the flag.
 
-    def test_context_elevated_and_pure_value_are_independent_directions(self):
-        # The two Context Gap directions are not mutually exclusive by construction (a
-        # contrived case could technically satisfy both), but they answer different
-        # questions and should each be computed on their own terms -- a candidate who is
-        # both the field's best raw talent AND carries a huge roster-fit bonus gets both
-        # flags rather than one silently overriding the other.
-        import draft_room as dr
-        leader = self._cand(80.0, 300.0)  # tav kept comfortably above "both"'s own
-        both = self._cand(200.0, 200.0 + dr.NEED_BONUS_MAX)  # best uv AND huge fit bonus, still not the leader
-        flags = ps.decision_path_flags([leader, both])
-        self.assertTrue(flags[1]["pure_value"])
-        self.assertTrue(flags[1]["context_elevated"])
+        Asserting the KEY IS ABSENT rather than False on purpose: a flag left in the dict
+        reading False forever is the dead-signal shape this programme keeps finding, and it
+        would let a consumer keep a branch for a direction that no longer exists.
+        """
+        cands = [self._cand(70.0, 70.0 + 50.0), self._cand(70.0, 70.0)]
+        for f in ps.decision_path_flags(cands):
+            self.assertNotIn("context_elevated", f)
+        # pure_value -- the direction that DID have a population -- is untouched.
+        self.assertIn("pure_value", ps.decision_path_flags(cands)[0])
 
 
 class DecisionRegimeTests(unittest.TestCase):
@@ -566,10 +631,34 @@ class DecisionRegimeTests(unittest.TestCase):
     def _cand(self, tav, survival=0.5):
         return {"team_acquisition_value": tav, "survival_probability": survival}
 
+    def _regime_with_gate_lifted(self, candidates):
+        """decision_regime's ARITHMETIC, with the #206 calibration gate lifted.
+
+        Production returns "contested" unconditionally while SURVIVAL_IS_CALIBRATED is False.
+        A test asserting "decisive" against the live function would therefore have to be
+        deleted or inverted -- and both would lose the predicate this class exists to pin.
+        Lifting the gate here keeps these tests about margin-and-survival, which is what their
+        names claim. test_threshold_reachability owns the question of what production does."""
+        original = ps.SURVIVAL_IS_CALIBRATED
+        try:
+            ps.SURVIVAL_IS_CALIBRATED = True
+            return ps.decision_regime(candidates)
+        finally:
+            ps.SURVIVAL_IS_CALIBRATED = original
+
+    def test_the_calibration_gate_overrides_the_arithmetic_in_production(self):
+        """The companion to the two tests below: the predicate says decisive, production says
+        contested, and neither fact is allowed to drift without the other failing."""
+        leader = self._cand(100.0, survival=0.05)
+        second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
+        self.assertFalse(ps.SURVIVAL_IS_CALIBRATED)
+        self.assertEqual(self._regime_with_gate_lifted([leader, second]), "decisive")
+        self.assertEqual(ps.decision_regime([leader, second]), "contested")
+
     def test_decisive_requires_both_a_real_margin_and_low_survival(self):
         leader = self._cand(100.0, survival=0.05)
         second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
-        self.assertEqual(ps.decision_regime([leader, second]), "decisive")
+        self.assertEqual(self._regime_with_gate_lifted([leader, second]), "decisive")
 
     def test_big_margin_alone_is_not_enough_if_survival_is_high(self):
         # A commanding lead that's still likely to survive isn't genuinely urgent --
@@ -608,7 +697,7 @@ class DecisionRegimeTests(unittest.TestCase):
     def test_does_its_own_ranking_regardless_of_input_order(self):
         leader = self._cand(100.0, survival=0.05)
         second = self._cand(100.0 - ps.NECESSITY_STANDOUT_REFERENCE_GAP, survival=0.5)
-        self.assertEqual(ps.decision_regime([second, leader]), "decisive")
+        self.assertEqual(self._regime_with_gate_lifted([second, leader]), "decisive")
 
 
 class SnapshotIsCurrentTests(unittest.TestCase):
@@ -666,7 +755,15 @@ class BuildSnapshotTests(unittest.TestCase):
                 }
         cls.pick_order = ds.generate_pick_order([str(i) for i in range(1, 13)], total_rounds=4)
 
-    def test_snapshot_is_narrowed_and_ranked_by_team_acquisition_value(self):
+    def test_snapshot_is_narrowed_and_ranked_by_what_the_player_is_worth(self):
+        """Ranked by team_acquisition_value (#22).
+
+        This asserted the tav order, was rewritten to assert the acting_now order when that
+        briefly became the key, and is back. The acting_now ordering lost 6.090% of
+        starting-lineup points against a fixed field -- it carries a curve's local SLOPE and
+        discards its HEIGHT -- so the board ranks on what the player is worth again. See
+        evidence/smoke_seats/V2_MECHANISM.md.
+        """
         # At least top_n (can run longer -- narrow_candidates also guarantees the single best
         # remaining player at every position gets a look, even one that didn't crack the raw
         # top_n on value alone -- see narrow_candidates' own docstring for why).
@@ -675,8 +772,24 @@ class BuildSnapshotTests(unittest.TestCase):
             league=LEAGUE, pick_label="1.01", top_n=5,
         )
         self.assertGreaterEqual(len(snap.candidates), 5)
-        values = [c.team_acquisition_value for c in snap.candidates]
-        self.assertEqual(values, sorted(values, reverse=True), "candidates must be ranked by team_acquisition_value")
+        keys = [ps._board_order({
+            "team_acquisition_value": c.team_acquisition_value,
+            "fills_required_slot": c.fills_required_slot,
+            "player_id": c.player_id,
+        }, "team_acquisition_value") for c in snap.candidates]
+        self.assertEqual(keys, sorted(keys), "candidates must be ranked by _board_order")
+
+    def test_that_ranking_assertion_is_not_vacuous(self):
+        """The check above compares a list to its own sort, which holds trivially on one row
+        and nearly so on rows that all score the same. Pin that the set really is ordered and
+        really does vary."""
+        snap = ps.build_snapshot(
+            self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
+            league=LEAGUE, pick_label="1.01", top_n=5,
+        )
+        leaders = [c.team_acquisition_value for c in snap.candidates
+                   if c.team_acquisition_value is not None]
+        self.assertGreater(len(set(leaders)), 1, "every candidate priced the same -- nothing is ordered")
 
     def test_the_best_remaining_player_at_every_position_is_always_included(self):
         # The real fix this closes: a scarce position's best remaining player used to be
@@ -741,7 +854,9 @@ class BuildSnapshotTests(unittest.TestCase):
             # test_draft_room.py enforces end-to-end, re-checked here since this module is
             # the one actually handing these numbers to the LLM debate layer.
             self.assertAlmostEqual(
-                c.team_acquisition_value, c.universal_value + c.need_bonus + c.eligibility_bonus, places=2,
+                c.team_acquisition_value,
+                c.universal_value + sum((getattr(c, t) or 0.0) for t in dr.TEAM_SPECIFIC_TERMS),
+                places=2,
             )
             # projected_points is a real number here, never a fabricated one, since these are
             # all real Draft-Sharks-projected top players -- never a stray NaN leaking through
@@ -815,22 +930,29 @@ class BuildSnapshotTests(unittest.TestCase):
         self.assertTrue(snap.candidates)
 
     def test_upside_mode_preserves_the_value_layer_identity(self):
-        # team_acquisition_value == universal_value + need_bonus + eligibility_bonus is the
-        # contract every consumer of a candidate reads. Upside mode has no separated need or
-        # eligibility term at all, so the identity must hold with both at 0.0 -- which is
-        # only true if universal_value falls back to the team-agnostic final_score, not to
-        # some other number. This is what stops the KeyError fix from quietly turning into a
-        # value fabrication.
+        # team_acquisition_value == universal_value + the team-specific terms is the contract every
+        # consumer of a candidate reads. Upside mode has no separated need term at all, so the
+        # identity must hold with that term contributing nothing -- which is only true if
+        # universal_value falls back to the team-agnostic final_score, not to some other number.
+        # This is what stops the KeyError fix from quietly turning into a value fabrication.
+        #
+        # MANDATE 2.5 CHANGED WHAT "NOTHING" LOOKS LIKE HERE, and the claim is stronger for it.
+        # This asserted `need_bonus == 0.0`, which was the boundary fabricating a measured zero out
+        # of a key compute_draft_board deliberately omits. The identity is about what
+        # team_acquisition_value CONTAINS; None says the term was never computed, 0.0 said it was
+        # computed and came out zero, and only one of those is true in upside mode. The sum below
+        # already treated an absent term as contributing nothing, so the identity is unchanged --
+        # it is the absence that is now stated honestly.
         snap = ps.build_snapshot(
             self.merger, self.players_db, [], self.pick_order, current_index=0, my_roster_id="1",
             league=LEAGUE, pick_label="1.01", top_n=5, mode="upside",
         )
         for c in snap.candidates:
-            self.assertEqual(c.need_bonus, 0.0, c.name)
-            self.assertEqual(c.eligibility_bonus, 0.0, c.name)
+            self.assertIsNone(c.need_bonus, c.name)
+
             self.assertAlmostEqual(
                 c.team_acquisition_value,
-                c.universal_value + c.need_bonus + c.eligibility_bonus,
+                c.universal_value + sum((getattr(c, t) or 0.0) for t in dr.TEAM_SPECIFIC_TERMS),
                 places=6, msg=c.name,
             )
 
@@ -1059,7 +1181,7 @@ class ConsensusLookupTests(unittest.TestCase):
         self.assertLess(entry["rank"], 50, "expected Bijan Robinson's much better rank to win the collision")
 
 
-class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
+class ConsensusStandingFreshnessBlindSpotTests(unittest.TestCase):
     """FLAGGED FINDING from the priority-7 information-freshness audit, not an asserted-correct
     invariant -- pins down a real gap so it doesn't get lost, exactly like the risk_adj
     calibration finding earlier in this same audit.
@@ -1072,15 +1194,15 @@ class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
     change since this snapshot was frozen," not "is this data too old to trust." Nothing in
     this app changes VALUATION behavior based on staleness, for any source.
 
-    consensus_reach's reach_label/consensus_tier/consensus_rank are different in kind: they are
-    real decision-support fields that reach CandidateSnapshot directly (every real "Debate My
-    Pick" run sees them), sourced entirely from KeepTradeCut's external_values rows -- which
-    have NO freshness tracking anywhere, not even the cosmetic kind Draft Sharks gets. The one
+    consensus_standing's consensus_tier/consensus_rank are different in kind: they are real
+    decision-support fields that reach CandidateSnapshot directly (every real "Debate My Pick"
+    run sees them), sourced entirely from KeepTradeCut's external_values rows -- which have NO
+    freshness tracking anywhere, not even the cosmetic kind Draft Sharks gets. The one
     freshness-aware code path that DOES touch external_values (composite_player_score's
     _recency_weight, a continuous per-row decay) is a completely separate call path that
-    consensus_reach never touches. So a stale KTC export could silently feed a real per-pick
-    "REACH"/"WITHIN CONSENSUS BAND" label with zero signal anywhere -- no is_stale flag, no UI
-    pill, no debate-context mention -- that anything is out of date."""
+    consensus_standing never touches. So a stale KTC export could silently feed a real per-pick
+    market rank and tier to the debate layer with zero signal anywhere -- no is_stale flag, no
+    UI pill, no debate-context mention -- that anything is out of date."""
 
     def test_data_merger_has_no_freshness_property_for_external_values(self):
         merger = dm.DataMerger()
@@ -1091,66 +1213,63 @@ class ConsensusReachFreshnessBlindSpotTests(unittest.TestCase):
         self.assertFalse(hasattr(merger, "external_values_is_stale"))
         self.assertFalse(hasattr(merger, "external_values_staleness_days"))
 
-    def test_consensus_reach_result_carries_no_date_or_freshness_field(self):
+    def test_consensus_standing_result_carries_no_date_or_freshness_field(self):
         by_key = {
             ("a", "player"): {"rank": 30, "tier": 3, "value": 5000},
             ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
         }
-        result = ps.consensus_reach("A Player", 28, by_key)
+        result = ps.consensus_standing("A Player", by_key)
         self.assertIsNotNone(result)
         self.assertNotIn("source_date", result)
         self.assertNotIn("is_stale", result)
         self.assertNotIn("staleness_days", result)
 
 
-class ConsensusReachTests(unittest.TestCase):
+class ConsensusStandingTests(unittest.TestCase):
+    """What the market says about this player, and nothing more.
+
+    #167 removed the `reach_label`/`tier_gap` half of this function after an ablation measured
+    the label changing 0 of 36 engine decisions while tagging 85% of candidates as some flavour
+    of reach -- an artifact of how wide KTC's early tiers are, not a property of the candidate.
+    The last test here is what keeps that removal removed: a verdict is easy to re-add by
+    reflex, and re-adding one would put a judgment back in front of the debate layer that
+    nothing has re-measured."""
+
     def test_none_when_no_consensus_data_is_loaded(self):
-        self.assertIsNone(ps.consensus_reach("Anyone", 10, {}))
+        self.assertIsNone(ps.consensus_standing("Anyone", {}))
 
     def test_none_when_the_player_is_not_in_the_loaded_consensus_data(self):
         by_key = {("a", "known"): {"rank": 5, "tier": 1, "value": 9000}}
-        self.assertIsNone(ps.consensus_reach("Unknown Player", 10, by_key))
+        self.assertIsNone(ps.consensus_standing("Unknown Player", by_key))
 
-    def test_within_consensus_band_when_tiers_match(self):
-        by_key = {
-            ("a", "player"): {"rank": 30, "tier": 3, "value": 5000},
-            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
-        }
-        result = ps.consensus_reach("A Player", 28, by_key)
-        self.assertEqual(result["reach_label"], "WITHIN CONSENSUS BAND")
-        self.assertEqual(result["tier_gap"], 0)
+    def test_the_market_rank_and_tier_come_back_as_ints(self):
+        by_key = {("a", "player"): {"rank": 30.0, "tier": 3.0, "value": 5000}}
+        result = ps.consensus_standing("A Player", by_key)
+        self.assertEqual(result, {"consensus_rank": 30, "consensus_tier": 3})
+        self.assertIsInstance(result["consensus_rank"], int)
+        self.assertIsInstance(result["consensus_tier"], int)
 
-    def test_a_better_tier_than_normal_here_is_also_within_band_never_a_reach(self):
-        # Taking a player from a BETTER tier than what's normally happening at this pick isn't
-        # a reach at all -- great value, not a violation of consensus.
-        by_key = {
-            ("a", "elite"): {"rank": 5, "tier": 1, "value": 9500},
-            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
-        }
-        result = ps.consensus_reach("A Elite", 28, by_key)
-        self.assertEqual(result["tier_gap"], 0)
-        self.assertEqual(result["reach_label"], "WITHIN CONSENSUS BAND")
+    def test_a_consensus_entry_with_no_tier_yields_nothing_rather_than_a_partial_row(self):
+        """The surviving guard, pinned now that its sibling is gone. KTC's committed export
+        carries a tier on all 463 rows, so this is defensive -- but a row with a rank and no
+        tier must not reach a consumer as a half-populated standing."""
+        by_key = {("a", "player"): {"rank": 30, "tier": None, "value": 5000}}
+        self.assertIsNone(ps.consensus_standing("A Player", by_key))
 
-    def test_one_tier_worse_than_normal_here_is_a_modest_reach(self):
-        by_key = {
-            ("a", "player"): {"rank": 60, "tier": 4, "value": 3000},
-            ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
-        }
-        result = ps.consensus_reach("A Player", 28, by_key)
-        self.assertEqual(result["tier_gap"], 1)
-        self.assertEqual(result["reach_label"], "MODEST REACH")
-
-    def test_a_big_tier_gap_is_a_significant_reach(self):
+    def test_no_verdict_is_returned_alongside_the_numbers(self):
         by_key = {
             ("a", "player"): {"rank": 200, "tier": 9, "value": 500},
             ("b", "here"): {"rank": 28, "tier": 3, "value": 5100},
         }
-        result = ps.consensus_reach("A Player", 28, by_key)
-        self.assertEqual(result["tier_gap"], 6)
-        self.assertEqual(result["reach_label"], "SIGNIFICANT REACH")
+        # A candidate six tiers below what the market puts at this point in a draft -- the case
+        # that used to come back tagged SIGNIFICANT REACH. It comes back as two numbers.
+        result = ps.consensus_standing("A Player", by_key)
+        self.assertEqual(set(result), {"consensus_rank", "consensus_tier"})
+        self.assertNotIn("reach_label", result)
+        self.assertNotIn("tier_gap", result)
 
 
-class ConsensusReachEndToEndTests(unittest.TestCase):
+class ConsensusStandingEndToEndTests(unittest.TestCase):
     """Real KTC data, real board -- confirms the wiring, not just the isolated functions."""
 
     @classmethod
@@ -1177,7 +1296,7 @@ class ConsensusReachEndToEndTests(unittest.TestCase):
         )
         for c in snap.candidates:
             self.assertIsNone(c.consensus_rank)
-            self.assertIsNone(c.reach_label)
+            self.assertIsNone(c.consensus_tier)
 
     def test_a_superflex_league_gets_real_consensus_data_for_a_known_player(self):
         snap = ps.build_snapshot(
@@ -1188,7 +1307,6 @@ class ConsensusReachEndToEndTests(unittest.TestCase):
         self.assertIsNotNone(gibbs, "expected Gibbs to be a top-5 candidate at 1.01")
         self.assertEqual(gibbs.consensus_rank, 1)
         self.assertEqual(gibbs.consensus_tier, 1)
-        self.assertIn(gibbs.reach_label, ("WITHIN CONSENSUS BAND",))
 
 
 class DecisionBoundaryIsClosedTests(unittest.TestCase):
@@ -1212,7 +1330,16 @@ class DecisionBoundaryIsClosedTests(unittest.TestCase):
     FORBIDDEN = {"data_merger", "draft_strategy", "lineup_optimizer", "rookie_draft",
                  "depth_ratings", "lineup_readiness", "roster_diagnostics", "sleeper_client"}
     # module -> the names it may import from draft_room, and nothing else.
-    DRAFT_ROOM_ALLOWANCE = {"draft_board_ui.py": {"SLEEPER_WEEKLY_TO_SEASON_FACTOR"}}
+    # WIDENED ONCE, DELIBERATELY (#186). The rule this list enforces is not "import nothing
+    # from draft_room" -- it is that a snapshot consumer must not acquire the ability to
+    # RECOMPUTE a price. Both entries are inert data by that test: a unit conversion factor,
+    # and the token -> words table for replacement_basis. The alternative was for the board's
+    # JS to keep its own copy of those words, which is precisely the defect #186 records --
+    # the JS ternary defaulted every unrecognised token to the strongest claim in the
+    # vocabulary. One home for the vocabulary is worth one more name on this list; a second
+    # copy of it across a language boundary is not.
+    DRAFT_ROOM_ALLOWANCE = {"draft_board_ui.py": {"SLEEPER_WEEKLY_TO_SEASON_FACTOR",
+                                                  "REPLACEMENT_BASIS_LABELS"}}
 
     def _imports(self, filename):
         import ast, os
@@ -1287,9 +1414,9 @@ class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
         "positional_cliff": {"tier": "SEVERE", "gap": 99.0, "typical_gap": 1.0},
         "position_run_detected": True, "pick_necessity": 100.0, "necessity_label": "CRITICAL",
         "near_tie_with_leader": True, "cliff_protection": True, "block_opportunity": True,
-        "pure_value": True, "context_elevated": True, "waiting_cost": 99.0,
+        "pure_value": True, "waiting_cost": 99.0,
         "horizon_floor": 99.0, "horizon_sensitivity": 99.0, "consensus_rank": 1,
-        "consensus_tier": 1, "reach_label": "REACH", "projected_points": 999.0,
+        "consensus_tier": 1, "projected_points": 999.0,
     }
 
     def test_the_sort_key_ignores_every_contextual_signal(self):
@@ -1336,6 +1463,209 @@ class ContextualSignalsCannotReachTheRankingTests(unittest.TestCase):
         self.assertEqual(got[0], "best",
                          "the maximally contextual row outranked a row worth 99x more")
         self.assertEqual(got, ["best", "mid", "weak"])
+
+
+
+class DepthExposureStopsAtTheValueLayerTests(unittest.TestCase):
+    """#139: the term reaches team_acquisition_value and deliberately goes no further.
+
+    This class exists because the opposite was built first. depth_exposure is on the same
+    scale as need_bonus and sits in the same sum, so adding it to
+    necessity's roster_fit_component looks like a straightforward consistency fix -- and it
+    measures fine (up to 7.39 necessity points, 0 argmax flips on 8 real board states). It was
+    written, measured, and reverted, because the measurement was answering the wrong question.
+
+    ENGINE_WIRING_PASS.md rules that depth_exposure and waiting_cost are different functions of
+    one concern, and each belongs in exactly one layer:
+
+        team_acquisition_value  <- depth_exposure  (the LEVEL: this hole is expensive)
+        pick_necessity          <- waiting_cost    (the RATE:  and it is getting harder to fill)
+
+    An expensive hole with twelve replacements still on the board is not urgent. Reading
+    exposure in both layers boosts one position twice for one reason, with nothing downstream
+    able to separate the contributions.
+
+    So this asserts an ABSENCE, which is the fragile kind of test: it must distinguish "the
+    term is excluded by decision" from "the term never arrives", or it would pass just as
+    happily against a broken pipeline. Both halves are asserted."""
+
+    def test_depth_exposure_does_not_move_the_necessity_score(self):
+        exposed = _raw_candidate(100.0, depth_exposure=10.0)
+        covered = _raw_candidate(100.0, depth_exposure=0.0)
+        (exposed_score, _), (covered_score, _) = ps.compute_pick_necessity(
+            [exposed, covered], round_num=3)
+        self.assertAlmostEqual(
+            exposed_score, covered_score, places=6,
+            msg="depth_exposure now moves pick_necessity. team_acquisition_value already "
+                "prices it; necessity's counterpart is waiting_cost. Counting it in both "
+                "boosts one position twice for one reason -- see ENGINE_WIRING_PASS.md")
+
+    def test_but_the_term_that_IS_read_still_moves_it(self):
+        """Non-vacuity for the test above, and the thing that makes the absence a decision.
+        If roster_fit had simply stopped working, the assertion above would pass and mean
+        nothing.
+
+        TWO terms until 6.1b (#52) retired eligibility_bonus; roster_fit now reads need_bonus
+        alone. The non-vacuity claim is unchanged and so is its force -- what shrank is the
+        population it is made over, which is the thing to notice rather than the rename."""
+        with_fit = _raw_candidate(100.0, need_bonus=6.0)
+        without = _raw_candidate(100.0)
+        (fit_score, _), (plain_score, _) = ps.compute_pick_necessity(
+            [with_fit, without], round_num=3)
+        self.assertGreater(fit_score, plain_score,
+                           "roster_fit is not reaching necessity at all -- the exclusion test "
+                           "above is passing for the wrong reason")
+
+    def test_the_snapshot_still_CARRIES_the_term_it_does_not_score(self):
+        """"Not scored" and "not visible" are different claims, and only the first is intended.
+        A number that changed the acquisition value must remain readable in the record that
+        explains it, or the causal chain breaks exactly where someone would ask (#119) -- the
+        same defect family #138 catalogues, one layer up."""
+        self.assertIn("depth_exposure", ps.CandidateSnapshot.__dataclass_fields__)
+        self.assertIn("depth_exposure", ps._DIFF_FIELDS,
+                      "a term inside team_acquisition_value must appear in the snapshot diff, "
+                      "or a TAV change it caused shows up as an unexplained delta")
+
+    def test_an_ABSENT_depth_exposure_is_not_scored_as_a_zero_hazard(self):
+        """None means "not measured here" -- upside-mode rows never compute it, and three of
+        the four depth_basis states produce no measurement. It must not crash a scorer that
+        expects a float, and must not read as "this position is safe"."""
+        unmeasured = _raw_candidate(100.0, depth_exposure=None)
+        explicit_zero = _raw_candidate(100.0, depth_exposure=0.0)
+        (a, _), (b, _) = ps.compute_pick_necessity([unmeasured, explicit_zero], round_num=3)
+        self.assertAlmostEqual(a, b, places=6)
+
+    def test_a_candidate_dict_that_predates_the_field_still_scores(self):
+        """Non-vacuity for the `.get()`s: every hand-built fixture and every upside-mode row in
+        this repo omits the key entirely, and a KeyError here would be a crash rather than a
+        wrong number."""
+        legacy = {"team_acquisition_value": 100.0, "survival_probability": 1.0,
+                  "positional_cliff": None, "position_run_detected": False,
+                  "rival_premium": 0.0, "need_bonus": 0.0, "eligibility_bonus": 0.0}
+        self.assertEqual(len(ps.compute_pick_necessity([legacy], round_num=3)), 1)
+
+    def test_the_board_key_and_the_snapshot_field_actually_meet(self):
+        """build_snapshot constructs CandidateSnapshot with **c, so a mismatch between the key
+        draft_room emits and the field the dataclass declares is a TypeError at runtime, not a
+        missing number. Checked by name, since the two halves are written 500 lines apart."""
+        import draft_room as dr
+        self.assertIn("depth_exposure", dr.compute_draft_board.__doc__ or "",
+                      "draft_room's board docstring no longer names the term it emits")
+        snapshot = ps.CandidateSnapshot(
+            position_best_now=None, position_next_turn_value=None, acting_now_value=None,
+            player_id="1", name="A", position="RB", team="X", bpa=1.0, bpa_source="s",
+            confidence=1.0, universal_value=10.0, need_bonus=0.0, team_acquisition_value=10.0, survival_probability=None, intervening_picks=None,
+            survival_basis=None,
+            opportunity_cost=None, expected_value_of_waiting=None, denial_value=None, rival_premium_basis=None, denial_basis="no_rival_priced",
+            denial_team=None, rival_premium=None, positional_forfeit=None,
+            position_expected_taken=None, positional_cliff=None, position_run_detected=False,
+            pick_necessity=50.0, necessity_label="CLOSE CALL", near_tie_with_leader=None,
+            cliff_protection=False, block_opportunity=False, pure_value=False,
+            consensus_rank=None, consensus_tier=None,
+            projected_points=None, depth_exposure=7.5)
+        self.assertEqual(snapshot.depth_exposure, 7.5)
+
+    def test_every_diff_field_has_a_human_label_in_the_drawer(self):
+        """The drawer renders `_DRAFT_ROOM_DIFF_LABELS.get(k, k)`, so a field added to
+        _DIFF_FIELDS without a label does not fail -- it silently shows the raw identifier to a
+        person. Found exactly that way: depth_exposure would have rendered as "depth_exposure:
+        +7.39", and it turned out rival_premium and positional_forfeit had been doing that
+        already. Generalized past those three so the next addition is caught too.
+
+        Source-scanned through ui_source rather than imported, as every app-level contract here
+        is: app.py is a top-level Streamlit script. Scanning the label BLOCK, not the whole
+        file, so a field name appearing in unrelated prose cannot satisfy this."""
+        import ui_source
+        block = ui_source.block("_DRAFT_ROOM_DIFF_LABELS = {", until="}")
+        missing = [f for f in ps._DIFF_FIELDS if f'"{f}":' not in block]
+        self.assertEqual(missing, [], f"diff fields with no display label: {missing}")
+
+
+
+class ThePositionalWaitingMagnitudeReachesNecessityTests(unittest.TestCase):
+    """#48 / #71: necessity's missing magnitude, and the term that was nearly wired instead.
+
+    This module's own comments claimed pick_necessity read waiting_cost. It read neither cost of
+    waiting -- waiting_cost appeared only as a dataclass field and in that claim, and
+    positional_forfeit reached necessity only through cliff_protection, a flag measured firing
+    71.1% of the time (a bound used as a threshold, #56). Both costs are real and DIFFERENT
+    (r = +0.569); the one necessity needs is the one at ITS horizon."""
+
+    def test_the_forfeit_magnitude_alone_changes_the_score(self):
+        """Isolated the way every other necessity term is: identical candidates, including
+        team_acquisition_value so the standout component is held equal."""
+        costly = _raw_candidate(100.0, positional_forfeit=100.0)
+        free = _raw_candidate(100.0, positional_forfeit=0.0)
+        (costly_score, _), (free_score, _) = ps.compute_pick_necessity([costly, free], round_num=3)
+        self.assertGreater(costly_score, free_score,
+                           "positional_forfeit does not reach necessity -- the magnitude half "
+                           "of the wait is missing and only the probability half is counted")
+
+    def test_absent_forfeit_scores_the_same_as_zero_and_does_not_crash(self):
+        """The one place absence and zero legitimately coincide: a back-to-back snake turn has
+        no intervening picks, so there is genuinely no wait to pay for. Stated rather than
+        assumed, because everywhere else in this codebase that identification is a defect."""
+        absent = _raw_candidate(100.0, positional_forfeit=None)
+        zero = _raw_candidate(100.0, positional_forfeit=0.0)
+        (a, _), (b, _) = ps.compute_pick_necessity([absent, zero], round_num=3)
+        self.assertAlmostEqual(a, b, places=6)
+
+    def test_it_is_bounded_by_its_own_weight(self):
+        """A forfeit past the scale's documented top clips rather than running away -- the
+        defensive min(), matching how eligibility_bonus and depth_exposure treat a source value
+        above their documented range."""
+        huge = _raw_candidate(100.0, positional_forfeit=10_000.0)
+        at_max = _raw_candidate(100.0, positional_forfeit=ps.FORFEIT_SCALE_MAX)
+        (huge_score, _), (max_score, _) = ps.compute_pick_necessity([huge, at_max], round_num=3)
+        self.assertAlmostEqual(huge_score, max_score, places=6)
+
+    def test_a_negative_forfeit_cannot_subtract_from_necessity(self):
+        """Delaying a position cannot make it MORE optional than not delaying it. One-directional
+        for the same reason risk_adj is."""
+        negative = _raw_candidate(100.0, positional_forfeit=-50.0)
+        zero = _raw_candidate(100.0, positional_forfeit=0.0)
+        (neg, _), (base, _) = ps.compute_pick_necessity([negative, zero], round_num=3)
+        self.assertAlmostEqual(neg, base, places=6)
+
+    def test_it_carries_the_same_weight_as_the_other_magnitude_term(self):
+        """One class, one magnitude. rival_premium is the denial magnitude; this is the
+        positional-wait magnitude; both are normalized into necessity points from a
+        universal_value-scale gap. Different weights would rank them by nothing."""
+        self.assertEqual(ps.NECESSITY_FORFEIT_WEIGHT, ps.NECESSITY_DENIAL_WEIGHT)
+
+    def test_waiting_cost_is_still_NOT_wired_and_the_module_says_why(self):
+        """The correction, pinned. waiting_cost is the OTHER cost of waiting -- deferral to the
+        end of the draft -- and measured r(waiting_cost, bpa) = +0.847, so wiring it would
+        re-add necessity's own standout component under a new name. If someone wires it later
+        this fails, and the right response is to re-measure that correlation, not delete this."""
+        import ast
+        tree = ast.parse((_HERE / "pick_synthesis.py").read_text())
+        target = next(node for node in ast.walk(tree)
+                      if isinstance(node, ast.FunctionDef)
+                      and node.name == "compute_pick_necessity")
+        read = {node.args[0].value for node in ast.walk(target)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get" and node.args
+                and isinstance(node.args[0], ast.Constant)}
+        self.assertIn("positional_forfeit", read, "the forfeit magnitude is no longer read")
+        self.assertNotIn("waiting_cost", read,
+                         "compute_pick_necessity now reads waiting_cost -- r(waiting_cost, bpa) "
+                         "= +0.847 means this re-adds the standout component under another "
+                         "name; re-measure before keeping it")
+
+    def test_the_two_costs_of_waiting_are_named_separately(self):
+        """#71. They are two horizons, not two names for one quantity, and the module has to say
+        so or the next reader collapses them again."""
+        # Normalized past BOTH line wraps and comment markers. A literal search failed first
+        # (the phrases wrap), and plain whitespace-normalization failed second -- "END OF THE\n
+        # #     DRAFT" collapses to "END OF THE # DRAFT", with the comment prefix now inside the
+        # phrase. A prose guard that breaks whenever a paragraph is re-wrapped is a guard that
+        # gets deleted rather than fixed, so it is worth getting right once.
+        import re
+        raw = (_HERE / "pick_synthesis.py").read_text()
+        source = " ".join(re.sub(r"^\s*#\s?", " ", raw, flags=re.MULTILINE).split())
+        self.assertIn("END OF THE DRAFT", source)
+        self.assertIn("NEXT TURN", source)
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ This module does two things and nothing else:
   serialize_snapshot -- PickSnapshot -> a plain, JSON-able dict. Every field is read
     directly off CandidateSnapshot; nothing here computes, re-derives, or classifies a new
     value. decision_regime and the four decision-path flags (near_tie_with_leader,
-    cliff_protection, block_opportunity, pure_value, context_elevated) already exist on the
+    cliff_protection, block_opportunity, pure_value) already exist on the
     engine's own output -- this only reshapes field NAMES for the JS side, never their
     VALUES.
   render_board_html -- the payload -> a complete, self-contained HTML document (CSS + JS
@@ -41,9 +41,16 @@ import json
 from typing import Optional
 
 import design_system
-from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR
+from draft_room import SLEEPER_WEEKLY_TO_SEASON_FACTOR, REPLACEMENT_BASIS_LABELS
+# #216: the two lineup-solved vocabularies, through the snapshot boundary (pick_synthesis
+# re-exports them), never from lineup_optimizer -- a snapshot consumer must not be able to
+# reach a valuation module (test_pick_synthesis.DecisionBoundaryIsClosedTests).
+import pick_synthesis as ps
+from pick_synthesis import DISPLACEMENT_BASIS_LABELS, EXPOSURE_BASIS_LABELS
 from player_universe import FLEX_SLOT_POSITIONS
-from pick_synthesis import DEFAULT_NARROW_COUNT, CandidateSnapshot, PickSnapshot
+from pick_synthesis import (
+    DEFAULT_NARROW_COUNT, HORIZON_BASIS_IMPUTED, CandidateSnapshot, PickSnapshot,
+)
 
 # The class NAMES the necessity badges use in the embedded HTML below -- the CSS itself
 # comes from design_system.BADGE_NECESSITY_CSS, the same source app.py's own <style> block
@@ -79,15 +86,19 @@ def _forces(c: CandidateSnapshot) -> list[str]:
 
 
 def _context_gap(c: CandidateSnapshot) -> Optional[str]:
-    """"elevated" / "suppressed" / None -- the two directions from pick_synthesis's own
-    decision_path_flags, renamed for the UI layer only. context_elevated and pure_value are
-    NOT mutually exclusive by construction (see decision_path_flags' own docstring), but
-    context_elevated is checked first here since it's the simpler, always-computable
-    per-candidate fact; a candidate satisfying both still only shows one glyph (this is a
-    presentation choice -- the pure-value force tick is a separate, additional signal that
-    still renders regardless of which direction wins here)."""
-    if c.context_elevated:
-        return "elevated"
+    """"suppressed" / None -- ONE direction now, renamed for the UI layer only.
+
+    THE "elevated" DIRECTION IS GONE WITH `context_elevated` (#25, ruled 2026-09-21). This read
+    that flag first and returned "elevated", on the reasoning that it was "the simpler,
+    always-computable per-candidate fact". It was computable; it was not a fact about fit. The
+    quantity it read has a MEAN of -3.46 across 10,887 priced rows, and across all 36 battery
+    formats the flag fired on exactly ONE row -- a multi-eligible WR/DB. A glyph that lights for
+    one player in one league was taking presentation PRECEDENCE over `pure_value`, which fires
+    on real populations.
+
+    So the Context Gap is one-directional until something can express the other direction
+    honestly. `pure_value` is unchanged and no longer has to win a coin toss against a dead flag.
+    evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md."""
     if c.pure_value:
         return "suppressed"
     return None
@@ -124,8 +135,9 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         return None
     per_week = c.waiting_cost / SLEEPER_WEEKLY_TO_SEASON_FACTOR
     basis = (
-        f"{c.name} projects {c.projected_points:.0f} against {c.horizon_floor:.0f} for the "
-        f"best {c.position} expected to still be undrafted when the draft ends."
+        f"{c.name} projects {c.projected_points:.0f} season points against "
+        f"{c.horizon_floor:.0f} for the best {c.position} expected to still be undrafted when "
+        f"the draft ends."
     )
     # The floor's placement rests on how many further picks this position is expected to take,
     # and that split comes from a decay rate which is MEASURED for some positions and IMPUTED
@@ -134,7 +146,14 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
     # confidence of a measured one. Measured on a real 12-team draft, the imputed case covers
     # rounds 3 through 15 and four of six positions by round 10, so this is the common case
     # late rather than a rare footnote.
-    if c.horizon_basis == "imputed":
+    # HORIZON_BASIS_IMPUTED, not the literal "imputed". Measured: renaming the constant it is
+    # bound to used to
+    # pass the FULL 2209-test suite, because three independent copies of the string existed
+    # (the producer's constant, this comparison, and the tests' own fixture) with nothing
+    # linking them -- the UI and the tests agreed with each other while the producer drifted
+    # away from both, and this sentence silently stopped rendering. A basis state that gates a
+    # NUMBER is caught by value regressions; one that gates only prose had nothing catching it.
+    if c.horizon_basis == HORIZON_BASIS_IMPUTED:
         basis += (
             f" That floor is an estimate: {c.position}'s remaining pool is too thin to measure"
             f" its own depth decay, so the average of the positions that still can be measured"
@@ -148,8 +167,9 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
             "label": "free",
             "title": (
                 f"Waiting is better than free here. The best {c.position} expected to go "
-                f"undrafted projects {c.horizon_floor:.0f}, ahead of {c.name}'s "
-                f"{c.projected_points:.0f} -- this pick buys nothing you won't have anyway."
+                f"undrafted projects {c.horizon_floor:.0f} season points, ahead of "
+                f"{c.name}'s {c.projected_points:.0f} -- this pick buys nothing you won't "
+                f"have anyway."
             ),
         }
 
@@ -168,12 +188,13 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         if per_week <= WAITING_STEEP_PER_WEEK < per_week + swing:
             return {
                 "tone": "unsettled",
-                "label": "~?/wk",  # deliberately not "cost of waiting" -- see the horizon note above
+                "label": "~? pts/wk",  # deliberately not "cost of waiting" -- see the horizon note above
                 "title": (
                     f"Replaceability at {c.position} is unresolved. Best estimate "
-                    f"{per_week:.2f} pts/week, but {c.position} falls off a cliff just past "
-                    f"this point: a normal swing in how hard the room drafts {c.position} "
-                    f"moves the floor by up to {swing:.2f} pts/week, which is the difference "
+                    f"{per_week:.2f} season points per week, but {c.position} falls off a "
+                    f"cliff just past this point: a normal swing in how hard the room drafts "
+                    f"{c.position} moves the floor by up to {swing:.2f} season points per "
+                    f"week, which is the difference "
                     f"between comfortably waiting and not being able to. {basis}"
                 ),
             }
@@ -186,8 +207,12 @@ def _waiting_note(c: CandidateSnapshot) -> Optional[dict]:
         tone, verdict = "moderate", "Waiting costs a little"
     return {
         "tone": tone,
-        "label": f"{per_week:.2f}/wk",
-        "title": f"{verdict}. Deferring {c.position} costs {per_week:.2f} pts/week: {basis}",
+        # "pts/wk" is season-projection points per week -- a different unit from the
+        # universal-value points the same row's big number is in. The label says "pts", the
+        # title spells the unit out, and the board's legend line states both units once.
+        "label": f"{per_week:.2f} pts/wk",
+        "title": (f"{verdict}. Deferring {c.position} costs {per_week:.2f} season points per "
+                  f"week: {basis}"),
     }
 
 
@@ -203,21 +228,89 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
         "team": c.team or "",
         "uv": c.universal_value,
         "tav": c.team_acquisition_value,
+        # Season fantasy points -- the one number in the focus panel that is NOT on the
+        # universal-value scale, carried so the panel can show it labelled as such (#116).
+        "proj": c.projected_points,
         "necessity": c.necessity_label,
         "necClass": _NECESSITY_CLASS.get(c.necessity_label, "badge-necessity-low"),
+        # #206: WITHHELD, not absent. survival_probability is computed and exists; it failed
+        # its calibration check on two independent arms (SMOKE 0.22480 vs a 0.19348 constant;
+        # REAL 0.16127 vs 0.14224 over 6,277 real-draft pairs) and is worst where a person
+        # would lean on it hardest -- the board's own top row is predicted 0.810 and observed
+        # 0.451. A panel rendering "81%" gives a reader no way to know that.
+        #
+        # `survivalWithheld` is the reason travelling WITH the null, so the renderer can say
+        # "not shown" rather than the absence contract's "not measured" -- those are different
+        # facts and #187 is about not conflating them.
+        #
+        # The whole family goes together (SURVIVAL_DERIVED_FIELDS): opportunity_cost and
+        # expected_value_of_waiting are survival in other units.
+        #
+        # `intervening` STAYS, and it is the replacement rather than a consolation. It is a
+        # COUNT of picks before your next turn, cross-checked against the engine at all 5,567
+        # REAL-arm candidates on a draft with 135 traded seats, zero mismatches.
         "survival": c.survival_probability,
+        #: #206: the RENDERER suppresses, not this serializer. test_every_field_is_a_direct_
+        #: unmodified_read pins that the payload is a faithful read of the snapshot, and it is
+        #: right to: a payload that quietly transforms is a second place for the UI and the
+        #: engine to disagree. So the number crosses unchanged and the POLICY crosses beside
+        #: it, one flag, read in one place in the JS below.
+        "survivalWithheld": not ps.survival_is_presentable(),
+        "survivalBasis": c.survival_basis,
         "intervening": c.intervening_picks,
         "cliffTier": cliff.get("tier"),
         "cliffGap": cliff.get("gap"),
         "cliffTypical": cliff.get("typical_gap"),
+        #: MANDATE 2.5: THE COMPANION TO A PRICE THIS PAYLOAD ALREADY CARRIES. `uv` above is
+        #: health-adjusted -- `risk_adj` includes `health_penalty`'s cut for a reported designation
+        #: -- and neither the designation nor the basis that says which health regime priced it
+        #: reached this payload, so the surface could not have shown the cause of its own number
+        #: even if it wanted to. A direct unmodified read like every other field here: absent stays
+        #: absent, and `availabilityBasis` is what separates "nothing was reported" from "healthy".
+        #: WHETHER THE CARD RENDERS IT is a UI decision and is deliberately not made here, the same
+        #: way `actingNow` reached this payload before the surface decided where to put it. What is
+        #: closed is that the payload no longer withholds it.
+        #:
+        #: (This note first cited `cannotBeFielded` as a second precedent and 0.8's instrument was
+        #: right to reject it: that flag is a CandidateSnapshot field and reaches no payload key at
+        #: all, so it is an example of the opposite -- a companion the surface still cannot see.)
+        "injuryStatus": c.injury_status,
+        "availabilityBasis": c.availability_basis,
         "forfeit": c.positional_forfeit,
+        #: WHAT WAITING WOULD COST. The board is ordered on team_acquisition_value, NOT on
+        #: this (#22) -- it briefly was, and that ordering lost 6.090% of starting-lineup
+        #: points against a fixed field because a difference of two curve points carries the
+        #: curve's local slope and discards its height. The number stays in the payload because
+        #: it answers a question the rank cannot: "does this position replace itself cheaply if
+        #: I wait?" -- which is what put a defense in round 5 on the board's own evidence, and
+        #: is worth a person seeing next to the rank rather than instead of it. Absence stays
+        #: absence: a turn-ending pick has no next turn to defer to and this is null there.
+        "actingNow": c.acting_now_value,
+        "nextTurnValue": c.position_next_turn_value,
         "rivalPremium": c.rival_premium,
         "denialTeam": c.denial_team,
         "needBonus": c.need_bonus,
-        "eligBonus": c.eligibility_bonus,
+        # #216. The two remaining terms of the identity, each WITH its basis. depth_exposure
+        # never reached the JS before this (the room showed ACQ 72 over UV 68 with no sentence
+        # for the difference), and the fourth term lands in exactly that gap if it is not
+        # carried from the first commit.
+        "depthExposure": c.depth_exposure,
+        "depthBasis": c.depth_basis,
+        "displacementAdj": c.displacement_adj,
+        "displacementBasis": c.displacement_basis,
         "forces": _forces(c),
         "contextGap": _context_gap(c),
         "waitNote": _waiting_note(c),
+        # #138. Both are QUALIFIERS on numbers already in this dict, not new claims:
+        # replacementBasis says whether `uv`/`tav` rest on live demand or a pre-draft anchor,
+        # and growthSignal is the trajectory half of an upside-mode `tav`. Carried for every
+        # candidate rather than only the chosen one, because the retained board is what makes
+        # "over what alternatives" answerable (see draft_simulation.PickRecord).
+        "replacementBasis": c.replacement_basis,
+        "growthSignal": c.growth_signal,
+        # #154's backstop, now visible. It is an ORDERING fact, not a value, so it renders as a
+        # marker on the row rather than joining the numbers in the focus panel.
+        "fillsRequiredSlot": c.fills_required_slot,
         "flagged": False,  # set by serialize_snapshot against user_selected_player_id
     }
 
@@ -228,8 +321,23 @@ def serialize_candidate(c: CandidateSnapshot) -> dict:
 # presentation ordering; FLEX_SLOT_POSITIONS (imported from player_universe.py, never
 # duplicated) is the one and only source of which real positions each flex-type slot
 # actually covers -- this file invents no eligibility rule of its own.
-_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SUPER_FLEX", "K", "DEF",
-                        "DL", "LB", "DB", "IDP_FLEX"]
+#: MANDATE 4 / `#126`: ORDER IS A DISPLAY DECISION AND STAYS HERE. MEMBERSHIP IS NOT.
+#:
+#: This hand-listed three flex types -- FLEX, SUPER_FLEX, IDP_FLEX -- while
+#: `player_universe.FLEX_SLOT_POSITIONS` spells five. The two it omitted, WRRB_FLEX and REC_FLEX,
+#: are exactly the two `position_view_options` filters on: it only offers a flex view when the slot
+#: is in the league's own roster_positions, so the omission was invisible in every league without
+#: one and offered NO view at all to a league with one. The board view is the only way to look at a
+#: single slot's candidates, so such a league simply could not.
+#:
+#: The append below is the part that matters more than the two names: a flex type added to the
+#: vocabulary and not to this list is now placed at the end rather than silently dropped, so the
+#: next one cannot repeat this. Pinned by test_one_injury_vocabulary_not_two's sibling in
+#: test_a_flex_view_exists_for_every_flex_slot.py.
+_POSITION_VIEW_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "WRRB_FLEX", "REC_FLEX", "SUPER_FLEX",
+                        "K", "DEF", "DL", "LB", "DB", "IDP_FLEX"]
+_POSITION_VIEW_ORDER += [slot for slot in FLEX_SLOT_POSITIONS
+                         if slot not in _POSITION_VIEW_ORDER]
 
 
 def position_view_options(positions_present: set[str], roster_positions: list[str]) -> list[str]:
@@ -291,10 +399,29 @@ def filter_candidates_by_view(candidates: tuple, view: str) -> list:
                                      if c.team_acquisition_value is not None else 0.0,
                                      str(c.player_id)))
         return overview
+    # FILTERED ON ELIGIBILITY, NOT THE PRIMARY BUCKET (C-F3). These read `c.position` because
+    # that was the only positional fact on the snapshot; with `eligible_positions` now crossing
+    # the boundary, a view shows everyone who can actually be STARTED there -- which is what the
+    # docstring above already claims ("the same semantics draft_room.py's own need_bonus math
+    # already keys off of"). Before this, a manager with an open LB slot opened the LB view and
+    # did not see T.J. Watt, while the board had already credited him for that slot.
+    #
+    # `position` remains the fallback for a snapshot written before the field existed, so a
+    # stored board replays exactly as it did when it was recorded.
+    def _startable_at(candidate, positions) -> bool:
+        #: `is None`, NOT falsiness (review finding 16, `#187`). The snapshot already composed this
+        #: through `player_universe.eligible_positions_for`, so an EMPTY set here is that function's
+        #: answer -- this man starts nowhere -- and `or {candidate.position}` overrode it with the
+        #: raw label, putting him back in the view for the position `#172` says not to trust. None
+        #: is the other thing entirely: a snapshot that never carried the field, where the row's own
+        #: label is all there is.
+        eligible = (candidate.eligible_positions if candidate.eligible_positions is not None
+                    else ({candidate.position} if candidate.position else frozenset()))
+        return bool(set(eligible) & set(positions))
+
     if view in FLEX_SLOT_POSITIONS:
-        eligible = FLEX_SLOT_POSITIONS[view]
-        return [c for c in candidates if c.position in eligible]
-    return [c for c in candidates if c.position == view]
+        return [c for c in candidates if _startable_at(c, FLEX_SLOT_POSITIONS[view])]
+    return [c for c in candidates if _startable_at(c, {view})]
 
 
 # Flex slots are labelled by what they actually ACCEPT, so the control explains itself
@@ -385,6 +512,19 @@ def serialize_snapshot(
         "pickHeader": pick_header,
         "stateTags": state_tags,
         "decisionRegime": snap.decision_regime,
+        # The display contract's vocabulary (#116), from its one source. The JS interpolates
+        # these into every sentence that states a value, so a rename there is a rename here.
+        "valueUnit": design_system.VALUE_UNIT,
+        "valueUnitShort": design_system.VALUE_UNIT_SHORT,
+        # #186: the replacement_basis vocabulary, carried across the boundary instead of
+        # restated on the other side. The JS used to hold its own two-branch ternary, so any
+        # token it did not know about rendered as "live starter demand" -- an unrecognised
+        # value silently becoming the STRONGEST claim in the vocabulary. Derived from
+        # draft_room's own table (#126), so a value added there cannot go unlabelled here.
+        "replacementBasisLabels": dict(REPLACEMENT_BASIS_LABELS),
+        # #216: the same discipline for the two lineup-solved terms' vocabularies.
+        "depthBasisLabels": dict(EXPOSURE_BASIS_LABELS),
+        "displacementBasisLabels": dict(DISPLACEMENT_BASIS_LABELS),
         "candidates": candidates,
     }
 
@@ -419,6 +559,23 @@ body {
   background-image: linear-gradient(90deg, var(--emerald), var(--gold), var(--violet), var(--crimson));
   background-size: 100% 2px; background-repeat: no-repeat; background-position: top;
 }
+/* Light travelling across metal -- the one decorative animation in the whole surface, on the
+   chrome bar and never on a number. Killed entirely by the shared reduced-motion block. */
+.state-bar { position: relative; overflow: hidden; }
+.state-bar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
+  pointer-events: none; will-change: transform;
+  background: linear-gradient(105deg, transparent,
+              color-mix(in srgb, var(--gold-b) 14%, transparent) 50%, transparent);
+  animation: wyrm-sheen 11s ease-in-out infinite;
+}
+/* transform, not background-position: a transform sweep is GPU-composited, so the sheen costs
+   nothing during a live draft. Animating background-position would repaint the bar every frame
+   for the same picture. */
+@keyframes wyrm-sheen {
+  0%, 62% { transform: translateX(0); }
+  100%    { transform: translateX(350%); }
+}
 .state-bar .clock { font-weight: 700; font-size: .98rem; }
 .state-tags { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .76rem; }
 .tag { font-family: "JetBrains Mono", monospace; padding: .2rem .55rem; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--muted); letter-spacing: .03em; }
@@ -427,14 +584,37 @@ body {
 __DESIGN_SYSTEM_BADGE_NECESSITY__
 .necessity-pill { font-family: "JetBrains Mono", monospace; font-size: .68rem; font-weight: 700; padding: .18rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
 
-.board { display: flex; flex-direction: column; gap: .4rem; }
-.row {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
-  padding: .8rem 1rem; cursor: pointer;
-  transition: border-color .15s ease, opacity .2s ease;
+.board { display: flex; flex-direction: column; gap: .4rem; position: relative; }
+/* the hoard: one very low ambient warmth behind the top of the stack, so the plates below
+   read as lit from somewhere rather than floating on flat black. */
+.board::before {
+  content: ""; position: absolute; inset: -10% -5% auto -5%; height: 40%;
+  background: radial-gradient(60% 100% at 50% 0%, rgba(212,160,23,.055), transparent 70%);
+  pointer-events: none; z-index: 0;
 }
-.row:hover { border-color: var(--line-2); }
-.row.expanded { border-color: var(--sky); cursor: default; }
+.row {
+  position: relative; z-index: 1;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent),
+                                      color-mix(in srgb, var(--surface-2) 88%, transparent));
+  backdrop-filter: blur(9px) saturate(1.06);
+  border: 1px solid var(--line); border-top-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  border-radius: 8px;
+  padding: .8rem 1rem; cursor: pointer;
+  transition: border-color .15s ease, opacity .2s ease, box-shadow .15s ease, background .15s ease;
+}
+/* hover was border-color alone, which on a dark plate is nearly invisible. A gold rail reads
+   instantly and costs no layout. */
+.row:hover {
+  border-color: var(--line-2);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--gold) 70%, transparent);
+}
+/* WAS var(--sky). Sky MEANS "strong secondary signal" everywhere else in this app; spending it
+   on a chrome state (which row is open) leaked a semantic hue into decoration. Expanded is
+   chrome, so it takes the brand gold and sky goes back to meaning only what it means. */
+.row.expanded {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line-2)); cursor: default;
+  box-shadow: inset 3px 0 0 var(--gold), 0 6px 22px rgba(0,0,0,.32);
+}
 .row:focus { outline: none; }
 .row:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
 
@@ -444,8 +624,21 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .name { font-size: .95rem; font-weight: 600; }
 .posteam { color: var(--muted); font-size: .8rem; }
 .considering { font-size: .62rem; font-weight: 700; color: var(--gold-b); letter-spacing: .05em; }
+/* amber = system notice, the shared meaning of that token. This is not an urgency claim (the
+   necessity pill owns urgency) -- it is the board telling you it moved a row for legality. */
+.required-slot { font-size: .62rem; font-weight: 700; color: var(--amber-b); letter-spacing: .05em;
+  border: 1px solid var(--amber); border-radius: 9px; padding: 1px 6px; margin-left: .35rem; }
+.basis-note { color: var(--muted); }
+.basis-note b { color: var(--ink); }
 .row-metrics { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .tav { font-size: 1rem; font-weight: 700; min-width: 3.1rem; text-align: right; }
+/* An unpriced candidate's value cell: a deliberate mark, muted and hatched so it can never be
+   misread as a small number or an empty cell. The row is still ranked; the number does not exist. */
+.tav.absent {
+  color: var(--muted); font-weight: 500; cursor: help;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 70%, transparent) 3px 4px);
+  border-radius: 3px; padding: 0 .3rem;
+}
 .chevron { color: var(--dim); font-size: .7rem; transition: transform .15s ease; }
 .row.expanded .chevron { transform: rotate(180deg); }
 
@@ -462,11 +655,16 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .context-gap.ctx-down { color: var(--pure); }
 
 .ticks { display: flex; gap: .3rem; align-items: center; }
+/* Ticks are READABLE AT REST (#173). They used to sit at opacity .28 under a grayscale
+   filter until a row was hovered -- composited 1.65:1 to 2.13:1, below the 3:1 glyph floor --
+   which left the four decision forces, the thing this surface exists to surface, illegible by
+   default. Full colour is the resting state; hover/focus adds the tint ring, never the colour. */
 .tick {
-  font-size: .76rem; opacity: .28; filter: grayscale(.6); border-radius: 4px; padding: 0 .15rem;
-  transition: opacity .15s ease, filter .15s ease, background .15s ease;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .8rem; line-height: 1;
+  border-radius: 4px; padding: .05rem .2rem; cursor: help;
+  transition: background .15s ease, box-shadow .15s ease;
 }
-.tick.active { opacity: 1; filter: none; }
+.tick.active { box-shadow: 0 0 0 1px currentColor; }
 .tick[data-force="tie"] { color: var(--tie-b); }
 .tick[data-force="cliff"] { color: var(--cliff-b); }
 .tick[data-force="block"] { color: var(--block-b); }
@@ -487,15 +685,27 @@ __DESIGN_SYSTEM_BADGE_NECESSITY__
 .focus-inner { overflow: hidden; min-height: 0; }
 .focus-body {
   margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--line-2);
-  opacity: 0; transition: opacity .15s ease;
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity .15s ease, transform .22s ease;
 }
-.row.expanded .focus-body { opacity: 1; transition-delay: .05s; }
+.row.expanded .focus-body { opacity: 1; transform: none; transition-delay: .05s; }
 .focus-sentence { font-size: .87rem; color: var(--ink); margin: 0 0 .5rem; line-height: 1.5; max-width: 68ch; }
 .focus-sentence:last-of-type { margin-bottom: 0; }
 .focus-sentence b { font-weight: 700; }
 .focus-sentence.tie-note { color: var(--muted); }
 .focus-metrics { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .65rem; font-family: "JetBrains Mono", monospace; font-size: .72rem; color: var(--dim); }
 .focus-metrics b { color: var(--ink); }
+.focus-metrics .unit { color: var(--dim); font-size: .64rem; letter-spacing: .02em; margin-left: .15rem; }
+/* The display contract (#116), stated once where every number on the board can see it: the
+   big number on each row is in universal-value points, the wait chip is in season points per
+   week, and neither is a fantasy-points total. */
+.legend {
+  display: flex; gap: .9rem; flex-wrap: wrap; align-items: center;
+  font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .04em;
+  color: var(--dim); margin: -.45rem 0 .6rem .2rem; text-transform: uppercase;
+}
+.legend span { cursor: help; }
+.legend b { color: var(--muted); font-weight: 600; }
 
 .empty-state { color: var(--muted); font-size: .88rem; padding: 1rem; text-align: center; }
 
@@ -503,13 +713,51 @@ __DESIGN_SYSTEM_REDUCED_MOTION__
 </style></head>
 <body>
   <div class="state-bar" id="state-bar"></div>
-  <div class="board" id="board" role="listbox" aria-label="Draft candidates, ranked by acquisition value"></div>
+  <div class="legend" id="legend"></div>
+  <div class="board" id="board" role="listbox" aria-label="Draft candidates, ranked by acquisition value in universal-value points"></div>
 
 <script>
 const PAYLOAD = __DRAFT_BOARD_PAYLOAD_JSON__;
 const ordered = PAYLOAD.candidates; // already in the engine's own order -- never re-sorted here
 
-const TICK_GLYPH = { tie: "≈", cliff: "🛡", block: "⚔", pure: "💎" };
+// TEXT glyphs, never colour emoji (#173): the shield / swords / gem this used were emoji
+// presentation on most platforms, and CSS `color:` does not apply to a colour emoji -- so
+// the cliff/block/pure force tokens never reached the screen. These four are plain text
+// shapes from the same monospace face the rank uses, and they take the force's colour.
+const TICK_GLYPH = { tie: "≈", cliff: "◣", block: "⊘", pure: "◆" };
+const TICK_TITLE = {
+  tie: "Near-tie: inside the measured noise band of the board leader",
+  cliff: "Cliff protection: the position thins sharply behind him",
+  block: "Block opportunity: a rival with a real hole here was positioned to take him",
+  pure: "Pure value: his raw universal value is the best in this field",
+};
+
+// ABSENCE (#173). Every number on a candidate is Optional: an unpriced position-best
+// reaches this board by design, and #154's feasibility backstop can make him the LEADER.
+// JavaScript turns a null into "null" in a template literal and into NaN in arithmetic, so a
+// sentence about a missing number must be OMITTED, and a displayed missing number is a
+// deliberate mark. `|| 0` and `?? 0` are the same defect wearing a different operator: they
+// render an absence as a measured zero, which the contract forbids.
+const ABSENT = "—";
+function num(x) { return typeof x === "number" && Number.isFinite(x); }
+// #186. The words for a replacement_basis token come from Python's own table
+// (draft_room.REPLACEMENT_BASIS_LABELS), never from a branch written over here. An
+// UNRECOGNISED token renders as ITSELF rather than silently becoming the strongest claim in
+// the vocabulary -- the ternary this replaced defaulted every unknown value to the
+// live-demand phrasing, asserting that the league's starter demand produced a price it may
+// not have produced. A raw token is honest and findable; a confident wrong sentence is not.
+// The phrases themselves are deliberately absent from this file, and a test enforces that.
+function basisLabel(token) {
+  const labels = PAYLOAD.replacementBasisLabels || {};
+  return Object.prototype.hasOwnProperty.call(labels, token) ? labels[token] : token;
+}
+// #216: the same rule for the two lineup-solved terms. Unknown token -> itself, never a
+// stronger claim than the Python side made.
+function termBasisLabel(table, token) {
+  const labels = PAYLOAD[table] || {};
+  return Object.prototype.hasOwnProperty.call(labels, token) ? labels[token] : token;
+}
+function fmt(x, digits) { return num(x) ? x.toFixed(digits) : ABSENT; }
 const NEC_TEXT = {
   "MUST TAKE": "a genuine must-take", "STRONG ACTION": "a strong action",
   "PREFERRED": "a preferred, defensible", "CLOSE CALL": "a real close call",
@@ -529,21 +777,28 @@ document.getElementById("state-bar").innerHTML = `
     return `<span class="tag${/3RR/.test(label) ? ' hot' : ''}"${titleAttr}>${label}</span>`;
   }).join("")}</div>`;
 
+// UNIT LEGEND. Two different point scales share this surface -- acquisition/universal value
+// (signed, unbounded, the engine's own scale) and season-projection points per week (the wait
+// chip) -- and a reader who has to learn that from a hover has already misread the board once.
+document.getElementById("legend").innerHTML = `
+  <span title="Universal-value points (UV pts): his projected season points minus the replacement player's at his position (the league's free alternative at that position's remaining starter demand), plus horizon, risk and roster-context terms. Signed and unbounded. NOT a fantasy-points total."><b>${PAYLOAD.valueUnitShort}</b> = ${PAYLOAD.valueUnit} · not fantasy points</span>
+  <span title="The wait chip is the cost of deferring this position until the draft ends, in season-projection points per week -- a different unit from the value beside it."><b>PTS/WK</b> = season points per week</span>`;
+
 function tickRow(c) {
   return ["tie", "cliff", "block", "pure"].map(f =>
-    c.forces.includes(f) ? `<span class="tick" data-force="${f}" data-owner="${c.id}">${TICK_GLYPH[f]}</span>` : ""
+    c.forces.includes(f) ? `<span class="tick" data-force="${f}" data-owner="${c.id}" title="${TICK_TITLE[f]}">${TICK_GLYPH[f]}</span>` : ""
   ).join("");
 }
 
 function contextGapGlyph(c) {
   if (c.contextGap === "elevated") {
-    const gap = (c.tav - c.uv).toFixed(1);
-    return `<span class="context-gap ctx-up" title="Context Gap: roster fit is elevating his acquisition value well beyond his raw talent (+${gap}).">▲</span>`;
+    const gap = num(c.tav) && num(c.uv) ? ` (+${(c.tav - c.uv).toFixed(1)} ${PAYLOAD.valueUnitShort})` : "";
+    return `<span class="context-gap ctx-up" title="Context Gap: roster fit is elevating his acquisition value well beyond his raw talent${gap}.">▲</span>`;
   }
   if (c.contextGap === "suppressed") {
     const leaderUv = ordered[0].uv;
-    const gap = (c.uv - leaderUv).toFixed(1);
-    return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value by ${gap} -- he trails only on acquisition rank.">▽</span>`;
+    const gap = num(c.uv) && num(leaderUv) ? ` by ${(c.uv - leaderUv).toFixed(1)} ${PAYLOAD.valueUnitShort}` : "";
+    return `<span class="context-gap ctx-down" title="Context Gap: his raw talent exceeds the board leader's own value${gap} -- he trails only on acquisition rank.">▽</span>`;
   }
   return "";
 }
@@ -579,48 +834,97 @@ function focusSentences(c) {
   const isLeader = ordered[0].id === c.id;
 
   if (PAYLOAD.decisionRegime === "decisive" && isLeader) {
-    s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${c.survival != null ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
+    // MANDATE 1.2. This branch printed the survival percentage with no `survivalWithheld`
+    // check, while the branch 25 lines below honours it in four states. Unreachable TODAY only
+    // because decision_regime never returns "decisive" while the estimate is uncalibrated --
+    // i.e. the same flag guards it by accident, from a different module, and the day the regime
+    // widens this line leaks the number with no change here to notice. A guard that holds by
+    // coincidence is not a guard.
+    s.push(`<p class="focus-sentence"><b>Best-in-class talent, full stop.</b> ${!c.survivalWithheld && num(c.survival) ? Math.round(c.survival * 100) + '% survival to your next turn — ' : ''}he is not walking back to this roster. Take the elite asset.</p>`);
     const support = [];
-    if (c.forces.includes("cliff") && c.forfeit != null) support.push(`the position is thinning fast behind him (≈${c.forfeit.toFixed(0)} pts if you wait)`);
+    if (c.forces.includes("cliff")) support.push(`the position is thinning fast behind him${num(c.forfeit) ? ` (≈${c.forfeit.toFixed(0)} universal-value points if you wait)` : ''}`);
     if (c.forces.includes("block")) support.push(`it also denies ${c.denialTeam || "a rival"} a real need`);
-    if (c.needBonus > 0) support.push(`it fills a genuine roster gap`);
+    if (num(c.needBonus) && c.needBonus > 0) support.push(`it fills a genuine roster gap`);
     if (support.length) {
       s.push(`<p class="focus-sentence tie-note">For context: ${support.join(", and ")}. None of that is why he's the pick — it's just additional reasons the pick was never close.</p>`);
     }
     return s.join("");
   }
 
-  const survivalBit = c.survival != null
-    ? `${Math.round(c.survival * 100)}% survival to your next turn${c.intervening != null ? ` across ${c.intervening} intervening pick(s)` : ''}`
-    : `survival to your next turn isn't estimable right now`;
+  // #206. THREE STATES, and the middle one is new. "Withheld" and "not estimable" are
+  // DIFFERENT FACTS and #187 is about never collapsing them: the first says we have a number
+  // and do not trust it, the second says there is no number. A reader who is told "not
+  // estimable" about a withheld figure will assume the data was missing and reason around it.
+  //
+  // What the withheld line shows instead is the intervening-pick COUNT, which is a fact --
+  // cross-checked against the engine at all 5,567 REAL-arm candidates, zero mismatches.
+  // FOUR states, not three: "no next pick" outranks the withholding policy. Telling someone
+  // their survival estimate is withheld, when the real fact is that they have no further pick
+  // in the draft, answers a question they are not in a position to ask.
+  const survivalBit = c.survivalBasis === "no_next_pick"
+    ? `you have no further pick in this draft, so there is no next turn for him to last until`
+    : c.survivalWithheld
+    ? (num(c.intervening)
+        ? `${c.intervening} pick(s) come before your next turn — the survival estimate is withheld, not missing: it failed its calibration check against real drafts`
+        : `the survival estimate is withheld, not missing: it failed its calibration check against real drafts`)
+    : num(c.survival)
+      ? `${Math.round(c.survival * 100)}% survival to your next turn${num(c.intervening) ? ` across ${c.intervening} intervening pick(s)` : ''}`
+      : `survival to your next turn isn't estimable right now`;
   s.push(`<p class="focus-sentence">This is <b>${NEC_TEXT[c.necessity] || c.necessity.toLowerCase()}</b> pick — ${survivalBit}.</p>`);
 
-  if (c.forces.includes("cliff") && c.forfeit != null) {
-    s.push(`<p class="focus-sentence">Waiting on him costs about <b>${c.forfeit.toFixed(1)} universal-value points</b> by your next turn — a ${c.cliffTier} positional cliff${c.cliffGap != null ? ` (${c.cliffGap.toFixed(1)}-point gap to the next best ${c.pos}, vs. a typical ${(c.cliffTypical || 0).toFixed(1)})` : ''}.</p>`);
+  if (c.forces.includes("cliff")) {
+    // Each number is its own optional clause. A cliff whose forfeit was never measured is
+    // still a cliff; the sentence just says less. cliffTypical of 0.0 is a MEASURED flat
+    // position (the engine returns it explicitly) and renders as 0.0, never as absence.
+    const cost = num(c.forfeit) ? `Waiting on him costs about <b>${c.forfeit.toFixed(1)} universal-value points</b> by your next turn — ` : `Waiting on him has a cost this board could not measure — but it is `;
+    const tier = c.cliffTier ? `a ${c.cliffTier} positional cliff` : `a positional cliff`;
+    const gap = num(c.cliffGap) ? ` (${c.cliffGap.toFixed(1)} universal-value points of drop-off to the next best ${c.pos}${num(c.cliffTypical) ? `, against a typical ${c.cliffTypical.toFixed(1)}` : ''})` : '';
+    s.push(`<p class="focus-sentence">${cost}${tier}${gap}.</p>`);
   }
   if (c.forces.includes("block")) {
-    s.push(`<p class="focus-sentence"><b>${c.denialTeam || "A rival"}</b> has a real hole here${c.rivalPremium != null ? ` — a ${c.rivalPremium.toFixed(1)}-point rival premium, not routine need` : ''}. Taking him is value and denial at once.</p>`);
+    s.push(`<p class="focus-sentence"><b>${c.denialTeam || "A rival"}</b> has a real hole here${num(c.rivalPremium) ? ` — a rival premium of ${c.rivalPremium.toFixed(1)} acquisition-value points, not routine need` : ''}. Taking him is value and denial at once.</p>`);
   }
   if (c.forces.includes("pure")) {
-    s.push(`<p class="focus-sentence">His raw universal value (<b>${c.uv}</b>) is the best in this field — context, not quality, is what's holding his acquisition rank down.</p>`);
+    s.push(`<p class="focus-sentence">His raw universal value${num(c.uv) ? ` (<b>${c.uv.toFixed(1)}</b> ${PAYLOAD.valueUnitShort})` : ''} is the best in this field — context, not quality, is what's holding his acquisition rank down.</p>`);
   }
   if (c.forces.includes("tie")) {
     const partners = ordered.filter(o => o.id !== c.id && o.forces.includes("tie")).map(o => o.name);
+    const margin = num(ordered[0].tav) && num(c.tav) ? `<b>${(ordered[0].tav - c.tav).toFixed(1)}</b> acquisition-value point(s) off the board leader` : `within the noise band of the board leader`;
     s.push(isLeader
       ? `<p class="focus-sentence tie-note">${partners.join(", ")} sit within the measured noise band of him — a real group, not a clear lead. Their preference for someone else here isn't a disagreement with the model.</p>`
-      : `<p class="focus-sentence tie-note">He's <b>${(ordered[0].tav - c.tav).toFixed(1)}</b> point(s) off the board leader — inside the measured noise band, so preference is a legitimate tiebreaker here, not a disagreement with the model.</p>`);
+      : `<p class="focus-sentence tie-note">He's ${margin} — inside the measured noise band, so preference is a legitimate tiebreaker here, not a disagreement with the model.</p>`);
   }
   if (c.contextGap === "elevated") {
-    s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent — about <b>${(c.tav - c.uv).toFixed(1)} points</b> of context lift. Worth knowing if your read on him leans on talent alone.</p>`);
+    const lift = num(c.tav) && num(c.uv) ? ` — about <b>${(c.tav - c.uv).toFixed(1)} acquisition-value points</b> of context lift` : '';
+    s.push(`<p class="focus-sentence tie-note">A meaningful share of his acquisition value here is roster fit, not raw talent${lift}. Worth knowing if your read on him leans on talent alone.</p>`);
   }
   if (c.contextGap === "suppressed" && !isLeader) {
-    s.push(`<p class="focus-sentence tie-note">His raw talent (UV <b>${c.uv}</b>) arguably exceeds the board leader's own (${ordered[0].uv}) — he trails only because of roster-fit context, not quality.</p>`);
+    const mine = num(c.uv) ? ` (universal value <b>${c.uv.toFixed(1)}</b> ${PAYLOAD.valueUnitShort})` : '';
+    const theirs = num(ordered[0].uv) ? ` (${ordered[0].uv.toFixed(1)})` : '';
+    s.push(`<p class="focus-sentence tie-note">His raw talent${mine} arguably exceeds the board leader's own${theirs} — he trails only because of roster-fit context, not quality.</p>`);
   }
-  if (c.needBonus > 0 || c.eligBonus > 0) {
+  if (num(c.needBonus) && c.needBonus > 0) {
     const bits = [];
-    if (c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} for an unfilled roster need`);
-    if (c.eligBonus > 0) bits.push(`+${c.eligBonus.toFixed(1)} for multi-position flexibility`);
+    if (num(c.needBonus) && c.needBonus > 0) bits.push(`+${c.needBonus.toFixed(1)} ${PAYLOAD.valueUnitShort} for an unfilled roster need`);
     s.push(`<p class="focus-sentence tie-note">Fills a real roster gap: ${bits.join(" and ")}.</p>`);
+  }
+  // #216. The two lineup-solved terms, stated with their magnitude and their basis, so every
+  // term that moved ACQ away from UV has a sentence. A depth number is only evidence under
+  // its `measured` basis; the sentence says which.
+  if (num(c.depthExposure) && c.depthExposure > 0) {
+    s.push(`<p class="focus-sentence tie-note">Depth insurance: +${c.depthExposure.toFixed(1)} ${PAYLOAD.valueUnitShort} — what a hole at ${c.pos} would cost your lineup, ${termBasisLabel("depthBasisLabels", c.depthBasis)}.</p>`);
+  }
+  if (num(c.displacementAdj) && c.displacementAdj < 0) {
+    s.push(`<p class="focus-sentence tie-note">Priced against your own starter: <b>${(-c.displacementAdj).toFixed(1)} ${PAYLOAD.valueUnitShort}</b> of his universal value is credit for a slot your lineup cannot offer him — every slot he could fill is held by someone you own who out-projects the league's free alternative (${termBasisLabel("displacementBasisLabels", c.displacementBasis)}).</p>`);
+  }
+  // A deduction the terms above did not name is still a deduction a person is reading. Say
+  // the size of it rather than leaving ACQ silently below UV (#187).
+  if (num(c.tav) && num(c.uv) && c.tav < c.uv - 1e-9) {
+    const named = (num(c.displacementAdj) && c.displacementAdj < 0) ? -c.displacementAdj : 0;
+    const unexplained = (c.uv - c.tav) - named;
+    if (unexplained > 0.05) {
+      s.push(`<p class="focus-sentence tie-note">Roster context deducts <b>${unexplained.toFixed(1)} ${PAYLOAD.valueUnitShort}</b> here beyond any term named above: his acquisition value sits below his universal value.</p>`);
+    }
   }
   if (c.flagged) {
     s.push(`<p class="focus-sentence tie-note">You flagged him specifically — nothing here argues for taking him now, and nothing here argues you're wrong to like him for later.</p>`);
@@ -647,22 +951,32 @@ function render() {
           <span class="name">${c.name}</span>
           <span class="posteam">${c.pos}${c.team ? ' · ' + c.team : ''}</span>
           ${c.flagged ? '<span class="considering">★ CONSIDERING</span>' : ''}
+          ${c.fillsRequiredSlot ? '<span class="required-slot" title="Ranked above higher-scoring candidates because your roster cannot still be filled legally otherwise.">FILLS REQUIRED SLOT</span>' : ''}
         </div>
         <div class="row-metrics">
           <div class="ticks">${tickRow(c)}</div>
           ${waitGlyph(c)}
           ${contextGapGlyph(c)}
           <span class="necessity-pill ${c.necClass}">${c.necessity}</span>
-          <span class="tav mono">${c.tav}</span>
+          <span class="tav mono${num(c.tav) ? '' : ' absent'}" title="${num(c.tav) ? 'Acquisition value in universal-value points (UV pts): universal value plus this roster\'s need, eligibility and depth terms. Signed, unbounded, not fantasy points.' : 'Unpriced: his position has no replacement level left to price against, so no acquisition value exists for him. Ordered after every priced candidate; not a zero.'}">${fmt(c.tav, 0)}</span>
           <span class="chevron mono">▾</span>
         </div>
       </div>
       <div class="hover-note">${connectionSentence(c) || "No shared forces with another candidate right now."}</div>
       <div class="focus-wrap"><div class="focus-inner"><div class="focus-body">${focusSentences(c)}
         <div class="focus-metrics">
-          <span>UV <b>${c.uv}</b></span><span>TAV <b>${c.tav}</b></span>
-          <span>SURV <b>${c.survival != null ? Math.round(c.survival * 100) + '%' : '—'}</b></span>
+          <span title="Universal value, in universal-value points">UV <b>${fmt(c.uv, 0)}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
+          <span title="Acquisition value for this roster, in universal-value points">ACQ <b>${fmt(c.tav, 0)}</b><span class="unit">${PAYLOAD.valueUnitShort}</span></span>
+          <span title="Projected season fantasy points -- a different unit from the two values before it">PROJ <b>${fmt(c.proj, 0)}</b><span class="unit">season pts</span></span>
+          <!-- #206: the chip obeys the same gate as the sentence above it. Suppressing the
+               prose while this still printed "SURV 50%" would be worse than showing neither --
+               the reader sees a number and a paragraph disclaiming it, and believes the
+               number. The tooltip changes with it, because a tooltip promising a "chance" over
+               a withheld figure is the same claim in smaller type. -->
+          <span title="${c.survivalWithheld ? 'Withheld: this estimate failed its calibration check against real drafts. The pick count beside it is measured.' : 'Chance he is still on the board at your next turn'}">SURV <b>${(!c.survivalWithheld && num(c.survival)) ? Math.round(c.survival * 100) + '%' : ABSENT}</b></span>
           <span>CLIFF <b>${c.cliffTier || '—'}</b></span>
+          ${c.replacementBasis ? `<span class="basis-note">PRICED VS <b>${basisLabel(c.replacementBasis)}</b></span>` : ''}
+          ${num(c.growthSignal) ? `<span class="basis-note">GROWTH <b>${c.growthSignal.toFixed(1)}</b></span>` : ''}
         </div>
       </div></div></div>
     </div>`).join("");

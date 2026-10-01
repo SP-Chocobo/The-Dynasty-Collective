@@ -164,6 +164,12 @@ def locked(path: Path):
         yield
 
 
+#: What `unreadable_stores()` reports for a damaged store. One spelling, because three sites
+#: wrote it out by hand and a UI that matched on the text would have been matching on whichever
+#: of them happened to run.
+UNREADABLE_REASON = "could not be parsed -- left untouched rather than overwritten"
+
+
 def _parse(path: Path, default: Any) -> tuple[Any, bool]:
     """(value, readable). `readable` is False only when the file exists, is NOT empty, and does
     not parse -- the one case where returning the default would be a claim rather than a fact.
@@ -187,29 +193,63 @@ def _parse(path: Path, default: Any) -> tuple[Any, bool]:
         return default, False
 
 
+def read_state(path: Path, default: Any) -> tuple[Any, bool]:
+    """(value, readable) -- `read` with the one bit `read` throws away.
+
+    A caller that must tell DAMAGE from ABSENCE needs this, and the alternative is what
+    outcome_record did: hand-roll a second `json.loads` beside this module, get the same
+    `None` for both states, and never arm the damage mark that stops the next write
+    destroying the file (#52 phase 7.5). A second parser that is supposed to agree with this
+    one is the drift class this module exists to end -- so the distinction is published here
+    rather than re-derived there.
+
+    `readable` is False only for a file that exists, holds bytes, and does not parse. Absent
+    and empty are both honestly "nothing stored yet" and come back readable.
+    """
+    with locked(path):
+        value, readable = _parse(path, default)
+    _note_readability(path, readable)
+    return value, readable
+
+
 def read(path: Path, default: Any) -> Any:
     """One store's contents, or `default`. Takes the lock so a read cannot land mid-write.
 
     Still returns the default for an unreadable file -- callers are fail-soft by design and a
     read is not the place to start raising -- but records it in `unreadable_stores()` so the
-    condition can be surfaced, and so `mutate` knows not to overwrite it.
+    condition can be surfaced, and so `mutate` knows not to overwrite it. A caller that needs
+    to tell those two apart asks `read_state`.
     """
-    with locked(path):
-        value, readable = _parse(path, default)
+    return read_state(path, default)[0]
+
+
+def _note_readability(path: Path, readable: bool) -> None:
+    """Arm or clear the damage mark for one store. One place, because `read_state` and
+    `mutate` must not be able to disagree about what damage means."""
     if readable:
         # A store that parsed is not damaged, whatever an earlier read of it concluded -- a
         # mark that outlived its cause would keep refusing writes to a file that is now fine.
         _unreadable.pop(str(path), None)
     else:
-        _unreadable[str(path)] = "could not be parsed -- left untouched rather than overwritten"
-    return value
+        _unreadable[str(path)] = UNREADABLE_REASON
 
 
-def write(path: Path, data: Any) -> None:
-    """Replace `path` with `data`, atomically. Never leaves a prefix on disk for a reader.
+def write(path: Path, data: Any) -> bool:
+    """Replace `path` with `data`, atomically. Returns whether the bytes actually landed.
 
     The temp file is created in the SAME directory on purpose: os.replace is only atomic within
     one filesystem, and a temp directory elsewhere would silently degrade to a copy.
+
+    RETURNS A BOOL because this function can decline, and used to decline in silence (#52
+    phase 7.5). Refusing to overwrite a damaged store is right; saying nothing about it is not
+    -- this module's own `unreadable_stores` docstring makes the argument: "a store the app
+    quietly works around is exactly the failure that looks handled." Measured downstream:
+    `upload_batches.record` returned a batch id for a batch that never reached disk and could
+    not be found by that id, while the UI reported success and the user's stated as-of date was
+    gone.
+
+    Additive by construction: every one of the callers that ignore the result keeps its exact
+    behaviour, and a caller that must report success to a person can now ask.
     """
     with locked(path):
         # The guard that makes the read/write pair as safe as `mutate`. A store this process
@@ -217,15 +257,41 @@ def write(path: Path, data: Any) -> None:
         # whatever was recoverable, which is precisely how a transient torn read became
         # permanent data loss. The mark clears itself as soon as the file parses again.
         if str(path) in _unreadable:
-            return
+            return False
         _write_unlocked(path, data)
+        return True
+
+
+def replace_atomically(path: Path, text: str) -> None:
+    """Replace `path` with `text` so no reader ever sees a prefix. NO STORE SEMANTICS.
+
+    The mechanism this module's docstring measures -- write a sibling temp file, then
+    `os.replace`, which is atomic within one filesystem -- published on its own for callers
+    that need the atomicity and must NOT have the rest.
+
+    THE DISTINCTION IS THE WHOLE REASON THIS IS SEPARATE (#52 phase 7.5 / J-13). `write` above
+    refuses to overwrite a store it has found damaged, because for a STORE the damaged bytes
+    are the only copy and losing them is unrecoverable. A CACHE is the opposite: it is
+    re-fetchable by definition, so a corrupt one SHOULD be replaced by a fresh fetch, and
+    giving it the store's protection would make a corrupt cache permanently un-refreshable --
+    a worse bug than the one being fixed, installed by the fix.
+
+    So this does no locking, keeps no damage mark, and consults none. It is the atomicity and
+    nothing else. A caller holding durable data wants `write` or `mutate`; a caller holding a
+    rebuildable copy of someone else's data wants this.
+
+    Takes TEXT rather than an object on purpose: the ~10 MB players cache is written compact,
+    and routing it through `write`'s `json.dumps(indent=2)` would inflate it by ~30% for a file
+    no person reads.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}")
+    tmp.write_text(text)
+    os.replace(tmp, path)
 
 
 def _write_unlocked(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}")
-    tmp.write_text(json.dumps(data, indent=2))
-    os.replace(tmp, path)
+    replace_atomically(path, json.dumps(data, indent=2))
 
 
 @contextmanager
@@ -249,7 +315,7 @@ def mutate(path: Path, default: Any):
         if readable:
             _write_unlocked(path, value)
         else:
-            _unreadable[str(path)] = "could not be parsed -- left untouched rather than overwritten"
+            _unreadable[str(path)] = UNREADABLE_REASON
 
 
 def atomic(path_for):

@@ -1,0 +1,36 @@
+test_1QB_seat_12_without_the_backstop_is_legal (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_1QB_seat_12_without_the_backstop_is_legal) ... ok
+test_1QB_seat_1_without_the_backstop_a_full_starting_lineup_is_fillable (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_1QB_seat_1_without_the_backstop_a_full_starting_lineup_is_fillable) ... ok
+test_1QB_seat_1_without_the_backstop_every_dedicated_starting_slot_is_filled (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_1QB_seat_1_without_the_backstop_every_dedicated_starting_slot_is_filled) ... ok
+test_superflex_seat_1_without_the_backstop_is_legal (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_superflex_seat_1_without_the_backstop_is_legal) ... ok
+test_the_ablation_actually_fired (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_the_ablation_actually_fired)
+Non-vacuity. With the backstop replaced, no chosen row may carry ... ok
+test_the_backstop_arm_is_legal_which_is_what_makes_the_off_arm_the_engine (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_the_backstop_arm_is_legal_which_is_what_makes_the_off_arm_the_engine)
+Control for the class: the ON arm is legal today. If it ever is not, #154's backstop ... ok
+test_with_the_backstop_on_it_never_has_to_override_the_value_board (test_216_value_board_falsification.A_TheValueBoardAloneMustDraftALegalRosterTests.test_with_the_backstop_on_it_never_has_to_override_the_value_board)
+A backstop that fires is a value board that failed. Counted, not snapshotted: each ... ok
+test_1QB_owning_four_tight_ends_makes_the_fifth_worth_LESS_to_me_than_owning_one (test_216_value_board_falsification.B_FeedbackDirectionTests.test_1QB_owning_four_tight_ends_makes_the_fifth_worth_LESS_to_me_than_owning_one)
+Measured on f580c11: FAILS. Next TE (Sam LaPorta, 230.85 proj): state A final 68.81 ... ok
+test_superflex_owning_four_tight_ends_makes_the_fifth_worth_less_to_me_than_owning_one (test_216_value_board_falsification.B_FeedbackDirectionTests.test_superflex_owning_four_tight_ends_makes_the_fifth_worth_less_to_me_than_owning_one)
+Measured on f580c11: PASSES, by 0.72 -- the flex-share need that drops off. Kept as ... ok
+test_the_same_tight_end_is_not_worth_more_to_me_after_i_hoard_six (test_216_value_board_falsification.B_FeedbackDirectionTests.test_the_same_tight_end_is_not_worth_more_to_me_after_i_hoard_six)
+A FIXED player across two of my roster states, no rival picks: TE#7 by projection ... ok
+test_1QB_the_roster_terms_can_span_the_positional_bias (test_216_value_board_falsification.C_MagnitudeTests.test_1QB_the_roster_terms_can_span_the_positional_bias) ... ok
+test_superflex_the_roster_terms_can_span_the_positional_bias (test_216_value_board_falsification.C_MagnitudeTests.test_superflex_the_roster_terms_can_span_the_positional_bias) ... ok
+test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection (test_216_value_board_falsification.D_SamePointsPairTests.test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection) ... ok
+test_a_second_tight_end_is_still_taken_when_he_is_the_best_value_left (test_216_value_board_falsification.E_OverCorrectionGuards.test_a_second_tight_end_is_still_taken_when_he_is_the_best_value_left)
+The refusal case, stated on one player. With Bowers owned, Trey McBride's rank must ... ok
+test_a_startable_player_outranks_anyone_whose_talent_plus_roster_lift_is_lower (test_216_value_board_falsification.E_OverCorrectionGuards.test_a_startable_player_outranks_anyone_whose_talent_plus_roster_lift_is_lower)
+I own one TE (Bowers); FLEX is open, so a second TE can still start. For every ... ok
+test_an_elite_still_leads_when_his_positions_named_slots_are_filled_but_flex_is_open (test_216_value_board_falsification.E_OverCorrectionGuards.test_an_elite_still_leads_when_his_positions_named_slots_are_filled_but_flex_is_open)
+I own RB#10 and RB#11 by projection -- both named RB slots filled, FLEX open. The ... ok
+test_roster_context_never_subtracts_from_a_player_who_fills_an_open_starting_slot (test_216_value_board_falsification.E_OverCorrectionGuards.test_roster_context_never_subtracts_from_a_player_who_fills_an_open_starting_slot)
+I own four TEs and nothing else. QB, RB and WR all fill uncovered starting slots; ... ok
+test_the_board_is_not_the_projection_control (test_216_value_board_falsification.E_OverCorrectionGuards.test_the_board_is_not_the_projection_control)
+A fix that flattens replacement toward zero turns the board into "best projected ... ok
+test_with_every_starter_filled_talent_still_orders_the_board (test_216_value_board_falsification.E_OverCorrectionGuards.test_with_every_starter_filled_talent_still_orders_the_board)
+Eight mid-tier starters owned (QB#10, RB#15/#16, WR#20/#21, TE#8, RB#17 and WR#22 at ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 137.134s
+
+OK

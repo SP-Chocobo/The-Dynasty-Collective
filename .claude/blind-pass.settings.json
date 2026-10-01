@@ -1,0 +1,32 @@
+{
+  "$comment": [
+    "#52 BLIND ADVERSARIAL PASS — DENY RULES. Inert unless deliberately activated.",
+    "",
+    "This file is NOT .claude/settings.json on purpose. Committing these rules as the project",
+    "default would blind every ordinary session, including the ones that need the register",
+    "constantly. Activate it only for the duration of the blind pass, then revert.",
+    "",
+    "TO USE: copy this file over .claude/settings.local.json before launching the pass, and",
+    "delete that copy afterwards. Verify it took effect by asking the session to read",
+    "POST_AUDIT_PLAN.md -- it must be refused. A pass that was never actually denied is worse",
+    "than no denial, because it will be believed.",
+    "",
+    "WHY DENIAL RATHER THAN AN INSTRUCTION: every long-lived document in this repository carries",
+    "a top-of-file pointer naming FREEZE_CHECKLIST.md and POST_AUDIT_PLAN.md as where current",
+    "state lives. That pointer is correct for ordinary readers and is a signpost to the answers",
+    "for a blind one. An instruction that does not name these exact paths will be undone by the",
+    "first document the pass opens. A deny rule has no such failure mode.",
+    "",
+    "The point is not secrecy. #52 exists to produce the one read of this repository that was",
+    "not shaped by the people who built it."
+  ],
+  "permissions": {
+    "deny": [
+      "Read(./FREEZE_RECORD.md)",
+      "Read(./FREEZE_CHECKLIST.md)",
+      "Read(./POST_AUDIT_PLAN.md)",
+      "Read(./evidence/smoke_seats/**)",
+      "Read(./evidence/batteries/**)"
+    ]
+  }
+}

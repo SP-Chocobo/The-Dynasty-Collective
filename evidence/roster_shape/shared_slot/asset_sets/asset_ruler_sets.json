@@ -1,0 +1,267 @@
+{
+  "commit": "f8daadc",
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "source": "/tmp/claude-0/terms_all",
+  "reproduces_recorded": true,
+  "formats": [
+    {
+      "format": "12T_ppr",
+      "arms": [
+        {
+          "arm": "SELF",
+          "seat": "1",
+          "total": 392.05,
+          "floored": 634.53,
+          "starter": 632.4,
+          "unpriced": 0,
+          "recorded": {
+            "total": 392.05,
+            "starter": 632.4
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED",
+          "seat": "1",
+          "total": 388.82,
+          "floored": 633.68,
+          "starter": 633.68,
+          "unpriced": 0,
+          "recorded": {
+            "total": 388.82,
+            "starter": 633.68
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED_ND",
+          "seat": "1",
+          "total": 388.82,
+          "floored": 633.68,
+          "starter": 633.68,
+          "unpriced": 0,
+          "recorded": {
+            "total": 388.82,
+            "starter": 633.68
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SELF",
+          "seat": "6",
+          "total": 317.0,
+          "floored": 580.35,
+          "starter": 578.9,
+          "unpriced": 0,
+          "recorded": {
+            "total": 317.0,
+            "starter": 578.9
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED",
+          "seat": "6",
+          "total": 298.96,
+          "floored": 493.48,
+          "starter": 484.85,
+          "unpriced": 0,
+          "recorded": {
+            "total": 298.96,
+            "starter": 484.85
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED_ND",
+          "seat": "6",
+          "total": 298.96,
+          "floored": 493.48,
+          "starter": 484.85,
+          "unpriced": 0,
+          "recorded": {
+            "total": 298.96,
+            "starter": 484.85
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SELF",
+          "seat": "12",
+          "total": 244.18,
+          "floored": 526.59,
+          "starter": 521.8,
+          "unpriced": 0,
+          "recorded": {
+            "total": 244.18,
+            "starter": 521.8
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED",
+          "seat": "12",
+          "total": 281.92,
+          "floored": 483.87,
+          "starter": 483.87,
+          "unpriced": 0,
+          "recorded": {
+            "total": 281.92,
+            "starter": 483.87
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED_ND",
+          "seat": "12",
+          "total": 281.92,
+          "floored": 483.87,
+          "starter": 483.87,
+          "unpriced": 0,
+          "recorded": {
+            "total": 281.92,
+            "starter": 483.87
+          },
+          "reproduced": true
+        }
+      ]
+    },
+    {
+      "format": "12T_ppr_SF",
+      "arms": [
+        {
+          "arm": "SELF",
+          "seat": "1",
+          "total": 576.54,
+          "floored": 888.57,
+          "starter": 877.56,
+          "unpriced": 0,
+          "recorded": {
+            "total": 576.54,
+            "starter": 877.56
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED",
+          "seat": "1",
+          "total": 443.41,
+          "floored": 751.55,
+          "starter": 744.43,
+          "unpriced": 0,
+          "recorded": {
+            "total": 443.41,
+            "starter": 744.43
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED_ND",
+          "seat": "1",
+          "total": 443.41,
+          "floored": 751.55,
+          "starter": 744.43,
+          "unpriced": 0,
+          "recorded": {
+            "total": 443.41,
+            "starter": 744.43
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SELF",
+          "seat": "6",
+          "total": 497.28,
+          "floored": 832.61,
+          "starter": 823.03,
+          "unpriced": 0,
+          "recorded": {
+            "total": 497.28,
+            "starter": 823.03
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED",
+          "seat": "6",
+          "total": 458.65,
+          "floored": 684.8,
+          "starter": 679.95,
+          "unpriced": 0,
+          "recorded": {
+            "total": 458.65,
+            "starter": 679.95
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED_ND",
+          "seat": "6",
+          "total": 458.65,
+          "floored": 684.8,
+          "starter": 679.95,
+          "unpriced": 0,
+          "recorded": {
+            "total": 458.65,
+            "starter": 679.95
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SELF",
+          "seat": "12",
+          "total": 418.82,
+          "floored": 732.51,
+          "starter": 724.19,
+          "unpriced": 0,
+          "recorded": {
+            "total": 418.82,
+            "starter": 724.19
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED",
+          "seat": "12",
+          "total": 447.54,
+          "floored": 688.7,
+          "starter": 688.7,
+          "unpriced": 0,
+          "recorded": {
+            "total": 447.54,
+            "starter": 688.7
+          },
+          "reproduced": true
+        },
+        {
+          "arm": "SHARED_ND",
+          "seat": "12",
+          "total": 415.4,
+          "floored": 688.7,
+          "starter": 688.7,
+          "unpriced": 0,
+          "recorded": {
+            "total": 415.4,
+            "starter": 688.7
+          },
+          "reproduced": true
+        }
+      ]
+    }
+  ]
+}

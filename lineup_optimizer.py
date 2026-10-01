@@ -32,6 +32,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from typing import Optional
+
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -100,6 +102,88 @@ def optimize_lineup(players: list[dict], slots: list[dict]) -> dict:
     total_value = sum(a["value"] for a in assignments)
     benched = [p["id"] for p in players if p["id"] not in assigned_player_ids]
     return {"total_value": round(total_value, 2), "assignments": assignments, "benched": benched}
+
+
+# Weight of covering ONE slot in slot_coverage's objective. It has to dominate the SUM of every
+# tie-break term over every slot, so a coverage-maximising assignment is never traded away for a
+# more "preferred" arrangement that covers fewer slots. The preferences below decide only among
+# assignments that cover the same number of slots.
+_COVERAGE_WEIGHT = 1.0e6
+#: One step of the restrictiveness preference -- a slot eligible at fewer positions is filled
+#: first, so a dedicated slot beats a flex slot the same player could also occupy.
+_RESTRICTIVENESS_STEP = 1.0e3
+
+
+def slot_coverage(players: list[dict], slots: list[dict]) -> dict:
+    """Which of these STARTING SLOTS this set of players actually occupies -- the COUNTING
+    question (mandate 2.6 / `#172`), not the valuation one optimize_lineup answers.
+
+    players: [{"id": ..., "eligible": set[str]}, ...] -- no "value", deliberately. This asks how
+    many slots are covered, and a player's price has no bearing on whether he is legal in a
+    slot. Handing optimize_lineup a value of 1.0 apiece would reach the same cardinality and
+    then break every tie arbitrarily, which is exactly the part that has to be stated rather
+    than left to the solver.
+    slots: [{"slot_id", "label", "eligible"}, ...] from slots_from_roster_positions.
+
+    Returns {"occupied": [{"slot_id","label","player_id"}], "filled_labels": {label: n},
+    "benched": [id, ...]}.
+
+    THE OBJECTIVE, in order, all three encoded in one cost matrix:
+
+    1. COVER AS MANY SLOTS AS POSSIBLE -- exact maximum-cardinality matching, on the same
+       Hungarian solve optimize_lineup uses. An ineligible pair costs _INELIGIBLE_COST, which
+       dominates _COVERAGE_WEIGHT, which dominates everything below.
+    2. FILL THE MOST RESTRICTIVE SLOT FIRST. Where a player could sit in a dedicated slot or in
+       a flex slot that also accepts him, the dedicated one is filled. Not cosmetic: need_bonus
+       weights an unfilled DEDICATED slot four times a flex share, so an arrangement that left
+       the dedicated slot empty while the flex slot took the only eligible player would report a
+       need this roster does not have.
+    3. FILL THE SLOT THE LEAGUE DECLARES FIRST. A CONVENTION, not a measurement. It exists only
+       to make the remaining ties deterministic, so that this is a pure function of the SET of
+       players (sorted by id here) and not of the order the picks arrived in. It binds for one
+       shape: a player eligible at two equally restrictive slots, with no other player able to
+       take either -- a dual-eligible IDP on a roster holding one DL and one LB slot and nobody
+       else for them. Which of the two he is credited to is genuinely arbitrary; the league's own
+       roster_positions order is the one available answer that is at least stable and auditable.
+
+    WHAT THIS DOES NOT CLAIM. Per-slot-label fill is monotone in the player set only up to
+    those ties: adding a player can re-route a dual-eligible one, and two arrangements covering
+    the same slots can credit different labels. TOTAL coverage is monotone (a maximum matching
+    cannot shrink when a player is added). See test_demand_is_assignment_based.py.
+    """
+    ordered = sorted(players, key=lambda p: str(p["id"]))
+    if not ordered or not slots:
+        return {"occupied": [], "filled_labels": {}, "benched": [p["id"] for p in ordered]}
+
+    widest = max(len(slot["eligible"]) for slot in slots)
+    cost = np.full((len(ordered), len(slots)), _INELIGIBLE_COST)
+    for j, slot in enumerate(slots):
+        weight = (_COVERAGE_WEIGHT
+                  + (widest - len(slot["eligible"])) * _RESTRICTIVENESS_STEP
+                  - j)
+        for i, player in enumerate(ordered):
+            if player["eligible"] & slot["eligible"]:
+                cost[i, j] = -weight
+
+    row_idx, col_idx = linear_sum_assignment(cost)
+    occupied, taken = [], set()
+    for i, j in zip(row_idx, col_idx):
+        if cost[i, j] >= _INELIGIBLE_COST:
+            continue  # forced pairing with no real eligibility -- the slot stays empty
+        occupied.append({
+            "slot_id": slots[j]["slot_id"], "label": slots[j]["label"],
+            "player_id": ordered[i]["id"],
+        })
+        taken.add(ordered[i]["id"])
+
+    filled_labels: dict[str, int] = {}
+    for entry in occupied:
+        filled_labels[entry["label"]] = filled_labels.get(entry["label"], 0) + 1
+    return {
+        "occupied": occupied,
+        "filled_labels": filled_labels,
+        "benched": [p["id"] for p in ordered if p["id"] not in taken],
+    }
 
 
 def marginal_lineup_value(
@@ -175,3 +259,677 @@ def eligibility_bonus(
         "marginal_value_full_eligibility": full_result["marginal_value"],
         "marginal_value_primary_position_only": primary_result["marginal_value"],
     }
+
+
+#: What `depth_exposure` reports when a position is in the league's slots but this roster has
+#: nobody starting there. NOT zero exposure -- the opposite. A vacancy is a hole that already
+#: exists, and reporting 0.0 would rank an empty slot as safely covered, which is the same
+#: "absence read as a value" defect this codebase has already had to repair repeatedly.
+EXPOSURE_VACANT = "vacant"
+
+#: The position isn't in this league's starting slots at all (no TE slot in a TE-less format,
+#: no IDP slots in an offense-only league). Nothing to be exposed to.
+EXPOSURE_NOT_APPLICABLE = "not_applicable"
+
+#: Every rostered player is starting -- there is no bench yet, so nothing can backfill a hole
+#: and every loss costs that player's whole value. The arithmetic still runs and still returns
+#: a number, and that number is NOT depth information: it is just each starter's own value
+#: wearing a depth-shaped label. Measured directly -- a 7-player roster against 8 slots reports
+#: QB 30 / RB 25 / WR 28 / TE 15, which is exactly the four players' values, and adding a TE2
+#: moves nothing because the TE2 merely fills the empty eighth slot.
+#:
+#: Marked rather than suppressed, because the consumer that most needs this signal is the one
+#: drafting in round 3 -- and a plausible-looking number it cannot distinguish from a measured
+#: one is worse than an honest refusal. It is also the exact complement of the round-10
+#: collapse in marginal_lineup_value: that quantity is informative while slots are empty and
+#: degenerate once they fill, and this one is the reverse.
+EXPOSURE_NO_SURPLUS = "no_surplus"
+
+#: The state the other three EXPOSURE_* names were defined AGAINST, and it had no name of its
+#: own -- every "no information" state was a constant while the one that says "these numbers are
+#: real evidence" stayed a bare literal, here and at its consumer. That asymmetry is not
+#: cosmetic: the named states cannot be mistyped at a call site without a NameError, and this one
+#: could. Measured on the sibling vocabulary: renaming APPETITE_IMPUTED passed the FULL
+#: 2209-test suite while its disclosure silently stopped rendering (#122).
+EXPOSURE_MEASURED = "measured"
+
+#: MANDATE 3.4. A rostered player who could cover a slot at this position carried no price, so he
+#: was left out of the solve and the roster was one body emptier than it really is. Deliberately the
+#: SAME TOKEN STRING as DISPLACEMENT_ROSTER_PARTIAL below, because it is the same condition about
+#: the same roster; the displacement term got this treatment and depth got nothing.
+#:
+#: THE TWO TERMS FAIL IN OPPOSITE DIRECTIONS, which is worth stating because the labels must not
+#: borrow each other's wording. A missing occupant makes DISPLACEMENT under-count -- an open slot
+#: deducts nothing -- so its number is a FLOOR. It makes DEPTH over-count, because a hole with no
+#: cover costs more than a hole a spare would have filled, so this number is a CEILING. Measured on
+#: a hand-built roster with two LB starters: with the bench LB priced, worst_loss 13 and
+#: depth_exposure 1.56; with him dropped and another spare behind him, worst_loss 28 and
+#: depth_exposure 3.36.
+#:
+#: AND IT REPLACES A LABEL THAT WAS FALSE, not merely incomplete. When the dropped man was the ONLY
+#: spare, the basis read EXPOSURE_NO_SURPLUS -- "you hold no backup here" -- which is a claim about
+#: the roster that the engine is in no position to make: the backup exists and could not be priced.
+#: Measured over a complete 216-pick HEAVY_IDP draft: 48 of 216 rostered players are dropped for
+#: want of a trade value, every one of them IDP (DL 10, LB 18, DB 20).
+EXPOSURE_ROSTER_PARTIAL = "roster_partially_priced"
+
+#: token -> the words a person reads (#174). depth_exposure crossed the snapshot boundary
+#: WITHOUT this companion, so every consumer downstream of PickSnapshot saw a 0.0 that could
+#: mean "measured, this position carries no exposure" or "never measured" and had no way to
+#: tell. Measured on a real mid-draft board: 806 rows measured with a real number, 1,218 rows
+#: at 0.0 with basis `vacant`, and NOT ONE measured zero -- so on that board every 0.0 the
+#: consumers saw meant "not measured", and every one of them read as "safe".
+EXPOSURE_BASIS_LABELS = {
+    EXPOSURE_MEASURED: "measured against your own lineup",
+    #: CORRECTED AT THE v4 BLIND PASS, found independently by THREE lenses. This read "a ceiling
+    #: -- a player you drafted could not be priced ...", which described `worst_loss`, the number
+    #: computed INSIDE this module. The board never emits that number under this basis: `score_row`
+    #: prices `depth_exposure` only under MEASURED, so what a person actually reads beside this
+    #: label is 0.0. "A ceiling of 0.0" asserts there is no exposure at all -- the strongest
+    #: available claim -- about the position the engine knows LEAST about, and the true figure
+    #: measured under the same solve was 33.0. The label now describes the number it is attached to
+    #: and says the real one was withheld, which is what the sibling NO_SURPLUS label already does.
+    EXPOSURE_ROSTER_PARTIAL: ("not charged -- a player you drafted could not be priced, so a spare "
+                              "who may cover this position was left out of the solve and the "
+                              "exposure it measured is NOT the 0.0 shown here"),
+    EXPOSURE_VACANT: "not measured -- you hold no starter at this position to insure",
+    #: I-06/J-06, RULED: one token, and the LABEL is what was false. This read "not measured --
+    #: you hold no backup here, so there is no surplus to value", and the first half of that is
+    #: simply untrue: something WAS measured, and it is the larger of the two numbers. Across 8
+    #: in-draft board states, every one of the 8 cells in this state carried a non-zero
+    #: `worst_loss`, median 62.00 against EXPOSURE_MEASURED's 42.00, max 82.00 -- while the
+    #: priced state is the one at 42.00. Telling a reader nothing was measured, on the cell
+    #: carrying the biggest measurement, is #187's shape in prose.
+    #:
+    #: WHAT IS ACTUALLY TRUE, and why the number still is not priced: with a starter uncovered,
+    #: removing him returns HIS WHOLE VALUE, not what a backup would have to cover. That is a
+    #: real quantity on a DIFFERENT SCALE, and `draft_room` prices `worst_loss` only under
+    #: EXPOSURE_MEASURED for exactly that reason. The label now says which of those two things
+    #: it is, instead of claiming there is nothing to say.
+    #:
+    #: NO NEW TOKEN, deliberately. Splitting this state would take its entire population and
+    #: leave `no_surplus` unreachable -- the unreachable-predicate shape `basis_semantics.py`
+    #: names as the 18th withdrawal -- and both boundaries that would keep two tokens reachable
+    #: are ones this repo already measured and rejected. See
+    #: evidence/i06_j06/STEP_ONE_NEEDS_A_BOUNDARY.md.
+    EXPOSURE_NO_SURPLUS: "measured, but it is a starter's whole value rather than a backup's "
+                         "job -- some starter here has no cover, so this is not a depth price "
+                         "and is not charged as one",
+    EXPOSURE_NOT_APPLICABLE: "not measured -- this position has no startable slot in this league",
+}
+
+
+def depth_exposure(roster_players: list[dict], roster_positions: list[str],
+                   unpriced_eligibilities=()) -> dict[str, dict]:
+    """Per position, what this roster loses if one of its starters there becomes unavailable.
+
+    THE QUESTION THIS ANSWERS. Depth demand is not "a slot exists, so fill it." Nobody needs a
+    fourth TE because their league has one TE slot. Depth is INSURANCE, and what it is worth
+    is what a hole would actually cost -- which depends on who else is already rostered, and on
+    whether anything else can cover the slot.
+
+    Both of those fall out of the assignment solve rather than being encoded as rules:
+
+      - SELF-LIMITING BY DEPTH. Remove TE1 from a roster that already has a competent TE2 and
+        the lineup only drops by (TE1 - TE2), because the solver promotes TE2. So exposure at
+        TE falls as soon as TE2 exists, and demand for a TE3 collapses on its own. No rule
+        says "you don't need four tight ends"; the arithmetic says it.
+
+      - SUBSTITUTABILITY IS FREE. Pull RB1 and the solver may slide a FLEX-eligible WR up, so
+        the hole is cheap. Pull the only TE and a mandatory TE slot goes empty, so the hole is
+        expensive. That asymmetry is the whole reason TE depth behaves differently from RB
+        depth, and it is discovered here, not asserted.
+
+    WHY IT CARRIES NO PROBABILITY. "Any one starter could become unavailable" is a uniform,
+    stated assumption -- deliberately not a per-position injury rate, because this app does not
+    have one. RISK_ADJ is a CURRENT-STATUS penalty (this player is Questionable today), not a
+    prospective rate, and inventing "RBs get hurt 1.4x more than WRs" would be exactly the kind
+    of unmeasured constant that has already had to be removed from this codebase once. A caller
+    that acquires real base rates can weight these numbers; until then they are pure severity,
+    and the docstring says so instead of the number implying otherwise.
+
+    Returns {position: {"exposure", "worst_loss", "starters", "basis"}}:
+      exposure    -- summed loss across every starter at that position: total value at risk.
+      worst_loss  -- the single largest loss: what ONE backup would have to cover.
+      starters    -- how many of this roster's starters sit at that position.
+      basis       -- EXPOSURE_MEASURED, or EXPOSURE_NO_SURPLUS / EXPOSURE_VACANT /
+                     EXPOSURE_NOT_APPLICABLE. Read it before reading the numbers: they are
+                     returned in every state, and only EXPOSURE_MEASURED makes them depth evidence.
+
+    Both aggregates are returned rather than one, for the reason marginal_lineup_value returns
+    both lineup totals: they answer genuinely different questions (total risk carried vs. what
+    a single backup buys), and picking one here would make that choice invisible to the caller.
+    """
+    slots = slots_from_roster_positions(roster_positions)
+    slot_positions = set().union(*(s["eligible"] for s in slots)) if slots else set()
+
+    out: dict[str, dict] = {}
+    for position in sorted(slot_positions):
+        out[position] = {
+            "exposure": None, "worst_loss": None, "starters": 0, "basis": EXPOSURE_VACANT,
+        }
+    for position in FANTASY_POSITIONS:
+        if position not in slot_positions:
+            out[position] = {
+                "exposure": None, "worst_loss": None, "starters": 0,
+                "basis": EXPOSURE_NOT_APPLICABLE,
+            }
+
+    if not roster_players or not slots:
+        return _stamp_roster_partial(out, unpriced_eligibilities)
+
+    baseline = optimize_lineup(roster_players, slots)
+    starting_ids = {a["player_id"] for a in baseline["assignments"]}
+    by_id = {p["id"]: p for p in roster_players}
+    # SURPLUS IS A PER-POSITION QUESTION, WHICH IS WHAT THE SENTINEL ALREADY CLAIMED TO ANSWER
+    # (#52 phase 6; found independently by two passes as I-06 and J-06).
+    #
+    # This was one roster-wide boolean, `len(roster_players) > len(starting_ids)`, stamped onto
+    # every position alike -- while EXPOSURE_NO_SURPLUS's own label says "you hold no backup
+    # HERE, so there is no surplus to value". Those are different claims, and the gap between
+    # them is not academic: draft_room prices `worst_loss` ONLY under EXPOSURE_MEASURED, so one
+    # irrelevant bench body switched pricing on for every position at once.
+    #
+    # Measured: 8 starters and no bench -> every position `no_surplus`, correctly. Add ONE BENCH
+    # KICKER and QB/RB/WR/TE all flip to `measured` with identical arithmetic -- and the number
+    # they are now stamped as measuring is the lone starter's own whole value, which is not
+    # depth information, it is "this player is good". On a real draft at pick 141 that read
+    # K ('measured', 14.0), TE ('measured', 8.0), QB ('measured', 82.0).
+    #
+    # ASKED OF THE SOLVE, NOT OF A RULE, for the reason this function gives about everything
+    # else it computes: substitutability is discovered, not asserted. A first attempt here did
+    # state it as a rule -- "a bench player who can occupy a slot this position can reach" --
+    # and it was WRONG in a way worth recording, because it looks right: a bench RB can play
+    # FLEX, and a tight end can also reach FLEX, so the rule called TE covered. It is not. If
+    # the tight end is starting in the dedicated TE slot, losing him empties a slot no running
+    # back may fill, and the measured loss came back as his entire value -- the number saying
+    # plainly that nothing covered him while the basis claimed depth.
+    #
+    # The re-solve below already answers this exactly: cover existed for a starter if removing
+    # him drew a NON-STARTING player into the lineup. That is the definition, and it needs no
+    # eligibility reasoning of its own.
+
+    losses: dict[str, list[float]] = {}
+    #: Per position: did EVERY starter there have somebody who could actually step in? `worst_loss`
+    #: is documented as "what ONE backup would have to cover", so a position where some hole goes
+    #: uncovered is not reporting a backup's job -- it is reporting a starter's whole value, and
+    #: that uncovered loss is also the one that wins the max.
+    covered: dict[str, list[bool]] = {}
+    for player_id in starting_ids:
+        player = by_id[player_id]
+        # The player's OWN eligibility decides which position bears this exposure. A WR
+        # starting in a FLEX slot is still WR depth: losing him is a WR-shaped hole, and the
+        # roster covers it by rostering another WR (or another FLEX-eligible body), not by
+        # rostering "a FLEX". Multi-eligible players count toward every position they can
+        # actually fill, because a hole at any of them is a hole this player was covering.
+        without = optimize_lineup([p for p in roster_players if p["id"] != player_id], slots)
+        loss = round(baseline["total_value"] - without["total_value"], 2)
+        drew_in_a_bench_body = any(
+            a["player_id"] not in starting_ids for a in without["assignments"])
+        for position in player["eligible"] & slot_positions:
+            losses.setdefault(position, []).append(loss)
+            covered.setdefault(position, []).append(drew_in_a_bench_body)
+
+    for position, values in losses.items():
+        out[position] = {
+            "exposure": round(sum(values), 2),
+            "worst_loss": round(max(values), 2),
+            "starters": len(values),
+            "basis": (EXPOSURE_MEASURED if all(covered.get(position, []))
+                      else EXPOSURE_NO_SURPLUS),
+        }
+    return _stamp_roster_partial(out, unpriced_eligibilities)
+
+
+def _stamp_roster_partial(out: dict[str, dict], unpriced_eligibilities) -> dict[str, dict]:
+    """MANDATE 3.4: say so where a rostered player could not be priced.
+
+    `depth_exposure` solves against the players it was GIVEN, and draft_room drops a rostered man
+    it cannot price, so for any position such a man could have covered the answer describes a
+    roster one body emptier than the real one. The consequence is stated on the answer rather than
+    absorbed -- the same treatment `displacement_adjustments` already gives the same hole.
+
+    OVERRIDES EVERY STATE BUT NOT_APPLICABLE, and each for its own reason. Under MEASURED the
+    number is a ceiling (a hole with no cover costs more than one a spare would have filled). Under
+    NO_SURPLUS and VACANT the LABEL is false, not merely imprecise -- "you hold no backup here"
+    and "you hold no starter here" are claims about the roster, and the engine is in no position to
+    make either when the man exists and could not be priced. NOT_APPLICABLE is untouched because it
+    is a fact about the LEAGUE (no slot admits the position) that no roster can change.
+    """
+    covered = set()
+    for eligible in unpriced_eligibilities or ():
+        covered |= set(eligible)
+    for position in covered:
+        cell = out.get(position)
+        if cell is not None and cell.get("basis") != EXPOSURE_NOT_APPLICABLE:
+            cell["basis"] = EXPOSURE_ROSTER_PARTIAL
+    return out
+
+
+#: DISPLACEMENT vocabulary (#216). `displacement_level` answers "what must a player at this
+#: position DISPLACE in my own lineup", and like the exposure vocabulary above it returns a
+#: number in every state, so the basis is what says whether the number is evidence.
+#:
+#: The lineup was solved against this roster's priced players, and the answer is a real
+#: measurement -- whether it came out as a deduction or as exactly zero (an open slot, or one
+#: held below the free alternative, both of which the solve found rather than assumed).
+DISPLACEMENT_MEASURED = "measured"
+#: No starting slot in this league accepts the position, so there is nothing to displace.
+DISPLACEMENT_NOT_APPLICABLE = "not_applicable"
+#: A rostered player who could occupy a slot this position can reach carried no price, so he
+#: was left out of the solve and the lineup was one body emptier than it really is. The number
+#: is then a FLOOR on the deduction, not the deduction: a missing occupant reads as an open
+#: slot, and an open slot deducts nothing.
+DISPLACEMENT_ROSTER_PARTIAL = "roster_partially_priced"
+#: The position carries no replacement level in projected points on this board (priced by
+#: trade_value, or not priced at all), so there is no league anchor to correct. Stamped by the
+#: consumer, not by displacement_level, which is never called for such a position.
+DISPLACEMENT_NO_POINTS_ANCHOR = "no_points_anchor"
+
+#: token -> the words a person reads (#174/#187), the companion depth_exposure crossed the
+#: snapshot boundary without. A 0.0 under `measured` is a solved lineup with room for him; a
+#: 0.0 under any other token is a number that was never produced.
+DISPLACEMENT_BASIS_LABELS = {
+    DISPLACEMENT_MEASURED: "measured against your own starters",
+    DISPLACEMENT_ROSTER_PARTIAL: "a floor -- a player you drafted could not be priced, so a slot he may hold reads as open",
+    DISPLACEMENT_NOT_APPLICABLE: "not measured -- this position has no startable slot in this league",
+    DISPLACEMENT_NO_POINTS_ANCHOR: "not measured -- this position has no replacement level in projected points here",
+}
+
+#: The probe's value. Only needs to exceed any real projection so that the probe is ALWAYS
+#: assigned and the occupant it evicts is the weakest one it can reach; the exact figure never
+#: reaches the answer, which subtracts it back out. Kept far below _INELIGIBLE_COST so an
+#: ineligible pairing is still never chosen over benching the probe.
+_DISPLACEMENT_PROBE_VALUE = 1e6
+
+
+def displacement_level(
+    roster_players: list[dict], roster_positions: list[str], position,
+    free_alternative: float, unpriced_eligible: Optional[list[set[str]]] = None,
+    #: #216. {slot_id: what a FREE player is worth IN THAT SLOT}. See "ONE SLOT, ONE
+    #: ALTERNATIVE" below. Omitted, or missing a slot, means that slot's phantom is worth
+    #: `free_alternative` -- exactly the behaviour that shipped before, for every caller that
+    #: does not supply this.
+    slot_alternatives: Optional[dict[str, float]] = None,
+) -> dict:
+    """What a player at `position` must out-score to start for THIS roster, in the caller's
+    currency (#216).
+
+    WHAT `free_alternative` ACTUALLY IS, and what it is not (#222). It is the caller's
+    replacement LEVEL for `position` -- in production, draft_room's `point_replacement`, which
+    below a position's demand domain is the PRE-DRAFT anchor rather than a live pool reading.
+    It is therefore NOT a claim that a player at that value is available right now: measured on
+    a real 26-round startup, by the final pick the level said a free tight end was worth 149.17
+    while the best one left in the pool was worth 6.49.
+
+    THAT STALENESS DOES NOT REACH THE PRICE WHEREVER THIS TERM IS NON-ZERO, and the reason is
+    worth stating because it is not obvious. The board's bpa is `points - level` and
+    displacement_adj is `level - displacement_level`, the SAME level, so for a candidate whose
+    reachable slots are all held the two cancel exactly:
+
+        bpa + displacement_adj = (points - L) + (L - displaced) = points - displaced
+
+    Measured across a seven-rung saturation ladder in balanced mode: the sum falls monotonically
+    (-5.25, -32.18, -50.29 ...) with no discontinuity where the level's basis switches from live
+    to the pre-draft anchor and the level jumps back by 85 points. (_scale_vor_to_bpa is the
+    identity, so this is structural rather than a coincidence of scale -- see its docstring.)
+    A fix that made this parameter "live" WITHOUT changing bpa would therefore not correct a
+    price; it would inject the level's staleness as one, ~86 points per surplus tight end on
+    that ladder. That was proposed, measured and rejected.
+
+    Where the level's basis DOES reach the price is the opposite case: a position with an OPEN
+    reachable slot, where this function returns `free_alternative` unchanged, the adjustment is
+    exactly 0.0, and the price is `points - level` with nothing to cancel it. That is bpa's
+    business, not this term's.
+
+    THE QUESTION. Value over replacement prices a player against the league's free alternative
+    at his position. That is the right anchor for a slot this roster has not filled -- the
+    free alternative is what the slot gets otherwise -- and the wrong one for a slot it has
+    filled with someone better than that alternative, because the player then has to displace
+    MY starter, not the league's replacement, to contribute anything. A fourth tight end in a
+    one-TE league is priced 40-60 points above a same-projection receiver by the league anchor
+    (tight ends are scarce league-wide) while adding nothing to a lineup whose TE-eligible slots
+    already hold three better tight ends. Measured on the real rulebook: with the legality
+    backstop switched off the board drafted ELEVEN tight ends and no receiver.
+
+    THE CONSTRUCTION, which invents no constant. Every starting slot is pre-filled with a
+    phantom worth exactly `free_alternative` (the league replacement level for `position`,
+    which the board already computes), eligible wherever that slot is. The roster is solved
+    against those phantoms, so a real player holds a slot only where he beats the free
+    alternative. Then a probe at `position` with an overwhelming value is added and the lineup
+    re-solved: the probe is always assigned, and the total rises by the probe's value MINUS the
+    value of whoever it evicted -- a phantom (the slot was effectively open: displaced ==
+    free_alternative) or one of my own starters (displaced > free_alternative). Chains through
+    multi-eligible players are handled by the solve itself rather than by a rule.
+
+        displaced >= free_alternative  for a SINGLE-position probe -- see THE SIGN below
+        displaced == free_alternative  when any slot the position can reach is open, or held by
+                                       someone the league alternative would beat
+        displaced  > free_alternative  when every reachable slot is held by one of my players
+                                       who beats the league alternative
+        displaced  < free_alternative  ONLY for a MULTI-eligible probe -- THE SIGN below
+
+    THE SIGN, AND THE POPULATION EACH HALF OF IT HOLDS OVER (#52 phase 6, W1-01 / W4-02). The
+    line above used to read `displaced >= free_alternative always, by construction`, and a great
+    deal was built on it: this function's own Returns line, draft_room.displacement_adjustments,
+    and -- most consequentially -- pick_synthesis.TEAM_SPECIFIC_CAPS, which hand-exempts this
+    term from the bound two shipped constants derive from, citing exactly that premise. It is
+    false as stated, and it became false when `slot_alternatives` arrived. Not through a bug in
+    that change: the change EXPANDED THE POPULATION this function ranges over, and an invariant
+    proven over the old one was never re-checked against the new one.
+
+    What holds instead is DERIVED from shared_slot_alternatives rather than asserted. That
+    function prices a slot at `max(level)` over the positions the slot ADMITS. So every slot a
+    SINGLE-position probe can reach admits that position, every such alternative is therefore at
+    or above his own level, and:
+
+        adjustment <= 0.0                                        eligibility of ONE position
+
+    A MULTI-eligible probe is anchored on his PRIMARY position's level, but reaches slots through
+    his second eligibility that need not admit the primary at all. Such a slot can be priced
+    below the anchor, and the term then LIFTS rather than deducts:
+
+        adjustment <= free_alternative - min(alt of reachable slots)          any eligibility
+
+    The second statement covers the first (that bound IS 0.0 when every reachable slot admits the
+    anchor's position), so it is the one invariant, and the clamp below is what makes it exact.
+    Measured over 960 probes across five rulebooks and three roster depths: 0 of 120
+    single-position probes go positive; 144 of 840 multi-eligible ones do, every one inside the
+    bound. The live case is a WR/DB in an IDP league -- Travis Hunter, +79.44 on the owner's own
+    pre-draft board, where his TAV - UV of 87.82 runs past a claimed ceiling of 36.0.
+
+    WHETHER THE LIFT IS THE RIGHT PRICE IS NOT SETTLED HERE, and deliberately so. It is arguable
+    both ways: the probe really can take the cheap slot while the free alternative still fills his
+    primary's (the phantoms are pinned per slot precisely so that lineup is the one solved), and
+    equally it is arguably paid twice, since `eligibility_bonus` already prices multi-eligibility
+    and is CAPPED for that reason. Choosing between those is a valuation change under #56, not a
+    repair, so the behaviour is unchanged and the question is recorded for the owner. What IS
+    repaired is that the contract now states what the code does.
+
+    ONE SLOT, ONE ALTERNATIVE (#216, the second half). A phantom stands for "what this slot gets
+    for free if I pass". For a DEDICATED slot that is a free player at its one position, and
+    `free_alternative` is exactly right. For a FLEX it is the best free player among every
+    position the slot admits -- one slot, one alternative, whoever is competing for it. Filling
+    a flex phantom with the CANDIDATE'S OWN positional level instead prices two players against
+    two different alternatives for the same slot, and that is measurable in both directions:
+
+      * No dedicated TE slot (the owner's league, three flexes). TE's own level sits at rank 9
+        and RB's at rank 39, so at one open flex a tight end is priced against a top-10 tight end
+        and a running back against RB39. Running backs take all three flexes and the seat fields
+        ZERO tight ends where the owner's own roster carries two.
+      * One dedicated TE slot (12T_ppr). TE's level is rank 20, WR's rank 32. A fourth tight end
+        competing for a flex is priced against TE20 while the receiver beside him is priced
+        against WR32 -- the ~30-point half of the tight-end bias that survives this term today,
+        because the term reports exactly 0.0 whenever a slot is merely OPEN.
+
+    `slot_alternatives` carries the per-slot value; every number in it is a replacement level the
+    board already computes (draft_room.shared_slot_alternatives builds it), so this introduces no
+    quantity and no constant. `free_alternative` keeps its own meaning -- what the candidate's
+    `bpa` was anchored on -- so `adjustment` goes NEGATIVE exactly when a position can only reach
+    slots whose real alternative beats its own positional anchor.
+
+    THE INVARIANT, RESTATED. The older wording was "reduces to the league anchor exactly on an
+    empty roster". That is no longer true for a position with NO dedicated slot -- a tight end in
+    a TE-less league reaches only shared slots, so his alternative is the shared one from the
+    first pick, which is the whole point. What holds instead, and is tested: **the term is exactly
+    0.0 for any position with an OPEN DEDICATED slot, on any roster.** That too is a
+    SINGLE-position statement: a multi-eligible probe can have an open dedicated slot at his
+    primary and still be lifted, because the lift comes from a slot his SECOND eligibility
+    reaches, not from his own (measured: WR/DB, empty roster, both WR slots open, +50.0). THE
+    SIGN above states the one bound that covers both populations. For every caller that
+    passes no `slot_alternatives`, the old wording still holds verbatim.
+
+    `position` may be a single position or a SET of them -- a multi-eligible candidate's full
+    eligibility. The probe then reaches every slot any of those positions can fill, while the
+    free alternative stays the one his price is anchored on (his primary position's level):
+    the question is still "does a slot he can reach hold someone below the alternative his VOR
+    already credits him against", and the answer is the weakest occupant across all of them. A
+    WR/DB with WR, WR and FLEX held and IDP_FLEX open evicts the IDP_FLEX phantom, so he is
+    not deducted; the WR-only player beside him is. For a single position this is exactly the
+    per-position level.
+
+    unpriced_eligible: the eligibility sets of rostered players the caller could NOT price.
+    They are absent from `roster_players` and therefore from the solve; if any of them could
+    occupy a slot this position can reach, the answer is reported with
+    DISPLACEMENT_ROSTER_PARTIAL rather than as a measurement, because a missing occupant reads
+    as an open slot and an open slot deducts nothing (the number is then a floor).
+
+    Returns {"displaced", "adjustment", "basis"}: `adjustment` is free_alternative - displaced
+    -- at or below 0.0 for a single-position probe, and bounded by
+    `free_alternative - min(alt of reachable slots)` for any probe (THE SIGN, above). Negative,
+    it is the amount the league anchor over-credits a player at this position for THIS roster;
+    positive, it is the amount a second eligibility reaches past that anchor. `basis` says
+    whether either is a measurement.
+    """
+    probe_eligible = {position} if isinstance(position, str) else set(position)
+    slots = slots_from_roster_positions(roster_positions)
+    reachable = [s for s in slots if probe_eligible & s["eligible"]]
+    if not reachable:
+        return {"displaced": None, "adjustment": 0.0, "basis": DISPLACEMENT_NOT_APPLICABLE}
+    free = float(free_alternative)
+    alt_of = {s["slot_id"]: float((slot_alternatives or {}).get(s["slot_id"], free)) for s in slots}
+    # A PHANTOM IS PINNED TO ITS OWN SLOT (#221). It stands for "what THIS slot gets for free if
+    # I pass", which is a property of the slot -- not a free agent who may sign anywhere he is
+    # eligible. Given the slot's own eligibility set instead, a phantom MIGRATES: measured on the
+    # real board, a FLEX phantom worth the shared alternative (216.25) took both dedicated RB
+    # slots and benched their own phantoms (185.64), because the solve maximises the total and
+    # 216.25 in an RB slot beats 185.64. The dedicated RB slot's alternative was then reported as
+    # the flex's, and a running back with TWO OPEN RB SLOTS was deducted 30.61 -- breaking the
+    # invariant this function's own docstring states, and caught by #216's pre-registered
+    # over-correction guard rather than by me.
+    #
+    # With uniform phantoms migration is value-neutral (every phantom is worth `free`), so this
+    # pinning is a no-op for every caller that passes no `slot_alternatives` -- which is why the
+    # defect could not exist before per-slot values did, and why it does not change the answer
+    # for anyone who does not use them.
+    pin_of = {s["slot_id"]: f"__pin_{s['slot_id']}" for s in slots}
+    solve_slots = [{**s, "eligible": set(s["eligible"]) | {pin_of[s["slot_id"]]}} for s in slots]
+    phantoms = [{"id": f"__free_{s['slot_id']}", "value": alt_of[s["slot_id"]],
+                 "eligible": {pin_of[s["slot_id"]]}} for s in slots]
+    base = optimize_lineup(list(roster_players) + phantoms, solve_slots)
+    probe = {"id": "__displacement_probe", "value": _DISPLACEMENT_PROBE_VALUE, "eligible": probe_eligible}
+    with_probe = optimize_lineup(list(roster_players) + phantoms + [probe], solve_slots)
+    displaced = round(base["total_value"] + _DISPLACEMENT_PROBE_VALUE - with_probe["total_value"], 2)
+    # Never below the cheapest phantom the probe can REACH: one sits in every slot, so that is
+    # the weakest thing it can evict. With uniform phantoms this is exactly `free_alternative`
+    # and the clamp binds only on float error across a 1e6 probe, by a rounding unit and not by
+    # a claim -- which is what it was before per-slot alternatives existed. With them it stays
+    # the true floor rather than a number that happens to coincide with it, so a multi-eligible
+    # probe reaching a slot whose alternative is BELOW his own anchor is not silently clamped up
+    # to that anchor and reported as "nothing displaced".
+    displaced = max(displaced, min(alt_of[s["slot_id"]] for s in reachable))
+    basis = DISPLACEMENT_MEASURED
+    reachable_eligible = set().union(*(s["eligible"] for s in reachable))
+    for eligible in unpriced_eligible or ():
+        if set(eligible) & reachable_eligible:
+            basis = DISPLACEMENT_ROSTER_PARTIAL
+            break
+    return {"displaced": displaced, "adjustment": round(free - displaced, 2), "basis": basis}
+
+
+#: What `bye_collision` reports for a week when some rostered players carry no known bye. The
+#: solve still runs over the ones that do, but the answer is a FLOOR rather than the cost: a
+#: player whose bye is unknown might also be out that week, and treating unknown as "available"
+#: would understate every collision by exactly the players nobody could resolve.
+BYE_PARTIAL = "partial"
+
+#: No rostered player has a known bye week. Not "no collisions" -- nothing was measured.
+BYE_UNKNOWN = "unknown"
+
+#: Same completion for the bye vocabulary. Deliberately its own constant rather than an alias of
+#: EXPOSURE_MEASURED: these are two independent vocabularies that happen to share a token, and
+#: one name for both would assert a relationship that does not exist.
+BYE_MEASURED = "measured"
+
+
+def bye_collision(roster_players: list[dict], roster_positions: list[str]) -> dict[int, dict]:
+    """Per bye week, what this roster's lineup is actually worth with everyone on that bye out.
+
+    THE DIFFERENCE FROM depth_exposure, which is the reason this is not the same function.
+    depth_exposure removes ONE starter and re-solves. A bye removes EVERY player on that team's
+    bye at once, and simultaneous losses are not the sum of separate ones: the bench covers the
+    first hole and then has nothing left for the second, so two collisions in one week can cost
+    far more than twice one. That non-additivity is precisely what a headcount ("3 starters
+    out") cannot express and an assignment solve gets for free.
+
+    IT MEASURES VALUE LOST, NOT BODIES LOST, and that distinction is the whole point. A roster
+    losing three starters it can fully cover from the bench loses nothing that week. A roster
+    losing one irreplaceable starter loses a great deal. Counting heads would rank those two
+    backwards.
+
+    WHY THIS IS AN OBSERVABLE AND NOT A VALUATION TERM. Measured before building it, on the
+    committed baseline: across 12 engine-drafted 8-starter rosters the worst week costs a
+    median of 2 starters and a maximum of 3, against a chance baseline whose mean is 2.62 --
+    the engine is not clustering byes, it simply is not avoiding them, and the two are the same
+    number here. The top-value legal starting eight already sits at the pigeonhole floor, and
+    no swap within 10 universal_value points improves it. So the reachable gain is roughly one
+    starter in one KNOWN week of a season, which does not justify a fourth term competing for
+    magnitude with three that measurably move picks (#56).
+
+    The collision does grow with lineup depth -- simulated against the real 32-team spread, a
+    12-starter shape averages 3.49 and a 20-starter IDP shape 5.12, where the pigeonhole floor
+    is itself 3 -- so this is built to be read at any shape, and the decision not to score it
+    is recorded with its measurement rather than as a silence.
+
+    Returns {week: {"value_lost", "lineup_value", "players_out", "starters_out", "basis"}}:
+      value_lost   -- baseline lineup value minus the value of the best lineup without them.
+      lineup_value -- what the lineup is worth that week, so the loss has something to be a
+                      fraction OF; a 12-point loss means different things at 200 and at 30.
+      players_out  -- rostered players on that bye, starters and bench alike (the bench ones
+                      are why the loss is often smaller than the headcount suggests).
+      starters_out -- how many of them were in the baseline starting lineup.
+      bench_used   -- how many bench bodies this week promotes into the lineup at once. This
+                      is the quantity that makes stacking worse than its headcount: three
+                      absences in one week consume three bodies, while the same three spread
+                      across three weeks consume one each time and the bench refills in
+                      between.
+      bench_value_used -- their total value, since consuming your best body and your worst are
+                      not the same depletion. No depth RANK is reported; FLEX substitution
+                      chains leave that undefined (see the note in the body).
+      basis        -- BYE_MEASURED, or BYE_PARTIAL / BYE_UNKNOWN. Read it first: a week's numbers
+                      are a FLOOR under BYE_PARTIAL, not the cost.
+
+    Reads each player's own "bye" (see DataMerger.bye_week_by_team, which derives it from team
+    rather than per player). A player without one is kept in every lineup -- he is genuinely on
+    the roster -- but his presence is what downgrades the basis, so the caller can tell a clean
+    measurement from a floor.
+    """
+    slots = slots_from_roster_positions(roster_positions)
+    if not roster_players or not slots:
+        return {}
+
+    unknown = [p for p in roster_players if p.get("bye") is None]
+    weeks = sorted({int(p["bye"]) for p in roster_players if p.get("bye") is not None})
+    if not weeks:
+        return {}
+
+    baseline = optimize_lineup(roster_players, slots)
+    starting_ids = {a["player_id"] for a in baseline["assignments"]}
+    # NO DEPTH RANK IS REPORTED, and the reason is worth keeping. Two were built and both were
+    # wrong, because FLEX substitution makes "how far down the bench" ill-defined:
+    #
+    #   A WR goes out. The naive reading promotes the best bench WR. What the solver actually
+    #   does -- verified on a real fixture -- is slide the WR already in FLEX up into the WR
+    #   slot and drop a BENCH RB into the vacated FLEX. The hole at WR was covered by an RB,
+    #   through a chain, and it cost 5 instead of the 16 the naive reading predicts.
+    #
+    # A per-position rank then calls that RB "depth 1 among RBs", which is the right number for
+    # the wrong reason -- he is not covering an RB hole. A global rank calls him "depth 2"
+    # whenever a better bench body was not used, implying waste the optimal solve did not
+    # commit. Both are plausible numbers with no sound definition behind them.
+    #
+    # What survives contact is the COUNT of bodies consumed and their total value, neither of
+    # which depends on routing. value_lost already carries the exact cost, chain included.
+    bench_ids = {p["id"] for p in roster_players if p["id"] not in starting_ids}
+    bench_value = {p["id"]: p.get("value", 0.0) for p in roster_players if p["id"] in bench_ids}
+
+    out: dict[int, dict] = {}
+    for week in weeks:
+        out_this_week = [p for p in roster_players
+                         if p.get("bye") is not None and int(p["bye"]) == week]
+        available = [p for p in roster_players if p not in out_this_week]
+        without = optimize_lineup(available, slots)
+        promoted = [a["player_id"] for a in without["assignments"]
+                    if a["player_id"] in bench_ids]
+        out[week] = {
+            "value_lost": round(baseline["total_value"] - without["total_value"], 2),
+            "lineup_value": round(without["total_value"], 2),
+            "players_out": len(out_this_week),
+            "starters_out": sum(1 for p in out_this_week if p["id"] in starting_ids),
+            # HOW MUCH BENCH THIS WEEK CONSUMES, which is the mechanism concentration proxies
+            # for. Spread your byes and every week you field starters plus your first-up depth;
+            # stack them and one week consumes two or three bodies at once. That is worse than
+            # the same absences spread out, because bench value decays -- your best bench
+            # player is nearly a starter and your third is not -- and because the bench can
+            # simply run out, which is what makes simultaneous loss superadditive.
+            #
+            # A count and a sum, deliberately, rather than a depth RANK: see the note above the
+            # loop on why FLEX chains leave no sound definition of "how far down".
+            "bench_used": len(promoted),
+            "bench_value_used": round(sum(bench_value[p] for p in promoted), 2),
+            # Unknown byes are a property of the ROSTER, not of one week: any of those players
+            # could be out in any week, so every week's number is equally a floor. Marking only
+            # the weeks that happen to have a collision would imply the clean-looking weeks
+            # were verified, and they were not.
+            "basis": BYE_PARTIAL if unknown else BYE_MEASURED,
+        }
+    if not out and unknown:
+        return {}
+    return out
+
+
+def bye_concentration(roster_players: list[dict], roster_positions: list[str]) -> dict:
+    """Is this roster's bye damage STAGGERED across weeks or LAYERED into one?
+
+    Same total, different shape, and the shape is the part a headcount cannot see. Measured on
+    twelve fully-drafted rosters from one league: worst-week losses ran 41 to 127 in
+    trade_value units while every roster sat at the pigeonhole FLOOR for starters-out. The
+    bodies were spread; the value was not. Roster 3 lost 127 in a single week with a
+    floor-level headcount, purely because the wrong players shared it.
+
+    `concentration` is the share of a roster's total bye damage landing in its single worst
+    week -- deliberately a RATIO, so shape is separated from severity. Two rosters can lose the
+    same total and be in completely different trouble: 0.25 means the damage is spread thin
+    enough that no week is decisive, 0.62 means most of a season's bye cost arrives at once, in
+    a league where each week is an independent matchup.
+
+    It is None, never 0.0, when the roster carries no bye damage at all. A roster with nothing
+    to lose has no shape; reporting 0.0 would rank it as maximally staggered, which is a claim
+    about a distribution that does not exist.
+
+    Returns {"concentration", "worst_week", "worst_week_loss", "total_loss", "weeks", "basis"}.
+    `weeks` is the full profile, zeros included, so a reader can say WHICH week and by how much
+    rather than only how bad the shape is -- the traceability is the point, not the ratio.
+    """
+    weeks = bye_collision(roster_players, roster_positions)
+    if not weeks:
+        return {"concentration": None, "worst_week": None, "worst_week_loss": None,
+                "total_loss": None, "weeks": {}, "basis": BYE_UNKNOWN}
+    losses = {week: row["value_lost"] for week, row in weeks.items()}
+    total = sum(losses.values())
+    worst_week = max(losses, key=lambda w: losses[w])
+    basis = weeks[worst_week]["basis"]
+    return {
+        "concentration": round(losses[worst_week] / total, 3) if total > 0 else None,
+        "worst_week": worst_week if total > 0 else None,
+        "worst_week_loss": round(losses[worst_week], 2),
+        "total_loss": round(total, 2),
+        "weeks": {week: round(value, 2) for week, value in sorted(losses.items())},
+        "basis": basis,
+    }
+
+
+def bench_capacity(roster_positions: list[str]) -> int:
+    """How many bench spots this league gives each team.
+
+    Sleeper states it directly -- roster_positions carries its own "BN" entries -- and nothing
+    in this app had ever counted them. slots_from_roster_positions drops them correctly, for
+    ITS purpose (a benched player contributes no lineup value), and the number was then simply
+    never read anywhere else: the only other "BN" in the tree synthesizes a hardcoded count for
+    MOCK drafts. So depth was unbounded in an engine whose real leagues bound it.
+
+    It matters because depth exposure is a RANKING of where insurance is worth buying, and
+    bench capacity is the budget: a 5-bench league cannot insure everything a 12-bench league
+    can, and the cutoff is the difference between a useful recommendation and a wish list.
+    """
+    return sum(1 for slot in (roster_positions or []) if slot == "BN")

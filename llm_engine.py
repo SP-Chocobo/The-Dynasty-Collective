@@ -70,6 +70,25 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 # thorough Quant breakdown or a Contrarian pressure-test can run long too.
 MAX_TOKENS = 4096
 
+#: MANDATE 1.7. THE SOFT-FAIL MARKER, in one place at last (`#126`).
+#:
+#: Every provider caller in this module returns a string beginning with this rather than raising --
+#: "so one down model doesn't take the whole debate with it", as this file's own header says. That
+#: makes the marker a CONTRACT between the callers and everything downstream, and it was a bare
+#: literal at every end: `pick_debate` tests `text.startswith("\u26a0\ufe0f")` to build its error
+#: list, and nothing else looked at all -- so a failed chair's error text was appended to the chat
+#: as that chair's analysis and replayed into CONVERSATION MEMORY on every later turn, under its
+#: role's own label. A third reader was the point at which this needed a name.
+FAILED_CALL_PREFIX = "\u26a0\ufe0f"
+
+
+def is_failed_call(text: Optional[str]) -> bool:
+    """Whether a provider call soft-failed, asked in the one place that knows the convention.
+
+    A failure is not a short answer and not an empty one: it is this module's own marker, put there
+    by the caller that could not reach a model. Anything else is analysis, however thin."""
+    return bool(text) and text.startswith(FAILED_CALL_PREFIX)
+
 QUANT_SYSTEM_PROMPT = (
     """You are the Quant / VORP Specialist for a fantasy football front office. Your
 context states this league's actual format (dynasty/keeper/redraft, and any special mode like Best Ball

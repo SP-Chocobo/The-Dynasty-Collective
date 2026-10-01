@@ -1,0 +1,266 @@
+"""One slot, one alternative (#216, #221).
+
+A phantom in `displacement_level` stands for what a slot gets if I pass. For a DEDICATED slot
+that is a free player at its one position. For a FLEX it is the best free player among every
+position the slot admits. Filling a flex phantom with the CANDIDATE'S OWN positional level
+instead prices two players against two different alternatives for the same slot -- which is
+#216 in both of its directions.
+
+These tests pin the construction, the invariant it replaces, and the two directions.
+
+MUTATION RESULTS AT THE BOTTOM.
+"""
+import unittest
+
+import draft_room as dr
+import lineup_optimizer as lo
+
+TE_SLOT = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+NO_TE_SLOT = ["QB", "WR", "WR", "RB", "RB", "FLEX", "FLEX", "WRRB_FLEX", "SUPER_FLEX"]
+#: A pool where TE is scarce at its own rank and RB is deep -- the owner's league's shape.
+LEVELS = {"QB": 300.0, "RB": 100.0, "WR": 207.0, "TE": 258.0}
+
+
+def _p(i, value, position):
+    return {"id": f"p{i}", "value": value, "eligible": {position}}
+
+
+class SharedSlotAlternativesTests(unittest.TestCase):
+    def test_a_dedicated_slot_is_worth_its_own_positions_level(self):
+        alts = dr.shared_slot_alternatives(LEVELS, TE_SLOT)
+        self.assertEqual(alts["QB_0"], 300.0)
+        self.assertEqual(alts["RB_1"], 100.0)
+        self.assertEqual(alts["WR_3"], 207.0)
+        self.assertEqual(alts["TE_5"], 258.0)
+
+    def test_a_flex_is_worth_the_BEST_of_what_it_admits(self):
+        # max, not min and not a blend: the alternative to taking this candidate is the best
+        # thing still freely available for the slot.
+        alts = dr.shared_slot_alternatives(LEVELS, TE_SLOT)
+        self.assertEqual(alts["FLEX_6"], 258.0)                       # max(RB 100, WR 207, TE 258)
+        alts_no_te = dr.shared_slot_alternatives(LEVELS, NO_TE_SLOT)
+        self.assertEqual(alts_no_te["WRRB_FLEX_7"], 207.0)            # max(RB 100, WR 207)
+
+    def test_a_slot_nothing_can_be_priced_at_is_OMITTED_not_given_a_number(self):
+        # Absence travels. An invented value here would be the absence-read-as-a-value defect.
+        alts = dr.shared_slot_alternatives({"QB": 300.0}, TE_SLOT)
+        # Only the slots a priced position can reach get a value. The flexes admit RB/WR/TE,
+        # none of which has a level here, so they are absent -- and displacement_level then uses
+        # the candidate's own free_alternative for them, which is the pre-#216 behaviour and the
+        # only honest answer when nothing at that slot can be priced.
+        self.assertEqual(alts, {"QB_0": 300.0})
+
+    def test_a_missing_level_is_skipped_not_read_as_zero(self):
+        alts = dr.shared_slot_alternatives({"RB": 100.0, "WR": None, "TE": float("nan")}, TE_SLOT)
+        self.assertEqual(alts["FLEX_6"], 100.0)      # WR/TE contribute nothing, not 0.0
+        self.assertNotIn("WR_3", alts)
+
+
+class TheInvariantThatReplacedTheOldOneTests(unittest.TestCase):
+    """The old wording was "reduces to the league anchor exactly on an empty roster". That is no
+    longer true for a position with NO dedicated slot -- which is the point of the change. What
+    holds instead is stronger where it matters and is stated as the replacement."""
+
+    def test_an_open_dedicated_slot_deducts_exactly_nothing_on_any_roster(self):
+        alts = dr.shared_slot_alternatives(LEVELS, TE_SLOT)
+        rosters = [
+            [],
+            [_p(1, 260.0, "RB")],
+            [_p(1, 260.0, "RB"), _p(2, 280.0, "WR"), _p(3, 300.0, "QB")],
+        ]
+        for roster in rosters:
+            held = {e["eligible"].copy().pop() for e in roster}
+            for position in ("QB", "RB", "WR", "TE"):
+                if position in held:
+                    continue          # its dedicated slot may now be taken; that is a real case
+                result = lo.displacement_level(roster, TE_SLOT, position, LEVELS[position],
+                                               slot_alternatives=alts)
+                self.assertEqual(result["adjustment"], 0.0,
+                                 msg=f"{position} with an open dedicated slot, roster {len(roster)}")
+
+    def test_the_replacement_invariant_is_ALSO_a_single_position_statement(self):
+        # #52 phase 6 (W1-01). The test above ranges over single positions only, and that is not
+        # incidental -- an open dedicated slot does NOT buy a multi-eligible candidate immunity,
+        # because the lift does not come from his own slot. It comes from a slot his SECOND
+        # eligibility reaches that is priced below the anchor his bpa was built on.
+        #
+        # This needs no IDP rulebook to show, which is the part worth noticing: on TE_SLOT, with
+        # the owner's own pool shape (TE scarce at 258, RB deep at 100), an RB/TE anchored on TE
+        # is lifted 158.0 with the TE slot standing wide open. Three RB/TE players are in the
+        # real capture.
+        alts = dr.shared_slot_alternatives(LEVELS, TE_SLOT)
+        alone = lo.displacement_level([], TE_SLOT, "TE", LEVELS["TE"], slot_alternatives=alts)
+        self.assertEqual(alone["adjustment"], 0.0)
+        both = lo.displacement_level([], TE_SLOT, {"RB", "TE"}, LEVELS["TE"], slot_alternatives=alts)
+        self.assertEqual((both["displaced"], both["adjustment"]), (100.0, 158.0))
+        # And it scales with how far below the anchor the second eligibility reaches, rather than
+        # being a flat bonus for holding two positions: WR sits at 207, so a TE/WR is lifted 51.
+        te_wr = lo.displacement_level([], TE_SLOT, {"TE", "WR"}, LEVELS["TE"], slot_alternatives=alts)
+        self.assertEqual((te_wr["displaced"], te_wr["adjustment"]), (207.0, 51.0))
+        # The direction that makes it a second-eligibility effect and not an anchor artifact:
+        # anchor the SAME pair on RB instead, and the cheapest slot he reaches IS his own, so
+        # there is nothing to reach past and the lift is exactly zero.
+        as_rb = lo.displacement_level([], TE_SLOT, {"RB", "TE"}, LEVELS["RB"], slot_alternatives=alts)
+        self.assertEqual(as_rb["adjustment"], 0.0)
+
+    def test_omitting_slot_alternatives_reproduces_the_shipped_behaviour_exactly(self):
+        roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB")]
+        for rpos in (TE_SLOT, NO_TE_SLOT):
+            for position in ("QB", "RB", "WR", "TE"):
+                bare = lo.displacement_level(roster, rpos, position, LEVELS[position])
+                uniform = lo.displacement_level(
+                    roster, rpos, position, LEVELS[position],
+                    slot_alternatives={s["slot_id"]: LEVELS[position]
+                                       for s in lo.slots_from_roster_positions(rpos)})
+                self.assertEqual(bare, uniform, msg=f"{position} {rpos[:3]}")
+
+
+class TheTwoDirectionsTests(unittest.TestCase):
+    def test_no_TE_slot_the_deep_position_stops_being_free_at_the_flex(self):
+        """The owner's league. Both RB slots held; three flexes open. Today a running back is
+        priced against RB39 and a tight end against a top-10 tight end AT THE SAME SLOT, which is
+        why the engine fields six running backs and no tight ends there."""
+        alts = dr.shared_slot_alternatives(LEVELS, NO_TE_SLOT)
+        roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB"),
+                  _p(4, 280.0, "WR"), _p(5, 270.0, "WR")]
+        priced = {}
+        for position in ("RB", "WR", "TE"):
+            new = lo.displacement_level(roster, NO_TE_SLOT, position, LEVELS[position],
+                                        slot_alternatives=alts)
+            old = lo.displacement_level(roster, NO_TE_SLOT, position, LEVELS[position])
+            priced[position] = (250.0 - LEVELS[position] + old["adjustment"],
+                                250.0 - LEVELS[position] + new["adjustment"])
+        # Today: the running back carries a 107-point head start over the receiver and 158 over
+        # the tight end, at a slot all three are competing for.
+        self.assertGreater(priced["RB"][0] - priced["WR"][0], 100.0)
+        self.assertGreater(priced["RB"][0] - priced["TE"][0], 150.0)
+        # Under the shared alternative the running back's advantage over the RECEIVER is gone
+        # entirely -- they reach the same cheapest slot, so they carry the identical price.
+        self.assertEqual(priced["RB"][1], priced["WR"][1])
+        # The tight end keeps a gap, and it is not a residual bias: this rulebook's WRRB_FLEX
+        # admits RB and WR and NOT TE, so a tight end's cheapest reachable slot is a FLEX while
+        # theirs is the WRRB_FLEX. The gap is exactly that difference of alternatives, DERIVED
+        # from the rulebook rather than bounded by a number chosen to fit (#56).
+        #
+        # This assertion read `< 20.0` until #221. That was calibrated against a defect: phantoms
+        # carried their slot's eligibility, so the cheap RB-slot phantom MIGRATED into a flex and
+        # erased the distinction between a slot a tight end can enter and one he cannot. Pinning
+        # each phantom to its own slot restores it, and the number stops being approximate.
+        # Both dedicated RB slots are held, so the comparison is between the SHARED slots each
+        # can reach: the running back's cheapest is the WRRB_FLEX, the tight end's is a FLEX.
+        alts_by_slot = dr.shared_slot_alternatives(LEVELS, NO_TE_SLOT)
+        slots = lo.slots_from_roster_positions(NO_TE_SLOT)
+        cheapest_shared = {
+            pos: min(alts_by_slot[s["slot_id"]] for s in slots
+                     if pos in s["eligible"] and len(s["eligible"]) > 1)
+            for pos in ("RB", "TE")
+        }
+        self.assertEqual(round(priced["RB"][1] - priced["TE"][1], 2),
+                         round(cheapest_shared["TE"] - cheapest_shared["RB"], 2))
+
+    def test_one_TE_slot_the_surplus_tight_end_stops_being_cheap_at_the_flex(self):
+        """12T_ppr. The TE slot is held by a better tight end, so a further tight end can only
+        reach a flex -- where he must be priced against the same alternative the receiver is."""
+        levels = {"QB": 300.0, "RB": 150.0, "WR": 207.0, "TE": 177.0}
+        alts = dr.shared_slot_alternatives(levels, TE_SLOT)
+        roster = [_p(1, 250.0, "TE"), _p(2, 300.0, "QB"),
+                  _p(3, 280.0, "WR"), _p(4, 270.0, "WR")]
+        te_new = lo.displacement_level(roster, TE_SLOT, "TE", levels["TE"], slot_alternatives=alts)
+        te_old = lo.displacement_level(roster, TE_SLOT, "TE", levels["TE"])
+        self.assertEqual(te_old["adjustment"], 0.0)          # today: the flex looks free at TE177
+        self.assertEqual(te_new["adjustment"], -30.0)        # 177 - 207, the receiver's anchor
+        wr_new = lo.displacement_level(roster, TE_SLOT, "WR", levels["WR"], slot_alternatives=alts)
+        # Same slot, same alternative: a 250-point tight end and a 250-point receiver now carry
+        # the identical price. That equality IS the repair.
+        self.assertEqual(250.0 - levels["TE"] + te_new["adjustment"],
+                         250.0 - levels["WR"] + wr_new["adjustment"])
+
+
+class ThePhantomIsPinnedToItsOwnSlotTests(unittest.TestCase):
+    """#221. A phantom stands for what THIS slot gets free if I pass. Given the slot's own
+    eligibility set it is instead a free agent who may sign anywhere -- and with per-slot values
+    it does, upward: a FLEX phantom worth the shared alternative takes a DEDICATED slot and
+    benches that slot's own cheaper phantom, because the solve maximises the total.
+
+    Found by #216's pre-registered over-correction guard, not by the implementer: a running back
+    with TWO OPEN RB SLOTS was deducted 30.61."""
+
+    def test_an_open_dedicated_slot_is_not_repriced_by_a_flex_phantom(self):
+        """The exact shape of the defect, on the fixture that caught it: four tight ends, both
+        RB slots empty. RB's alternative is RB's own level, never the flex's."""
+        levels = {"QB": 328.6, "RB": 185.64, "WR": 216.25, "TE": 157.78}
+        rpos = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+        roster = [_p(1, 310.18, "TE"), _p(2, 300.85, "TE"), _p(3, 265.23, "TE"), _p(4, 245.07, "TE")]
+        out = dr.displacement_adjustments(roster, rpos, levels)
+        self.assertEqual(out["RB"]["displaced"], 185.64)
+        self.assertEqual(out["RB"]["adjustment"], 0.0)
+        # ... and the tight end, whose every reachable slot IS held, still is deducted. The pin
+        # must not have simply switched the term off.
+        self.assertLess(out["TE"]["adjustment"], -100.0)
+
+    def test_pinning_changes_nothing_when_every_phantom_is_worth_the_same(self):
+        """Migration is value-neutral under uniform phantoms, so every caller that passes no
+        `slot_alternatives` is unaffected. Without this, the repair could have silently moved
+        the shipped answer as well."""
+        rpos = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX"]
+        roster = [_p(1, 310.18, "TE"), _p(2, 300.85, "TE"), _p(3, 265.23, "TE")]
+        for pos, level in (("QB", 328.6), ("RB", 185.64), ("WR", 216.25), ("TE", 157.78)):
+            with self.subTest(pos=pos):
+                self.assertEqual(
+                    lo.displacement_level(roster, rpos, pos, level, slot_alternatives=None),
+                    lo.displacement_level(roster, rpos, pos, level,
+                                          slot_alternatives={s["slot_id"]: level
+                                                             for s in lo.slots_from_roster_positions(rpos)}),
+                )
+
+
+class TheConstructionIsWiredTests(unittest.TestCase):
+    """WIRED at #221. This class was `TheConstructionIsStrandedOnPurposeTests` and asserted the
+    exact opposite -- that the seam returned `{}` and every board was byte-identical to the
+    shipped one. It is inverted here rather than deleted, because the pair of assertions is the
+    record of what changed: the seam still exists as a separate patchable name (the A/B needs it,
+    and #126 wants one home for the vocabulary), but it now returns the construction."""
+
+    def test_the_seam_returns_the_construction_and_not_an_empty_mapping(self):
+        self.assertEqual(dr.board_slot_alternatives(LEVELS, TE_SLOT),
+                         dr.shared_slot_alternatives(LEVELS, TE_SLOT))
+        self.assertNotEqual(dr.board_slot_alternatives(LEVELS, TE_SLOT), {})
+
+    def test_displacement_adjustments_asks_the_SEAM_and_not_the_construction_directly(self):
+        """Unchanged from the stranded era, and still load-bearing: the A/B in
+        run_216_shared_slot_probe switches the construction off by patching the SEAM, so a caller
+        that reached past it into `shared_slot_alternatives` would make both arms identical and
+        every measurement in evidence/roster_shape/shared_slot/ vacuous."""
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(dr.displacement_adjustments).lstrip())
+        called = {n.func.id for n in ast.walk(tree)
+                  if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+        self.assertIn("board_slot_alternatives", called)
+        self.assertNotIn("shared_slot_alternatives", called)
+        kwargs = {kw.arg for n in ast.walk(tree) if isinstance(n, ast.Call) for kw in n.keywords}
+        self.assertIn("slot_alternatives", kwargs)
+
+    def test_the_board_now_deducts_where_the_shipped_engine_deducted_nothing(self):
+        """The live half of the same fact the stranded version tested by patching. A running back
+        on a roster whose flexes are held, in a league with NO dedicated RB slot to fall back on,
+        is deducted by the production call path -- no mock anywhere in this test."""
+        roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB"),
+                  _p(4, 280.0, "WR"), _p(5, 270.0, "WR")]
+        live = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
+        self.assertLess(live["RB"]["adjustment"], -100.0)
+
+    def test_switching_the_seam_OFF_restores_the_shipped_behaviour_exactly(self):
+        """The ablation still has something to ablate: patching the seam back to `{}` must
+        reproduce the pre-#221 answer, or the A/B arms are not what they claim to be."""
+        from unittest import mock
+        roster = [_p(1, 260.0, "RB"), _p(2, 240.0, "RB"), _p(3, 300.0, "QB"),
+                  _p(4, 280.0, "WR"), _p(5, 270.0, "WR")]
+        with mock.patch.object(dr, "board_slot_alternatives", lambda *a, **k: {}):
+            shipped = dr.displacement_adjustments(roster, NO_TE_SLOT, LEVELS)
+        self.assertEqual(shipped["RB"]["adjustment"], 0.0)
+
+
+# ---------------------------------------------------------------------------------------
+# MUTATION RESULTS -- filled in by the pass; see evidence/roster_shape/shared_slot/mutations/
+# ---------------------------------------------------------------------------------------

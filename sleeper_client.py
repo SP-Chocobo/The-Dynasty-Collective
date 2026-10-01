@@ -13,10 +13,13 @@ from __future__ import annotations
 import csv
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
 import requests
+
+import store_io
 
 BASE_URL = "https://api.sleeper.app/v1"
 ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — see get_weekly_projections
@@ -25,16 +28,201 @@ ROOT_URL = "https://api.sleeper.app"  # projections/stats live outside /v1 — s
 # unreachable. Not something that needs bumping every year on its own.
 DEFAULT_SEASON = "2026"
 PLAYERS_CACHE_MAX_AGE_SECONDS = 24 * 60 * 60  # Sleeper asks that /players/nfl be pulled at most once/day
+
+#: One name for the directory both the client and the freshness manifest look in, so the
+#: manifest cannot drift onto a path the client stopped using.
+DEFAULT_CACHE_DIR = "data/sleeper_snapshots"
+PLAYERS_CACHE_FILENAME = "players_nfl.json"
+
+#: #118: the three states the players database can actually be in -- and the fact that they are
+#: indistinguishable to every consumer is the defect. `get_players` falls back to an
+#: ARBITRARILY OLD cache when a live fetch fails (its second `cache_path.exists()` branch), so
+#: from the outside a stale copy looks exactly like a healthy daily one, which is what these
+#: three states exist to let a caller tell apart.
+#:
+#: The WORSE half of that sentence is now gone: `get_players` used to return `{}` when there was
+#: no usable cache either -- an empty player universe indistinguishable from a league with no
+#: players. It raises instead (#52 phase 7.5 / J-13, ruled), so only the staleness question
+#: below is left, and staleness is a question these states can actually answer.
+#:
+#: DERIVED from the file's mtime and the window above, never stored: the window is Sleeper's own
+#: documented request rather than a magnitude invented here (#56), and mtime is the one record
+#: that outlives the process that wrote it. What mtime cannot say is WHY the file is old -- a
+#: failed refetch and a session that simply never asked look identical on disk -- so the state is
+#: named for what is observable ("beyond the window") and not for a cause it cannot see.
+PLAYERS_WITHIN_WINDOW = "within_window"
+PLAYERS_BEYOND_WINDOW = "beyond_window"
+PLAYERS_ABSENT = "absent"
+
+
 REQUEST_TIMEOUT = 15
 SNAPSHOT_HISTORY_KEEP = 10  # timestamped snapshots kept per league beyond the always-current _latest.json
+
+
+def players_cache_age_seconds(
+    cache_dir: str = DEFAULT_CACHE_DIR, now: Optional[float] = None,
+) -> Optional[float]:
+    """How old the players database on disk is, or None when there is none.
+
+    None is ABSENCE, never 0.0: a cache that was never written and one written this instant are
+    different facts, and only the second is a duration. Callers that sort on this put the None
+    last rather than treating it as the freshest thing present.
+
+    `now` is injectable for the same reason `league_config.config_age_seconds` takes one: the
+    interesting case is the exact window boundary, and a test that sets an mtime and then reads
+    the wall clock can never land on it -- microseconds pass in between, so `<` and `<=` come
+    out identical and the test proves nothing. That vacuity was found by mutating this very
+    comparison and watching the test survive.
+    """
+    cache_path = Path(cache_dir) / PLAYERS_CACHE_FILENAME
+    if not cache_path.exists():
+        return None
+    return max(0.0, (time.time() if now is None else now) - cache_path.stat().st_mtime)
+
+
+def players_cache_basis(cache_dir: str = DEFAULT_CACHE_DIR, now: Optional[float] = None) -> str:
+    """Which of the three #118 states the players database is in. Derived on every call."""
+    age = players_cache_age_seconds(cache_dir, now)
+    if age is None:
+        return PLAYERS_ABSENT
+    return PLAYERS_WITHIN_WINDOW if age < PLAYERS_CACHE_MAX_AGE_SECONDS else PLAYERS_BEYOND_WINDOW
+
+
+def players_freshness_entry(
+    cache_dir: str = DEFAULT_CACHE_DIR, now: Optional[float] = None,
+) -> tuple[str, Optional[str], Optional[int]]:
+    """One `build_freshness_manifest` row for the players database: (label, as-of date, days).
+
+    It lives here rather than in the manifest for the reason `describe_config_age` lives in
+    league_config: the thing that knows what the state MEANS is the module that owns the cache,
+    and a row assembled at the call site cannot be tested without importing the whole app.
+
+    ABSENT returns None for both date and days. Not 0, and not omitted: the manifest's sort puts
+    a None last, and "never fetched" is a state the reader needs to see rather than an entry to
+    leave out -- an input that is silently missing looks exactly like an input that is fine.
+    """
+    now = time.time() if now is None else now
+    age = players_cache_age_seconds(cache_dir, now)
+    if age is None:
+        return ("Sleeper player database — never fetched on this machine", None, None)
+    as_of = datetime.fromtimestamp(now - age).date()
+    beyond = age >= PLAYERS_CACHE_MAX_AGE_SECONDS
+    label = "Sleeper player database"
+    if beyond:
+        # Names what is OBSERVABLE. A failed refetch and a session that never asked leave the
+        # same mtime, so the label describes the consequence both share instead of guessing.
+        label += " — past its daily refresh; a failed refresh silently keeps using this copy"
+    return (label, as_of.isoformat(), (datetime.fromtimestamp(now).date() - as_of).days)
+
+
+def _coverage_regression(previous: Optional[dict], incoming: dict) -> Optional[dict]:
+    """How much season coverage this sync LOST against the one it is about to replace, or None.
+
+    MANDATE 2.1(b). None means no regression, and that covers three different situations a reader
+    never has to tell apart: there was no previous snapshot, the previous one was no better, or
+    this one is whole. What it never means is "not checked" -- this is computed on every sync, at
+    the one point where both records are in hand.
+
+    Weeks ANSWERED is the comparison, rather than completeness, because the interesting case is
+    quantitative: 18 weeks down to 9 is the loss worth naming, and both being incomplete does not
+    make it not a loss."""
+    if not previous:
+        return None
+    before = (previous.get("season_projection_coverage") or {}).get("weeks_answered") or []
+    after = (incoming.get("season_projection_coverage") or {}).get("weeks_answered") or []
+    if len(after) >= len(before):
+        return None
+    return {
+        "weeks_before": len(before),
+        "weeks_now": len(after),
+        # The file the better sums are still in, so a reader is told where rather than that they
+        # are gone. _write_snapshot names every timestamped snapshot this way.
+        "previous_synced_at": previous.get("synced_at"),
+    }
+
+
+def season_projection_freshness_entry(
+    snapshot: Optional[dict],
+) -> tuple[str, Optional[str], Optional[int]]:
+    """One `build_freshness_manifest` row for the season sums the board prices from.
+
+    MANDATE 2.1(c). The coverage record existed, said exactly what it needed to say, and reached
+    no surface a person looks at: the manifest listed the SYNC as the freshest input on the page
+    while the sums that sync returned could be nine weeks of eighteen. The manifest's whole job is
+    to say how current each input is, and this input's own completeness was missing from it.
+
+    Here rather than at the call site for the reason `players_freshness_entry` is here: the module
+    that owns the record is the one that knows what its states mean, and a row assembled inside
+    `app.py` cannot be tested without importing the page.
+
+    THE DATE IS THE SEASON ASKED FOR, not a fetch time. These are PROJECTIONS for a season, so
+    "how old is this" is not the question a reader has -- "is it whole, and for which season" is.
+    The days column is None for the same reason: there is no per-day staleness to report, and a
+    fabricated 0 there would sort this row above inputs that genuinely are current today.
+    """
+    coverage = (snapshot or {}).get("season_projection_coverage") or {}
+    projections = (snapshot or {}).get("season_projections") or {}
+    season = coverage.get("season")
+    if not projections and not coverage:
+        return ("Sleeper season projections (the league-scored board) — never fetched", None, None)
+    if coverage.get("error"):
+        return (f"Sleeper season projections — FETCH FAILED ({coverage['error']}); the board is "
+                f"priced from the vendor's projection instead of your league's own rules",
+                season, None)
+    answered = coverage.get("weeks_answered") or []
+    requested = coverage.get("weeks_requested")
+    # MANDATE 2.1(b): a sync that came back with LESS than the one it replaced says so here, and
+    # says where the better sums still are. A recoverable loss nobody is told about is an
+    # invisible one.
+    regression = (snapshot or {}).get("season_projection_regression") or {}
+    lost = ""
+    if regression:
+        when = regression.get("previous_synced_at")
+        stamp = (datetime.fromtimestamp(when).strftime("%Y-%m-%d %H:%M")
+                 if isinstance(when, (int, float)) else "an earlier sync")
+        lost = (f" This sync returned FEWER weeks than the one it replaced "
+                f"({regression.get('weeks_before')} -> {regression.get('weeks_now')}); the fuller "
+                f"totals are still on disk in the snapshot from {stamp}.")
+    if season_sum_is_complete(coverage):
+        return (f"Sleeper season projections — {len(answered)} of {requested} weeks, "
+                f"complete; the board is scored under your league's own rules{lost}", season, None)
+    failed = coverage.get("weeks_failed") or []
+    detail = (f"week(s) {', '.join(str(w) for w in failed)} did not answer" if failed
+              else "no coverage record, so nothing establishes that the totals are whole")
+    return (f"Sleeper season projections — INCOMPLETE: {len(answered)} of "
+            f"{requested if requested is not None else '?'} weeks, {detail}. A partial sum is "
+            f"refused rather than priced, so the board falls back to the vendor's "
+            f"projection.{lost}", season, None)
 
 
 class SleeperAPIError(RuntimeError):
     """Raised when the Sleeper API returns an unexpected response."""
 
 
+def _looks_like_a_player_map(body) -> bool:
+    """Whether `body` can be what /players/nfl claims to be: player_id -> player record.
+
+    MANDATE 2.4. SHAPE ONLY, and a sample rather than a full scan -- the real body is ~10MB and
+    ~11,000 entries, and a predicate that walked all of it on every fetch would cost more than the
+    defect. A body whose first entries are mappings and whose keys are strings is one this client
+    will persist; anything else (an error object, a list, a bare string) is refused and handled as a
+    failed fetch. This makes NO claim about which players are present or how many: that is the
+    caller's business, and a client that started ruling on it would be a second opinion about the
+    pool."""
+    if not isinstance(body, dict) or not body:
+        return False
+    sampled = 0
+    for key, value in body.items():
+        if not isinstance(key, str) or not isinstance(value, dict):
+            return False
+        sampled += 1
+        if sampled >= 20:
+            break
+    return True
+
+
 class SleeperClient:
-    def __init__(self, cache_dir: str = "data/sleeper_snapshots"):
+    def __init__(self, cache_dir: str = DEFAULT_CACHE_DIR):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.session = requests.Session()
@@ -53,7 +241,22 @@ class SleeperClient:
             raise SleeperAPIError(f"Sleeper API {url} returned {resp.status_code}: {resp.text[:200]}")
         if not resp.text:
             return None
-        return resp.json()
+        # MANDATE 2.4: A 200 WITH A NON-JSON BODY ESCAPED AS JSONDecodeError. Every method on this
+        # client is documented to fail soft -- callers catch SleeperAPIError and carry on with less
+        # data -- and a decode failure walked straight past all of them, so an HTML error page or a
+        # truncated response served with a 200 crashed the caller instead of degrading it. A gateway
+        # or captive portal returning 200 + HTML is the ordinary case, not an exotic one.
+        #
+        # Raised, not swallowed: this IS a failure, and the one thing worse than the wrong exception
+        # type is no exception at all. The body's first 200 characters go in the message, because
+        # "invalid JSON" and "invalid JSON that begins <!DOCTYPE html>" point at different causes.
+        try:
+            return resp.json()
+        except ValueError as exc:  # json.JSONDecodeError subclasses ValueError
+            raise SleeperAPIError(
+                f"Sleeper API {url} returned {resp.status_code} with a body that is not JSON: "
+                f"{resp.text[:200]}"
+            ) from exc
 
     # -- user / league discovery --------------------------------------------
 
@@ -115,7 +318,7 @@ class SleeperClient:
     # -- player database (large, cached daily) ------------------------------
 
     def get_players(self, force_refresh: bool = False) -> dict[str, dict]:
-        cache_path = self.cache_dir / "players_nfl.json"
+        cache_path = self.cache_dir / PLAYERS_CACHE_FILENAME
         if not force_refresh and cache_path.exists():
             age = time.time() - cache_path.stat().st_mtime
             if age < PLAYERS_CACHE_MAX_AGE_SECONDS:
@@ -130,15 +333,63 @@ class SleeperClient:
         except SleeperAPIError:
             players = None
 
+        # MANDATE 2.4: `if players:` ACCEPTED ANY TRUTHY BODY AND CACHED IT FOR 24 HOURS. Sleeper's
+        # /players/nfl answers with a mapping of player_id -> player record; an error-shaped JSON
+        # object ({"error": "..."}), or a list, or a bare string, is all truthy, and writing one here
+        # poisons the cache for a day -- every page load then reads it back, hands it to callers
+        # expecting a mapping, and raises, with no in-app path to refetch before the age expires.
+        #
+        # The check is deliberately SHAPE, not content: a mapping whose values are mappings. It says
+        # nothing about which players are in it or how many, because this client has no business
+        # ruling on that -- it only refuses to persist something that cannot be what it claims.
+        if players is not None and not _looks_like_a_player_map(players):
+            # Treated exactly as a failed fetch, which is what it is, so the fall-through below
+            # serves the previous cache (even a stale one) rather than a body we cannot read.
+            players = None
+
         if players:
-            cache_path.write_text(json.dumps(players))
+            # ATOMIC (#52 phase 7.5 / J-13). This was `write_text`, the exact pattern store_io's
+            # own docstring measures at 91,956 empty reads of 98,405 under one concurrent
+            # writer -- because write_text TRUNCATES before it writes, so a reader arriving
+            # mid-write sees an empty file. app.py calls get_players() at top level on every
+            # rerun, and Streamlit serves many tabs from one process, so that reader is real.
+            #
+            # store_io.replace_atomically, NOT store_io.write: a cache must stay replaceable.
+            # See that function's own docstring for why giving this file the store's
+            # damaged-bytes protection would be a worse bug than the one being fixed.
+            store_io.replace_atomically(cache_path, json.dumps(players))
             return players
 
         if cache_path.exists():
             cached = self._read_players_cache(cache_path)
             if cached is not None:
                 return cached
-        return {}
+
+        # NO EMPTY UNIVERSE (#52 phase 7.5 / J-13, ruled). This returned {} -- a player
+        # universe indistinguishable from "there are no players". Every caller then built a
+        # board, a roster table or a sync against nothing and reported the result as though it
+        # were an answer. The absence contract this app applies to every other quantity says a
+        # missing measurement is not a measurement; a missing player universe is not an empty
+        # league.
+        #
+        # Raising rather than returning None because there is no useful partial answer here and
+        # no caller could do anything with one: app.py's two call sites already sit inside
+        # handlers that fall back to the "sync a league" empty state, which is the correct
+        # behaviour, and sleeper_import_report is a CLI where a clear error beats silent empty
+        # output.
+        raise SleeperAPIError(
+            "no player universe available: the live fetch failed and the local players cache is "
+            "missing or unreadable. Nothing downstream can be computed from an empty player "
+            "list, so this refuses rather than returning one."
+        )
+
+    def players_cache_age_seconds(self, now: Optional[float] = None) -> Optional[float]:
+        """This client's players-database age -- the module function, bound to its cache_dir."""
+        return players_cache_age_seconds(str(self.cache_dir), now)
+
+    def players_cache_basis(self, now: Optional[float] = None) -> str:
+        """This client's players-database state -- the module function, bound to its cache_dir."""
+        return players_cache_basis(str(self.cache_dir), now)
 
     @staticmethod
     def _read_players_cache(cache_path: Path) -> Optional[dict[str, dict]]:
@@ -168,17 +419,39 @@ class SleeperClient:
         except SleeperAPIError:
             return None
 
-    def get_weekly_projections(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
-        """player_id -> {stat_category: projected_value, ...} for one week."""
-        try:
-            # Sleeper's projection API uses season/week as the path and the
-            # game segment as a query parameter.  Putting ``season_type`` in
-            # the path (as its stats endpoint does) silently returned no
-            # records, making otherwise healthy league syncs show no native
-            # projections.
-            data = self._get(f"/projections/nfl/{season}/{week}?season_type={season_type}", base=ROOT_URL)
-        except SleeperAPIError:
-            return {}
+    def _weekly_stat_lines(self, kind: str, season: str, week: int,
+                           season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: value} for one week, from EITHER weekly endpoint.
+
+        BOTH ENDPOINTS TAKE season_type IN THE QUERY STRING. MEASURED, not inferred, and the
+        previous belief was the opposite. `get_weekly_stats` carried a confident docstring --
+        "season_type goes in the PATH here, not the query string ... mirrored from that
+        hard-won note rather than re-derived" -- reasoning from an offhand parenthetical in
+        get_weekly_projections' comment, "(as its stats endpoint does)". Nobody ran it. It was
+        a guess laundered into documentation and then mirrored as fact.
+
+        Measured on a networked machine, 2024 week 5:
+
+            /stats/nfl/regular/2024/5               404, 0 rows      <- what shipped
+            /stats/nfl/2024/5?season_type=regular   200, list, 2074  <- live
+            /stats/nfl/2024/5                       400 bad-request
+
+        So every consumer of actual stats -- `outcome_record`, `get_season_stats`,
+        `measure_projection_accuracy` -- was fetching nothing. It went unnoticed because all of
+        them need `api.sleeper.app`, which the audit sandbox denies, so this path had NEVER ONCE
+        executed against the real API.
+
+        WHAT IS SHARED HERE AND WHAT IS NOT. The URL shape and the normalisation are shared,
+        because they were duplicated verbatim and the duplication is what let one copy go stale.
+        The ERROR POSTURE is deliberately NOT: projections fail soft because a missing projection
+        degrades a board gracefully, and stats RAISE because a missing outcome does not -- an
+        empty result is indistinguishable from "nobody scored". So this helper does not catch,
+        and each caller applies its own contract.
+
+        BOTH RESPONSE SHAPES, because Sleeper serves both: projections as a dict keyed by
+        player_id, stats as a LIST of records each carrying its own.
+        """
+        data = self._get(f"/{kind}/nfl/{season}/{week}?season_type={season_type}", base=ROOT_URL)
         if not data:
             return {}
 
@@ -197,6 +470,190 @@ class SleeperClient:
                 if pid and stats:
                     result[str(pid)] = stats
         return result
+
+    def get_weekly_projections(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: projected_value, ...} for one week.
+
+        FAILS SOFT: an unreachable API is an empty week, because a missing projection degrades a
+        board gracefully. Its stats sibling raises instead -- see that method."""
+        try:
+            return self._weekly_stat_lines("projections", season, week, season_type)
+        except SleeperAPIError:
+            return {}
+
+    #: Weeks summed for a season projection. 18 is the NFL regular season's WEEK COUNT, not a
+    #: games-played assumption: each team byes once, and a bye week simply returns no row for
+    #: that player, so it contributes nothing. That is the point -- see get_season_projections.
+    REGULAR_SEASON_WEEKS = 18
+
+    def get_season_projections(
+        self, season: str, season_type: str = "regular", weeks: Optional[int] = None,
+        weekly_out: Optional[dict] = None,
+    ) -> tuple[dict[str, dict], dict]:
+        """player_id -> {stat_category: SEASON TOTAL}, summed from every week, plus a coverage
+        record describing how that total was assembled.
+
+        WHY A SUM RATHER THAN ONE WEEK SCALED. The engine needs a season-shaped number scored
+        under THIS league's rules. Sleeper publishes per-category projections weekly; the vendor
+        publishes a season POINT TOTAL that cannot be re-scored, because you cannot recover
+        stats from a total. Summing the weeks is the only construction that gets both halves
+        right -- real season shape AND the league's own scoring (#180).
+
+        Multiplying one week by a fixed factor was the alternative and is worse in a way that
+        matters: it assumes every week is the average week. Summing does not. A bye week returns
+        no row and contributes nothing; a player projected out for six games contributes six
+        fewer weeks; a player whose usage is expected to climb contributes his real later weeks.
+        None of that survives a single-week extrapolation.
+
+        THE COVERAGE RECORD IS NOT OPTIONAL. A total summed from 11 of 18 weeks is a different
+        claim from one summed from 18, and a consumer that cannot tell them apart will read a
+        partial season as a weak player. So this returns (totals, coverage) rather than a bare
+        dict, and coverage carries the weeks REQUESTED, the weeks that actually ANSWERED, and
+        the per-player week count. A caller that wants to reject thin coverage can; one that
+        drops the second element has made that choice visibly rather than by accident.
+
+        A week that errors is recorded as a failed week and does NOT abort the sum -- one bad
+        response should not cost the other seventeen -- but it is never silently treated as a
+        week of zeros, which would understate every player in the league by exactly that week.
+
+        weekly_out: a dict this fills with {week: {player_id: stats}} as it goes, for a caller
+        that needs the per-week lines and not only their sum -- `#30`'s streaming replacement
+        level is the one. Omitted, nothing changes and nothing extra is kept.
+        """
+        return self._sum_weeks(self.get_weekly_projections, season, season_type, weeks,
+                               weekly_out=weekly_out)
+
+    def _sum_weeks(self, fetch, season: str, season_type: str, weeks: Optional[int],
+                   weekly_out: Optional[dict] = None):
+        """The week-summing construction, shared by the projected and the realized season.
+
+        ONE HOME FOR THIS, not two (`#126`). `get_season_projections` and `get_season_stats` ask
+        different endpoints the same question -- "what does a whole season of this look like, per
+        stat category, so a league can score it under its own rules" -- and every property that
+        makes the answer trustworthy lives here: a failed week is recorded rather than summed as
+        zeros, a non-numeric category is skipped rather than coerced, and the coverage record
+        travels with the totals so a partial season cannot be mistaken for a weak one. Copying
+        this loop would mean two places to fix the next time one of those is wrong.
+
+        THE COVERAGE RECORD CARRIES ITS OWN SEASON, and that is load-bearing rather than tidy:
+        the projected season and a realized season are different years by definition, and `#79`
+        is the entry recording what it cost when a canonical record did not carry the season it
+        came from.
+        """
+        wanted = int(weeks or self.REGULAR_SEASON_WEEKS)
+        totals: dict[str, dict] = {}
+        weeks_present: dict[str, int] = {}
+        answered: list[int] = []
+        failed: list[int] = []
+        for week in range(1, wanted + 1):
+            rows = fetch(season, week, season_type)
+            if not rows:
+                failed.append(week)
+                continue
+            answered.append(week)
+            if weekly_out is not None:
+                # #30. The per-week lines, kept only when a caller asks for them. AN
+                # OUT-PARAMETER rather than a changed return type, so every existing caller is
+                # untouched -- the same idiom `replacement_levels.truncated_out` uses. The sum
+                # below is unchanged and still the primary answer; this is the half of the data
+                # the engine needed and was throwing away, and re-fetching it would cost
+                # eighteen more requests for rows already in hand.
+                weekly_out[str(week)] = rows
+            for pid, stats in rows.items():
+                bucket = totals.setdefault(pid, {})
+                counted = False
+                for category, value in (stats or {}).items():
+                    try:
+                        bucket[category] = bucket.get(category, 0.0) + float(value)
+                    except (TypeError, ValueError):
+                        continue          # a non-numeric category is skipped, never coerced to 0
+                    counted = True
+                if counted:
+                    weeks_present[pid] = weeks_present.get(pid, 0) + 1
+        coverage = {
+            "season": season,
+            "season_type": season_type,
+            "weeks_requested": wanted,
+            "weeks_answered": answered,
+            "weeks_failed": failed,
+            "players": len(totals),
+            "weeks_present_by_player": weeks_present,
+        }
+        return totals, coverage
+
+    def get_season_stats(
+        self, season: str, season_type: str = "regular", weeks: Optional[int] = None,
+    ) -> tuple[dict[str, dict], dict]:
+        """player_id -> {stat_category: SEASON TOTAL ACTUAL} for `season`, plus its coverage.
+
+        THE REALIZED COUNTERPART TO `get_season_projections`, and the half this engine has never
+        had. Everything validating it so far compares the engine to itself; a completed season's
+        production is the only number available here that came from outside.
+
+        `season` IS THE YEAR BEING ASKED FOR, and it is never the projection's year. A caller
+        wanting last season's production passes last season. The returned coverage record
+        carries that year, so a consumer holding both a projection total and a realized total
+        can always say which is which -- `#79` is what it cost when a record did not.
+
+        AN ABSENT PRIOR SEASON IS NOT A ZERO, and this is the trap worth naming loudly. Every
+        rookie has no prior year at all; so does a player who missed the season, and anyone
+        Sleeper had no rows for. A consumer that reads a missing entry as "produced nothing"
+        makes every incoming rookie the worst player in his position instantly -- the exact
+        defect class `#174` and `#187` were opened for. This returns a dict with NO KEY for such
+        a player, never a key with zeros, and any reader must keep those apart
+        (EXCLUDE / PROPAGATE / ORDER LAST, never `0.0`).
+
+        PRIOR-SEASON PRODUCTION IS A PUBLIC FACT, which is why it may be captured and committed
+        where a vendor's projection may not. What a player actually did is the same class of
+        thing as his name, team and position, all of which this repo's input policy already
+        admits verbatim while excluding a vendor's own model output, layout and branding. This
+        sits on the cleaner side of that line rather than testing it.
+
+        RAW STATS, NEVER POINTS -- see `get_weekly_stats`. Fantasy points are a function of
+        (stats, a league's scoring settings), so storing points would bake in one rulebook and
+        be useless for every other. One fetch, every scoring format.
+
+        WHAT IT BUYS, AND THE LIMIT. Two things currently impossible here: a second independent
+        anchor for IDP, which has one source and zero vendor coverage (0 of 91 LB, 0 of 153 DB,
+        0 of 171 DL); and projection error by position, the only way to settle whether IDP
+        production is noisier than offence rather than asserting it. But ONE prior season
+        measures BIAS, not variance -- it is a single observation per player. Week-to-week
+        variance needs the weekly rows kept unaggregated, which `get_weekly_stats` supplies and
+        this summing deliberately discards.
+        """
+        return self._sum_weeks(self.get_weekly_stats, season, season_type, weeks)
+
+    def get_weekly_stats(self, season: str, week: int, season_type: str = "regular") -> dict[str, dict]:
+        """player_id -> {stat_category: ACTUAL_value, ...} for one completed week.
+
+        The realized counterpart to get_weekly_projections, and the missing half of every
+        question about whether this engine's numbers mean anything. Everything validating the
+        engine so far compares it to itself; this is the only endpoint that supplies an
+        external answer.
+
+        THE URL SHAPE WAS WRONG, AND THIS PARAGRAPH IS WHY IT SURVIVED. It read: "season_type
+        goes in the PATH here, not the query string -- the opposite of get_weekly_projections
+        ... mirrored from that hard-won note rather than re-derived." That was inferred from an
+        offhand parenthetical, "(as its stats endpoint does)", in the projections comment. It was
+        never executed. Measured on a networked machine: the path form returns **404 and zero
+        rows**; the query form returns 200 and 2,074. Both endpoints take it in the query string.
+        The URL now comes from _weekly_stat_lines, which both methods share, so there is no
+        second copy to go stale.
+
+        RETURNS RAW STATS, NEVER POINTS. Fantasy points are a function of (stats, a league's
+        scoring settings), so a capture that stored points would bake in one league's rules
+        and be unusable for any other. compute_points_from_stats already converts, at the
+        moment a specific league asks. One fetch, every scoring format.
+
+        Raises rather than returning {} when the API cannot be reached -- unlike its
+        projections sibling, which fails soft because a missing projection degrades a board
+        gracefully. A missing OUTCOME does not degrade gracefully: an empty result would be
+        indistinguishable from "nobody scored", and a validation record built on that would
+        report the engine as catastrophically wrong about a week that simply never downloaded.
+        """
+        # Not wrapped: SleeperAPIError propagates, which is this method's documented contract
+        # and the difference from its projections sibling.
+        return self._weekly_stat_lines("stats", season, week, season_type)
 
     # -- aggregate sync -------------------------------------------------------
 
@@ -260,6 +717,27 @@ class SleeperClient:
         # don't exist for a preseason week anyway (no schedule generated yet), so this keeps
         # "which week is this snapshot about" a single decision instead of two that could
         # silently disagree.
+        # #180: the board needs a SEASON-shaped number scored under THIS league's rules. The
+        # weekly fetch above stays exactly as it was -- matchups and the freshness stamp read
+        # it -- and this adds the season sum alongside rather than replacing it, so a failure
+        # here degrades to the previous behaviour instead of emptying the board.
+        season_projections: dict[str, dict] = {}
+        # #30. The per-week lines behind the sum, captured on the way past rather than
+        # re-fetched. The board derives the streaming replacement level for K and DEF from
+        # these; with them absent it computes no floor and behaves exactly as before.
+        weekly_projections: dict[str, dict] = {}
+        season_projection_coverage: dict = {"weeks_answered": [], "weeks_failed": [],
+                                            "players": 0, "error": None}
+        if season:
+            try:
+                season_projections, season_projection_coverage = self.get_season_projections(
+                    str(season), str(projection_request.get("season_type") or season_type),
+                    weekly_out=weekly_projections)
+            except Exception as exc:                    # noqa: BLE001 -- degrade, never abort
+                season_projection_coverage = {
+                    "weeks_answered": [], "weeks_failed": [], "players": 0,
+                    "error": f"{type(exc).__name__}: {exc}"}
+
         matchup_week = projection_request.get("week")
         matchups = self.get_matchups(league_id, int(matchup_week)) if matchup_week is not None else []
 
@@ -272,17 +750,50 @@ class SleeperClient:
             "nfl_state": nfl_state,
             "projection_request": projection_request,
             "projection_attempts": projection_attempts,
+            # Season totals per raw stat category, summed from every week that answered, plus
+            # the coverage record that says WHICH weeks those were. A consumer must read the
+            # coverage before trusting a total: 11 of 18 weeks summed is a different claim from
+            # 18, and nothing downstream can recover that from the number alone.
+            "season_projections": season_projections,
+            "season_projection_coverage": season_projection_coverage,
+            # #30. The SAME weeks that produced the sum above, kept per week. The board needs
+            # both shapes and they must come from one fetch: a season sum answers "what is this
+            # player worth all year", and the per-week lines answer "what is the best player on
+            # the WIRE worth this week", which is the only honest replacement level for a
+            # position you stream. Two fetches would be two seasons' worth of drift risk for
+            # one claim (#79).
+            "weekly_projections": weekly_projections,
             "projections": projections,
             "matchups": matchups,
         }
 
+        # MANDATE 2.1(b): DID THIS SYNC COME BACK WITH LESS THAN THE ONE IT REPLACES?
+        #
+        # `_write_snapshot` replaces `_latest.json` unconditionally, so an 18-week sync became a
+        # 9-week one with the failure buried in a JSON field nothing read -- and the freshness
+        # manifest went on reporting that sync as the freshest input on the page. Nothing was
+        # DESTROYED: ten timestamped snapshots per league survive pruning, so the better one is
+        # still on disk. What was missing is anything saying so, which made a recoverable loss an
+        # invisible one.
+        #
+        # Recorded, not prevented. Refusing the overwrite would trade projection freshness for
+        # ROSTER freshness -- the same sync carries the rosters, and keeping the older snapshot
+        # keeps an older roster too. Which staleness a person would rather have is a product
+        # decision, not one this function should make silently, so it is stated for a reader and
+        # left open.
+        snapshot["season_projection_regression"] = _coverage_regression(
+            self.load_latest_snapshot(league_id), snapshot)
         self._write_snapshot(league_id, snapshot)
         return snapshot
 
     def _write_snapshot(self, league_id: str, snapshot: dict) -> None:
+        # Both atomic, same reason as the players cache above: `_latest.json` is read by every
+        # rerun while a sync may be rewriting it, and a torn read of it looks exactly like a
+        # league that has never been synced.
         ts = int(snapshot.get("synced_at", time.time()))
-        (self.cache_dir / f"{league_id}_{ts}.json").write_text(json.dumps(snapshot, indent=2))
-        (self.cache_dir / f"{league_id}_latest.json").write_text(json.dumps(snapshot, indent=2))
+        body = json.dumps(snapshot, indent=2)
+        store_io.replace_atomically(self.cache_dir / f"{league_id}_{ts}.json", body)
+        store_io.replace_atomically(self.cache_dir / f"{league_id}_latest.json", body)
         self._prune_old_snapshots(league_id)
 
     def _prune_old_snapshots(self, league_id: str, keep: int = SNAPSHOT_HISTORY_KEEP) -> None:
@@ -459,6 +970,121 @@ def write_baseline_projection_csv(rows: list[dict], path: Path) -> Path:
         for row in rows:
             writer.writerow({column: row.get(column, "") for column in BASELINE_RANKINGS_COLUMNS})
     return path
+
+
+def season_sum_is_complete(coverage: Optional[dict]) -> bool:
+    """Whether a season-sum coverage record describes a WHOLE season of answers.
+
+    MANDATE 2.1. `_sum_weeks`' own docstring says "a caller that wants to reject thin coverage
+    can; one that drops the second element has made that choice visibly rather than by accident"
+    -- and every caller that PRICES dropped it. `season_projection_coverage` was written by this
+    module and read by no module that prices: `grep -c season_projection_coverage app.py` returned
+    0, and its only consumers were in a CLI.
+
+    Complete means every week that was REQUESTED answered, and at least one was. Relative to the
+    request, deliberately: what a season is (whether week 18 counts) is a separate, open question
+    about `REGULAR_SEASON_WEEKS`, and this function does not need it settled to say whether the
+    fetch it is looking at finished.
+
+    ABSENT IS NOT COMPLETE. A missing or empty record means nothing established that the sum is
+    whole, and #187's rule applies to a completeness claim exactly as it does to a number."""
+    if not coverage:
+        return False
+    if coverage.get("error"):
+        return False
+    answered = coverage.get("weeks_answered") or []
+    requested = coverage.get("weeks_requested")
+    if not answered:
+        return False
+    if coverage.get("weeks_failed"):
+        return False
+    return requested is None or len(answered) == int(requested)
+
+
+def priceable_season_projections(snapshot: Optional[dict]) -> tuple[Optional[dict], Optional[str]]:
+    """The season sums a board MAY price from, and the reason when it may not.
+
+    MANDATE 2.1(a). `_derive_points_and_source` gives a season-summed total precedence over the
+    vendor's complete season projection EVERYWHERE, because a league-scored season number is the
+    better answer -- when it is a season. With weeks 10-18 failing it is not, and the measured
+    result was 39 of the top 40 rows moving 3+ places, Jayden Daniels 31 -> 321 with
+    universal_value 107.34 -> -38.42, quarterbacks clearing the startable floor falling 31/355 to
+    10/355, and the top ten of a SUPERFLEX board containing no quarterbacks at all -- with
+    `bpa_source`, `replacement_basis` and `absence_kind` unchanged on every row.
+
+    REFUSE, rather than price it with a lower confidence. A partial sum understates every player
+    by the weeks it is missing, and placing it in the confidence order would need a number for how
+    much a truncated season is worth, which nobody has derived (`#56`). Refusing costs the
+    league-scoring benefit for this sync and returns the board to exactly what it was before
+    `#180` -- a defensible number -- while pricing from the truncation cannot be defended at all.
+
+    THE REASON TRAVELS WITH THE REFUSAL, because a silent fallback is the other half of this same
+    defect: the board would quietly stop being league-scored and nothing would say so. A caller
+    shows the string."""
+    coverage = (snapshot or {}).get("season_projection_coverage")
+    projections = (snapshot or {}).get("season_projections") or None
+    if projections is None:
+        # A FAILED FETCH IS NOT AN ABSENT ONE (E-F5). When the season fetch fails outright the
+        # sync stores `season_projections = {}` and sets `coverage.error` -- and `{} or None` is
+        # None, so this early return handed the caller no refusal string and the Draft Room
+        # rendered NO WARNING while the board was vendor-priced. The silent fallback to
+        # vendor-only that the paragraph above calls "the other half of this same defect" was
+        # reachable through the one branch that skipped the paragraph's own machinery.
+        #
+        # The two cases must stay separated, which is why this is not simply moved below: with
+        # NOTHING EVER SYNCED there is no coverage record, nothing was attempted, and a
+        # vendor-priced board is the correct and unremarkable pre-sync state -- warning there
+        # would train the reader to ignore the warning that matters.
+        #
+        # ASK THE AUTHORITY, NOT FOR AN `error` KEY (E-F5, reopened and re-closed). The first
+        # repair tested `coverage["error"]`, which `sync_league` writes only when
+        # `get_season_projections` RAISES. It does not raise on the ordinary outright failure:
+        # `get_weekly_projections` FAILS SOFT by its own docstring, catching `SleeperAPIError`
+        # and returning `{}` per week, so an unreachable Sleeper appends every week to
+        # `weeks_failed` and `_sum_weeks` builds a coverage record with NO `error` key at all.
+        # Measured on this tree, driving the real `_sum_weeks` with a raising transport: 7
+        # coverage keys, none of them `error`, 18 weeks failed, and the guard returned no
+        # refusal -- a silently vendor-priced board, which is the exact defect E-F5 claims to
+        # have closed, still reachable through the sibling branch.
+        #
+        # `season_sum_is_complete` is the module's one answer to "did this fetch finish" and is
+        # what the priced path below already asks (`#126`). A record that exists and is not
+        # complete is a failure whether or not anyone caught an exception over it.
+        if coverage and not season_sum_is_complete(coverage):
+            error = (coverage or {}).get("error")
+            failed = (coverage or {}).get("weeks_failed") or []
+            if error:
+                detail = f"the projection fetch failed outright ({error})"
+            elif failed:
+                detail = (f"every week requested failed to answer ({len(failed)} of them)"
+                          if not ((coverage or {}).get("weeks_answered") or []) else
+                          f"week(s) {', '.join(str(w) for w in failed)} did not answer")
+            else:
+                detail = "the coverage record does not describe a whole season"
+            return None, (
+                f"This board is NOT scored under your league's own rules: {detail}, so there "
+                f"are no season totals to price from. The board falls back to the vendor's "
+                f"complete season projection. Re-sync this league to restore league scoring."
+            )
+        return None, None
+    if season_sum_is_complete(coverage):
+        return projections, None
+    failed = (coverage or {}).get("weeks_failed") or []
+    error = (coverage or {}).get("error")
+    if error:
+        detail = f"the projection fetch failed outright ({error})"
+    elif failed:
+        weeks = ", ".join(str(w) for w in failed)
+        detail = (f"week(s) {weeks} did not answer, so the season totals are a sum of "
+                  f"{len(((coverage or {}).get('weeks_answered') or []))} weeks, not a season")
+    else:
+        detail = "no coverage record accompanies them, so nothing establishes that they are whole"
+    return None, (
+        f"This board is NOT scored under your league's own rules: {detail}. A partial sum "
+        f"understates every player by the weeks it is missing, so it is refused rather than "
+        f"priced, and the board falls back to the vendor's complete season projection. Re-sync "
+        f"this league to restore league scoring."
+    )
 
 
 def find_roster_for_user(rosters: list[dict], user_id: str) -> Optional[dict]:

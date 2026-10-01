@@ -2,7 +2,8 @@
   "_comment": "Declared input set for this commit's engine measurements -- see baseline_manifest.py. Regenerate with `python3 baseline_manifest.py --write` and commit the result ALONGSIDE the data change that caused it; a manifest updated on its own is a hash that agrees with whatever is on one machine.",
   "directories": [
     "data/baseline",
-    "data/projections/_global"
+    "data/projections/_global",
+    "data/fixtures"
   ],
   "files": {
     "data/baseline/baseline_provenance.json": "c85802b2d710266cc05eb7bc43e1a97f85f407f3befcbf923343f196b04e3ffe",
@@ -26,6 +27,7 @@
     "data/baseline/rankings/superflex_idp_rankings.corrected.csv": "38c98fc1ed4afc473772252aa2948313299f6ced83c84f3cbca9594e276b22e1",
     "data/baseline/rankings/te_premium_dynasty_rankings.csv": "28e72f93dc4f9e5195f1bba517cf5912d7a195e6c526d7f734c5387380deb512",
     "data/baseline/sleeper_projection_provenance.json": "d2d1265b74aac160d5c78f5438e938a603e81550f1e984fea9d7aff9916d9949",
-    "data/baseline/trade_value/dynasty_ppr_trade_value_chart.csv": "0bab30ee0b4e2c394a752158d5bfe704064b489bcb65719710ed7ff19b7e46c8"
+    "data/baseline/trade_value/dynasty_ppr_trade_value_chart.csv": "0bab30ee0b4e2c394a752158d5bfe704064b489bcb65719710ed7ff19b7e46c8",
+    "data/fixtures/sleeper_capture.json": "8578a7f29510e69f8a7e473634411fcfb802e85122f3724827a572a6961ea330"
   }
 }

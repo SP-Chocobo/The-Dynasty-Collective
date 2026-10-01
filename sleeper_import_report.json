@@ -1,0 +1,2447 @@
+{
+  "scrubbed": true,
+  "probes": {
+    "players_nfl": {
+      "ok": true,
+      "result": {
+        "total_players": 12226,
+        "cache_basis": "within_window",
+        "every_field_seen": [
+          "active",
+          "age",
+          "birth_city",
+          "birth_country",
+          "birth_date",
+          "birth_state",
+          "college",
+          "competitions",
+          "depth_chart_order",
+          "depth_chart_position",
+          "espn_id",
+          "fantasy_data_id",
+          "fantasy_positions",
+          "first_name",
+          "full_name",
+          "gsis_id",
+          "hashtag",
+          "height",
+          "high_school",
+          "injury_body_part",
+          "injury_notes",
+          "injury_start_date",
+          "injury_status",
+          "kalshi_id",
+          "last_name",
+          "metadata",
+          "news_updated",
+          "number",
+          "oddsjam_id",
+          "opta_id",
+          "pandascore_id",
+          "player_id",
+          "player_shard",
+          "position",
+          "practice_description",
+          "practice_participation",
+          "rotowire_id",
+          "rotoworld_id",
+          "search_first_name",
+          "search_full_name",
+          "search_last_name",
+          "search_rank",
+          "sport",
+          "sportradar_id",
+          "stats_id",
+          "status",
+          "swish_id",
+          "team",
+          "team_abbr",
+          "team_changed_at",
+          "weight",
+          "yahoo_id",
+          "years_exp"
+        ],
+        "field_frequency_top40": {
+          "player_id": 12226,
+          "active": 12226,
+          "last_name": 12226,
+          "injury_status": 12226,
+          "sport": 12226,
+          "first_name": 12226,
+          "fantasy_positions": 12226,
+          "team": 12226,
+          "position": 12226,
+          "years_exp": 12194,
+          "practice_participation": 12194,
+          "kalshi_id": 12194,
+          "birth_country": 12194,
+          "rotoworld_id": 12194,
+          "search_rank": 12194,
+          "birth_state": 12194,
+          "height": 12194,
+          "search_full_name": 12194,
+          "fantasy_data_id": 12194,
+          "team_abbr": 12194,
+          "hashtag": 12194,
+          "depth_chart_position": 12194,
+          "status": 12194,
+          "gsis_id": 12194,
+          "stats_id": 12194,
+          "yahoo_id": 12194,
+          "metadata": 12194,
+          "search_first_name": 12194,
+          "injury_notes": 12194,
+          "number": 12194,
+          "espn_id": 12194,
+          "player_shard": 12194,
+          "birth_city": 12194,
+          "oddsjam_id": 12194,
+          "full_name": 12194,
+          "sportradar_id": 12194,
+          "swish_id": 12194,
+          "team_changed_at": 12194,
+          "injury_body_part": 12194,
+          "competitions": 12194
+        },
+        "age_coverage": {
+          "ATH": {
+            "n": 1,
+            "present": 0,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 0.0
+          },
+          "C": {
+            "n": 215,
+            "present": 204,
+            "absent": 0,
+            "blank": 11,
+            "present_pct": 94.9
+          },
+          "CB": {
+            "n": 1034,
+            "present": 946,
+            "absent": 0,
+            "blank": 88,
+            "present_pct": 91.5
+          },
+          "DB": {
+            "n": 863,
+            "present": 764,
+            "absent": 0,
+            "blank": 99,
+            "present_pct": 88.5
+          },
+          "DE": {
+            "n": 690,
+            "present": 648,
+            "absent": 0,
+            "blank": 42,
+            "present_pct": 93.9
+          },
+          "DEF": {
+            "n": 32,
+            "present": 0,
+            "absent": 32,
+            "blank": 0,
+            "present_pct": 0.0
+          },
+          "DL": {
+            "n": 306,
+            "present": 258,
+            "absent": 0,
+            "blank": 48,
+            "present_pct": 84.3
+          },
+          "DT": {
+            "n": 646,
+            "present": 605,
+            "absent": 0,
+            "blank": 41,
+            "present_pct": 93.7
+          },
+          "FB": {
+            "n": 112,
+            "present": 108,
+            "absent": 0,
+            "blank": 4,
+            "present_pct": 96.4
+          },
+          "FS": {
+            "n": 145,
+            "present": 143,
+            "absent": 0,
+            "blank": 2,
+            "present_pct": 98.6
+          },
+          "G": {
+            "n": 428,
+            "present": 409,
+            "absent": 0,
+            "blank": 19,
+            "present_pct": 95.6
+          },
+          "ILB": {
+            "n": 129,
+            "present": 126,
+            "absent": 0,
+            "blank": 3,
+            "present_pct": 97.7
+          },
+          "K": {
+            "n": 192,
+            "present": 169,
+            "absent": 0,
+            "blank": 23,
+            "present_pct": 88.0
+          },
+          "K/P": {
+            "n": 1,
+            "present": 1,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "LB": {
+            "n": 1162,
+            "present": 1081,
+            "absent": 0,
+            "blank": 81,
+            "present_pct": 93.0
+          },
+          "LS": {
+            "n": 130,
+            "present": 116,
+            "absent": 0,
+            "blank": 14,
+            "present_pct": 89.2
+          },
+          "NT": {
+            "n": 89,
+            "present": 87,
+            "absent": 0,
+            "blank": 2,
+            "present_pct": 97.8
+          },
+          "OG": {
+            "n": 52,
+            "present": 48,
+            "absent": 0,
+            "blank": 4,
+            "present_pct": 92.3
+          },
+          "OL": {
+            "n": 607,
+            "present": 527,
+            "absent": 0,
+            "blank": 80,
+            "present_pct": 86.8
+          },
+          "OLB": {
+            "n": 215,
+            "present": 212,
+            "absent": 0,
+            "blank": 3,
+            "present_pct": 98.6
+          },
+          "OT": {
+            "n": 298,
+            "present": 280,
+            "absent": 0,
+            "blank": 18,
+            "present_pct": 94.0
+          },
+          "P": {
+            "n": 152,
+            "present": 136,
+            "absent": 0,
+            "blank": 16,
+            "present_pct": 89.5
+          },
+          "QB": {
+            "n": 474,
+            "present": 435,
+            "absent": 0,
+            "blank": 39,
+            "present_pct": 91.8
+          },
+          "RB": {
+            "n": 933,
+            "present": 852,
+            "absent": 0,
+            "blank": 81,
+            "present_pct": 91.3
+          },
+          "S": {
+            "n": 45,
+            "present": 31,
+            "absent": 0,
+            "blank": 14,
+            "present_pct": 68.9
+          },
+          "SS": {
+            "n": 162,
+            "present": 161,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 99.4
+          },
+          "T": {
+            "n": 240,
+            "present": 234,
+            "absent": 0,
+            "blank": 6,
+            "present_pct": 97.5
+          },
+          "TE": {
+            "n": 843,
+            "present": 766,
+            "absent": 0,
+            "blank": 77,
+            "present_pct": 90.9
+          },
+          "UNKNOWN": {
+            "n": 240,
+            "present": 6,
+            "absent": 0,
+            "blank": 234,
+            "present_pct": 2.5
+          },
+          "WR": {
+            "n": 1790,
+            "present": 1624,
+            "absent": 0,
+            "blank": 166,
+            "present_pct": 90.7
+          }
+        },
+        "injury_status_coverage": {
+          "ATH": {
+            "n": 1,
+            "present": 0,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 0.0
+          },
+          "C": {
+            "n": 215,
+            "present": 12,
+            "absent": 0,
+            "blank": 203,
+            "present_pct": 5.6
+          },
+          "CB": {
+            "n": 1034,
+            "present": 82,
+            "absent": 0,
+            "blank": 952,
+            "present_pct": 7.9
+          },
+          "DB": {
+            "n": 863,
+            "present": 89,
+            "absent": 0,
+            "blank": 774,
+            "present_pct": 10.3
+          },
+          "DE": {
+            "n": 690,
+            "present": 45,
+            "absent": 0,
+            "blank": 645,
+            "present_pct": 6.5
+          },
+          "DEF": {
+            "n": 32,
+            "present": 0,
+            "absent": 0,
+            "blank": 32,
+            "present_pct": 0.0
+          },
+          "DL": {
+            "n": 306,
+            "present": 48,
+            "absent": 0,
+            "blank": 258,
+            "present_pct": 15.7
+          },
+          "DT": {
+            "n": 646,
+            "present": 34,
+            "absent": 0,
+            "blank": 612,
+            "present_pct": 5.3
+          },
+          "FB": {
+            "n": 112,
+            "present": 2,
+            "absent": 0,
+            "blank": 110,
+            "present_pct": 1.8
+          },
+          "FS": {
+            "n": 145,
+            "present": 1,
+            "absent": 0,
+            "blank": 144,
+            "present_pct": 0.7
+          },
+          "G": {
+            "n": 428,
+            "present": 17,
+            "absent": 0,
+            "blank": 411,
+            "present_pct": 4.0
+          },
+          "ILB": {
+            "n": 129,
+            "present": 2,
+            "absent": 0,
+            "blank": 127,
+            "present_pct": 1.6
+          },
+          "K": {
+            "n": 192,
+            "present": 5,
+            "absent": 0,
+            "blank": 187,
+            "present_pct": 2.6
+          },
+          "K/P": {
+            "n": 1,
+            "present": 0,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 0.0
+          },
+          "LB": {
+            "n": 1162,
+            "present": 80,
+            "absent": 0,
+            "blank": 1082,
+            "present_pct": 6.9
+          },
+          "LS": {
+            "n": 130,
+            "present": 0,
+            "absent": 0,
+            "blank": 130,
+            "present_pct": 0.0
+          },
+          "NT": {
+            "n": 89,
+            "present": 4,
+            "absent": 0,
+            "blank": 85,
+            "present_pct": 4.5
+          },
+          "OG": {
+            "n": 52,
+            "present": 3,
+            "absent": 0,
+            "blank": 49,
+            "present_pct": 5.8
+          },
+          "OL": {
+            "n": 607,
+            "present": 50,
+            "absent": 0,
+            "blank": 557,
+            "present_pct": 8.2
+          },
+          "OLB": {
+            "n": 215,
+            "present": 5,
+            "absent": 0,
+            "blank": 210,
+            "present_pct": 2.3
+          },
+          "OT": {
+            "n": 298,
+            "present": 12,
+            "absent": 0,
+            "blank": 286,
+            "present_pct": 4.0
+          },
+          "P": {
+            "n": 152,
+            "present": 3,
+            "absent": 0,
+            "blank": 149,
+            "present_pct": 2.0
+          },
+          "QB": {
+            "n": 474,
+            "present": 20,
+            "absent": 0,
+            "blank": 454,
+            "present_pct": 4.2
+          },
+          "RB": {
+            "n": 933,
+            "present": 72,
+            "absent": 0,
+            "blank": 861,
+            "present_pct": 7.7
+          },
+          "S": {
+            "n": 45,
+            "present": 2,
+            "absent": 0,
+            "blank": 43,
+            "present_pct": 4.4
+          },
+          "SS": {
+            "n": 162,
+            "present": 1,
+            "absent": 0,
+            "blank": 161,
+            "present_pct": 0.6
+          },
+          "T": {
+            "n": 240,
+            "present": 15,
+            "absent": 0,
+            "blank": 225,
+            "present_pct": 6.2
+          },
+          "TE": {
+            "n": 843,
+            "present": 58,
+            "absent": 0,
+            "blank": 785,
+            "present_pct": 6.9
+          },
+          "UNKNOWN": {
+            "n": 240,
+            "present": 3,
+            "absent": 0,
+            "blank": 237,
+            "present_pct": 1.2
+          },
+          "WR": {
+            "n": 1790,
+            "present": 122,
+            "absent": 0,
+            "blank": 1668,
+            "present_pct": 6.8
+          }
+        },
+        "years_exp_coverage": {
+          "ATH": {
+            "n": 1,
+            "present": 1,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "C": {
+            "n": 215,
+            "present": 215,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "CB": {
+            "n": 1034,
+            "present": 1034,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DB": {
+            "n": 863,
+            "present": 863,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DE": {
+            "n": 690,
+            "present": 690,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DEF": {
+            "n": 32,
+            "present": 0,
+            "absent": 32,
+            "blank": 0,
+            "present_pct": 0.0
+          },
+          "DL": {
+            "n": 306,
+            "present": 306,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DT": {
+            "n": 646,
+            "present": 646,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "FB": {
+            "n": 112,
+            "present": 112,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "FS": {
+            "n": 145,
+            "present": 145,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "G": {
+            "n": 428,
+            "present": 428,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "ILB": {
+            "n": 129,
+            "present": 129,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "K": {
+            "n": 192,
+            "present": 191,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 99.5
+          },
+          "K/P": {
+            "n": 1,
+            "present": 1,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "LB": {
+            "n": 1162,
+            "present": 1162,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "LS": {
+            "n": 130,
+            "present": 130,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "NT": {
+            "n": 89,
+            "present": 89,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OG": {
+            "n": 52,
+            "present": 52,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OL": {
+            "n": 607,
+            "present": 607,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OLB": {
+            "n": 215,
+            "present": 214,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 99.5
+          },
+          "OT": {
+            "n": 298,
+            "present": 298,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "P": {
+            "n": 152,
+            "present": 152,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "QB": {
+            "n": 474,
+            "present": 472,
+            "absent": 0,
+            "blank": 2,
+            "present_pct": 99.6
+          },
+          "RB": {
+            "n": 933,
+            "present": 931,
+            "absent": 0,
+            "blank": 2,
+            "present_pct": 99.8
+          },
+          "S": {
+            "n": 45,
+            "present": 45,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "SS": {
+            "n": 162,
+            "present": 162,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "T": {
+            "n": 240,
+            "present": 240,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "TE": {
+            "n": 843,
+            "present": 842,
+            "absent": 0,
+            "blank": 1,
+            "present_pct": 99.9
+          },
+          "UNKNOWN": {
+            "n": 240,
+            "present": 215,
+            "absent": 0,
+            "blank": 25,
+            "present_pct": 89.6
+          },
+          "WR": {
+            "n": 1790,
+            "present": 1786,
+            "absent": 0,
+            "blank": 4,
+            "present_pct": 99.8
+          }
+        },
+        "fantasy_positions_coverage": {
+          "ATH": {
+            "n": 1,
+            "present": 1,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "C": {
+            "n": 215,
+            "present": 184,
+            "absent": 0,
+            "blank": 31,
+            "present_pct": 85.6
+          },
+          "CB": {
+            "n": 1034,
+            "present": 1034,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DB": {
+            "n": 863,
+            "present": 863,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DE": {
+            "n": 690,
+            "present": 690,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DEF": {
+            "n": 32,
+            "present": 32,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DL": {
+            "n": 306,
+            "present": 306,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "DT": {
+            "n": 646,
+            "present": 646,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "FB": {
+            "n": 112,
+            "present": 112,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "FS": {
+            "n": 145,
+            "present": 145,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "G": {
+            "n": 428,
+            "present": 392,
+            "absent": 0,
+            "blank": 36,
+            "present_pct": 91.6
+          },
+          "ILB": {
+            "n": 129,
+            "present": 129,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "K": {
+            "n": 192,
+            "present": 192,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "K/P": {
+            "n": 1,
+            "present": 1,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "LB": {
+            "n": 1162,
+            "present": 1162,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "LS": {
+            "n": 130,
+            "present": 130,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "NT": {
+            "n": 89,
+            "present": 89,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OG": {
+            "n": 52,
+            "present": 52,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OL": {
+            "n": 607,
+            "present": 607,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OLB": {
+            "n": 215,
+            "present": 215,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "OT": {
+            "n": 298,
+            "present": 298,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "P": {
+            "n": 152,
+            "present": 152,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "QB": {
+            "n": 474,
+            "present": 474,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "RB": {
+            "n": 933,
+            "present": 933,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "S": {
+            "n": 45,
+            "present": 45,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "SS": {
+            "n": 162,
+            "present": 162,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "T": {
+            "n": 240,
+            "present": 214,
+            "absent": 0,
+            "blank": 26,
+            "present_pct": 89.2
+          },
+          "TE": {
+            "n": 843,
+            "present": 843,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          },
+          "UNKNOWN": {
+            "n": 240,
+            "present": 0,
+            "absent": 0,
+            "blank": 240,
+            "present_pct": 0.0
+          },
+          "WR": {
+            "n": 1790,
+            "present": 1790,
+            "absent": 0,
+            "blank": 0,
+            "present_pct": 100.0
+          }
+        },
+        "VALUES_status_fields": {
+          "injury_status": {
+            "distinct_values": 9,
+            "counts": {
+              "__explicit_null__": 11439,
+              "Questionable": 430,
+              "IR": 205,
+              "NA": 95,
+              "PUP": 39,
+              "Sus": 11,
+              "Out": 3,
+              "COV": 2,
+              "DNR": 2
+            },
+            "truncated": false
+          },
+          "status": {
+            "distinct_values": 8,
+            "counts": {
+              "Active": 8420,
+              "Inactive": 3529,
+              "Injured Reserve": 227,
+              "__key_missing__": 32,
+              "__explicit_null__": 13,
+              "Physically Unable to Perform": 3,
+              "Practice Squad": 1,
+              "Non Football Injury": 1
+            },
+            "truncated": false
+          },
+          "practice_participation": {
+            "distinct_values": 3,
+            "counts": {
+              "__explicit_null__": 12193,
+              "__key_missing__": 32,
+              "Out": 1
+            },
+            "truncated": false
+          }
+        },
+        "VALUES_status_fields_offence_only": {
+          "injury_status": {
+            "distinct_values": 8,
+            "counts": {
+              "__explicit_null__": 3768,
+              "Questionable": 162,
+              "IR": 63,
+              "NA": 35,
+              "PUP": 7,
+              "DNR": 2,
+              "Sus": 2,
+              "Out": 1
+            },
+            "truncated": false
+          },
+          "status": {
+            "distinct_values": 5,
+            "counts": {
+              "Active": 2720,
+              "Inactive": 1237,
+              "Injured Reserve": 81,
+              "Practice Squad": 1,
+              "Physically Unable to Perform": 1
+            },
+            "truncated": false
+          },
+          "practice_participation": {
+            "distinct_values": 1,
+            "counts": {
+              "__explicit_null__": 4040
+            },
+            "truncated": false
+          }
+        },
+        "multi_position_players": 633,
+        "offensive_players": 4040,
+        "FORM_one_offensive_record": {
+          "active": "bool e.g. True",
+          "age": "int e.g. 26",
+          "birth_city": "None",
+          "birth_country": "None",
+          "birth_date": "str e.g. id:dfb63a2b",
+          "birth_state": "None",
+          "college": "str e.g. id:74b40a96",
+          "competitions": "list[empty]",
+          "depth_chart_order": "None",
+          "depth_chart_position": "None",
+          "espn_id": "int e.g. 3926590",
+          "fantasy_data_id": "int e.g. 21427",
+          "fantasy_positions": [
+            "list[1] of",
+            "str e.g. 'TE'"
+          ],
+          "first_name": "str e.g. id:e4a14162",
+          "full_name": "str e.g. id:5c49a9c5",
+          "gsis_id": "str e.g. id:35d557c9",
+          "hashtag": "str e.g. id:46e0db9d",
+          "height": "str e.g. '75'",
+          "high_school": "str e.g. id:605dfebd",
+          "injury_body_part": "None",
+          "injury_notes": "None",
+          "injury_start_date": "None",
+          "injury_status": "None",
+          "kalshi_id": "None",
+          "last_name": "str e.g. id:3c237edf",
+          "metadata": {
+            "channel_id": "str e.g. '1116853254748110848'"
+          },
+          "news_updated": "None",
+          "number": "int e.g. 45",
+          "oddsjam_id": "None",
+          "opta_id": "None",
+          "pandascore_id": "None",
+          "player_id": "str e.g. '6462'",
+          "player_shard": "str e.g. '8'",
+          "position": "str e.g. 'TE'",
+          "practice_description": "None",
+          "practice_participation": "None",
+          "rotowire_id": "int e.g. 14134",
+          "rotoworld_id": "None",
+          "search_first_name": "str e.g. id:3c5ddd09",
+          "search_full_name": "str e.g. id:efe0b6c0",
+          "search_last_name": "str e.g. id:55c6ae61",
+          "search_rank": "int e.g. 9999999",
+          "sport": "str e.g. 'nfl'",
+          "sportradar_id": "str e.g. id:e045d0af",
+          "stats_id": "int e.g. 887183",
+          "status": "str e.g. id:92340695",
+          "swish_id": "None",
+          "team": "None",
+          "team_abbr": "None",
+          "team_changed_at": "None",
+          "weight": "str e.g. '245'",
+          "yahoo_id": "int e.g. 32262",
+          "years_exp": "int e.g. 3"
+        },
+        "FORM_field_types_across_400": {
+          "active": [
+            "bool"
+          ],
+          "age": [
+            "NoneType",
+            "int"
+          ],
+          "birth_city": [
+            "NoneType"
+          ],
+          "birth_country": [
+            "NoneType"
+          ],
+          "birth_date": [
+            "NoneType",
+            "str"
+          ],
+          "birth_state": [
+            "NoneType"
+          ],
+          "college": [
+            "NoneType",
+            "str"
+          ],
+          "competitions": [
+            "list"
+          ],
+          "depth_chart_order": [
+            "NoneType",
+            "int"
+          ],
+          "depth_chart_position": [
+            "NoneType",
+            "str"
+          ],
+          "espn_id": [
+            "NoneType",
+            "int"
+          ],
+          "fantasy_data_id": [
+            "NoneType",
+            "int"
+          ],
+          "fantasy_positions": [
+            "NoneType",
+            "list"
+          ],
+          "first_name": [
+            "str"
+          ],
+          "full_name": [
+            "str"
+          ],
+          "gsis_id": [
+            "NoneType",
+            "str"
+          ],
+          "hashtag": [
+            "str"
+          ],
+          "height": [
+            "str"
+          ],
+          "high_school": [
+            "NoneType",
+            "str"
+          ],
+          "injury_body_part": [
+            "NoneType",
+            "str"
+          ],
+          "injury_notes": [
+            "NoneType",
+            "str"
+          ],
+          "injury_start_date": [
+            "NoneType"
+          ],
+          "injury_status": [
+            "NoneType",
+            "str"
+          ],
+          "kalshi_id": [
+            "NoneType",
+            "str"
+          ],
+          "last_name": [
+            "str"
+          ],
+          "metadata": [
+            "NoneType",
+            "dict"
+          ],
+          "news_updated": [
+            "NoneType",
+            "int"
+          ],
+          "number": [
+            "NoneType",
+            "int"
+          ],
+          "oddsjam_id": [
+            "NoneType",
+            "str"
+          ],
+          "opta_id": [
+            "NoneType"
+          ],
+          "pandascore_id": [
+            "NoneType"
+          ],
+          "player_id": [
+            "str"
+          ],
+          "player_shard": [
+            "str"
+          ],
+          "position": [
+            "NoneType",
+            "str"
+          ],
+          "practice_description": [
+            "NoneType"
+          ],
+          "practice_participation": [
+            "NoneType"
+          ],
+          "rotowire_id": [
+            "NoneType",
+            "int"
+          ],
+          "rotoworld_id": [
+            "NoneType",
+            "int"
+          ],
+          "search_first_name": [
+            "str"
+          ],
+          "search_full_name": [
+            "str"
+          ],
+          "search_last_name": [
+            "str"
+          ],
+          "search_rank": [
+            "NoneType",
+            "int"
+          ],
+          "sport": [
+            "str"
+          ],
+          "sportradar_id": [
+            "NoneType",
+            "str"
+          ],
+          "stats_id": [
+            "NoneType",
+            "int"
+          ],
+          "status": [
+            "str"
+          ],
+          "swish_id": [
+            "NoneType",
+            "int"
+          ],
+          "team": [
+            "NoneType",
+            "str"
+          ],
+          "team_abbr": [
+            "NoneType"
+          ],
+          "team_changed_at": [
+            "NoneType"
+          ],
+          "weight": [
+            "str"
+          ],
+          "yahoo_id": [
+            "NoneType",
+            "int"
+          ],
+          "years_exp": [
+            "NoneType",
+            "int"
+          ]
+        },
+        "sample_offensive_row": [
+          "active",
+          "age",
+          "birth_city",
+          "birth_country",
+          "birth_date",
+          "birth_state",
+          "college",
+          "competitions",
+          "depth_chart_order",
+          "depth_chart_position",
+          "espn_id",
+          "fantasy_data_id",
+          "fantasy_positions",
+          "first_name",
+          "full_name",
+          "gsis_id",
+          "hashtag",
+          "height",
+          "high_school",
+          "injury_body_part",
+          "injury_notes",
+          "injury_start_date",
+          "injury_status",
+          "kalshi_id",
+          "last_name",
+          "metadata",
+          "news_updated",
+          "number",
+          "oddsjam_id",
+          "opta_id",
+          "pandascore_id",
+          "player_id",
+          "player_shard",
+          "position",
+          "practice_description",
+          "practice_participation",
+          "rotowire_id",
+          "rotoworld_id",
+          "search_first_name",
+          "search_full_name",
+          "search_last_name",
+          "search_rank",
+          "sport",
+          "sportradar_id",
+          "stats_id",
+          "status",
+          "swish_id",
+          "team",
+          "team_abbr",
+          "team_changed_at",
+          "weight",
+          "yahoo_id",
+          "years_exp"
+        ]
+      }
+    },
+    "weekly_projections": {
+      "ok": true,
+      "result": {
+        "season": "2026",
+        "week": 1,
+        "players_with_a_projection": 9419,
+        "players_by_position": {
+          "C": 159,
+          "CB": 772,
+          "DB": 854,
+          "DE": 542,
+          "DEF": 32,
+          "DL": 303,
+          "DT": 526,
+          "FB": 71,
+          "FS": 60,
+          "G": 286,
+          "ILB": 64,
+          "K": 154,
+          "K/P": 1,
+          "LB": 959,
+          "LS": 110,
+          "NT": 47,
+          "OG": 52,
+          "OL": 590,
+          "OLB": 123,
+          "OT": 239,
+          "P": 127,
+          "QB": 355,
+          "RB": 681,
+          "S": 23,
+          "SS": 70,
+          "T": 179,
+          "TE": 644,
+          "UNKNOWN": 32,
+          "WR": 1364
+        },
+        "stat_categories_seen": [
+          "adp_dd_ppr",
+          "blk_kick",
+          "bonus_rec_rb",
+          "bonus_rec_te",
+          "bonus_rec_wr",
+          "bonus_rush_td_qb",
+          "cmp_pct",
+          "def_fum_td",
+          "def_kr_td",
+          "def_kr_yd",
+          "def_pr_td",
+          "def_pr_yd",
+          "def_td",
+          "ff",
+          "fga",
+          "fgm",
+          "fgm_0_19",
+          "fgm_20_29",
+          "fgm_30_39",
+          "fgm_40_49",
+          "fgm_yds",
+          "fgmiss_30_39",
+          "fgmiss_40_49",
+          "fum",
+          "fum_lost",
+          "fum_rec",
+          "gp",
+          "idp_blk_kick",
+          "idp_ff",
+          "idp_fum_rec",
+          "idp_int",
+          "idp_int_ret_yd",
+          "idp_pass_def",
+          "idp_qb_hit",
+          "idp_sack",
+          "idp_sack_yd",
+          "idp_safe",
+          "idp_tkl",
+          "idp_tkl_ast",
+          "idp_tkl_loss",
+          "idp_tkl_solo",
+          "int",
+          "pass_2pt",
+          "pass_att",
+          "pass_cmp",
+          "pass_cmp_40p",
+          "pass_fd",
+          "pass_inc",
+          "pass_int",
+          "pass_int_td",
+          "pass_sack",
+          "pass_td",
+          "pass_yd",
+          "pos_adp_dd_ppr",
+          "pr",
+          "pr_td",
+          "pr_yd",
+          "pts_allow",
+          "pts_allow_14_20",
+          "pts_allow_21_27",
+          "pts_allow_28_34",
+          "pts_half_ppr",
+          "pts_ppr",
+          "pts_std",
+          "rec",
+          "rec_0_4",
+          "rec_10_19",
+          "rec_20_29",
+          "rec_2pt",
+          "rec_30_39",
+          "rec_40p",
+          "rec_5_9",
+          "rec_fd",
+          "rec_td",
+          "rec_tgt",
+          "rec_yd",
+          "rush_2pt",
+          "rush_40p",
+          "rush_att",
+          "rush_fd",
+          "rush_td",
+          "rush_yd",
+          "sack",
+          "safe",
+          "st_td",
+          "tkl_loss",
+          "xpa",
+          "xpm",
+          "xpmiss",
+          "yds_allow",
+          "yds_allow_300_349",
+          "yds_allow_350_399"
+        ],
+        "category_frequency_top40": {
+          "adp_dd_ppr": 9419,
+          "gp": 891,
+          "pos_adp_dd_ppr": 891,
+          "pts_half_ppr": 866,
+          "pts_ppr": 866,
+          "pts_std": 866,
+          "idp_tkl": 426,
+          "idp_tkl_ast": 426,
+          "idp_tkl_solo": 426,
+          "def_fum_td": 415,
+          "idp_tkl_loss": 406,
+          "fum": 393,
+          "fum_lost": 393,
+          "idp_pass_def": 375,
+          "rec": 365,
+          "rec_0_4": 365,
+          "rec_10_19": 365,
+          "rec_20_29": 365,
+          "rec_30_39": 365,
+          "rec_40p": 365,
+          "rec_5_9": 365,
+          "rec_fd": 365,
+          "rec_td": 365,
+          "rec_tgt": 365,
+          "rec_yd": 365,
+          "rec_2pt": 360,
+          "idp_qb_hit": 329,
+          "idp_sack": 298,
+          "idp_sack_yd": 281,
+          "rush_2pt": 269,
+          "rush_40p": 269,
+          "rush_att": 264,
+          "rush_fd": 264,
+          "rush_td": 264,
+          "rush_yd": 264,
+          "idp_ff": 221,
+          "idp_int": 183,
+          "bonus_rec_wr": 163,
+          "def_pr_yd": 158,
+          "idp_fum_rec": 151
+        },
+        "FORM_one_projection_record": {
+          "adp_dd_ppr": "float e.g. 999.0",
+          "def_pr_td": "float e.g. 0.05",
+          "def_pr_yd": "float e.g. 4.21",
+          "gp": "float e.g. 1.0",
+          "idp_int": "float e.g. 0.11",
+          "idp_int_ret_yd": "float e.g. 4.21",
+          "idp_pass_def": "float e.g. 0.65",
+          "idp_qb_hit": "float e.g. 0.05",
+          "idp_tkl": "float e.g. 2.97",
+          "idp_tkl_ast": "float e.g. 0.49",
+          "idp_tkl_loss": "float e.g. 0.05",
+          "idp_tkl_solo": "float e.g. 2.49",
+          "pass_int_td": "float e.g. 0.05",
+          "pos_adp_dd_ppr": "float e.g. 999.0",
+          "pts_half_ppr": "float e.g. 0.22",
+          "pts_ppr": "float e.g. 0.22",
+          "pts_std": "float e.g. 0.22"
+        },
+        "FORM_stat_types_across_400": {
+          "adp_dd_ppr": [
+            "float"
+          ],
+          "blk_kick": [
+            "float"
+          ],
+          "bonus_rec_rb": [
+            "float"
+          ],
+          "bonus_rec_te": [
+            "float"
+          ],
+          "bonus_rec_wr": [
+            "float"
+          ],
+          "bonus_rush_td_qb": [
+            "float"
+          ],
+          "cmp_pct": [
+            "float"
+          ],
+          "def_fum_td": [
+            "float"
+          ],
+          "def_kr_td": [
+            "float"
+          ],
+          "def_kr_yd": [
+            "float"
+          ],
+          "def_pr_td": [
+            "float"
+          ],
+          "def_pr_yd": [
+            "float"
+          ],
+          "def_td": [
+            "float"
+          ],
+          "ff": [
+            "float"
+          ],
+          "fga": [
+            "float"
+          ],
+          "fgm": [
+            "float"
+          ],
+          "fgm_0_19": [
+            "float"
+          ],
+          "fgm_20_29": [
+            "float"
+          ],
+          "fgm_30_39": [
+            "float"
+          ],
+          "fgm_40_49": [
+            "float"
+          ],
+          "fgm_yds": [
+            "float"
+          ],
+          "fgmiss_30_39": [
+            "float"
+          ],
+          "fgmiss_40_49": [
+            "float"
+          ],
+          "fum": [
+            "float"
+          ],
+          "fum_lost": [
+            "float"
+          ],
+          "fum_rec": [
+            "float"
+          ],
+          "gp": [
+            "float"
+          ],
+          "idp_blk_kick": [
+            "float"
+          ],
+          "idp_ff": [
+            "float"
+          ],
+          "idp_fum_rec": [
+            "float"
+          ],
+          "idp_int": [
+            "float"
+          ],
+          "idp_int_ret_yd": [
+            "float"
+          ],
+          "idp_pass_def": [
+            "float"
+          ],
+          "idp_qb_hit": [
+            "float"
+          ],
+          "idp_sack": [
+            "float"
+          ],
+          "idp_sack_yd": [
+            "float"
+          ],
+          "idp_tkl": [
+            "float"
+          ],
+          "idp_tkl_ast": [
+            "float"
+          ],
+          "idp_tkl_loss": [
+            "float"
+          ],
+          "idp_tkl_solo": [
+            "float"
+          ],
+          "int": [
+            "float"
+          ],
+          "pass_2pt": [
+            "float"
+          ],
+          "pass_att": [
+            "float"
+          ],
+          "pass_cmp": [
+            "float"
+          ],
+          "pass_cmp_40p": [
+            "float"
+          ],
+          "pass_fd": [
+            "float"
+          ],
+          "pass_inc": [
+            "float"
+          ],
+          "pass_int": [
+            "float"
+          ],
+          "pass_int_td": [
+            "float"
+          ],
+          "pass_sack": [
+            "float"
+          ],
+          "pass_td": [
+            "float"
+          ],
+          "pass_yd": [
+            "float"
+          ],
+          "pos_adp_dd_ppr": [
+            "float"
+          ],
+          "pr": [
+            "float"
+          ],
+          "pr_td": [
+            "float"
+          ],
+          "pr_yd": [
+            "float"
+          ],
+          "pts_allow": [
+            "float"
+          ],
+          "pts_allow_14_20": [
+            "float"
+          ],
+          "pts_allow_21_27": [
+            "float"
+          ],
+          "pts_allow_28_34": [
+            "float"
+          ],
+          "pts_half_ppr": [
+            "float"
+          ],
+          "pts_ppr": [
+            "float"
+          ],
+          "pts_std": [
+            "float"
+          ],
+          "rec": [
+            "float"
+          ],
+          "rec_0_4": [
+            "float"
+          ],
+          "rec_10_19": [
+            "float"
+          ],
+          "rec_20_29": [
+            "float"
+          ],
+          "rec_2pt": [
+            "float"
+          ],
+          "rec_30_39": [
+            "float"
+          ],
+          "rec_40p": [
+            "float"
+          ],
+          "rec_5_9": [
+            "float"
+          ],
+          "rec_fd": [
+            "float"
+          ],
+          "rec_td": [
+            "float"
+          ],
+          "rec_tgt": [
+            "float"
+          ],
+          "rec_yd": [
+            "float"
+          ],
+          "rush_2pt": [
+            "float"
+          ],
+          "rush_40p": [
+            "float"
+          ],
+          "rush_att": [
+            "float"
+          ],
+          "rush_fd": [
+            "float"
+          ],
+          "rush_td": [
+            "float"
+          ],
+          "rush_yd": [
+            "float"
+          ],
+          "sack": [
+            "float"
+          ],
+          "safe": [
+            "float"
+          ],
+          "st_td": [
+            "float"
+          ],
+          "tkl_loss": [
+            "float"
+          ],
+          "xpa": [
+            "float"
+          ],
+          "xpm": [
+            "float"
+          ],
+          "xpmiss": [
+            "float"
+          ],
+          "yds_allow": [
+            "float"
+          ],
+          "yds_allow_300_349": [
+            "float"
+          ],
+          "yds_allow_350_399": [
+            "float"
+          ]
+        },
+        "offence_has_per_category_stats": true
+      }
+    },
+    "league_config": {
+      "ok": true,
+      "result": {
+        "league": "id:c8e5cb31",
+        "name": "id:214f4039",
+        "num_teams": 12,
+        "roster_positions": [
+          "QB",
+          "RB",
+          "RB",
+          "WR",
+          "WR",
+          "TE",
+          "FLEX",
+          "SUPER_FLEX",
+          "K",
+          "IDP_FLEX",
+          "IDP_FLEX",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN",
+          "BN"
+        ],
+        "dedicated_QB_slots": 1,
+        "SUPER_FLEX_slots": 1,
+        "outside_178_derivation": false,
+        "scoring_settings": {
+          "sack": 1.0,
+          "fgm_40_49": 4.0,
+          "pass_int": -2.0,
+          "pts_allow_0": 10.0,
+          "pass_2pt": 2.0,
+          "st_td": 6.0,
+          "rec_td": 6.0,
+          "idp_blk_kick": 3.0,
+          "fgm_30_39": 3.0,
+          "xpmiss": -1.0,
+          "rush_td": 6.0,
+          "idp_tkl": 1.0,
+          "pass_td_40p": 5.0,
+          "rec_2pt": 2.0,
+          "idp_tkl_loss": 2.0,
+          "pass_int_td": -6.0,
+          "idp_tkl_solo": 0.0,
+          "st_fum_rec": 1.0,
+          "fgmiss": -1.0,
+          "ff": 1.0,
+          "idp_int": 3.0,
+          "rec": 1.0,
+          "idp_safe": 2.0,
+          "pts_allow_14_20": 1.0,
+          "fgm_0_19": 3.0,
+          "idp_def_td": 6.0,
+          "int": 2.0,
+          "def_st_fum_rec": 1.0,
+          "fum_lost": -2.0,
+          "pts_allow_1_6": 7.0,
+          "idp_sack": 3.0,
+          "fgm_20_29": 3.0,
+          "pts_allow_21_27": 0.0,
+          "xpm": 1.0,
+          "pass_sack": -2.0,
+          "rec_40p": 3.0,
+          "pass_cmp": 0.1,
+          "rush_2pt": 2.0,
+          "fum_rec": 2.0,
+          "idp_pass_def": 0.0,
+          "def_st_td": 6.0,
+          "pass_cmp_40p": 3.0,
+          "fgm_50p": 5.0,
+          "def_td": 6.0,
+          "idp_fum_rec": 3.0,
+          "rec_td_40p": 5.0,
+          "safe": 2.0,
+          "pass_yd": 0.04,
+          "blk_kick": 2.0,
+          "pass_td": 6.0,
+          "idp_qb_hit": 0.0,
+          "rush_yd": 0.1,
+          "rush_40p": 3.0,
+          "fum": 0.0,
+          "pts_allow_28_34": -1.0,
+          "pts_allow_35p": -4.0,
+          "fum_rec_td": 6.0,
+          "rec_yd": 0.1,
+          "rush_td_40p": 5.0,
+          "def_st_ff": 1.0,
+          "pts_allow_7_13": 4.0,
+          "idp_ff": 3.0,
+          "st_ff": 1.0,
+          "idp_tkl_ast": 0.0
+        },
+        "scoring_keys_total": 64,
+        "scoring_keys_the_offline_path_reads": {
+          "rec": "bucketed to standard / half_ppr / ppr -- 2-PPR reads as 1-PPR",
+          "bonus_rec_te": "read as a BOOLEAN -- a 0.5 and a 2.0 premium are the same to it"
+        },
+        "scoring_keys_it_CANNOT_honour": [
+          "blk_kick",
+          "def_st_ff",
+          "def_st_fum_rec",
+          "def_st_td",
+          "def_td",
+          "ff",
+          "fgm_0_19",
+          "fgm_20_29",
+          "fgm_30_39",
+          "fgm_40_49",
+          "fgm_50p",
+          "fgmiss",
+          "fum_lost",
+          "fum_rec",
+          "fum_rec_td",
+          "idp_blk_kick",
+          "idp_def_td",
+          "idp_ff",
+          "idp_fum_rec",
+          "idp_int",
+          "idp_sack",
+          "idp_safe",
+          "idp_tkl",
+          "idp_tkl_loss",
+          "int",
+          "pass_2pt",
+          "pass_cmp",
+          "pass_cmp_40p",
+          "pass_int",
+          "pass_int_td",
+          "pass_sack",
+          "pass_td",
+          "pass_td_40p",
+          "pass_yd",
+          "pts_allow_0",
+          "pts_allow_14_20",
+          "pts_allow_1_6",
+          "pts_allow_28_34",
+          "pts_allow_35p",
+          "pts_allow_7_13",
+          "rec_2pt",
+          "rec_40p",
+          "rec_td",
+          "rec_td_40p",
+          "rec_yd",
+          "rush_2pt",
+          "rush_40p",
+          "rush_td",
+          "rush_td_40p",
+          "rush_yd",
+          "sack",
+          "safe",
+          "st_ff",
+          "st_fum_rec",
+          "st_td",
+          "xpm",
+          "xpmiss"
+        ],
+        "unmodelled_count": 57,
+        "FORM_scoring_settings_types": {
+          "blk_kick": "float",
+          "def_st_ff": "float",
+          "def_st_fum_rec": "float",
+          "def_st_td": "float",
+          "def_td": "float",
+          "ff": "float",
+          "fgm_0_19": "float",
+          "fgm_20_29": "float",
+          "fgm_30_39": "float",
+          "fgm_40_49": "float",
+          "fgm_50p": "float",
+          "fgmiss": "float",
+          "fum": "float",
+          "fum_lost": "float",
+          "fum_rec": "float",
+          "fum_rec_td": "float",
+          "idp_blk_kick": "float",
+          "idp_def_td": "float",
+          "idp_ff": "float",
+          "idp_fum_rec": "float",
+          "idp_int": "float",
+          "idp_pass_def": "float",
+          "idp_qb_hit": "float",
+          "idp_sack": "float",
+          "idp_safe": "float",
+          "idp_tkl": "float",
+          "idp_tkl_ast": "float",
+          "idp_tkl_loss": "float",
+          "idp_tkl_solo": "float",
+          "int": "float",
+          "pass_2pt": "float",
+          "pass_cmp": "float",
+          "pass_cmp_40p": "float",
+          "pass_int": "float",
+          "pass_int_td": "float",
+          "pass_sack": "float",
+          "pass_td": "float",
+          "pass_td_40p": "float",
+          "pass_yd": "float",
+          "pts_allow_0": "float",
+          "pts_allow_14_20": "float",
+          "pts_allow_1_6": "float",
+          "pts_allow_21_27": "float",
+          "pts_allow_28_34": "float",
+          "pts_allow_35p": "float",
+          "pts_allow_7_13": "float",
+          "rec": "float",
+          "rec_2pt": "float",
+          "rec_40p": "float",
+          "rec_td": "float",
+          "rec_td_40p": "float",
+          "rec_yd": "float",
+          "rush_2pt": "float",
+          "rush_40p": "float",
+          "rush_td": "float",
+          "rush_td_40p": "float",
+          "rush_yd": "float",
+          "sack": "float",
+          "safe": "float",
+          "st_ff": "float",
+          "st_fum_rec": "float",
+          "st_td": "float",
+          "xpm": "float",
+          "xpmiss": "float"
+        },
+        "FORM_league_record": {
+          "avatar": "None",
+          "bracket_id": "None",
+          "bracket_overrides_id": "None",
+          "company_id": "None",
+          "draft_id": "str e.g. '1312479848278528000'",
+          "group_id": "None",
+          "last_author_avatar": "None",
+          "last_author_display_name": "str e.g. 'sys'",
+          "last_author_id": "str e.g. '166666666666666666'",
+          "last_author_is_bot": "bool e.g. True",
+          "last_message_attachment": "None",
+          "last_message_id": "str e.g. '1402711493505490944'",
+          "last_message_text_map": "None",
+          "last_message_time": "int e.g. 1788794990472",
+          "last_pinned_message_id": "None",
+          "last_read_id": "None",
+          "league_id": "str e.g. '1312479848274333696'",
+          "loser_bracket_id": "None",
+          "loser_bracket_overrides_id": "None",
+          "metadata": {
+            "auto_continue": "str e.g. 'on'",
+            "copy_from_league_id": "str e.g. '922967726434418688'",
+            "keeper_deadline": "str e.g. '0'",
+            "latest_league_winner_roster_id": "str e.g. '9'"
+          },
+          "name": "str e.g. id:214f4039",
+          "previous_league_id": "str e.g. '1202828800077860864'",
+          "roster_positions": [
+            "list[25] of",
+            "str e.g. 'QB'"
+          ],
+          "season": "str e.g. '2026'",
+          "season_type": "str e.g. id:667937c3",
+          "settings": {
+            "bench_lock": "int e.g. 1",
+            "best_ball": "int e.g. 0",
+            "capacity_override": "int e.g. 0",
+            "commissioner_direct_invite": "int e.g. 0",
+            "daily_waivers": "int e.g. 0",
+            "daily_waivers_days": "int e.g. 5461",
+            "daily_waivers_hour": "int e.g. 0",
+            "daily_waivers_last_ran": "int e.g. 2",
+            "disable_adds": "int e.g. 0",
+            "disable_trades": "int e.g. 0",
+            "draft_rounds": "int e.g. 5",
+            "faab_suggestions": "int e.g. 0",
+            "league_average_match": "int e.g. 0",
+            "leg": "int e.g. 1",
+            "max_keepers": "int e.g. 1",
+            "max_subs": "int e.g. 0",
+            "num_teams": "int e.g. 12",
+            "offseason_adds": "int e.g. 0",
+            "pick_trading": "int e.g. 1",
+            "playoff_round_type": "int e.g. 0",
+            "playoff_seed_type": "int e.g. 1",
+            "playoff_teams": "int e.g. 8",
+            "playoff_type": "int e.g. 0",
+            "playoff_week_start": "int e.g. 15",
+            "reserve_allow_cov": "int e.g. 1",
+            "reserve_allow_dnr": "int e.g. 0",
+            "reserve_allow_doubtful": "int e.g. 0",
+            "reserve_allow_na": "int e.g. 0",
+            "reserve_allow_out": "int e.g. 1",
+            "reserve_allow_sus": "int e.g. 0",
+            "reserve_slots": "int e.g. 5",
+            "start_week": "int e.g. 1",
+            "sub_lock_if_starter_active": "int e.g. 0",
+            "sub_start_time_eligibility": "int e.g. 0",
+            "taxi_allow_vets": "int e.g. 1",
+            "taxi_deadline": "int e.g. 0",
+            "taxi_slots": "int e.g. 5",
+            "taxi_years": "int e.g. 2",
+            "trade_deadline": "int e.g. 11",
+            "trade_review_days": "int e.g. 0",
+            "type": "int e.g. 2",
+            "veto_auto_poll": "int e.g. 0",
+            "veto_show_votes": "int e.g. 0",
+            "veto_votes_needed": "int e.g. 6",
+            "waiver_budget": "int e.g. 100",
+            "waiver_clear_days": "int e.g. 2",
+            "waiver_day_of_week": "int e.g. 2",
+            "waiver_type": "int e.g. 0"
+          },
+          "shard": "int e.g. 507",
+          "sport": "str e.g. 'nfl'",
+          "status": "str e.g. id:02426562",
+          "total_rosters": "int e.g. 12"
+        }
+      }
+    },
+    "league_users": {
+      "ok": true,
+      "result": {
+        "users_in_league": 13,
+        "users_with_a_profile_avatar": 13,
+        "users_with_NO_avatar_set": 0,
+        "users_with_a_custom_team_avatar": 8,
+        "FORM_user_record": {
+          "avatar": "str e.g. id:85c4d86d",
+          "display_name": "str e.g. id:0033aacc",
+          "is_bot": "bool e.g. False",
+          "is_owner": "bool e.g. False",
+          "league_id": "str e.g. '1312479848274333696'",
+          "metadata": {
+            "allow_pn": "str e.g. 'on'",
+            "mention_pn": "str e.g. 'on'",
+            "team_name": "str e.g. id:c7fae7e0"
+          },
+          "settings": "None",
+          "user_id": "str e.g. '383423591334789120'"
+        },
+        "fields_seen": {
+          "avatar": 13,
+          "display_name": 13,
+          "is_bot": 13,
+          "is_owner": 13,
+          "league_id": 13,
+          "metadata": 13,
+          "metadata.allow_pn": 13,
+          "metadata.allow_sms": 5,
+          "metadata.archived": 6,
+          "metadata.avatar": 8,
+          "metadata.mention_pn": 13,
+          "metadata.show_mascots": 2,
+          "metadata.team_name": 11,
+          "settings": 13,
+          "user_id": 13
+        },
+        "avatar_url_probe": [
+          {
+            "kind": "full",
+            "status": 200,
+            "content_type": "image/png",
+            "bytes": "8673"
+          },
+          {
+            "kind": "thumb",
+            "status": 200,
+            "content_type": "image/png",
+            "bytes": "1356"
+          },
+          {
+            "kind": "full",
+            "status": 200,
+            "content_type": "image/png",
+            "bytes": "56153"
+          },
+          {
+            "kind": "thumb",
+            "status": 200,
+            "content_type": "image/png",
+            "bytes": "9492"
+          },
+          {
+            "kind": "full",
+            "status": 200,
+            "content_type": "image/png",
+            "bytes": "22966"
+          },
+          {
+            "kind": "thumb",
+            "status": 200,
+            "content_type": "image/png",
+            "bytes": "2368"
+          }
+        ],
+        "player_headshots": {
+          "checked": 4,
+          "headshot_returned_200": 4,
+          "no_headshot_for_that_player": 0,
+          "fetch_errored": 0,
+          "results": [
+            {
+              "position": "TE",
+              "url_pattern": "https://sleepercdn.com/content/nfl/players/10210.jpg",
+              "status": 200,
+              "content_type": "image/jpeg",
+              "bytes": "56202"
+            },
+            {
+              "position": "TE",
+              "url_pattern": "https://sleepercdn.com/content/nfl/players/10212.jpg",
+              "status": 200,
+              "content_type": "image/jpeg",
+              "bytes": "44666"
+            },
+            {
+              "position": "WR",
+              "url_pattern": "https://sleepercdn.com/content/nfl/players/10213.jpg",
+              "status": 200,
+              "content_type": "image/jpeg",
+              "bytes": "26835"
+            },
+            {
+              "position": "TE",
+              "url_pattern": "https://sleepercdn.com/content/nfl/players/10214.jpg",
+              "status": 200,
+              "content_type": "image/jpeg",
+              "bytes": "62213"
+            }
+          ],
+          "verdict": "player headshots ARE available at this pattern"
+        },
+        "this_app_reads_only": [
+          "display_name",
+          "metadata.team_name"
+        ],
+        "arrives_but_UNUSED": [
+          "avatar",
+          "is_bot",
+          "is_owner",
+          "league_id",
+          "metadata",
+          "metadata.allow_pn",
+          "metadata.allow_sms",
+          "metadata.archived",
+          "metadata.avatar",
+          "metadata.mention_pn",
+          "metadata.show_mascots",
+          "settings",
+          "user_id"
+        ]
+      }
+    },
+    "injury_already_priced": {
+      "ok": true,
+      "result": {
+        "season": "2026",
+        "week": 1,
+        "TIMING_CAVEAT": "weekly zeroing is reported to happen ~1 day before kickoff; a null result mid-week means MEASURED TOO EARLY, not no effect",
+        "by_injury_status": {
+          "(none set)": {
+            "players": 2798,
+            "weekly_points": {
+              "n": 2798,
+              "median": 0.0,
+              "mean": 0.879,
+              "zero_or_less": 2469
+            },
+            "proj3yr_over_season_ratio": {
+              "n": 289,
+              "median": 2.858,
+              "mean": 3.654,
+              "zero_or_less": 0
+            }
+          },
+          "DNR": {
+            "players": 2,
+            "weekly_points": {
+              "n": 2,
+              "median": 0.0,
+              "mean": 0.0,
+              "zero_or_less": 2
+            },
+            "proj3yr_over_season_ratio": {
+              "n": 1,
+              "median": 3.6,
+              "mean": 3.6,
+              "zero_or_less": 0
+            }
+          },
+          "IR": {
+            "players": 63,
+            "weekly_points": {
+              "n": 63,
+              "median": 0.0,
+              "mean": 0.0,
+              "zero_or_less": 63
+            },
+            "proj3yr_over_season_ratio": {
+              "n": 9,
+              "median": 2.997,
+              "mean": 3.698,
+              "zero_or_less": 0
+            }
+          },
+          "NA": {
+            "players": 14,
+            "weekly_points": {
+              "n": 14,
+              "median": 0.0,
+              "mean": 0.0,
+              "zero_or_less": 14
+            },
+            "proj3yr_over_season_ratio": {
+              "n": 1,
+              "median": 2.079,
+              "mean": 2.079,
+              "zero_or_less": 0
+            }
+          },
+          "PUP": {
+            "players": 7,
+            "weekly_points": {
+              "n": 7,
+              "median": 0.0,
+              "mean": 0.0,
+              "zero_or_less": 7
+            },
+            "proj3yr_over_season_ratio": {
+              "n": 1,
+              "median": 4.053,
+              "mean": 4.053,
+              "zero_or_less": 0
+            }
+          },
+          "Questionable": {
+            "players": 158,
+            "weekly_points": {
+              "n": 158,
+              "median": 0.0,
+              "mean": 3.643,
+              "zero_or_less": 96
+            },
+            "proj3yr_over_season_ratio": {
+              "n": 56,
+              "median": 2.903,
+              "mean": 3.278,
+              "zero_or_less": 0
+            }
+          },
+          "Sus": {
+            "players": 2,
+            "weekly_points": {
+              "n": 2,
+              "median": 0.0,
+              "mean": 0.0,
+              "zero_or_less": 2
+            },
+            "proj3yr_over_season_ratio": null
+          }
+        },
+        "baseline_join": "committed baseline joined by _name_key (745 rows)"
+      }
+    },
+    "scoring_effect": {
+      "ok": true,
+      "result": {
+        "scoreable_offensive_players": 391,
+        "players_whose_points_change": 390,
+        "pct_changed": 99.7,
+        "largest_deltas_top10": [
+          {
+            "pos": "QB",
+            "full": 22.1,
+            "two_keys_only": 0.0,
+            "delta": 22.1
+          },
+          {
+            "pos": "QB",
+            "full": 22.1,
+            "two_keys_only": 0.0,
+            "delta": 22.1
+          },
+          {
+            "pos": "QB",
+            "full": 21.74,
+            "two_keys_only": 0.0,
+            "delta": 21.74
+          },
+          {
+            "pos": "RB",
+            "full": 25.59,
+            "two_keys_only": 4.6,
+            "delta": 20.99
+          },
+          {
+            "pos": "QB",
+            "full": 20.7,
+            "two_keys_only": 0.0,
+            "delta": 20.7
+          },
+          {
+            "pos": "QB",
+            "full": 20.3,
+            "two_keys_only": 0.0,
+            "delta": 20.3
+          },
+          {
+            "pos": "QB",
+            "full": 20.0,
+            "two_keys_only": 0.0,
+            "delta": 20.0
+          },
+          {
+            "pos": "QB",
+            "full": 19.85,
+            "two_keys_only": 0.0,
+            "delta": 19.85
+          },
+          {
+            "pos": "QB",
+            "full": 19.76,
+            "two_keys_only": 0.0,
+            "delta": 19.76
+          },
+          {
+            "pos": "QB",
+            "full": 19.7,
+            "two_keys_only": 0.0,
+            "delta": 19.7
+          }
+        ],
+        "reading": "this league carries scoring the offline path cannot express"
+      }
+    }
+  }
+}

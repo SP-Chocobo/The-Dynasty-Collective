@@ -1,0 +1,1614 @@
+{
+  "commit": "bfc3d47",
+  "commits_present": [
+    "bfc3d47"
+  ],
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "question": "the POSITIONAL COMPOSITION each arm drafts, with the pool's own composition alongside it so a stack cannot be misread as scarcity",
+  "seconds_this_process": 367.3,
+  "formats": [
+    {
+      "produced_at_commit": "bfc3d47",
+      "carried_forward": false,
+      "label": "12T_ppr",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "pool": {
+        "counts": {
+          "RB": 126,
+          "WR": 197,
+          "TE": 115,
+          "QB": 42,
+          "DB": 1
+        },
+        "depth": {
+          "DB": {
+            "in_pool": 1,
+            "rank_1_points": 68.4
+          },
+          "QB": {
+            "in_pool": 42,
+            "rank_1_points": 372.5,
+            "rank_12_points": 328.6,
+            "rank_24_points": 289.6,
+            "rank_36_points": 34.0
+          },
+          "RB": {
+            "in_pool": 126,
+            "rank_1_points": 413.2,
+            "rank_12_points": 274.6,
+            "rank_24_points": 227.4,
+            "rank_36_points": 163.8
+          },
+          "TE": {
+            "in_pool": 115,
+            "rank_1_points": 310.2,
+            "rank_12_points": 190.3,
+            "rank_24_points": 148.4,
+            "rank_36_points": 87.1
+          },
+          "WR": {
+            "in_pool": 197,
+            "rank_1_points": 395.7,
+            "rank_12_points": 288.4,
+            "rank_24_points": 244.7,
+            "rank_36_points": 213.7
+          }
+        }
+      },
+      "per_seat": [
+        {
+          "seat": "1",
+          "engine_picks": [
+            {
+              "round": 1,
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected_points": 411.9,
+              "best_available": "Christian McCaffrey",
+              "best_available_position": "RB",
+              "best_available_points": 413.2
+            },
+            {
+              "round": 2,
+              "player": "Brock Bowers",
+              "position": "TE",
+              "projected_points": 310.2,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 3,
+              "player": "Trey McBride",
+              "position": "TE",
+              "projected_points": 300.9,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 4,
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected_points": 260.0,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 5,
+              "player": "Tyler Warren",
+              "position": "TE",
+              "projected_points": 245.1,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 6,
+              "player": "George Kittle",
+              "position": "TE",
+              "projected_points": 224.5,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 7,
+              "player": "Kyle Pitts",
+              "position": "TE",
+              "projected_points": 216.6,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 8,
+              "player": "RJ Harvey",
+              "position": "RB",
+              "projected_points": 192.7,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 9,
+              "player": "Dalton Kincaid",
+              "position": "TE",
+              "projected_points": 174.3,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 10,
+              "player": "AJ Barner",
+              "position": "TE",
+              "projected_points": 179.5,
+              "best_available": "Quentin Johnston",
+              "best_available_position": "WR",
+              "best_available_points": 204.4
+            },
+            {
+              "round": 11,
+              "player": "Chig Okonkwo",
+              "position": "TE",
+              "projected_points": 177.6,
+              "best_available": "Quentin Johnston",
+              "best_available_position": "WR",
+              "best_available_points": 204.4
+            },
+            {
+              "round": 12,
+              "player": "Devaughn Vele",
+              "position": "WR",
+              "projected_points": 165.0,
+              "best_available": "KC Concepcion",
+              "best_available_position": "WR",
+              "best_available_points": 165.1
+            },
+            {
+              "round": 13,
+              "player": "KC Concepcion",
+              "position": "WR",
+              "projected_points": 165.1,
+              "best_available": "KC Concepcion",
+              "best_available_position": "WR",
+              "best_available_points": 165.1
+            },
+            {
+              "round": 14,
+              "player": "Michael Penix",
+              "position": "QB",
+              "projected_points": 129.0,
+              "best_available": "De'Zhaun Stribling",
+              "best_available_position": "WR",
+              "best_available_points": 134.6
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected_points": 413.2
+            },
+            {
+              "round": 2,
+              "player": "Jaxson Dart",
+              "position": "QB",
+              "projected_points": 329.0
+            },
+            {
+              "round": 3,
+              "player": "Chase Brown",
+              "position": "RB",
+              "projected_points": 316.0
+            },
+            {
+              "round": 4,
+              "player": "Terry McLaurin",
+              "position": "WR",
+              "projected_points": 261.1
+            },
+            {
+              "round": 5,
+              "player": "David Montgomery",
+              "position": "RB",
+              "projected_points": 259.9
+            },
+            {
+              "round": 6,
+              "player": "Alec Pierce",
+              "position": "WR",
+              "projected_points": 225.5
+            },
+            {
+              "round": 7,
+              "player": "Bucky Irving",
+              "position": "RB",
+              "projected_points": 223.6
+            },
+            {
+              "round": 8,
+              "player": "Dallas Goedert",
+              "position": "TE",
+              "projected_points": 183.1
+            },
+            {
+              "round": 9,
+              "player": "Patrick Mahomes",
+              "position": "QB",
+              "projected_points": 328.6
+            },
+            {
+              "round": 10,
+              "player": "Chris Godwin",
+              "position": "WR",
+              "projected_points": 206.7
+            },
+            {
+              "round": 11,
+              "player": "Quentin Johnston",
+              "position": "WR",
+              "projected_points": 204.4
+            },
+            {
+              "round": 12,
+              "player": "Jordan Mason",
+              "position": "RB",
+              "projected_points": 165.8
+            },
+            {
+              "round": 13,
+              "player": "Jacory Croskey-Merritt",
+              "position": "RB",
+              "projected_points": 163.8
+            },
+            {
+              "round": 14,
+              "player": "Rashod Bateman",
+              "position": "WR",
+              "projected_points": 134.8
+            }
+          ],
+          "engine_composition": {
+            "RB": 3,
+            "TE": 8,
+            "WR": 2,
+            "QB": 1
+          },
+          "control_composition": {
+            "RB": 6,
+            "QB": 2,
+            "WR": 5,
+            "TE": 1
+          },
+          "board_agreement": {
+            "round": 5,
+            "snapshot_top": "Tyler Warren",
+            "board_top": "Tyler Warren",
+            "agree": true
+          }
+        },
+        {
+          "seat": "6",
+          "engine_picks": [
+            {
+              "round": 1,
+              "player": "Jonathan Taylor",
+              "position": "RB",
+              "projected_points": 355.9,
+              "best_available": "Amon-Ra St. Brown",
+              "best_available_position": "WR",
+              "best_available_points": 375.0
+            },
+            {
+              "round": 2,
+              "player": "Brock Bowers",
+              "position": "TE",
+              "projected_points": 310.2,
+              "best_available": "Caleb Williams",
+              "best_available_position": "QB",
+              "best_available_points": 341.3
+            },
+            {
+              "round": 3,
+              "player": "Jeremiyah Love",
+              "position": "RB",
+              "projected_points": 288.5,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 4,
+              "player": "Colston Loveland",
+              "position": "TE",
+              "projected_points": 265.2,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 5,
+              "player": "Tyler Warren",
+              "position": "TE",
+              "projected_points": 245.1,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 6,
+              "player": "George Kittle",
+              "position": "TE",
+              "projected_points": 224.5,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 7,
+              "player": "TreVeyon Henderson",
+              "position": "RB",
+              "projected_points": 214.6,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 8,
+              "player": "Isaiah Likely",
+              "position": "TE",
+              "projected_points": 184.7,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 9,
+              "player": "Dalton Kincaid",
+              "position": "TE",
+              "projected_points": 174.3,
+              "best_available": "Trevor Lawrence",
+              "best_available_position": "QB",
+              "best_available_points": 308.1
+            },
+            {
+              "round": 10,
+              "player": "AJ Barner",
+              "position": "TE",
+              "projected_points": 179.5,
+              "best_available": "Jacoby Brissett",
+              "best_available_position": "QB",
+              "best_available_points": 252.3
+            },
+            {
+              "round": 11,
+              "player": "Chig Okonkwo",
+              "position": "TE",
+              "projected_points": 177.6,
+              "best_available": "Deebo Samuel",
+              "best_available_position": "WR",
+              "best_available_points": 197.8
+            },
+            {
+              "round": 12,
+              "player": "Rashid Shaheed",
+              "position": "WR",
+              "projected_points": 170.2,
+              "best_available": "Hunter Henry",
+              "best_available_position": "TE",
+              "best_available_points": 172.7
+            },
+            {
+              "round": 13,
+              "player": "Michael Penix",
+              "position": "QB",
+              "projected_points": 129.0,
+              "best_available": "Brenton Strange",
+              "best_available_position": "TE",
+              "best_available_points": 157.8
+            },
+            {
+              "round": 14,
+              "player": "De'Zhaun Stribling",
+              "position": "WR",
+              "projected_points": 134.6,
+              "best_available": "Cade Otton",
+              "best_available_position": "TE",
+              "best_available_points": 141.3
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "player": "Amon-Ra St. Brown",
+              "position": "WR",
+              "projected_points": 375.0
+            },
+            {
+              "round": 2,
+              "player": "Dak Prescott",
+              "position": "QB",
+              "projected_points": 344.5
+            },
+            {
+              "round": 3,
+              "player": "Chris Olave",
+              "position": "WR",
+              "projected_points": 298.3
+            },
+            {
+              "round": 4,
+              "player": "Derrick Henry",
+              "position": "RB",
+              "projected_points": 274.1
+            },
+            {
+              "round": 5,
+              "player": "Jayden Reed",
+              "position": "WR",
+              "projected_points": 248.2
+            },
+            {
+              "round": 6,
+              "player": "Sam LaPorta",
+              "position": "TE",
+              "projected_points": 230.8
+            },
+            {
+              "round": 7,
+              "player": "Parker Washington",
+              "position": "WR",
+              "projected_points": 215.1
+            },
+            {
+              "round": 8,
+              "player": "Bhayshul Tuten",
+              "position": "RB",
+              "projected_points": 201.4
+            },
+            {
+              "round": 9,
+              "player": "Trevor Lawrence",
+              "position": "QB",
+              "projected_points": 308.1
+            },
+            {
+              "round": 10,
+              "player": "Cam Ward",
+              "position": "QB",
+              "projected_points": 256.5
+            },
+            {
+              "round": 11,
+              "player": "Deebo Samuel",
+              "position": "WR",
+              "projected_points": 197.8
+            },
+            {
+              "round": 12,
+              "player": "Jayden Higgins",
+              "position": "WR",
+              "projected_points": 173.0
+            },
+            {
+              "round": 13,
+              "player": "Brenton Strange",
+              "position": "TE",
+              "projected_points": 157.8
+            },
+            {
+              "round": 14,
+              "player": "Chris Rodriguez",
+              "position": "RB",
+              "projected_points": 141.5
+            }
+          ],
+          "engine_composition": {
+            "RB": 3,
+            "TE": 8,
+            "WR": 2,
+            "QB": 1
+          },
+          "control_composition": {
+            "WR": 6,
+            "QB": 3,
+            "RB": 3,
+            "TE": 2
+          },
+          "board_agreement": {
+            "round": 5,
+            "snapshot_top": "Tyler Warren",
+            "board_top": "Tyler Warren",
+            "agree": true
+          }
+        },
+        {
+          "seat": "12",
+          "engine_picks": [
+            {
+              "round": 1,
+              "player": "Brock Bowers",
+              "position": "TE",
+              "projected_points": 310.2,
+              "best_available": "Brock Purdy",
+              "best_available_position": "QB",
+              "best_available_points": 352.9
+            },
+            {
+              "round": 2,
+              "player": "De'Von Achane",
+              "position": "RB",
+              "projected_points": 318.2,
+              "best_available": "Brock Purdy",
+              "best_available_position": "QB",
+              "best_available_points": 352.9
+            },
+            {
+              "round": 3,
+              "player": "Kenneth Walker",
+              "position": "RB",
+              "projected_points": 283.5,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 4,
+              "player": "Omarion Hampton",
+              "position": "RB",
+              "projected_points": 280.5,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 5,
+              "player": "Quinshon Judkins",
+              "position": "RB",
+              "projected_points": 233.2,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 6,
+              "player": "Travis Etienne",
+              "position": "RB",
+              "projected_points": 231.9,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 7,
+              "player": "Harold Fannin",
+              "position": "TE",
+              "projected_points": 201.2,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 8,
+              "player": "RJ Harvey",
+              "position": "RB",
+              "projected_points": 192.7,
+              "best_available": "Patrick Mahomes",
+              "best_available_position": "QB",
+              "best_available_points": 328.6
+            },
+            {
+              "round": 9,
+              "player": "Chuba Hubbard",
+              "position": "RB",
+              "projected_points": 185.6,
+              "best_available": "C.J. Stroud",
+              "best_available_position": "QB",
+              "best_available_points": 294.5
+            },
+            {
+              "round": 10,
+              "player": "Jadarian Price",
+              "position": "RB",
+              "projected_points": 171.0,
+              "best_available": "C.J. Stroud",
+              "best_available_position": "QB",
+              "best_available_points": 294.5
+            },
+            {
+              "round": 11,
+              "player": "Kenny Gainwell",
+              "position": "RB",
+              "projected_points": 177.0,
+              "best_available": "Dalton Schultz",
+              "best_available_position": "TE",
+              "best_available_points": 184.3
+            },
+            {
+              "round": 12,
+              "player": "Tre Tucker",
+              "position": "WR",
+              "projected_points": 180.2,
+              "best_available": "Dalton Schultz",
+              "best_available_position": "TE",
+              "best_available_points": 184.3
+            },
+            {
+              "round": 13,
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected_points": 149.1,
+              "best_available": "J.K. Dobbins",
+              "best_available_position": "RB",
+              "best_available_points": 150.0
+            },
+            {
+              "round": 14,
+              "player": "Michael Penix",
+              "position": "QB",
+              "projected_points": 129.0,
+              "best_available": "J.K. Dobbins",
+              "best_available_position": "RB",
+              "best_available_points": 150.0
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected_points": 413.2
+            },
+            {
+              "round": 2,
+              "player": "Jaxson Dart",
+              "position": "QB",
+              "projected_points": 329.0
+            },
+            {
+              "round": 3,
+              "player": "Chase Brown",
+              "position": "RB",
+              "projected_points": 316.0
+            },
+            {
+              "round": 4,
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected_points": 260.0
+            },
+            {
+              "round": 5,
+              "player": "David Montgomery",
+              "position": "RB",
+              "projected_points": 259.9
+            },
+            {
+              "round": 6,
+              "player": "George Kittle",
+              "position": "TE",
+              "projected_points": 224.5
+            },
+            {
+              "round": 7,
+              "player": "Jalen Coker",
+              "position": "WR",
+              "projected_points": 222.9
+            },
+            {
+              "round": 8,
+              "player": "Chris Godwin",
+              "position": "WR",
+              "projected_points": 206.7
+            },
+            {
+              "round": 9,
+              "player": "Patrick Mahomes",
+              "position": "QB",
+              "projected_points": 328.6
+            },
+            {
+              "round": 10,
+              "player": "Quentin Johnston",
+              "position": "WR",
+              "projected_points": 204.4
+            },
+            {
+              "round": 11,
+              "player": "Brian Thomas",
+              "position": "WR",
+              "projected_points": 201.6
+            },
+            {
+              "round": 12,
+              "player": "KC Concepcion",
+              "position": "WR",
+              "projected_points": 165.1
+            },
+            {
+              "round": 13,
+              "player": "Devaughn Vele",
+              "position": "WR",
+              "projected_points": 165.0
+            },
+            {
+              "round": 14,
+              "player": "Rashod Bateman",
+              "position": "WR",
+              "projected_points": 134.8
+            }
+          ],
+          "engine_composition": {
+            "TE": 2,
+            "RB": 9,
+            "WR": 2,
+            "QB": 1
+          },
+          "control_composition": {
+            "RB": 4,
+            "QB": 2,
+            "TE": 1,
+            "WR": 7
+          },
+          "board_agreement": {
+            "round": 5,
+            "snapshot_top": "Quinshon Judkins",
+            "board_top": "Quinshon Judkins",
+            "agree": true
+          }
+        }
+      ]
+    },
+    {
+      "produced_at_commit": "bfc3d47",
+      "carried_forward": false,
+      "label": "12T_ppr_SF",
+      "roster_positions": [
+        "QB",
+        "RB",
+        "RB",
+        "WR",
+        "WR",
+        "TE",
+        "FLEX",
+        "FLEX",
+        "SUPER_FLEX",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN",
+        "BN"
+      ],
+      "pool": {
+        "counts": {
+          "RB": 126,
+          "WR": 197,
+          "QB": 42,
+          "TE": 115,
+          "DB": 1
+        },
+        "depth": {
+          "DB": {
+            "in_pool": 1,
+            "rank_1_points": 68.4
+          },
+          "QB": {
+            "in_pool": 42,
+            "rank_1_points": 372.5,
+            "rank_12_points": 328.6,
+            "rank_24_points": 289.6,
+            "rank_36_points": 34.0
+          },
+          "RB": {
+            "in_pool": 126,
+            "rank_1_points": 413.2,
+            "rank_12_points": 274.6,
+            "rank_24_points": 227.4,
+            "rank_36_points": 163.8
+          },
+          "TE": {
+            "in_pool": 115,
+            "rank_1_points": 310.2,
+            "rank_12_points": 190.3,
+            "rank_24_points": 148.4,
+            "rank_36_points": 87.1
+          },
+          "WR": {
+            "in_pool": 197,
+            "rank_1_points": 395.7,
+            "rank_12_points": 288.4,
+            "rank_24_points": 244.7,
+            "rank_36_points": 213.7
+          }
+        }
+      },
+      "per_seat": [
+        {
+          "seat": "1",
+          "engine_picks": [
+            {
+              "round": 1,
+              "player": "Jahmyr Gibbs",
+              "position": "RB",
+              "projected_points": 411.9,
+              "best_available": "Christian McCaffrey",
+              "best_available_position": "RB",
+              "best_available_points": 413.2
+            },
+            {
+              "round": 2,
+              "player": "Brock Bowers",
+              "position": "TE",
+              "projected_points": 310.2,
+              "best_available": "James Cook",
+              "best_available_position": "RB",
+              "best_available_points": 317.9
+            },
+            {
+              "round": 3,
+              "player": "James Cook",
+              "position": "RB",
+              "projected_points": 317.9,
+              "best_available": "James Cook",
+              "best_available_position": "RB",
+              "best_available_points": 317.9
+            },
+            {
+              "round": 4,
+              "player": "Omarion Hampton",
+              "position": "RB",
+              "projected_points": 280.5,
+              "best_available": "Tyler Shough",
+              "best_available_position": "QB",
+              "best_available_points": 299.7
+            },
+            {
+              "round": 5,
+              "player": "Colston Loveland",
+              "position": "TE",
+              "projected_points": 265.2,
+              "best_available": "Tyler Shough",
+              "best_available_position": "QB",
+              "best_available_points": 299.7
+            },
+            {
+              "round": 6,
+              "player": "C.J. Stroud",
+              "position": "QB",
+              "projected_points": 294.5,
+              "best_available": "C.J. Stroud",
+              "best_available_position": "QB",
+              "best_available_points": 294.5
+            },
+            {
+              "round": 7,
+              "player": "Malik Willis",
+              "position": "QB",
+              "projected_points": 289.6,
+              "best_available": "Malik Willis",
+              "best_available_position": "QB",
+              "best_available_points": 289.6
+            },
+            {
+              "round": 8,
+              "player": "Daniel Jones",
+              "position": "QB",
+              "projected_points": 281.9,
+              "best_available": "Daniel Jones",
+              "best_available_position": "QB",
+              "best_available_points": 281.9
+            },
+            {
+              "round": 9,
+              "player": "Bryce Young",
+              "position": "QB",
+              "projected_points": 265.0,
+              "best_available": "Bryce Young",
+              "best_available_position": "QB",
+              "best_available_points": 265.0
+            },
+            {
+              "round": 10,
+              "player": "Isaiah Likely",
+              "position": "TE",
+              "projected_points": 184.7,
+              "best_available": "Courtland Sutton",
+              "best_available_position": "WR",
+              "best_available_points": 199.7
+            },
+            {
+              "round": 11,
+              "player": "Dallas Goedert",
+              "position": "TE",
+              "projected_points": 183.1,
+              "best_available": "Courtland Sutton",
+              "best_available_position": "WR",
+              "best_available_points": 199.7
+            },
+            {
+              "round": 12,
+              "player": "Devaughn Vele",
+              "position": "WR",
+              "projected_points": 165.0,
+              "best_available": "KC Concepcion",
+              "best_available_position": "WR",
+              "best_available_points": 165.1
+            },
+            {
+              "round": 13,
+              "player": "T.J. Hockenson",
+              "position": "TE",
+              "projected_points": 162.7,
+              "best_available": "KC Concepcion",
+              "best_available_position": "WR",
+              "best_available_points": 165.1
+            },
+            {
+              "round": 14,
+              "player": "Greg Dulcich",
+              "position": "TE",
+              "projected_points": 124.3,
+              "best_available": "De'Zhaun Stribling",
+              "best_available_position": "WR",
+              "best_available_points": 134.6
+            },
+            {
+              "round": 15,
+              "player": "De'Zhaun Stribling",
+              "position": "WR",
+              "projected_points": 134.6,
+              "best_available": "De'Zhaun Stribling",
+              "best_available_position": "WR",
+              "best_available_points": 134.6
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected_points": 413.2
+            },
+            {
+              "round": 2,
+              "player": "De'Von Achane",
+              "position": "RB",
+              "projected_points": 318.2
+            },
+            {
+              "round": 3,
+              "player": "Jordan Love",
+              "position": "QB",
+              "projected_points": 317.4
+            },
+            {
+              "round": 4,
+              "player": "Baker Mayfield",
+              "position": "QB",
+              "projected_points": 301.2
+            },
+            {
+              "round": 5,
+              "player": "Jaylen Waddle",
+              "position": "WR",
+              "projected_points": 278.4
+            },
+            {
+              "round": 6,
+              "player": "Ladd McConkey",
+              "position": "WR",
+              "projected_points": 244.3
+            },
+            {
+              "round": 7,
+              "player": "Malik Nabers",
+              "position": "WR",
+              "projected_points": 242.8
+            },
+            {
+              "round": 8,
+              "player": "Michael Wilson",
+              "position": "WR",
+              "projected_points": 213.7
+            },
+            {
+              "round": 9,
+              "player": "Harold Fannin",
+              "position": "TE",
+              "projected_points": 201.2
+            },
+            {
+              "round": 10,
+              "player": "Michael Pittman",
+              "position": "WR",
+              "projected_points": 200.6
+            },
+            {
+              "round": 11,
+              "player": "Courtland Sutton",
+              "position": "WR",
+              "projected_points": 199.7
+            },
+            {
+              "round": 12,
+              "player": "Jordan Mason",
+              "position": "RB",
+              "projected_points": 165.8
+            },
+            {
+              "round": 13,
+              "player": "KC Concepcion",
+              "position": "WR",
+              "projected_points": 165.1
+            },
+            {
+              "round": 14,
+              "player": "Rashod Bateman",
+              "position": "WR",
+              "projected_points": 134.8
+            },
+            {
+              "round": 15,
+              "player": "Makai Lemon",
+              "position": "WR",
+              "projected_points": 129.7
+            }
+          ],
+          "engine_composition": {
+            "RB": 3,
+            "TE": 6,
+            "QB": 4,
+            "WR": 2
+          },
+          "control_composition": {
+            "RB": 3,
+            "QB": 2,
+            "WR": 9,
+            "TE": 1
+          },
+          "board_agreement": {
+            "round": 5,
+            "snapshot_top": "Colston Loveland",
+            "board_top": "Colston Loveland",
+            "agree": true
+          }
+        },
+        {
+          "seat": "6",
+          "engine_picks": [
+            {
+              "round": 1,
+              "player": "Jonathan Taylor",
+              "position": "RB",
+              "projected_points": 355.9,
+              "best_available": "Amon-Ra St. Brown",
+              "best_available_position": "WR",
+              "best_available_points": 375.0
+            },
+            {
+              "round": 2,
+              "player": "Brock Bowers",
+              "position": "TE",
+              "projected_points": 310.2,
+              "best_available": "Jaxson Dart",
+              "best_available_position": "QB",
+              "best_available_points": 329.0
+            },
+            {
+              "round": 3,
+              "player": "Trey McBride",
+              "position": "TE",
+              "projected_points": 300.9,
+              "best_available": "Justin Herbert",
+              "best_available_position": "QB",
+              "best_available_points": 315.1
+            },
+            {
+              "round": 4,
+              "player": "Omarion Hampton",
+              "position": "RB",
+              "projected_points": 280.5,
+              "best_available": "Trevor Lawrence",
+              "best_available_position": "QB",
+              "best_available_points": 308.1
+            },
+            {
+              "round": 5,
+              "player": "Colston Loveland",
+              "position": "TE",
+              "projected_points": 265.2,
+              "best_available": "C.J. Stroud",
+              "best_available_position": "QB",
+              "best_available_points": 294.5
+            },
+            {
+              "round": 6,
+              "player": "C.J. Stroud",
+              "position": "QB",
+              "projected_points": 294.5,
+              "best_available": "C.J. Stroud",
+              "best_available_position": "QB",
+              "best_available_points": 294.5
+            },
+            {
+              "round": 7,
+              "player": "Malik Willis",
+              "position": "QB",
+              "projected_points": 289.6,
+              "best_available": "Malik Willis",
+              "best_available_position": "QB",
+              "best_available_points": 289.6
+            },
+            {
+              "round": 8,
+              "player": "Daniel Jones",
+              "position": "QB",
+              "projected_points": 281.9,
+              "best_available": "Daniel Jones",
+              "best_available_position": "QB",
+              "best_available_points": 281.9
+            },
+            {
+              "round": 9,
+              "player": "Bryce Young",
+              "position": "QB",
+              "projected_points": 265.0,
+              "best_available": "Bryce Young",
+              "best_available_position": "QB",
+              "best_available_points": 265.0
+            },
+            {
+              "round": 10,
+              "player": "Dallas Goedert",
+              "position": "TE",
+              "projected_points": 183.1,
+              "best_available": "Chris Godwin",
+              "best_available_position": "WR",
+              "best_available_points": 206.7
+            },
+            {
+              "round": 11,
+              "player": "Dalton Schultz",
+              "position": "TE",
+              "projected_points": 184.3,
+              "best_available": "RJ Harvey",
+              "best_available_position": "RB",
+              "best_available_points": 192.7
+            },
+            {
+              "round": 12,
+              "player": "Hunter Henry",
+              "position": "TE",
+              "projected_points": 172.7,
+              "best_available": "Hunter Henry",
+              "best_available_position": "TE",
+              "best_available_points": 172.7
+            },
+            {
+              "round": 13,
+              "player": "Brenton Strange",
+              "position": "TE",
+              "projected_points": 157.8,
+              "best_available": "Brenton Strange",
+              "best_available_position": "TE",
+              "best_available_points": 157.8
+            },
+            {
+              "round": 14,
+              "player": "De'Zhaun Stribling",
+              "position": "WR",
+              "projected_points": 134.6,
+              "best_available": "Ryan Flournoy",
+              "best_available_position": "WR",
+              "best_available_points": 139.0
+            },
+            {
+              "round": 15,
+              "player": "Jordyn Tyson",
+              "position": "WR",
+              "projected_points": 125.3,
+              "best_available": "Jordyn Tyson",
+              "best_available_position": "WR",
+              "best_available_points": 125.3
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "player": "Amon-Ra St. Brown",
+              "position": "WR",
+              "projected_points": 375.0
+            },
+            {
+              "round": 2,
+              "player": "Jared Goff",
+              "position": "QB",
+              "projected_points": 334.5
+            },
+            {
+              "round": 3,
+              "player": "Justin Herbert",
+              "position": "QB",
+              "projected_points": 315.1
+            },
+            {
+              "round": 4,
+              "player": "DeVonta Smith",
+              "position": "WR",
+              "projected_points": 282.5
+            },
+            {
+              "round": 5,
+              "player": "Tetairoa McMillan",
+              "position": "WR",
+              "projected_points": 264.3
+            },
+            {
+              "round": 6,
+              "player": "Mike Evans",
+              "position": "WR",
+              "projected_points": 246.7
+            },
+            {
+              "round": 7,
+              "player": "Sam LaPorta",
+              "position": "TE",
+              "projected_points": 230.8
+            },
+            {
+              "round": 8,
+              "player": "TreVeyon Henderson",
+              "position": "RB",
+              "projected_points": 214.6
+            },
+            {
+              "round": 9,
+              "player": "Rhamondre Stevenson",
+              "position": "RB",
+              "projected_points": 202.4
+            },
+            {
+              "round": 10,
+              "player": "Fernando Mendoza",
+              "position": "QB",
+              "projected_points": 207.5
+            },
+            {
+              "round": 11,
+              "player": "RJ Harvey",
+              "position": "RB",
+              "projected_points": 192.7
+            },
+            {
+              "round": 12,
+              "player": "Jayden Higgins",
+              "position": "WR",
+              "projected_points": 173.0
+            },
+            {
+              "round": 13,
+              "player": "Jalen Nailor",
+              "position": "WR",
+              "projected_points": 155.8
+            },
+            {
+              "round": 14,
+              "player": "Cade Otton",
+              "position": "TE",
+              "projected_points": 141.3
+            },
+            {
+              "round": 15,
+              "player": "Dylan Sampson",
+              "position": "RB",
+              "projected_points": 124.8
+            }
+          ],
+          "engine_composition": {
+            "RB": 2,
+            "TE": 7,
+            "QB": 4,
+            "WR": 2
+          },
+          "control_composition": {
+            "WR": 6,
+            "QB": 3,
+            "TE": 2,
+            "RB": 4
+          },
+          "board_agreement": {
+            "round": 5,
+            "snapshot_top": "Colston Loveland",
+            "board_top": "Colston Loveland",
+            "agree": true
+          }
+        },
+        {
+          "seat": "12",
+          "engine_picks": [
+            {
+              "round": 1,
+              "player": "Brock Bowers",
+              "position": "TE",
+              "projected_points": 310.2,
+              "best_available": "Brock Purdy",
+              "best_available_position": "QB",
+              "best_available_points": 352.9
+            },
+            {
+              "round": 2,
+              "player": "Brock Purdy",
+              "position": "QB",
+              "projected_points": 352.9,
+              "best_available": "Brock Purdy",
+              "best_available_position": "QB",
+              "best_available_points": 352.9
+            },
+            {
+              "round": 3,
+              "player": "Jeremiyah Love",
+              "position": "RB",
+              "projected_points": 288.5,
+              "best_available": "Sam Darnold",
+              "best_available_position": "QB",
+              "best_available_points": 307.2
+            },
+            {
+              "round": 4,
+              "player": "Kenneth Walker",
+              "position": "RB",
+              "projected_points": 283.5,
+              "best_available": "Sam Darnold",
+              "best_available_position": "QB",
+              "best_available_points": 307.2
+            },
+            {
+              "round": 5,
+              "player": "Javonte Williams",
+              "position": "RB",
+              "projected_points": 260.0,
+              "best_available": "Malik Willis",
+              "best_available_position": "QB",
+              "best_available_points": 289.6
+            },
+            {
+              "round": 6,
+              "player": "Malik Willis",
+              "position": "QB",
+              "projected_points": 289.6,
+              "best_available": "Malik Willis",
+              "best_available_position": "QB",
+              "best_available_points": 289.6
+            },
+            {
+              "round": 7,
+              "player": "Daniel Jones",
+              "position": "QB",
+              "projected_points": 281.9,
+              "best_available": "Daniel Jones",
+              "best_available_position": "QB",
+              "best_available_points": 281.9
+            },
+            {
+              "round": 8,
+              "player": "George Kittle",
+              "position": "TE",
+              "projected_points": 224.5,
+              "best_available": "Bryce Young",
+              "best_available_position": "QB",
+              "best_available_points": 265.0
+            },
+            {
+              "round": 9,
+              "player": "Bryce Young",
+              "position": "QB",
+              "projected_points": 265.0,
+              "best_available": "Bryce Young",
+              "best_available_position": "QB",
+              "best_available_points": 265.0
+            },
+            {
+              "round": 10,
+              "player": "Aaron Rodgers",
+              "position": "QB",
+              "projected_points": 262.5,
+              "best_available": "Aaron Rodgers",
+              "best_available_position": "QB",
+              "best_available_points": 262.5
+            },
+            {
+              "round": 11,
+              "player": "Dallas Goedert",
+              "position": "TE",
+              "projected_points": 183.1,
+              "best_available": "Dallas Goedert",
+              "best_available_position": "TE",
+              "best_available_points": 183.1
+            },
+            {
+              "round": 12,
+              "player": "Dalton Kincaid",
+              "position": "TE",
+              "projected_points": 174.3,
+              "best_available": "Tre Tucker",
+              "best_available_position": "WR",
+              "best_available_points": 180.2
+            },
+            {
+              "round": 13,
+              "player": "Cooper Kupp",
+              "position": "WR",
+              "projected_points": 149.1,
+              "best_available": "J.K. Dobbins",
+              "best_available_position": "RB",
+              "best_available_points": 150.0
+            },
+            {
+              "round": 14,
+              "player": "Darren Waller",
+              "position": "TE",
+              "projected_points": 148.4,
+              "best_available": "J.K. Dobbins",
+              "best_available_position": "RB",
+              "best_available_points": 150.0
+            },
+            {
+              "round": 15,
+              "player": "Dontayvion Wicks",
+              "position": "WR",
+              "projected_points": 118.6,
+              "best_available": "Dontayvion Wicks",
+              "best_available_position": "WR",
+              "best_available_points": 118.6
+            }
+          ],
+          "control_picks": [
+            {
+              "round": 1,
+              "player": "Christian McCaffrey",
+              "position": "RB",
+              "projected_points": 413.2
+            },
+            {
+              "round": 2,
+              "player": "De'Von Achane",
+              "position": "RB",
+              "projected_points": 318.2
+            },
+            {
+              "round": 3,
+              "player": "James Cook",
+              "position": "RB",
+              "projected_points": 317.9
+            },
+            {
+              "round": 4,
+              "player": "Tyler Shough",
+              "position": "QB",
+              "projected_points": 299.7
+            },
+            {
+              "round": 5,
+              "player": "C.J. Stroud",
+              "position": "QB",
+              "projected_points": 294.5
+            },
+            {
+              "round": 6,
+              "player": "Garrett Wilson",
+              "position": "WR",
+              "projected_points": 244.7
+            },
+            {
+              "round": 7,
+              "player": "Ladd McConkey",
+              "position": "WR",
+              "projected_points": 244.3
+            },
+            {
+              "round": 8,
+              "player": "Stefon Diggs",
+              "position": "WR",
+              "projected_points": 214.1
+            },
+            {
+              "round": 9,
+              "player": "Harold Fannin",
+              "position": "TE",
+              "projected_points": 201.2
+            },
+            {
+              "round": 10,
+              "player": "Michael Pittman",
+              "position": "WR",
+              "projected_points": 200.6
+            },
+            {
+              "round": 11,
+              "player": "Courtland Sutton",
+              "position": "WR",
+              "projected_points": 199.7
+            },
+            {
+              "round": 12,
+              "player": "KC Concepcion",
+              "position": "WR",
+              "projected_points": 165.1
+            },
+            {
+              "round": 13,
+              "player": "Devaughn Vele",
+              "position": "WR",
+              "projected_points": 165.0
+            },
+            {
+              "round": 14,
+              "player": "De'Zhaun Stribling",
+              "position": "WR",
+              "projected_points": 134.6
+            },
+            {
+              "round": 15,
+              "player": "Makai Lemon",
+              "position": "WR",
+              "projected_points": 129.7
+            }
+          ],
+          "engine_composition": {
+            "TE": 5,
+            "QB": 5,
+            "RB": 3,
+            "WR": 2
+          },
+          "control_composition": {
+            "RB": 3,
+            "QB": 2,
+            "WR": 9,
+            "TE": 1
+          },
+          "board_agreement": {
+            "round": 5,
+            "snapshot_top": "Javonte Williams",
+            "board_top": "Javonte Williams",
+            "agree": true
+          }
+        }
+      ]
+    }
+  ]
+}

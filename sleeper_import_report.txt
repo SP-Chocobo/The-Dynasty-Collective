@@ -1,0 +1,53 @@
+SLEEPER IMPORT REPORT
+============================================================
+identifiers scrubbed: True
+
+[OK] players_nfl
+    players: 12226  (cache basis: within_window)
+    age present %% by position: {'DB': 88.5, 'DEF': 0.0, 'DL': 84.3, 'K': 88.0, 'LB': 93.0, 'QB': 91.8, 'RB': 91.3, 'TE': 90.9, 'WR': 90.7}
+    injury_status present %% by position: {'DB': 10.3, 'DEF': 0.0, 'DL': 15.7, 'K': 2.6, 'LB': 6.9, 'QB': 4.2, 'RB': 7.7, 'TE': 6.9, 'WR': 6.8}
+    years_exp present %% by position: {'DB': 100.0, 'DEF': 0.0, 'DL': 100.0, 'K': 99.5, 'LB': 100.0, 'QB': 99.6, 'RB': 99.8, 'TE': 99.9, 'WR': 99.8}
+    players with >1 fantasy position: 633
+    injury_status VALUES (9 distinct): {'Questionable': 430, 'IR': 205, 'NA': 95, 'PUP': 39, 'Sus': 11, 'Out': 3, 'COV': 2, 'DNR': 2}
+    status VALUES (8 distinct): {'Active': 8420, 'Inactive': 3529, 'Injured Reserve': 227, 'Physically Unable to Perform': 3, 'Practice Squad': 1, 'Non Football Injury': 1}
+    practice_participation VALUES (3 distinct): {'Out': 1}
+
+[OK] weekly_projections
+    season 2026 week 1: 9419 projected
+    offence has per-category stats: True
+    stat categories: 92
+
+[OK] league_config
+    12 teams, QB slots 1, SUPER_FLEX 1
+    outside #178's derivation domain: False
+    scoring keys: 64, UNMODELLED by the offline path: 57
+    unmodelled: ['blk_kick', 'def_st_ff', 'def_st_fum_rec', 'def_st_td', 'def_td', 'ff', 'fgm_0_19', 'fgm_20_29', 'fgm_30_39', 'fgm_40_49', 'fgm_50p', 'fgmiss', 'fum_lost', 'fum_rec', 'fum_rec_td', 'idp_blk_kick', 'idp_def_td', 'idp_ff', 'idp_fum_rec', 'idp_int', 'idp_sack', 'idp_safe', 'idp_tkl', 'idp_tkl_loss', 'int', 'pass_2pt', 'pass_cmp', 'pass_cmp_40p', 'pass_int', 'pass_int_td', 'pass_sack', 'pass_td', 'pass_td_40p', 'pass_yd', 'pts_allow_0', 'pts_allow_14_20', 'pts_allow_1_6', 'pts_allow_28_34', 'pts_allow_35p', 'pts_allow_7_13', 'rec_2pt', 'rec_40p', 'rec_td', 'rec_td_40p', 'rec_yd', 'rush_2pt', 'rush_40p', 'rush_td', 'rush_td_40p', 'rush_yd', 'sack', 'safe', 'st_ff', 'st_fum_rec', 'st_td', 'xpm', 'xpmiss']
+
+[OK] league_users
+    13 users; 13 have a profile avatar, 0 have none set
+    custom team avatars: 8
+    avatar URL probe: [{'kind': 'full', 'status': 200, 'content_type': 'image/png', 'bytes': '8673'}, {'kind': 'thumb', 'status': 200, 'content_type': 'image/png', 'bytes': '1356'}, {'kind': 'full', 'status': 200, 'content_type': 'image/png', 'bytes': '56153'}, {'kind': 'thumb', 'status': 200, 'content_type': 'image/png', 'bytes': '9492'}, {'kind': 'full', 'status': 200, 'content_type': 'image/png', 'bytes': '22966'}, {'kind': 'thumb', 'status': 200, 'content_type': 'image/png', 'bytes': '2368'}]
+    player headshots: 4 of 4 checked returned 200 (0 fetch errors) -> player headshots ARE available at this pattern
+    this app reads only: ['display_name', 'metadata.team_name']
+    arrives but UNUSED: ['avatar', 'is_bot', 'is_owner', 'league_id', 'metadata', 'metadata.allow_pn', 'metadata.allow_sms', 'metadata.archived', 'metadata.avatar', 'metadata.mention_pn', 'metadata.show_mascots', 'settings', 'user_id']
+
+[OK] injury_already_priced
+    season 2026 week 1  (join: committed baseline joined by _name_key (745 rows))
+    (none set)     n=2798  weekly median=0.0 (zero-or-less 2469/2798)
+        proj_3yr/season ratio median=2.858 (n=289)
+    DNR            n=2     weekly median=0.0 (zero-or-less 2/2)
+        proj_3yr/season ratio median=3.6 (n=1)
+    IR             n=63    weekly median=0.0 (zero-or-less 63/63)
+        proj_3yr/season ratio median=2.997 (n=9)
+    NA             n=14    weekly median=0.0 (zero-or-less 14/14)
+        proj_3yr/season ratio median=2.079 (n=1)
+    PUP            n=7     weekly median=0.0 (zero-or-less 7/7)
+        proj_3yr/season ratio median=4.053 (n=1)
+    Questionable   n=158   weekly median=0.0 (zero-or-less 96/158)
+        proj_3yr/season ratio median=2.903 (n=56)
+    Sus            n=2     weekly median=0.0 (zero-or-less 2/2)
+    NOTE: weekly zeroing is reported to happen ~1 day before kickoff; a null result mid-week means MEASURED TOO EARLY, not no effect
+
+[OK] scoring_effect
+    390 of 391 offensive players change (99.7%)
+    -> this league carries scoring the offline path cannot express

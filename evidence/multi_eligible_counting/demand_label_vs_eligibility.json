@@ -1,0 +1,71 @@
+{
+  "arm": "HEAVY_IDP",
+  "teams": 12,
+  "by_round": {
+    "round_5": {
+      "picks": 60,
+      "multi_eligible_held": 7,
+      "demand_by_label": {
+        "DB": 23.0,
+        "DL": 16.0,
+        "LB": 20.0,
+        "QB": 9.0,
+        "RB": 8.0,
+        "TE": 8.0,
+        "WR": 12.0
+      },
+      "demand_by_eligibility": {
+        "DB": 23.0,
+        "DL": 16.0,
+        "LB": 13.0,
+        "QB": 9.0,
+        "RB": 8.0,
+        "TE": 8.0,
+        "WR": 12.0
+      },
+      "difference": {
+        "LB": -7.0
+      }
+    },
+    "round_10": {
+      "picks": 120,
+      "multi_eligible_held": 15,
+      "demand_by_label": {
+        "DB": 11.0,
+        "DL": 6.0,
+        "LB": 3.0,
+        "QB": 4.0,
+        "RB": 4.0,
+        "TE": 6.0,
+        "WR": 4.0
+      },
+      "demand_by_eligibility": {
+        "DB": 11.0,
+        "DL": 6.0,
+        "LB": 0.0,
+        "QB": 4.0,
+        "RB": 4.0,
+        "TE": 6.0,
+        "WR": 4.0
+      },
+      "difference": {
+        "LB": -3.0
+      }
+    },
+    "round_15": {
+      "picks": 180,
+      "multi_eligible_held": 26,
+      "demand_by_label": {
+        "RB": 3.33,
+        "TE": 4.0,
+        "WR": 0.33
+      },
+      "demand_by_eligibility": {
+        "RB": 3.33,
+        "TE": 4.0,
+        "WR": 0.33
+      },
+      "difference": {}
+    }
+  }
+}

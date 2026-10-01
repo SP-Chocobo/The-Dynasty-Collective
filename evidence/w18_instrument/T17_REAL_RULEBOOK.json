@@ -1,0 +1,75 @@
+{
+  "_comment": "#17 re-measured under the 64-key capture rulebook. The blind_pass probe passed None to league_matrix and measured a {'rec': 1.0} league with no K/DEF scoring keys at all. See t17_turn_ending_real_rulebook.py.",
+  "arm": "12T_ppr_K_DEF",
+  "by_position": {
+    "DEF": {
+      "all": 32,
+      "expected": 2.5,
+      "ratio": 1.6,
+      "turn_ending": 4
+    },
+    "K": {
+      "all": 31,
+      "expected": 2.42,
+      "ratio": 1.24,
+      "turn_ending": 3
+    },
+    "QB": {
+      "all": 22,
+      "expected": 1.72,
+      "ratio": 0.58,
+      "turn_ending": 1
+    },
+    "RB": {
+      "all": 33,
+      "expected": 2.58,
+      "ratio": 0.78,
+      "turn_ending": 2
+    },
+    "TE": {
+      "all": 20,
+      "expected": 1.56,
+      "ratio": 1.92,
+      "turn_ending": 3
+    },
+    "WR": {
+      "all": 54,
+      "expected": 4.22,
+      "ratio": 0.47,
+      "turn_ending": 2
+    }
+  },
+  "first_taken": {
+    "DEF": {
+      "label": 5.08,
+      "pick_no": 57
+    },
+    "K": {
+      "label": 7.0,
+      "pick_no": 73
+    },
+    "QB": {
+      "label": 4.09,
+      "pick_no": 46
+    },
+    "RB": {
+      "label": 1.0,
+      "pick_no": 1
+    },
+    "TE": {
+      "label": 1.08,
+      "pick_no": 9
+    },
+    "WR": {
+      "label": 1.03,
+      "pick_no": 4
+    }
+  },
+  "kdst_by_round_12": 47,
+  "kdst_scoring_keys": 22,
+  "picks": 192,
+  "rounds": 16,
+  "scoring_keys": 64,
+  "teams": 12,
+  "turn_ending_picks": 15
+}

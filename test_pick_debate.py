@@ -7,31 +7,36 @@ numbers, never parsed out of the LLM's own prose, even when that prose is wrong.
 """
 
 import unittest
+from pathlib import Path
+from unittest import mock
+
+_HERE = Path(__file__).parent
 
 import pick_debate as pd
+import pick_synthesis as ps
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 
 
 def _candidate(player_id, name, position="QB", universal_value=90.0, team_acquisition_value=100.0,
                 survival_probability=0.5, positional_cliff=None, position_run_detected=False,
                 pick_necessity=75.0, necessity_label="PREFERRED", near_tie_with_leader=False,
-                consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=None):
+                consensus_rank=None, consensus_tier=None, projected_points=None):
     return CandidateSnapshot(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id=player_id, name=name, position=position, team="SF",
         bpa=universal_value, bpa_source="points_vor_draftsharks", confidence=80.0,
-        universal_value=universal_value, need_bonus=6.0, eligibility_bonus=4.0,
-        team_acquisition_value=team_acquisition_value,
+        universal_value=universal_value, need_bonus=6.0, team_acquisition_value=team_acquisition_value,
         survival_probability=survival_probability, intervening_picks=2,
+        survival_basis=None,
         opportunity_cost=round(universal_value * (1 - survival_probability), 2),
         expected_value_of_waiting=round(universal_value * survival_probability, 2),
-        denial_value=30.0, denial_team="4", rival_premium=6.0,
+        denial_value=30.0, rival_premium_basis=None, denial_basis="measured", denial_team="4", rival_premium=6.0,
         positional_forfeit=None, position_expected_taken=None,
         positional_cliff=positional_cliff,
         position_run_detected=position_run_detected,
         pick_necessity=pick_necessity, necessity_label=necessity_label,
         near_tie_with_leader=near_tie_with_leader,
-        cliff_protection=False, block_opportunity=False, pure_value=False, context_elevated=False,
-        consensus_rank=consensus_rank, consensus_tier=consensus_tier, reach_label=reach_label,
+        cliff_protection=False, block_opportunity=False, pure_value=False, consensus_rank=consensus_rank, consensus_tier=consensus_tier,
         projected_points=projected_points,
     )
 
@@ -50,7 +55,12 @@ class FormatSnapshotForLLMTests(unittest.TestCase):
         self.assertIn("Brock Purdy", text)
         self.assertIn("Universal value: 90.0", text)
         self.assertIn("Team acquisition value: 100.0", text)
-        self.assertIn("Survival probability to your next pick: 50%", text)
+        # INVERTED (#206): the chairs no longer receive the survival estimate -- it lost to a
+        # constant predictor on two arms. They receive the pick COUNT, which is measured,
+        # plus an explicit instruction not to reconstruct a probability from it.
+        self.assertNotIn("Survival probability", text)
+        self.assertIn("Picks before your next selection: 2", text)
+        self.assertIn("%s" % "WITHHELD, not missing", text)
 
     def test_flags_the_user_selected_player(self):
         snap = _snapshot([_candidate("1", "Brock Purdy"), _candidate("2", "Backup Guy")], user_selected_player_id="2")
@@ -135,6 +145,66 @@ class MatchCandidateTests(unittest.TestCase):
     def test_empty_recommendation_returns_none(self):
         self.assertIsNone(pd._match_candidate(self.snap, None))
         self.assertIsNone(pd._match_candidate(self.snap, ""))
+
+    # ---- MANDATE 1.6: the only candidate REFERENCED, not the first one mentioned -----------
+    #
+    # The fallback used to return the first candidate in ITERATION order whose name appeared
+    # anywhere in the text, and the candidates are in board order, which is value order. So
+    # "Nico Collins over CeeDee Lamb" resolved to Lamb, and the panel printed Lamb's numbers
+    # under an argument written about Collins.
+
+    def test_two_candidates_named_in_one_line_resolve_to_nothing(self):
+        self.assertIsNone(pd._match_candidate(self.snap, "Brock Purdy over Justin Fields"))
+        self.assertIsNone(pd._match_candidate(self.snap, "Justin Fields over Brock Purdy"))
+
+    def test_one_named_in_full_and_one_by_surname_is_still_two(self):
+        """The mixed case, which a full-name-first rule would resolve to the one written out.
+        A reader of "purdy vs Justin Fields" cannot say which is the pick either."""
+        self.assertIsNone(pd._match_candidate(self.snap, "purdy vs Justin Fields"))
+
+    def test_the_answer_does_not_depend_on_which_one_the_board_ranks_first(self):
+        """The whole defect was an answer that came from the ordering rather than from the text.
+        Both orderings of the same two candidates must give the same verdict."""
+        reversed_board = _snapshot([_candidate("2", "Justin Fields"), _candidate("1", "Brock Purdy")])
+        line = "Brock Purdy over Justin Fields"
+        self.assertEqual(pd._match_candidate(self.snap, line),
+                         pd._match_candidate(reversed_board, line))
+
+    def test_a_fragment_that_is_not_a_word_of_a_name_resolves_to_nothing(self):
+        """"D" used to resolve to whoever sat at the top of the board. Note that uniqueness alone
+        would NOT have fixed this: "r" appears in "Brock Purdy" and in no other candidate here,
+        so a unique-substring rule still resolves one letter to a player."""
+        self.assertIsNone(pd._match_candidate(self.snap, "D"))
+        self.assertIsNone(pd._match_candidate(self.snap, "r"))
+        self.assertIsNone(pd._match_candidate(self.snap, "urd"))
+
+    def test_a_surname_still_resolves_which_is_what_the_fallback_is_for(self):
+        """NON-VACUITY. The rule must not have turned the matcher off."""
+        self.assertEqual("1", pd._match_candidate(self.snap, "Purdy").player_id)
+        self.assertEqual("1", pd._match_candidate(
+            self.snap, "RECOMMENDATION: Brock Purdy, and it is not close").player_id)
+
+    def test_a_word_two_candidates_share_refers_to_neither(self):
+        """Why the words are filtered before they are counted. Both candidates are called
+        Michael, so "michael" names nobody -- but the full name in the same line does, and a
+        rule that counted the shared word would decline a question it can answer."""
+        shared = _snapshot([_candidate("1", "Michael Thomas"), _candidate("2", "Michael Pittman")])
+        self.assertEqual("1", pd._match_candidate(shared, "Michael Thomas is the pick").player_id)
+        self.assertIsNone(pd._match_candidate(shared, "Michael is the pick"))
+
+    def test_half_of_a_hyphenated_name_still_resolves(self):
+        """A model writing the back half of "Smith-Njigba" is paraphrasing, not naming somebody
+        else -- which is why the split is on non-alphanumerics rather than on whitespace."""
+        board = _snapshot([_candidate("1", "Jaxon Smith-Njigba"), _candidate("2", "Justin Fields")])
+        self.assertEqual("1", pd._match_candidate(board, "Njigba").player_id)
+
+    def test_a_rejected_name_still_matches_which_is_the_documented_limit(self):
+        """CHARACTERIZATION, not an endorsement. Invert when repaired; do not delete.
+
+        One name, negated, still resolves to that name -- reading negation out of free prose is a
+        guess of a different kind. The docstring says so, and the Caller's contract asks for a
+        bare name, so a line arguing against a player is already outside it."""
+        self.assertEqual("1", pd._match_candidate(self.snap, "Not Brock Purdy").player_id)
 
 
 class BestAlternativeTests(unittest.TestCase):
@@ -222,12 +292,54 @@ class DebatePickOrchestrationTests(unittest.TestCase):
             return "report"
 
         pd.PROVIDER_CALLERS.update({"claude": _caller, "gemini": _caller, "openai": _caller})
-        before = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.8)])
-        after = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.2)])
+        # THE CARRIER WAS THE WITHHELD FIELD, AND THAT WAS THE DEFECT (#52 phase 7.1, W4-17).
+        #
+        # This built two snapshots differing ONLY in survival_probability (0.8 -> 0.2) and
+        # asserted the delta reached the chair prompt -- while `test_includes_every_candidates_
+        # real_numbers` fifty lines above asserts survival is ABSENT from the candidate block.
+        # Two contradictory contracts in one file, and production implemented the second: a
+        # delta of a withheld quantity gives a reader its direction and its size, printed
+        # directly beneath the block saying the estimate is withheld.
+        #
+        # The CLAIM this test makes -- a real change between snapshots propagates into the
+        # evidence the chairs see -- is correct and untouched. Only the carrier changes, to a
+        # field that may actually be presented. The withheld case is pinned as its own contract
+        # in test_withheld_propagation.py, where it belongs.
+        before = _snapshot([_candidate("1", "Brock Purdy", team_acquisition_value=100.0)])
+        after = _snapshot([_candidate("1", "Brock Purdy", team_acquisition_value=88.0)])
         result = pd.debate_pick(after, previous_snapshot=before, api_keys={"claude": "x", "openai": "x", "gemini": "x"})
 
-        self.assertTrue(result.diff, "expected a real delta between the two survival probabilities")
+        self.assertTrue(result.diff, "expected a real delta between the two acquisition values")
+        self.assertEqual(result.diff[0]["deltas"].get("team_acquisition_value"), -12.0)
         self.assertIn("WHAT CHANGED", seen_prompts[0])
+
+    def test_a_survival_only_change_reaches_the_chairs_as_NOTHING(self):
+        """The contract the test above used to contradict, stated where it was contradicted."""
+        seen_prompts = []
+
+        def _caller(system_prompt, user_prompt, api_key, model):
+            seen_prompts.append(user_prompt)
+            if system_prompt == pd.CALLER_SYSTEM_PROMPT:
+                return "RECOMMENDATION: Brock Purdy\nCONFIDENCE: Unanimous\n"
+            return "report"
+
+        pd.PROVIDER_CALLERS.update({"claude": _caller, "gemini": _caller, "openai": _caller})
+        before = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.8)])
+        after = _snapshot([_candidate("1", "Brock Purdy", survival_probability=0.2)])
+        result = pd.debate_pick(after, previous_snapshot=before,
+                                api_keys={"claude": "x", "openai": "x", "gemini": "x"})
+        # Asserted on the diff DIRECTLY, not through a comprehension over it: the first version
+        # filtered `result.diff` for withheld keys, which on an empty diff never evaluates its
+        # own condition -- so it passed while `ps` was not even imported, and would have passed
+        # just as happily if the rule were removed and the diff came back full.
+        self.assertEqual(result.diff, [],
+                         "a change confined to the withheld family produced a reportable delta")
+        self.assertNotIn("0.6", seen_prompts[0], "the size of the withheld change reached the prompt")
+        self.assertNotIn("survival_probability", seen_prompts[0])
+        # Non-vacuity: the same two snapshots DO diff once the family is presentable, so the
+        # emptiness above is the rule and not a broken fixture.
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", True):
+            self.assertTrue(ps.diff_snapshots(before, after))
 
 
 class AIOutputCannotBecomeANumberTests(unittest.TestCase):
@@ -331,6 +443,78 @@ class NearTieIsThreeStateInTheChairsBriefingTests(unittest.TestCase):
     def test_the_three_states_produce_three_different_briefings(self):
         blocks = [self._block(flag) for flag in (True, False, None)]
         self.assertEqual(len(set(blocks)), 3)
+
+
+
+class TheEvidenceLineTellsTheTruthAboutTheSumTests(unittest.TestCase):
+    """The panel is instructed never to recompute a number, so every identity the prompt states
+    has to be one the engine actually computes.
+
+    IT WAS NOT. `depth_exposure` joined the team_acquisition_value sum when it was wired in,
+    and both the Strategist's definition of TAV and the per-candidate evidence line kept saying
+    "need and lineup-eligibility bonuses" -- handing a model a whole and two of its three parts.
+    A model told the parts do not sum to the whole has been handed a reason to distrust the
+    snapshot, which is the one thing the snapshot exists to prevent.
+
+    DERIVED, not listed: the terms come out of draft_room's own assignment by AST. A fourth
+    term added to the sum tomorrow fails this test the same day rather than silently making the
+    prompt wrong again."""
+
+    def _summed_terms(self):
+        import ast
+        tree = ast.parse((_HERE / "draft_room.py").read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
+            if "team_acquisition_value" not in targets:
+                continue
+            names = {n.id for n in ast.walk(node.value) if isinstance(n, ast.Name)}
+            names.discard("round")
+            # locals carry a `_value` suffix where the snapshot field does not
+            return {n[:-6] if n.endswith("_value") and n != "universal_value" else n
+                    for n in names}
+        self.fail("could not find the team_acquisition_value assignment in draft_room.py")
+
+    def test_the_sum_really_has_more_than_two_terms(self):
+        # Non-vacuity: if extraction silently returned {} the check below would pass trivially.
+        terms = self._summed_terms()
+        self.assertIn("universal_value", terms)
+        self.assertIn("depth_exposure", terms)
+        self.assertGreaterEqual(len(terms), 4)
+
+    def test_every_summed_term_is_named_in_the_candidate_evidence_line(self):
+        source = (_HERE / "pick_debate.py").read_text()
+        line = next(ln for ln in source.splitlines()
+                    if "Team acquisition value:" in ln)
+        block = source[source.index(line):source.index(line) + 600]
+        # FOLLOW THE HELPERS THIS LINE DELEGATES TO (#174). The invariant is that every term in
+        # the sum is NAMED to the model, not that every term appears in one contiguous 600
+        # characters -- a term whose clause needs a conditional (depth_exposure's, which must
+        # now say whether the number was measured) belongs in a function, and a text scan that
+        # cannot follow one call would force the prose to stay inline to satisfy the
+        # instrument. Extraction is legitimate; silence is not.
+        import re
+        import pick_debate as _pd
+        import inspect as _inspect
+        for helper in set(re.findall(r"\b(_[a-z_]+)\(candidate\)", block)):
+            fn = getattr(_pd, helper, None)
+            if fn is not None:
+                block += "\n" + _inspect.getsource(fn)
+        for term in self._summed_terms():
+            with self.subTest(term=term):
+                self.assertIn(term, block,
+                              f"{term} is summed into team_acquisition_value but the evidence "
+                              f"line does not name it -- the parts will not sum to the whole")
+
+    def test_the_strategist_definition_names_the_same_terms(self):
+        import pick_debate
+        prompt = pick_debate.STRATEGIST_SYSTEM_PROMPT
+        start = prompt.index("team_acquisition_value (")
+        definition = prompt[start:start + 220]
+        for word in ("need", "eligibility", "depth"):
+            with self.subTest(word=word):
+                self.assertIn(word, definition)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,129 @@
+diff --git a/pick_synthesis.py b/pick_synthesis.py
+index f335767..d3930d4 100644
+--- a/pick_synthesis.py
++++ b/pick_synthesis.py
+@@ -288,7 +288,32 @@ NECESSITY_STANDOUT_WEIGHT = 30.0     # normalized margin over the best OTHER nar
+ # leader's standout component to the full 15.0 (half the weight) under a relative anchor, when a
+ # genuinely tiny 0.5-point edge should barely move the needle at all.
+ NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
+-NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
++#: W1-07, ruled: the urgency term is sourced from `intervening_picks` instead of the WITHHELD
++#: survival estimate. Same weight, because the ruling replaced the QUANTITY, not the term's
++#: share of a 0-100 score -- and both quantities normalise to [0, 1] against their own bounds,
++#: so the share is preserved exactly rather than re-argued.
++#:
++#: THE SUBSTITUTION CHANGES WHAT THE TERM IS, and that is measured rather than glossed.
++#: `(1 - survival)` is a PER-CANDIDATE discriminator: at one turn it takes 7-18 distinct values
++#: across the board, separating the player who will not last from the one who will.
++#: `intervening_picks` takes exactly ONE value at a turn -- it is a property of the TURN, not of
++#: the player (measured across seven turns of a 12-team superflex snake: distinct counts of
++#: [20], [6], [22], [0] against survival's 18, 7, 7, 1). So this term no longer distinguishes
++#: candidates at a turn; it raises or lowers every candidate together according to how far away
++#: the next selection is. Relative ORDER is untouched by it; absolute labels move with it.
++#:
++#: That is not a like-for-like swap and pretending otherwise would be the #166 shape -- a label
++#: outliving the quantity that gave it meaning. It is what "replace it with the measured
++#: substitute" can mean, given that the substitute is a count of picks and not a per-player
++#: probability.
++#:
++#: THE SCALE IS DERIVED, NOT CHOSEN (#56). A count has no natural 0-20 mapping, and picking the
++#: mapping that reproduces today's labels is precisely what #56 forbids. The normaliser is the
++#: draft's OWN largest gap between two of my selections -- measured from the real pick order by
++#: max_intervening_gap, not assumed from 2*(teams-1), so a non-snake or a third-round-reversal
++#: order is normalised by the order it actually has. For a standard 12-team snake the two
++#: coincide at 22, which is a check on the derivation and not the source of it.
++NECESSITY_GAP_WEIGHT = 20.0
+ NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
+ 
+ # #160 (A2), ruled by the owner: cliff_protection is gated on THE CLIFF MACHINERY IT IS NAMED
+@@ -698,7 +723,25 @@ def _round_being_decided(pick_label, picks: list, league: Optional[dict] = None)
+     return len(picks) // teams + 1
+ 
+ 
+-def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[tuple[float, str]]:
++def max_intervening_gap(pick_order: list, roster_id) -> Optional[int]:
++    """The largest gap between two consecutive selections by `roster_id` in THIS pick order.
++
++    The normaliser for the urgency term, derived from the order the draft actually has rather
++    than from 2*(teams-1) -- which is right for a standard snake and wrong for a third-round
++    reversal or any other shape a commissioner can configure. For a 12-team snake the two agree
++    at 22; that agreement is a check on this function, not its definition.
++
++    None when this roster has fewer than two selections left to compare, because there is then
++    no gap to normalise against and a substituted number would be invented.
++    """
++    mine = [i for i, owner in enumerate(pick_order or []) if str(owner) == str(roster_id)]
++    if len(mine) < 2:
++        return None
++    return max(b - a - 1 for a, b in zip(mine, mine[1:])) or None
++
++
++def compute_pick_necessity(raw_candidates: list[dict], round_num: int,
++                           max_gap: Optional[int] = None) -> list[tuple[float, str]]:
+     """(pick_necessity, necessity_label) per candidate, in the same order as raw_candidates --
+     see the module docstring for the full reasoning behind every term. Each entry in
+     raw_candidates needs: team_acquisition_value, need_bonus, eligibility_bonus,
+@@ -738,19 +781,36 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
+             # standout is real signal and keeps rewarding proportionally up to the +1 cap.
+             standout_component = max(0.0, min(1.0, normalized_margin)) * NECESSITY_STANDOUT_WEIGHT
+ 
+-        survival = c.get("survival_probability")
+-        survival_component = (1 - survival) * NECESSITY_SURVIVAL_WEIGHT if survival is not None else 0.0
++        # Absence stays absence: no next selection means there is no gap to measure, and the
++        # old term behaved the same way (survival is None at `no_next_pick`, deliberately not
++        # 1.0). Recorded rather than silently improved -- it means the score contributes least
++        # urgency at the one moment waiting is impossible, which predates this change and is
++        # not what this ruling was about.
++        gap = c.get("intervening_picks")
++        gap_component = (
++            (min(gap, max_gap) / max_gap) * NECESSITY_GAP_WEIGHT
++            if gap is not None and max_gap else 0.0
++        )
+ 
+         cliff = c.get("positional_cliff")
+         cliff_component = NECESSITY_CLIFF_POINTS.get(cliff["tier"], 0.0) if cliff else 0.0
+ 
+         # THE POSITIONAL WAITING MAGNITUDE (#48/#71). What it costs to take the other position
+-        # now and come back to this one next turn -- the magnitude whose PROBABILITY half is
+-        # survival_component above. That split is the same one already made deliberately for
+-        # denial (rival_premium carries the magnitude, survival carries the probability, and
+-        # denial_value's p_take-weighted form was removed for counting the probability twice).
+-        # Residual r(forfeit, survival) = -0.352 measured, which is shared CAUSE -- a scarce
+-        # position is both harder to wait on and likelier to be picked -- not shared
++        # now and come back to this one next turn.
++        #
++        # THIS TERM IS NOW THE WHOLE PAIR (W1-07). It used to carry the MAGNITUDE while
++        # survival_component carried the PROBABILITY -- the same split denial makes, where
++        # rival_premium carries the magnitude and survival the probability, and where
++        # denial_value's p_take-weighted form was removed for counting the probability twice.
++        # The urgency term is now sourced from intervening_picks, which is a property of the
++        # turn and not of this candidate, so there is no per-candidate probability half left in
++        # the score: this is the only term that still varies with how scarce THIS position is.
++        # Said here rather than left to be inferred, because the old wording described a
++        # pairing that no longer exists, which is the #166 shape exactly.
++        #
++        # The measured residual r(forfeit, survival) = -0.352 belongs to that former pairing and
++        # is kept for the record: it was shared CAUSE -- a scarce position is both harder to
++        # wait on and likelier to be picked -- not shared
+         # measurement, and well inside the ~0.6 already accepted for the denial pair.
+         #
+         # WHY THIS TERM AND NOT waiting_cost, which #48 originally named and which this
+@@ -839,7 +899,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
+         roster_fit_component = (c.get("need_bonus", 0.0) + c.get("eligibility_bonus", 0.0)) * NECESSITY_ROSTER_FIT_WEIGHT
+ 
+         raw_score = (
+-            NECESSITY_BASELINE + standout_component + survival_component
++            NECESSITY_BASELINE + standout_component + gap_component
+             + cliff_component + run_component + denial_component + roster_fit_component
+             + forfeit_component
+         )
+@@ -1677,7 +1737,8 @@ def build_snapshot(
+     # for a caller that supplies no label, and it is the same question asked a different way:
+     # with `n` picks complete the next one is n // teams + 1.
+     round_num = _round_being_decided(pick_label, picks, league)
+-    necessity_by_candidate = compute_pick_necessity(raw_candidates, round_num)
++    necessity_by_candidate = compute_pick_necessity(
++        raw_candidates, round_num, max_intervening_gap(pick_order, my_roster_id))
+     tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
+     path_flags = decision_path_flags(raw_candidates)
+ 

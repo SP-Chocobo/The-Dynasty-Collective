@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import unittest
 
+import pandas as pd
+
 import data_merger as dm
 import draft_room as dr
 import draft_strategy as ds
@@ -131,11 +133,33 @@ class PoolAdmissionTests(unittest.TestCase):
         cls.merger = dm.DataMerger()
         cls.db = _players_db(cls.merger)
 
-    def _pool(self, league):
+    def _pool(self, league, db=None):
         from player_universe import league_usable_positions
         return dr.build_available_pool(
-            self.merger, self.db, set(), league_usable_positions(league["roster_positions"]),
+            self.merger, db if db is not None else self.db, set(),
+            league_usable_positions(league["roster_positions"]),
         )
+
+    #: MANDATE 2.3: A DELIBERATE SUBJECT FOR THE NO-NUMBER PATH, because the accidental one is gone.
+    #: `#193`'s contract -- a player admitted on evidence he is real, with nobody having published a
+    #: number for him -- was being tested against whoever happened to fall through, and on this
+    #: fixture that population was ENTIRELY the 11 team defenses `name_key` could not resolve. 2.3
+    #: repaired the resolution, all 32 defenses now carry numbers, and the path emptied: the test
+    #: failed on its own non-vacuity guard rather than on the contract.
+    #:
+    #: The contract is unchanged and still worth holding, so it gets a subject that exists ON PURPOSE
+    #: -- a real, currently relevant player no vendor table carries. A test whose subject arrives by
+    #: accident is a test that stops testing the day an unrelated repair lands, which is exactly what
+    #: happened here.
+    def _db_with_an_unnumbered_player(self):
+        db = dict(self.db)
+        db["_unnumbered_for_193"] = {
+            "player_id": "_unnumbered_for_193",
+            "full_name": "Zzz Unpricedman",
+            "position": "WR", "fantasy_positions": ["WR"], "team": "SF",
+            "status": "Active", "years_exp": 2,
+        }
+        return db
 
     def test_kicker_and_defense_enter_the_pool_when_the_league_rosters_them(self):
         pool = self._pool(KDST_LEAGUE)
@@ -167,19 +191,67 @@ class PoolAdmissionTests(unittest.TestCase):
         # real number" until league-scored points began arriving from a source that
         # publishes no trade values at all.
         pool = self._pool(KDST_LEAGUE)
-        no_tv = pool[pool["trade_value"].isna()]
+        # Scoped to rows that HAVE a projection, because the projection-only path is what this
+        # test is about. Since #193 the pool also carries rows admitted on evidence the player
+        # is real rather than on any number at all, so "no trade value" alone no longer implies
+        # "therefore projection-anchored" -- it splits into two populations and this is the one
+        # with a number. The other is covered by test_a_row_with_no_number_is_admitted_and_says_so.
+        no_tv = pool[pool["trade_value"].isna() & pool["projection"].notna()]
         self.assertGreater(len(no_tv), 0, "nobody is riding the projection-only path")
         self.assertTrue(no_tv["projection"].notna().all(),
                         "a projection-only admission must still carry a real projection")
+
+    def test_the_eleven_defenses_no_longer_ride_the_no_number_path(self):
+        """MANDATE 2.3, stated positively: the population that used to fill the path above. Every
+        team defense now resolves to its transcribed row, so none of them reaches the pool without a
+        number. If this ever fails, `name_key`/`team_defense_key` has regressed and the test above
+        will keep passing on its synthetic subject while production quietly stops pricing 11 rows."""
+        pool = self._pool(KDST_LEAGUE)
+        defenses = pool[pool["position"] == "DEF"]
+        self.assertEqual(len(defenses), 32, "not every defense reached the pool")
+        unnumbered = defenses[defenses["trade_value"].isna() & defenses["projection"].isna()
+                              & defenses["sleeper_points"].isna()]
+        self.assertEqual(len(unnumbered), 0,
+                         f"{len(unnumbered)} defenses are still unpriceable")
+
+    def test_a_row_with_no_number_is_admitted_and_says_so(self):
+        # The other half of the split above, and the #193 contract stated positively: a player
+        # can now reach the pool on evidence he is a real, currently relevant footballer with
+        # nobody having published a number for him. That row is legitimate, carries None rather
+        # than a fabricated 0.0, and the board labels it for what it is instead of borrowing
+        # the trade_value branch's name.
+        db = self._db_with_an_unnumbered_player()
+        pool = self._pool(KDST_LEAGUE, db=db)
+        unnumbered = pool[pool["trade_value"].isna() & pool["projection"].isna()
+                          & pool["sleeper_points"].isna()]
+        self.assertGreater(len(unnumbered), 0,
+                           "vacuous: this fixture admits nobody on the no-number path")
+        board = dr.compute_draft_board(
+            self.merger, db, [], my_roster_id="1", league=KDST_LEAGUE, mode="balanced")
+        ids = set(unnumbered["player_id"].astype(str))
+        rows = [r for r in board if str(r["player_id"]) in ids]
+        self.assertTrue(rows, "the no-number admissions never reached the board")
+        for r in rows:
+            self.assertIsNone(r["bpa"], r["name"])
+            self.assertIsNone(r["universal_value"], r["name"])
+            self.assertIsNone(r["confidence"], r["name"])
+            self.assertIsNone(r["replacement_basis"], r["name"])
+            self.assertEqual(r["bpa_source"], dr.NO_PRICEABLE_INPUT, r["name"])
 
     def test_widening_the_gate_adds_nobody_at_an_offensive_position(self):
         # The blast-radius guarantee that made this change safe to make at all: every
         # offensive player the ranking sources project also carries a trade value, so the
         # old and new rules are still exactly equivalent there. If this ever fails, the
         # change has started moving players it was measured not to touch.
+        # Restated for #193, which deliberately DID widen admission at every position. What
+        # survives -- and is the property that actually made the K/DEF change safe -- is the
+        # narrower one it was really asserting: the vendor still prices every offensive player
+        # it projects, so no row gets a PROJECTION without also getting a trade value. A row
+        # with neither is the widening's own population and is not a counterexample to that.
         pool = self._pool(KDST_LEAGUE)
         for pos in ("QB", "RB", "WR", "TE"):
-            rows = pool[pool["position"] == pos]
+            rows = pool[(pool["position"] == pos) & pool["projection"].notna()]
+            self.assertTrue(len(rows), f"no projected {pos} in the pool at all")
             self.assertTrue(rows["trade_value"].notna().all(),
                             f"{pos} gained a projection-only admission; blast radius has widened")
 
@@ -226,12 +298,15 @@ class ProjectionOnlyAdmissionScoringTests(unittest.TestCase):
         from player_universe import league_usable_positions
         pool = dr.build_available_pool(
             self.merger, self.db, set(), league_usable_positions(KDST_LEAGUE["roster_positions"]))
-        no_tv = set(pool[pool["trade_value"].isna()]["player_id"].astype(str))
+        # Projection-only, not "no trade value": since #193 the latter also catches rows with
+        # no number at all, whose final_score is None and which have no premium to decline.
+        no_tv = set(pool[pool["trade_value"].isna() & pool["projection"].notna()]
+                    ["player_id"].astype(str))
         self.assertTrue(no_tv, "no projection-only players to check")
         checked = [r for r in self.board if str(r["player_id"]) in no_tv]
         self.assertTrue(checked)
         for row in checked:
-            self.assertEqual(row["eligibility_bonus"], 0.0)
+
             self.assertEqual(row["final_score"],
                              round(row["universal_value"] + row["need_bonus"], 2))
 
@@ -465,23 +540,40 @@ class MissingMultiYearOutlookTests(unittest.TestCase):
                             f"{pos} carries a real 3yr outlook and should still be scored on it")
 
     def test_a_measured_zero_and_an_absent_data_zero_are_different_things(self):
-        # The distinction this whole class exists to protect, and the one the bug erased.
-        # Every RB on a full-pool board scores growth 0.0 -- not because the data is missing
-        # but because it is present and says so: an RB's 3yr outlook sits BELOW his season
-        # percentile across the board, which is the aging cliff showing up exactly where it
-        # should, then clipped at 0 because upside mode does not carry negative growth.
-        # K and DEF also score 0.0, from having no 3yr outlook at all.
+        # The distinction this whole class exists to protect, and the one the bug erased. A row
+        # can score growth 0.0 for two opposite reasons: because its 3yr outlook is PRESENT and
+        # sits at or below its season percentile (the aging cliff showing up where it should,
+        # clipped at 0 because upside mode carries no negative growth), or because there is no
+        # 3yr outlook at all. Identical output, opposite meaning, and only _has_3yr tells them
+        # apart. A future change that "fixes" one of these zeroes by relaxing the guard would
+        # silently resurrect the artifact, so both are pinned here with the flag that separates
+        # them.
         #
-        # Identical output, opposite meaning, and only _has_3yr tells them apart. A future
-        # change that "fixes" one of these zeroes by relaxing the guard would silently
-        # resurrect the artifact, so both are pinned here together with the flag that
-        # separates them.
+        # THIS USED TO ASSERT THAT *EVERY* RB SCORES 0.0, and that was an accident of the data
+        # rather than the distinction being tested. MANDATE 3.1 paired the two percentile
+        # populations -- they had been a rank among 292 rows minus a rank among 259 -- which
+        # removed a systematic downward bias of about 0.58 on the horizon scale. Five of the 40
+        # RBs then crossed back above zero, and they are the right five: Omarion Hampton,
+        # Treveyon Henderson, Zach Charbonnet and two others, young backs whose three-year
+        # outlook genuinely does exceed their season standing. The old bias was clipping real
+        # upside signal to zero, so the premise was never safe to pin.
+        #
+        # What is pinned instead is the contrast itself: the measured-zero group must be
+        # non-empty (or there is no "measured zero" to distinguish), and the absent-data group
+        # must be zero WITHOUT EXCEPTION (one non-zero there is the artifact returning).
         rb = [r for r in self.upside_board if r["position"] == "RB"]
         kdef = [r for r in self.upside_board if r["position"] in ("K", "DEF")]
         self.assertTrue(rb and kdef)
-        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in rb),
-                        "an RB with a positive 3yr trajectory would invalidate this test's premise")
-        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in kdef))
+        measured_zero = [r for r in rb if r.get("growth_signal", 0.0) == 0.0]
+        self.assertTrue(measured_zero,
+                        "no RB measures growth 0.0, so this board has no MEASURED zero left to "
+                        "contrast against the absent-data one")
+        self.assertGreater(len(measured_zero), len(rb) // 2,
+                           "only a handful of RBs measure zero -- the aging cliff should still put "
+                           "most of the position at or below its season percentile")
+        self.assertTrue(all(r.get("growth_signal", 0.0) == 0.0 for r in kdef),
+                        "a row with NO 3yr outlook scored growth, which is the fabricated signal "
+                        "this class exists to keep dead")
         # The measured group has the data; the absent group does not.
         proj = self.merger.projections
         rb_rows = proj[proj["position"] == "RB"]
@@ -565,7 +657,9 @@ class SeededProjectionProvenanceTests(unittest.TestCase):
         # The fix touches ONLY rows sourced from the two seeded files -- every offensive
         # position must still claim genuine Draft Sharks provenance, unchanged.
         for r in self.board:
-            if r["position"] not in ("K", "DEF"):
+            # An unpriced row has no provenance to be unaffected -- nothing sourced it. The
+            # claim here is about rows the vendor actually priced (#193).
+            if r["position"] not in ("K", "DEF") and r["bpa"] is not None:
                 self.assertEqual(r["bpa_source"], "points_vor_draftsharks", r["name"])
 
     def test_seeded_confidence_sits_strictly_between_the_two_it_borders(self):
@@ -770,7 +864,7 @@ class LateRoundNecessityTests(unittest.TestCase):
     def test_late_round_necessity_is_uniformly_damped_for_every_position(self):
         c = {"team_acquisition_value": 20.0, "universal_value": 18.0, "survival_probability": 0.98,
              "positional_cliff": None, "position_run_detected": False, "rival_premium": 0.0,
-             "need_bonus": 4.0, "eligibility_bonus": 0.0}
+             "need_bonus": 4.0}
         early = ps.compute_pick_necessity([c], round_num=1)[0][0]
         late = ps.compute_pick_necessity([c], round_num=ps.LATE_ROUND_THRESHOLD)[0][0]
         self.assertLess(late, early, "late-round necessity must be damped")
@@ -829,11 +923,36 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
     def _projection_only_rows(self):
         return self.pool[self.pool["trade_value"].isna()]
 
+    def _blind_spot_row(self):
+        """A projection-only row that actually EXERCISES the blind spot.
+
+        `_projection_only_rows().iloc[0]` is not that row, and assuming it was cost a real
+        investigation (#52 phase 6). Both tests below took whatever sorted first and asserted
+        the player was dropped; after the identity repairs the first row became one of exactly
+        two anomalies in a slice of 45 -- a contested K Williams, whose pool price was withheld
+        by the contested-identity guard but whom _team_roster_players then re-prices from the
+        merger directly (see the leak pinned below). So the tests went red while the defect they
+        pin was untouched: 43 of the 45 rows still drop.
+
+        Selecting on the BEHAVIOUR rather than on row order, so the fixture cannot drift onto an
+        exception again, and asserting the population so it cannot quietly become empty.
+        """
+        rows = self._projection_only_rows()
+        self.assertGreater(len(rows), 10, "the projection-only slice collapsed")
+        for _, row in rows.iterrows():
+            picks = [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}]
+            if len(dr._team_roster_players(picks, self.db, "1", self.merger)) == 0:
+                return row
+        self.fail("no projection-only row is dropped any more -- the blind spot this class "
+                  "exists to pin is GONE, which is good news and makes this class stale")
+
     def test_the_two_team_specific_terms_disagree_about_a_filled_slot(self):
-        row = self._projection_only_rows().iloc[0]
+        row = self._blind_spot_row()
         picks = [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}]
-        self.assertEqual(dr._team_starters_filled(picks, self.db, "1").get(row["position"]), 1,
-                         "need_bonus must see the slot filled")
+        self.assertEqual(
+            dr._team_starters_filled(picks, self.db, "1",
+                                     KDST_LEAGUE["roster_positions"]).get(row["position"]), 1,
+            "need_bonus must see the slot filled")
         self.assertEqual(len(dr._team_roster_players(picks, self.db, "1", self.merger)), 0,
                          "eligibility_bonus cannot price him, so he is dropped")
 
@@ -853,7 +972,7 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
         eligibility_bonus exists to price -- is invisible to the optimizer.
         """
         from player_universe import player_eligible_positions
-        row = self._projection_only_rows().iloc[0]
+        row = self._blind_spot_row()
         player_id = str(row["player_id"])
         db = dict(self.db)
         info = dict(db[player_id])
@@ -865,6 +984,41 @@ class ProjectionOnlyRosterVisibilityTests(unittest.TestCase):
         self.assertEqual(
             len(dr._team_roster_players(picks, db, "1", self.merger)), 0,
             "a projection-only player is dropped no matter how eligible he is")
+
+    def test_a_withheld_contested_price_comes_back_through_the_roster_lookup(self):
+        """A SECOND leak, found while repairing the fixture above (#52 phase 6). Pinned here
+        rather than repaired, because the repair belongs with the other refusal-propagation
+        paths and is a propagation RULE, not five separate patches.
+
+        _drop_contested_identities withholds the one price two same-named, same-position players
+        cannot both claim -- it nulls trade_value on the POOL rows. But _team_roster_players does
+        not read the pool: it resolves each rostered player through the merger again, where that
+        same trade_value is still sitting. So the number the board refuses to show is used to
+        build the lineup the board reasons about.
+
+        Measured on the committed baseline in the K/DST league: of 45 projection-only pool rows,
+        43 drop as this class describes and 2 do not -- and those 2 are exactly the contested
+        K Williams pair, retained because the lookup re-priced them from the merger.
+
+        This test states the leak so it is visible and so that closing it is a visible change.
+        """
+        contested = [
+            row for _, row in self._projection_only_rows().iterrows()
+            if len(dr._team_roster_players(
+                [{"player_id": row["player_id"], "round": 14, "roster_id": "1"}],
+                self.db, "1", self.merger)) > 0
+        ]
+        if not contested:
+            self.skipTest("no contested row is in the projection-only slice on this baseline")
+        for row in contested:
+            with self.subTest(player=row["name"]):
+                # The pool says it has no price for him...
+                self.assertTrue(pd.isna(row["trade_value"]))
+                # ...and the roster lookup prices him anyway.
+                priced = self.merger.merge_player(
+                    row["name"], position=row["position"], team=row.get("team"))
+                self.assertIsNotNone(priced.get("trade_value"),
+                                     "the leak closed -- update this test, it is now stale")
 
     def test_offline_eligibility_cannot_prove_the_blind_spot_is_dormant(self):
         """Why there is no "it's currently harmless" assertion here any more.

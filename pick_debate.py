@@ -53,15 +53,23 @@ something that runs on every board refresh (a live draft's per-pick LLM budget i
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
 from llm_engine import (
     ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY,
     CLAUDE_MODEL, GEMINI_MODEL, OPENAI_MODEL, MAX_TOKENS,
-    UNAVAILABLE_REPORT, _report_for_handoff,
+    UNAVAILABLE_REPORT, _report_for_handoff, is_failed_call,
 )
-from pick_synthesis import CandidateSnapshot, PickSnapshot, diff_snapshots, stamp_is_current
+import pick_synthesis as ps
+import player_universe as pu
+from pick_synthesis import (ABSENCE_KIND_LABELS,
+                            CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
+                            DISPLACEMENT_BASIS_LABELS, DISPLACEMENT_MEASURED,
+                            EXPOSURE_BASIS_LABELS, EXPOSURE_MEASURED,
+                            diff_snapshots, stamp_is_current,
+                            survival_is_presentable, SURVIVAL_NO_NEXT_PICK)
 
 import bot_config
 import provider_meter
@@ -165,12 +173,77 @@ def _call_openai(system_prompt: str, user_prompt: str, api_key: Optional[str] = 
 PROVIDER_CALLERS = {"claude": _call_claude, "gemini": _call_gemini, "openai": _call_openai}
 
 
+#: THE SURVIVAL CLAUSE THESE PROMPTS CARRY, DERIVED FROM THE POLICY (#52 phase 7.1).
+#:
+#: All three prompts listed survival_probability, opportunity_cost and expected_value_of_waiting
+#: among "real, already-computed numbers", and the Caller's own output template offered
+#: "19% survival with a QB run detected" as a worked KEY FACTOR -- while the evidence block
+#: beneath tells the same model the estimate is WITHHELD and not to reconstruct one. A prompt
+#: that names a number, demonstrates citing it, and then refuses to supply it is not a guard; it
+#: is an invitation to fabricate, aimed at the one participant that cannot check.
+#:
+#: Built from withheld_fields() rather than edited, for the reason everything else in this repair
+#: is: the day SURVIVAL_IS_CALIBRATED flips, a hand-edited prompt goes stale silently and this
+#: one does not. Interpolated at import, so the three constants stay constants and every caller
+#: and test that reads them is unaffected.
+def _survival_clause() -> str:
+    if "survival_probability" not in ps.withheld_fields():
+        return ("survival_probability (the odds this player is still available at the user's "
+                "next pick), opportunity_cost (expected value lost if he doesn't survive), "
+                "expected_value_of_waiting (the flip side -- what you'd expect to keep if you "
+                "pass and gamble)")
+    return ("intervening_picks (the COUNT of picks before the user's next selection -- a "
+            "measured fact, and the only availability quantity you are given: no survival "
+            "probability, opportunity cost or expected-value-of-waiting figure is supplied for "
+            "any candidate, they are WITHHELD because the estimate lost to a constant predictor "
+            "on two independent arms, and you must not reconstruct or estimate one)")
+
+
+#: MANDATE 1.7. THE ONLY CONFIDENCE VALUES THE CALLER'S CONTRACT ADMITS, as data.
+#:
+#: The contract was stated in the prompt and checked nowhere: `CONFIDENCE` arrived as free text,
+#: reached `PickDebateResult.confidence` unexamined, and the Draft Room printed it verbatim as
+#: "Confidence: <whatever>". A model answering "85%" -- which the prompt explicitly forbids, because
+#: "percentages from an LLM are fake precision" -- was rendered to a person as though the engine had
+#: produced it.
+#:
+#: The prompt line below is BUILT from this tuple rather than spelling it a second time, the same
+#: reason `_survival_clause` is built from `withheld_fields()`: a vocabulary with two statements
+#: has two things to keep in step, and the day one changes the other goes stale silently.
+CALLER_CONFIDENCE_VALUES = ("Unanimous", "Lean", "Split")
+
+
+def confidence_is_in_contract(value: Optional[str]) -> bool:
+    """Whether a parsed CONFIDENCE is one of the three the Caller was asked for.
+
+    Case-insensitive and whitespace-tolerant, because a model writing "unanimous" has met the
+    contract; anything else has not, and a surface must say so rather than presenting it as the
+    engine's own grading. ABSENT IS NOT IN CONTRACT and is not out of it either -- None means no
+    confidence was parsed at all, which a caller distinguishes before it asks this."""
+    if not value:
+        return False
+    return value.strip().lower() in {v.lower() for v in CALLER_CONFIDENCE_VALUES}
+
+
+#: The KEY FACTOR example the Caller is shown. It demonstrated citing the withheld number.
+def _disagree_example() -> str:
+    """The term the Caller is shown as an example of something to DISAGREE with. Naming a
+    withheld field here is the same invitation in a quieter place."""
+    if "survival_probability" not in ps.withheld_fields():
+        return "survival_probability"
+    return "team_acquisition_value"
+
+
+def _key_factor_example() -> str:
+    if "survival_probability" not in ps.withheld_fields():
+        return "19% survival with a QB run detected and a HIGH positional cliff"
+    return "only 2 picks until your next turn with a QB run detected and a HIGH positional cliff"
+
+
 STRATEGIST_SYSTEM_PROMPT = """You are the Draft Strategist for a live fantasy football draft, arguing for the
 correct action THIS PICK. You are given a frozen snapshot of real, already-computed numbers -- universal_value
-(position-agnostic player quality), team_acquisition_value (universal_value plus this specific roster's own need
-and lineup-eligibility bonuses), survival_probability (the odds this player is still available at the user's next
-pick), opportunity_cost (expected value lost if he doesn't survive), expected_value_of_waiting (the flip side --
-what you'd expect to keep if you pass and gamble), denial_value (what the likeliest intervening opponent would
+(position-agnostic player quality), team_acquisition_value (universal_value plus this specific roster's own need,
+lineup-eligibility and depth-exposure terms), {survival_clause}, denial_value (what the likeliest intervening opponent would
 gain from him), positional_cliff (whether a real, computed gap sits between this player and the next-best
 remaining player at his position), and pick_necessity (0-100, NOT another value score -- it answers "how badly do
 I need to make this selection right now," and 100 means "no reasonable alternative exists," not "best player").
@@ -178,15 +251,15 @@ A candidate can have a lower universal_value than another candidate and still be
 pick_necessity is much higher -- that gap IS the interesting case, and your job is to explain it when it appears,
 not paper over it.
 
-Some candidates also carry a real-world market-consensus reach_label (WITHIN CONSENSUS BAND / MODEST REACH /
-SIGNIFICANT REACH), built from KeepTradeCut's own crowd-sourced dynasty rankings -- real trade-value consensus,
-NOT literal draft-position ADP, though the two correlate strongly for established players. This is a guardrail
-against the engine quietly fighting the market, not a rule that overrides it: a justified reach is a completely
-normal, legitimate recommendation. But the burden of proof scales with the label -- WITHIN CONSENSUS BAND needs no
-special justification at all, MODEST REACH needs a real reason, and SIGNIFICANT REACH needs your case to be built
-on genuinely strong evidence (a real positional cliff, a severe survival collapse, heavy denial risk) rather than
-just "our own valuation ranks him higher than the market does." If you're recommending a SIGNIFICANT REACH,
-say explicitly what justifies deviating from consensus this far -- don't recommend it and silently ignore the tag.
+Some candidates also carry their real-world market-consensus standing -- a rank and a tier from KeepTradeCut's
+own crowd-sourced dynasty rankings. That is real trade-value consensus, NOT literal draft-position ADP, though the
+two correlate strongly for established players. It is there so the engine cannot quietly fight the market unnoticed,
+not as a rule that overrides it: recommending a player earlier than consensus does is a completely normal,
+legitimate outcome. You are given the rank and tier and no verdict on them, deliberately -- judge for yourself how
+far a recommendation sits from consensus and whether the board-specific evidence (a real positional cliff, a severe
+survival collapse, heavy denial risk) carries that distance, rather than "our own valuation ranks him higher than
+the market does." When you recommend a player consensus ranks well below where he is being taken, say explicitly
+what justifies it -- don't recommend him and silently ignore the numbers.
 
 These numbers are the ONLY numbers that exist. Never invent, estimate, or silently recompute a value, a
 probability, or a projection of your own -- reason only about what the GIVEN numbers mean and how they should be
@@ -205,14 +278,16 @@ SKEPTIC_SYSTEM_PROMPT = """You are the Draft Skeptic for a live fantasy football
 frozen snapshot of real numbers the Strategist saw, plus the Strategist's own case built from them. Your job is to
 pressure-test that case, not restate it.
 
-Look specifically for: whether the survival model's own assumptions actually hold here (a detected positional run
+Look specifically for: whether the availability assumptions you were actually given hold here (a detected positional run
 is a real signal from recent picks, not a certainty -- would this read differ without it?), whether a roster-fit
-concern the numbers can't fully capture is being glossed over (these numbers don't know about bye weeks, a
-player's specific injury history, or a personality clash with the rest of the roster -- say so if something like
-that plausibly matters and isn't reflected in what you were given), and whether the numeric case genuinely
+concern the numbers can't fully capture is being glossed over (these numbers don't know about bye weeks or a
+personality clash with the rest of the roster -- say so if something like that plausibly matters and isn't
+reflected in what you were given; on health, note that a CURRENT injury designation IS given to you when the
+engine has one, and its discount is already inside the universal value, so the gap is a player's longer injury
+HISTORY and his prognosis, not his present status), and whether the numeric case genuinely
 supports the Strategist's conclusion or is being stretched to fit it. If the Strategist recommended a candidate
-tagged MODEST REACH or SIGNIFICANT REACH (real market-consensus deviation, from KeepTradeCut's crowd data, not
-this engine's own math), that's exactly the kind of call worth pressure-testing hardest: is the evidence actually
+whose market-consensus rank and tier (KeepTradeCut's crowd data, not this engine's own math) sit well below where
+he is being taken, that's exactly the kind of call worth pressure-testing hardest: is the evidence actually
 strong enough to justify deviating from what the market itself expects here, or is the case really just "our
 valuation disagrees with consensus" dressed up as urgency?
 
@@ -224,12 +299,12 @@ finding the strongest real counter-argument. Be concise."""
 
 CALLER_SYSTEM_PROMPT = """You are the Draft Caller for a live fantasy football draft -- the final synthesizer
 between a Strategist's numeric case and a Skeptic's pressure test, both reasoning over the same frozen snapshot of
-real, already-computed numbers (universal_value, team_acquisition_value, survival_probability, opportunity_cost,
-expected_value_of_waiting, denial_value, positional_cliff, and a market-consensus reach_label from KeepTradeCut's
-real crowd data where available). Give ONE clear, actionable recommendation: which candidate to take right now,
-and why -- explicitly answering "what do I realistically give up if I don't take him now" using the actual
-numbers you were given, not a vague hedge. If your recommendation carries a MODEST or SIGNIFICANT reach label,
-your WHY must explicitly justify deviating from market consensus that far, not just restate his other numbers.
+real, already-computed numbers (universal_value, team_acquisition_value, {survival_clause}, denial_value,
+positional_cliff, and a market-consensus rank and tier from
+KeepTradeCut's real crowd data where available). Give ONE clear, actionable recommendation: which candidate to take
+right now, and why -- explicitly answering "what do I realistically give up if I don't take him now" using the
+actual numbers you were given, not a vague hedge. If your recommendation sits well below where market consensus
+ranks him, your WHY must explicitly justify deviating that far, not just restate his other numbers.
 
 Never invent or recompute a number yourself -- if either analyst flagged that a specific input looks wrong, or you
 believe one does, capture that as a DISAGREE line (format below), completely separate from your recommendation
@@ -239,13 +314,12 @@ made up to make the case cleaner.
 End your response with this exact structured block, one field per line, using these exact labels:
 
 RECOMMENDATION: <the exact candidate name as given in the snapshot -- copy it exactly, do not paraphrase>
-CONFIDENCE: Unanimous / Lean / Split
+CONFIDENCE: {confidence_values}
 WHY: <the deciding case for this pick, one to three sentences, referencing the actual numbers -- the same
 "here's why X is right even though he isn't the top-ranked player" reasoning the Strategist built>
 DISSENT: <the strongest real counter-argument still standing after the debate -- omit only if there is genuinely
 none>
-KEY FACTOR: <the single number or combination that most drove this call, e.g. "19% survival with a QB run
-detected and a HIGH positional cliff">
+KEY FACTOR: <the single number or combination that most drove this call, e.g. "{key_factor_example}">
 
 CONFIDENCE is never a percentage -- percentages from an LLM are fake precision. Unanimous means the Strategist and
 Skeptic substantively agree; Lean means the Skeptic raised a real concern but the Strategist's case still holds;
@@ -254,14 +328,73 @@ Split means there's a genuine, unresolved disagreement between them and the user
 If either analyst flagged (or you believe) that a specific input number looks wrong, add one line per such flag
 (after the block above):
 
-DISAGREE: <the specific term, e.g. "survival_probability for Player X"> | <why you think it's wrong, one line>
+DISAGREE: <the specific term, e.g. "{disagree_example} for Player X"> | <why you think it's wrong, one line>
 
 Never invent a disagreement that wasn't actually raised or reasoned through in the debate -- omit this entirely
 when there's nothing to flag. Be decisive."""
 
 
+#: INTERPOLATED ONCE, AT IMPORT. `.replace` and not `.format`, because these prompt bodies carry
+#: literal braces of their own and a format call would either choke on them or silently consume
+#: them. The constants stay constants, so every caller and test that reads them is untouched.
+for _name in ("STRATEGIST_SYSTEM_PROMPT", "SKEPTIC_SYSTEM_PROMPT", "CALLER_SYSTEM_PROMPT"):
+    globals()[_name] = (
+        globals()[_name]
+        .replace("{survival_clause}", _survival_clause())
+        .replace("{key_factor_example}", _key_factor_example())
+        .replace("{disagree_example}", _disagree_example())
+        .replace("{confidence_values}", " / ".join(CALLER_CONFIDENCE_VALUES))
+    )
+del _name
+
+#: Non-vacuity, checked at import rather than left to a test: an unreplaced placeholder would
+#: ship a literal "{survival_clause}" to a model, and a renamed token would silently stop being
+#: substituted while the prompt still read plausibly.
+for _prompt in (STRATEGIST_SYSTEM_PROMPT, SKEPTIC_SYSTEM_PROMPT, CALLER_SYSTEM_PROMPT):
+    assert "{survival_clause}" not in _prompt and "{key_factor_example}" not in _prompt \
+        and "{disagree_example}" not in _prompt and "{confidence_values}" not in _prompt, \
+        "a prompt placeholder was not substituted"
+del _prompt
+
+
 def _format_probability(value: Optional[float]) -> str:
     return f"{round(value * 100)}%" if value is not None else "unknown"
+
+
+def _depth_term(candidate) -> str:
+    """The depth_exposure clause of the acquisition-value sum, qualified by its basis (#174).
+
+    Three claims, and the panel used to make only two of them. The arithmetic is unchanged in
+    every case -- a 0.0 really is +0.0 in the sum -- but a model instructed never to recompute
+    is entitled to know whether that zero was MEASURED. Before the basis reached this boundary
+    it could not be told: on a real mid-draft board, 1,218 rows carried 0.0 with basis
+    `vacant` and not one carried a measured zero, so every zero the chairs ever saw meant "not
+    measured" and every one of them read as "no depth risk here".
+    """
+    if candidate.depth_exposure is None:
+        return "; depth_exposure not computed for this board"
+    basis = getattr(candidate, "depth_basis", None)
+    if basis is not None and basis != EXPOSURE_MEASURED:
+        words = EXPOSURE_BASIS_LABELS.get(basis, basis)
+        return (f" + depth_exposure {candidate.depth_exposure:+}, "
+                f"which is NOT a measurement: {words}")
+    return f" + depth_exposure {candidate.depth_exposure:+}"
+
+
+def _displacement_term(candidate) -> str:
+    """The displacement_adj clause of the sum (#216), qualified the same way as depth. The
+    term is non-positive: a deduction is the league anchor's over-credit for a slot this
+    roster cannot offer him, and a 0.0 under `measured` is a solved lineup with room for him.
+    Any other basis means the zero was never produced, and the clause says so rather than
+    letting a model read it as room."""
+    value = getattr(candidate, "displacement_adj", None)
+    if value is None:
+        return "; displacement_adj not computed for this board"
+    basis = getattr(candidate, "displacement_basis", None)
+    if basis is not None and basis != DISPLACEMENT_MEASURED:
+        words = DISPLACEMENT_BASIS_LABELS.get(basis, basis)
+        return f" + displacement_adj {value:+}, which is NOT a measurement: {words}"
+    return f" + displacement_adj {value:+}"
 
 
 def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Optional[str]) -> str:
@@ -269,10 +402,141 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
     lines = [
         f"CANDIDATE: {candidate.name} ({candidate.position}{', ' + candidate.team if candidate.team else ''}){flag}",
         f"  Pick necessity: {candidate.pick_necessity}/100 -- {candidate.necessity_label} (NOT a value score -- see below for value)",
-        f"  Universal value: {candidate.universal_value} (source: {candidate.bpa_source}, confidence: {candidate.confidence})"
-        + (f" -- {candidate.projected_points} projected season points" if candidate.projected_points is not None else ""),
-        f"  Team acquisition value: {candidate.team_acquisition_value} (need_bonus: {candidate.need_bonus:+}, eligibility_bonus: {candidate.eligibility_bonus:+})",
     ]
+    # MANDATE 2.5. THE DESIGNATION THAT MOVED risk_adj, stated to the chair that receives risk_adj.
+    # It never crossed the snapshot boundary, so a chair saw the health discount inside
+    # universal_value and had nothing to attribute it to -- while the Skeptic's own instructions
+    # told it the engine knows nothing about injuries. Said only when the engine HAS a designation:
+    # an absent status is "nothing was reported", and printing "healthy" for it would be exactly the
+    # absence-as-measurement move #187 forbids. The basis rides along because RULE_FLOOR means the
+    # games are already out of the projection and no penalty was charged on top (see
+    # draft_room.health_penalty) -- a chair told only "Out" would double-count it in its own head.
+    if candidate.injury_status:
+        #: CORRECTED AT THE v4 BLIND PASS (found independently by two lenses). This branched TWO
+        #: ways on `availability_basis`, which is the basis of the PROJECTION HAIRCUT, and told
+        #: every candidate outside that one state that "a health discount is already inside the
+        #: universal value below". For a designation this engine deliberately does NOT price --
+        #: `Questionable`, ruled immaterial at `#191`, or anything unrecognised -- `health_penalty`
+        #: returns exactly 0.0 and `availability_factor` returns 1.0, so NO discount of any kind
+        #: exists and the sentence was simply false. Measured on a 12T_ppr opening board: 65 of 481
+        #: priced rows, and TEN OF THE 48 CANDIDATES in the narrowed snapshot at pick 1.01 --
+        #: McCaffrey, Nacua, Chase, Jeanty, Mahomes, Kittle, LaPorta, Warren, Kraft, Love.
+        #:
+        #: The wrong quantity was being consulted. `risk_adj` is on the same object and is the
+        #: number that says whether a discount was charged, so it is what decides the sentence now.
+        #: FOUR states, because there are four, and an earlier version of this block said THREE
+        #: and read them off `risk_adj == 0.0` (`#174`).
+        #:
+        #: `health_penalty` returns 0.0 from four causes and only ONE of them means the engine
+        #: does not price the designation. Branching on the float collapsed the other three into
+        #: that one, so the chair was told "this engine does not price this designation" about
+        #: rows discounted at HEALTH_DISCOUNT_RATE -- measured on a HEAVY_IDP board built without
+        #: season projections, DeShon Elliott (IR, bpa 15.0) and Harold Landry (PUP, bpa 2.0).
+        #: Two repairs that were each right alone produced that sentence together: one made the
+        #: absent-projection branch return 0.0 rather than NaN, the other gave 0.0 the meaning
+        #: "unpriced".
+        #:
+        #: ASKED OF THE BOARD, NOT INFERRED HERE. `risk_basis` is stamped beside `risk_adj` by
+        #: the one site that computes it, so this formatter reads a verdict instead of
+        #: reconstructing one (`#166`). A missing basis falls through to saying nothing about the
+        #: designation beyond naming it -- silence, never a guess.
+        _basis = getattr(candidate, "risk_basis", None)
+        if _basis == ps.HEALTH_BASIS_IN_PROJECTION or candidate.availability_basis == pu.RULE_FLOOR:
+            _health = ("the games this designation is known to cost are ALREADY REMOVED from his "
+                       "projection, so no further discount was applied on top")
+        elif _basis == ps.HEALTH_BASIS_CHARGED:
+            _health = "a health discount is already inside the universal value below"
+        elif _basis == ps.HEALTH_BASIS_NO_PROJECTION:
+            _health = ("this engine DOES price this designation, but his row is priced off trade "
+                       "value with no projection for the discount to be a share of, so no "
+                       "discount appears in the value below")
+        elif _basis == ps.HEALTH_BASIS_UNPRICED:
+            _health = ("NO discount was applied for it -- this engine does not price this "
+                       "designation, so his value below is the value of a fully fit player")
+        else:
+            _health = "the board recorded no health verdict for it"
+        lines.append(f"  Injury designation: {candidate.injury_status} -- {_health}")
+    # #183. AN UNPRICED ROW REACHES THIS FORMATTER. `universal_value` and
+    # `team_acquisition_value` are both Optional, and the board's absence convention gives an
+    # unpriced row `final_score = None`, which becomes a None TAV here. Printed straight into an
+    # f-string that reads "Universal value: None" and, worse, "(universal_value None + need_bonus
+    # +6.0 ...)" -- an arithmetic sentence with a hole in it, shown to a model instructed never to
+    # recompute. Said plainly instead, in the same register the rest of this function uses.
+    if candidate.universal_value is None:
+        # #112: WHICH KIND of absence, not merely that there is one. "No source carried him" and
+        # "sources carried him and none priced him" are different claims about the same blank,
+        # and only the second is even weak evidence of low value. The kind is stated when the
+        # board recorded one and omitted when it did not -- never guessed here.
+        why = ABSENCE_KIND_LABELS.get(candidate.absence_kind)
+        lines.append("  Universal value: NOT PRICED -- the engine could not value this player at "
+                     "all. Read every value comparison below as unavailable, never as low."
+                     + (f" ({why})" if why else ""))
+    else:
+        # #119: THE PRICE IS NOW EXPLAINED, not merely asserted. `universal_value` is
+        # `bpa + time_horizon_adj + risk_adj`, and until now the two addends were computed by
+        # the board and read by nobody -- so a chair asking "why is he worth that?" hit a bare
+        # number and stopped. That is the causal reconstruction break at the valuation leaf.
+        #
+        # SAME RULE AS THE TEAM-VALUE SUM ABOVE (#183), deliberately and not by coincidence: the
+        # arithmetic sentence is rendered only when every term is a number, because a sum missing
+        # an addend shown to a model instructed never to recompute is worse than no sum. Upside
+        # mode is the reachable absent case -- `upside_score` genuinely never computes these two,
+        # and the board omits rather than zeroes them.
+        # A TERNARY, whose test NAMES ALL THREE FIELDS -- and both of those are deliberate.
+        # test_display_contract_boundary walks the AST for f-strings that apply a format spec to
+        # an Optional field, and it recognises exactly two guard shapes: an early-`return` at a
+        # function's top level, or an IfExp whose test mentions the attribute. This was first
+        # written as `all(t is not None for t in uv_terms)`, which is correct Python and
+        # INVISIBLE to that scan -- the test mentions a tuple, not the fields. It was then
+        # written as a plain `if/else`, also correct and also invisible, because the scan wants a
+        # return. Both were flagged, both times rightly: a guard an instrument cannot see is a
+        # guard that silently stops protecting the moment someone edits near it.
+        decomposed = (f" = bpa {candidate.bpa} + horizon {candidate.time_horizon_adj:+}"
+                      f" + risk {candidate.risk_adj:+}"
+                      if (candidate.bpa is not None
+                          and candidate.time_horizon_adj is not None
+                          and candidate.risk_adj is not None) else "")
+        lines.append(
+            f"  Universal value: {candidate.universal_value}{decomposed} "
+            f"(source: {candidate.bpa_source}, confidence: {candidate.confidence})"
+            + (f" -- {candidate.projected_points} projected season points"
+               if candidate.projected_points is not None else ""))
+        if not decomposed:
+            # Named rather than left as silence, for the same reason every other absence here is:
+            # a chair that sees no decomposition must not read it as "no adjustments applied".
+            lines.append("  (universal value decomposition not computed for this board -- read "
+                         "that as UNKNOWN, never as 'no horizon or risk adjustment applied')")
+
+    # ALL THREE team terms or none. depth_exposure joined this sum when it was wired into
+    # team_acquisition_value, and this line was not updated -- so the panel was handed a whole
+    # and two of its three parts, an arithmetic contradiction shown to a model that is instructed
+    # never to recompute. A measured 0.0 depth term is stated as 0.0; an absent one says it was
+    # not computed, because those are different claims.
+    #
+    # #183 EXTENDS THAT RULE TO THE WHOLE AND THE FIRST THREE TERMS. The decomposition is only
+    # rendered as arithmetic when every piece of it is a number. need_bonus
+    # are typed non-Optional and reach this via `.get(key, 0.0)` -- which returns the default for
+    # a MISSING key but passes an explicit None straight through, and a None there raised
+    # TypeError on the `:+` format. That is a contract violation rather than a live path, so it
+    # is guarded rather than repaired upstream, and saying so is the point of this note.
+    # SPELLED OUT, not folded into `all(t is not None for t in ...)`, which is what this was.
+    # The guard was real, but 2.5's AST instrument requires the test to NAME the field being
+    # formatted -- a condition over a tuple of values does not say which fields it covers, and a
+    # guard a reader (or a checker) cannot attribute to a field is the shape that lets the next
+    # Optional field through. Naming all three costs one line and makes the coverage checkable.
+    if (candidate.team_acquisition_value is not None
+            and candidate.universal_value is not None
+            and candidate.need_bonus is not None):
+        lines.append(
+            f"  Team acquisition value: {candidate.team_acquisition_value} "
+            f"(universal_value {candidate.universal_value} + need_bonus {candidate.need_bonus:+}"
+            + _depth_term(candidate) + _displacement_term(candidate) + ")")
+    elif candidate.team_acquisition_value is not None:
+        lines.append(f"  Team acquisition value: {candidate.team_acquisition_value} "
+                     "(decomposition unavailable -- one of its terms was not measured)")
+    else:
+        lines.append("  Team acquisition value: NOT MEASURED -- this row carries no price, so it "
+                     "has no team-adjusted value either. UNKNOWN, never zero.")
     if candidate.near_tie_with_leader:
         lines.append(
             "  NEAR-TIE: within the measured noise band of the top candidate -- the value "
@@ -289,35 +553,105 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
             "distance from the top candidate was never measured. Read that as UNKNOWN, never as "
             "'far enough behind the leader to rank below him safely'."
         )
-    if candidate.survival_probability is not None:
+    # #183. THREE QUANTITIES, ONE GUARD -- and they do not share a precondition. Both
+    # `opportunity_cost` and `expected_value_of_waiting` need a PRICE as well as a survival
+    # probability (opportunity_cost is team_acquisition_value x (1 - survival), so an absent TAV
+    # makes it None), and `estimate_survival` deliberately still answers for an unpriced player:
+    # he is on a rival's board, he can be taken, so he gets the module's floor. So the reachable
+    # state is survival measured, cost not -- which printed the literal string "None" twice,
+    # directly beneath a real percentage, where it reads as a number rather than as an absence.
+    # #206: THE SURVIVAL FAMILY IS WITHHELD WHILE IT IS UNCALIBRATED, and what replaces it is
+    # the fact. Two arms measured survival_probability losing to a constant predictor (SMOKE
+    # 0.22480 vs 0.19348; REAL 0.16127 vs 0.14224 over 6,277 real-draft pairs), and it is worst
+    # where it matters most -- the engine's own top candidate is predicted 0.810 and observed
+    # 0.451. Handing a chair "Survival probability: 81%" invites it to reason from a number
+    # that is wrong by a factor that changes the answer, and the chair has no way to know.
+    #
+    # opportunity_cost and expected_value_of_waiting go WITH it, not after it: both are
+    # survival in different units, so keeping them would be suppression in name only.
+    #
+    # intervening_picks STAYS and is promoted to the line survival used to occupy. It is a
+    # count, not an estimate -- verified against the engine at all 5,567 REAL-arm candidates on
+    # a draft with 135 traded seats, zero mismatches. A chair reasoning "sixteen picks before
+    # you choose again" is reasoning from something true.
+    if survival_is_presentable() and candidate.survival_probability is not None:
+        picks = (f" ({candidate.intervening_picks} intervening pick(s))"
+                 if candidate.intervening_picks is not None else "")
         lines.append(
-            f"  Survival probability to your next pick: {_format_probability(candidate.survival_probability)} "
-            f"({candidate.intervening_picks} intervening pick(s))"
-        )
-        lines.append(f"  Opportunity cost of waiting: {candidate.opportunity_cost}")
-        lines.append(f"  Expected value if you wait: {candidate.expected_value_of_waiting}")
-    if candidate.denial_value:
+            f"  Survival probability to your next pick: "
+            f"{_format_probability(candidate.survival_probability)}{picks}")
+        if candidate.opportunity_cost is not None:
+            lines.append(f"  Opportunity cost of waiting: {candidate.opportunity_cost}")
+        else:
+            lines.append("  Opportunity cost of waiting: NOT MEASURED -- it needs a price for "
+                         "this player and there is none. Not 'waiting is free'.")
+        if candidate.expected_value_of_waiting is not None:
+            lines.append(f"  Expected value if you wait: {candidate.expected_value_of_waiting}")
+    elif candidate.intervening_picks is not None:
+        lines.append(
+            f"  Picks before your next selection: {candidate.intervening_picks}. "
+            "The survival probability is WITHHELD, not missing: it is computed, and it failed "
+            "its calibration check against real drafts, so do not estimate one yourself from "
+            "this count.")
+    elif candidate.survival_basis == SURVIVAL_NO_NEXT_PICK:
+        lines.append("  You have no further pick in this draft -- there is no next selection "
+                     "for him to survive to, so waiting is not an option to weigh.")
+    # `if candidate.denial_value:` swallowed a MEASURED 0.0 -- "no rival gains anything from
+    # him" is a real finding and an argument for waiting, and it read to the panel exactly like
+    # "never computed". Absence is not a value, and a zero is not an absence.
+    # #187: THREE states, and this used to assert the strongest of them for every zero it saw.
+    # A 0.0 that came from "no rival's board could price him" is not a measurement that nobody
+    # gains -- it is no measurement at all, and it now arrives as None with a basis beside it.
+    if candidate.denial_value is None:
+        if candidate.denial_basis:
+            lines.append(f"  Denial value: not measured -- "
+                         f"{DENIAL_BASIS_LABELS.get(candidate.denial_basis, candidate.denial_basis)}")
+    elif candidate.denial_value == 0:
+        lines.append("  Denial value: 0 -- measured, no intervening rival gains from him")
+    else:
         lines.append(f"  Denial value: {candidate.denial_value} (would go to roster {candidate.denial_team})")
     if candidate.positional_cliff:
         cliff = candidate.positional_cliff
-        lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: {cliff['gap']}, typical gap: {cliff['typical_gap']})")
-    if candidate.positional_forfeit is not None and candidate.positional_forfeit > 0:
+        # #183: the tier can be real while the two magnitudes behind it are not, and printing
+        # "gap to next at position: None" hands a chair a measurement that was never taken.
+        if cliff.get("gap") is not None and cliff.get("typical_gap") is not None:
+            lines.append(f"  Positional cliff: {cliff['tier']} (gap to next at position: "
+                         f"{cliff['gap']}, typical gap: {cliff['typical_gap']})")
+        else:
+            lines.append(f"  Positional cliff: {cliff['tier']} (the gap behind this tier was not "
+                         f"measured -- tier only)")
+    # Same shape as denial_value: the `is not None` was here, but `> 0` still dropped a
+    # measured zero -- the case where waiting at this position costs nothing, which is the
+    # strongest evidence FOR waiting and was the one thing never said.
+    if candidate.positional_forfeit is not None and candidate.positional_forfeit == 0:
+        lines.append(
+            f"  Cost of delaying {candidate.position} entirely: measured 0 -- the best remaining "
+            f"{candidate.position} at your next pick is expected to be no worse than now"
+        )
+    elif candidate.positional_forfeit is not None and candidate.positional_forfeit > 0:
         lines.append(
             f"  Cost of delaying {candidate.position} entirely: best remaining {candidate.position} at your next "
-            f"pick expected ~{candidate.positional_forfeit} universal-value points worse than now "
-            f"(~{candidate.position_expected_taken} {candidate.position} pick(s) expected before then)"
+            f"pick expected ~{candidate.positional_forfeit} universal-value points worse than now"
+            # #183: the parenthetical is dropped rather than printed as "~None pick(s)". The
+            # forfeit stands on its own; a count nobody measured does not belong beside it.
+            + (f" (~{candidate.position_expected_taken} {candidate.position} pick(s) expected "
+               f"before then)" if candidate.position_expected_taken is not None else "")
         )
     if candidate.position_run_detected:
         lines.append(f"  {candidate.position} run currently detected among recent picks")
-    if candidate.reach_label is not None:
+    if candidate.consensus_rank is not None:
         lines.append(
             f"  Market consensus (KeepTradeCut, real crowd data -- trade-value consensus, NOT literal "
-            f"ADP): rank {candidate.consensus_rank}, tier {candidate.consensus_tier} -- {candidate.reach_label}"
+            f"ADP): rank {candidate.consensus_rank}, tier {candidate.consensus_tier}"
         )
     return "\n".join(lines)
 
 
-def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] = None) -> str:
+def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] = None,
+                            #: MANDATE 1.7. Optional, so a caller with no previous board is
+                            #: unchanged -- and when there IS a diff there is an anchor, because
+                            #: both come from the same pair of snapshots at one call site.
+                            anchor: Optional[dict] = None) -> str:
     """The structured evidence block every role sees -- labeled real numbers, never prose
     summarizing them, so a model has no reason to paraphrase a figure into something slightly
     different from what pick_synthesis actually computed."""
@@ -327,19 +661,48 @@ def format_snapshot_for_llm(snapshot: PickSnapshot, diffs: Optional[list[dict]] 
         "value, probability, or projection not shown here.",
         "",
     ]
+    # MANDATE 2.2: THE CHAIRS ARE TOLD THE CONFIG MIGHT BE WRONG. Every number below is computed
+    # from the league dict, so a league the app could not read cleanly makes all of them suspect at
+    # once -- and a debate that argues a pick without knowing that is confidently reasoning about a
+    # league nobody is playing. Placed directly after the "only real numbers" instruction, because
+    # this is a qualification OF that instruction, not a separate topic.
+    #
+    # Silent when the tuple is empty (checked, clean) AND when it is None (never checked), for
+    # opposite reasons: there is nothing to say in the first case and no standing to reassure in
+    # the second.
+    if snapshot.config_ambiguities:
+        parts.append(
+            "THE LEAGUE CONFIGURATION THESE NUMBERS WERE PRICED ON DID NOT PARSE CLEANLY. They "
+            "were computed anyway, from defaults wherever the config was silent, so each one may "
+            "describe a different league than the one being played:")
+        parts.extend(f"  - {detail}" for _kind, detail in snapshot.config_ambiguities)
+        parts.append("")
     parts.extend(
         _format_candidate(c, snapshot.user_selected_player_id) + "\n" for c in snapshot.candidates
     )
     if diffs:
         parts.append("WHAT CHANGED SINCE THE LAST SNAPSHOT:")
+        # MANDATE 1.7: WHICH two boards, and what happened between them. Without it the reader's
+        # own pick -- which removes a player from every list and re-prices every roster-aware term
+        # -- reads to the chairs exactly like the market moving.
+        if anchor is not None:
+            parts.append(f"  {ps.diff_anchor_sentence(anchor)}")
         for d in diffs:
             if d.get("entered") is True:
                 parts.append(f"  {d['name']}: newly entered the candidate pool at rank {d['rank']}")
             elif d.get("entered") is False:
                 parts.append(f"  {d['name']}: no longer a live candidate (was rank {d['rank']})")
-            elif d.get("deltas"):
-                delta_str = ", ".join(f"{k}: {v:+}" for k, v in d["deltas"].items())
-                parts.append(f"  {d['name']}: rank moved by {d['rank_delta']:+} ({delta_str})")
+            elif d.get("deltas") or d.get("transitions"):
+                # MANDATE 2.5: A TRANSITION IS NOT A DELTA and must not be phrased as one. A term
+                # that became measurable has no magnitude to report, so it is named in words beside
+                # the numeric moves rather than folded in with a fabricated `+0.0`. Gated on either,
+                # because a candidate whose ONLY change is a term crossing into measurability used
+                # to produce no line at all -- the diff computed nothing to say and said nothing.
+                moved = [f"{k}: {v:+}" for k, v in d["deltas"].items()]
+                moved += [f"{k}: {ps.TRANSITION_PHRASES[v]}"
+                          for k, v in (d.get("transitions") or {}).items()]
+                parts.append(f"  {d['name']}: rank moved by {d['rank_delta']:+} "
+                             f"({', '.join(moved)})")
     return "\n".join(parts)
 
 
@@ -371,23 +734,81 @@ def parse_caller_verdict(text: str) -> dict:
     return verdict
 
 
+def _words(text: str) -> list[str]:
+    """A name or a line of prose as its alphanumeric words, lowercased.
+
+    Split on everything else, so "Smith-Njigba" yields both halves and "St. Brown" yields
+    "st" and "brown" -- a model writing the surname of a hyphenated name is paraphrasing, not
+    naming a different player."""
+    return [w for w in re.split(r"[^a-z0-9]+", text.lower()) if w]
+
+
+def _discriminating_words(snapshot: PickSnapshot) -> dict[str, CandidateSnapshot]:
+    """Each name-word that belongs to exactly ONE candidate on this board, mapped to that
+    candidate. Words shared by two or more -- a first name two candidates happen to share --
+    are not in here at all, because such a word refers to no one in particular.
+
+    DERIVED FROM THE BOARD, not from a list: a different board makes different words
+    discriminating, and none of them is chosen by hand (`#56`)."""
+    owners: dict[str, list[CandidateSnapshot]] = {}
+    for c in snapshot.candidates:
+        for word in set(_words(c.name)):
+            owners.setdefault(word, []).append(c)
+    return {word: holders[0] for word, holders in owners.items() if len(holders) == 1}
+
+
 def _match_candidate(snapshot: PickSnapshot, recommendation_text: Optional[str]) -> Optional[CandidateSnapshot]:
     """Look up the Caller's named recommendation against the snapshot's REAL candidates --
-    never trust a number out of the LLM's own prose. Exact case-insensitive match first, falling
-    back to substring containment (a model paraphrasing "Brock Purdy" as "Purdy" shouldn't lose
-    the match) -- returns None (never a guess) if nothing lines up, so a caller can tell the
-    debate didn't cleanly resolve rather than silently displaying the wrong player's numbers."""
+    never trust a number out of the LLM's own prose. None when nothing lines up AND when more
+    than one candidate does, so a caller can tell the debate did not cleanly resolve rather than
+    silently displaying another player's numbers.
+
+    THE DEFECT THIS REPLACES (mandate 1.6). The fallback returned the FIRST candidate in
+    iteration order whose name appeared ANYWHERE in the text, and the snapshot's candidates are
+    in board order, which is value order. Measured against a real board:
+
+        "RECOMMENDATION: Nico Collins over CeeDee Lamb"  ->  CeeDee Lamb
+        "Not CeeDee Lamb"                                ->  CeeDee Lamb
+        "D"                                              ->  CeeDee Lamb
+
+    In the first case the panel printed Lamb's numbers under an argument written about Collins,
+    with Collins offered underneath as the "best alternative". The docstring claimed it "returns
+    None (never a guess) if nothing lines up" -- and it did; it guessed whenever TWO things
+    lined up, which is the case that sentence never covered.
+
+    ONE RULE: a candidate is REFERENCED when its full name appears in the text, or when a word
+    of its name that belongs to no other candidate appears as a word in the text. A match is the
+    only candidate referenced; anything else is None.
+
+    Both halves are load-bearing, and each one alone is not enough.
+      * UNIQUENESS alone does not dispose of the fragment case. "r" is a unique substring of
+        "Brock Purdy" on a board whose other candidate is "Justin Fields", so a uniqueness rule
+        over substrings still resolves a single letter to a player. Requiring a WORD does.
+      * WORDS alone would decline far too much. Two candidates sharing a first name would make
+        "Michael Thomas is the pick" ambiguous on the word "michael" while the full name sits
+        right there, so a word shared across candidates refers to nobody and is dropped before
+        the count.
+
+    WHAT THIS STILL CANNOT DO, said plainly rather than left to be found later: a single name the
+    text REJECTS still matches it. "Not Brock Purdy", with Purdy the only candidate named,
+    resolves to Purdy. Reading negation out of free prose is a guess of a different kind, the
+    `recommended=None` path exists precisely so the panel can decline, and the Caller's contract
+    asks for a bare name -- a line arguing against a player is already outside it."""
     if not recommendation_text:
         return None
     target = recommendation_text.strip().lower()
     for c in snapshot.candidates:
         if c.name.strip().lower() == target:
             return c
+    discriminating = _discriminating_words(snapshot)
+    referenced: list[CandidateSnapshot] = []
+    target_words = set(_words(target))
     for c in snapshot.candidates:
-        name = c.name.strip().lower()
-        if name in target or target in name:
-            return c
-    return None
+        by_full_name = c.name.strip().lower() in target
+        by_own_word = any(discriminating.get(word) is c for word in target_words)
+        if by_full_name or by_own_word:
+            referenced.append(c)
+    return referenced[0] if len(referenced) == 1 else None
 
 
 def _best_alternative(snapshot: PickSnapshot, recommended: Optional[CandidateSnapshot]) -> Optional[CandidateSnapshot]:
@@ -421,6 +842,9 @@ class PickDebateResult:
     key_factor: str = ""
     disagreements: list = field(default_factory=list)
     diff: list = field(default_factory=list)
+    #: MANDATE 1.7. WHAT the diff above is a diff of -- see pick_synthesis.diff_anchor. None when
+    #: there was no previous board to diff against, which is not the same as an empty diff.
+    diff_anchor: Optional[dict] = None
     strategist_report: str = ""
     skeptic_report: str = ""
     caller_report: str = ""
@@ -441,9 +865,20 @@ class PickDebateResult:
     # deliberately not made here; see ARCHITECTURE_AUDIT.md 11.3a.
     snapshot_picks_consumed: Optional[int] = None
     snapshot_data_freshest_date: Optional[str] = None
+    #: MANDATE 1.7. The other two-thirds of the world, copied off the snapshot this debate
+    #: reasoned over -- see PickSnapshot's own comment on why the two fields above could not see
+    #: a pool-scope change or a player-universe change, and staleness_note therefore reported
+    #: "current" across both.
+    snapshot_pool_scope: Optional[str] = None
+    snapshot_players_db_stamp: Optional[str] = None
 
 
-def staleness_note(result, picks: list[dict], merger) -> Optional[str]:
+def staleness_note(result, picks: list[dict], merger, *,
+                   #: MANDATE 1.7. The LIVE world, from the caller that has it. Optional so an
+                   #: existing caller keeps the behaviour it had -- and absent, the two new
+                   #: comparisons simply do not happen rather than guessing an answer.
+                   live_pool_scope: Optional[str] = None,
+                   live_players_db: Optional[dict] = None) -> Optional[str]:
     """What to say beside a debate result whose board has moved on, or None if it has not.
 
     #101 under the standing absence ruling: ANNOTATE, never discard. PickDebateResult has
@@ -477,6 +912,10 @@ def staleness_note(result, picks: list[dict], merger) -> Optional[str]:
     # reporting "not stale" for a result whose staleness can no longer be evaluated at all.
     current, reason = stamp_is_current(
         result.snapshot_picks_consumed, result.snapshot_data_freshest_date, picks, merger,
+        pool_scope=result.snapshot_pool_scope, live_pool_scope=live_pool_scope,
+        players_db_stamp=result.snapshot_players_db_stamp,
+        live_players_db_stamp=(None if live_players_db is None
+                               else ps.players_db_stamp(live_players_db)),
     )
     if current or not reason:
         return None
@@ -529,7 +968,11 @@ def debate_pick(
     debate_meter_at = provider_meter.mark()
 
     diffs = diff_snapshots(previous_snapshot, snapshot) if previous_snapshot is not None else []
-    evidence = format_snapshot_for_llm(snapshot, diffs)
+    # MANDATE 1.7: computed beside the diff, from the same two snapshots, so a consumer cannot hold
+    # one without the other.
+    anchor = (ps.diff_anchor(previous_snapshot, snapshot) if previous_snapshot is not None
+              else None)
+    evidence = format_snapshot_for_llm(snapshot, diffs, anchor)
 
     def _call(role: str, system_prompt: str, user_prompt: str) -> str:
         provider = role_providers.get(role, DEFAULT_ROLE_PROVIDERS[role])
@@ -560,7 +1003,9 @@ def debate_pick(
 
     chairs = (("strategist", strategist_report), ("skeptic", skeptic_report),
               ("caller", caller_report))
-    errors = [f"{role}: {text}" for role, text in chairs if text.startswith("⚠️")]
+    # MANDATE 1.7: through llm_engine's own named check. The marker is that module's contract and
+    # this was the only reader keying off it as a literal -- see FAILED_CALL_PREFIX.
+    errors = [f"{role}: {text}" for role, text in chairs if is_failed_call(text)]
     # TRUNCATION is a different condition from failure and is reported as one. A chair whose
     # report was cut off produced real analysis that simply stops early: the text is kept and
     # annotated in place (see provider_meter.annotate_if_incomplete), and this line is the
@@ -587,8 +1032,15 @@ def debate_pick(
         key_factor=verdict.get("key_factor", ""),
         disagreements=verdict.get("disagreements", []),
         diff=diffs,
+        # MANDATE 1.7: carried on the result, so the UI drawer renders the same anchor the chairs
+        # were given rather than deriving a second one.
+        diff_anchor=anchor,
         strategist_report=strategist_report, skeptic_report=skeptic_report, caller_report=caller_report,
         errors=errors, role_providers=dict(role_providers), role_models=dict(role_models),
         snapshot_picks_consumed=snapshot.picks_consumed,
         snapshot_data_freshest_date=snapshot.data_freshest_date,
+        # MANDATE 1.7: off the snapshot, like the two above it. A debate cannot be asked to
+        # know its own world better than the board it was handed does.
+        snapshot_pool_scope=snapshot.pool_scope,
+        snapshot_players_db_stamp=snapshot.players_db_stamp,
     )

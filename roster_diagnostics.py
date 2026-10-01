@@ -20,6 +20,18 @@ What's covered, and what it reuses:
     remaining-demand replacement math the live engine itself uses, not a new baseline.
   - structural_holes: player_universe.league_usable_positions, compared against what a team
     actually rostered -- a set difference, nothing computed.
+  - bye_collision: lineup_optimizer.bye_collision (#142) -- the SAME assignment solver, run
+    once per bye week against the roster with everyone on that bye removed. Reports value
+    lost, not bodies lost, because a roster that covers three absences from its bench loses
+    nothing and a headcount would rank it below one that loses a single irreplaceable starter.
+    Observable only: it feeds no valuation, and that is a measured decision recorded at the
+    function, not an omission.
+  - bye_concentration: lineup_optimizer.bye_concentration -- the SHAPE of that same profile.
+    Staggered byes let a roster field its first-up depth every week; layered byes force depth
+    1, 2 and 3 into one lineup at once, and bench value decays with rank, so the deep reach
+    costs disproportionately more. Measured across twelve fully-drafted rosters: worst-week
+    losses ran 41 to 127 in trade_value units while every roster sat at the pigeonhole FLOOR
+    for starters-out. The bodies were spread; the value was not.
 
 What's explicitly NOT supported here, reported rather than approximated: age/trajectory
 composition. This harness's own synthetic players_db (built from Draft Sharks projections
@@ -27,6 +39,15 @@ reconstructed into a Sleeper-like shape for simulation purposes) carries no age 
 field at all -- the real app's live players_db (from Sleeper's /players/nfl) does, but that
 data was never threaded into this harness's player pool. Reported as a data-availability gap,
 not filled with an invented estimate.
+
+  CORRECTION (#142, 2026-09-03): the gap is narrower than that paragraph claims, and the
+  correction is left visible rather than quietly rewritten. A real `age` column DOES reach
+  this repository, on external_values, covering 100% of QB/RB/TE and 98% of WR in the
+  valuation frame -- it had simply never been read by anything. So the sentence "carries no
+  age or experience field at all" is true of THIS HARNESS's players_db and false of the
+  repository. The gap is a wiring gap, not a supply gap, for offensive skill positions; it
+  remains a supply gap for IDP (~5%) and DEF (0%). What age would be worth is measured in
+  run_age_signal_measurement.py, and the reason it is still not wired is recorded there.
 """
 
 from __future__ import annotations
@@ -52,6 +73,28 @@ AGE_TRAJECTORY_UNAVAILABLE_REASON = (
 )
 
 
+def coverage_statement(unpriced_players: Optional[int]) -> str:
+    """The words that travel with every value on a TeamDiagnostics record -- and with the
+    battery's starter_value, which makes the same exclusion -- so a number states its own
+    coverage wherever a person reads it. Until 2026-09-06 nothing did: quantity_readers classed
+    every number on this record as DECOMPOSITION (computed, published, read by no production
+    surface), and the one line that shows roster strength to a person (run_draft_battery's
+    per-format print) carried the starter-value range with no coverage beside it, so "a FLOOR,
+    not a total" was true in the comment at the lineup solve and invisible on any screen.
+
+    THE ABSENCE CONTRACT IS ABSOLUTE HERE. None is a count nobody measured, not a count of zero,
+    and the two must never read the same: the unmeasured case is words with no digit in them --
+    never 0, never a dash, never blank. A measured zero says the values are totals; a positive
+    count names itself and says they are floors.
+    """
+    if unpriced_players is None:
+        return "unpriced count not measured, so coverage is unknown"
+    if unpriced_players == 0:
+        return "every player priced, so the values are totals"
+    noun = "player" if unpriced_players == 1 else "players"
+    return f"{unpriced_players} {noun} unpriced, so the values are floors, not totals"
+
+
 @dataclass(frozen=True)
 class TeamDiagnostics:
     roster_id: str
@@ -63,9 +106,33 @@ class TeamDiagnostics:
     # position carries no replacement level in the scored pool. Reported rather than folded
     # into the number above; see the surplus computation for why.
     replacement_level_unpriced: int
+    #: How many of this roster's players carry NO universal_value at all, so every value on this
+    #: record (accumulated, starting-lineup, bench surplus, depth) excludes them. Greater than
+    #: zero means those numbers are FLOORS rather than totals. Distinct from
+    #: replacement_level_unpriced above, which counts a narrower thing: players whose POSITION
+    #: has no replacement level, which is what stops a surplus being computable. Put into words
+    #: for a reader by starting_lineup_statement() below -- the count is never left for the
+    #: value to imply.
+    unpriced_players: int
     positional_counts: dict
     thin_positions: tuple
     structural_holes: tuple
+    # #142: bye-week exposure, as VALUE lost rather than bodies lost. {week: {...}} straight
+    # from lineup_optimizer.bye_collision -- see that function for why a headcount ranks two
+    # rosters backwards, and for the measurement behind the decision to report this rather
+    # than score it. Empty when no rostered player has a resolvable bye; a week's numbers are
+    # a FLOOR when its basis is "partial".
+    bye_collision: dict
+    # The SHAPE of that profile, not just its worst point: how much of this roster's total bye
+    # damage lands in one week. Two rosters can lose the same total and be in different
+    # trouble. None (not 0.0) when there is no damage to have a shape.
+    bye_concentration: dict
+
+    def starting_lineup_statement(self) -> str:
+        """starting_lineup_value with its coverage attached -- the form any surface that shows
+        the number should show, since the number alone cannot say whether it is a floor."""
+        return (f"starting lineup value {self.starting_lineup_value:.2f} "
+                f"({coverage_statement(self.unpriced_players)})")
 
 
 def _chosen_candidate(rec) -> dict:
@@ -92,7 +159,13 @@ def compute_team_diagnostics(
     drafted_counts: Counter = Counter()
     for rec in trajectory.picks:
         cand = _chosen_candidate(rec)
-        by_team[rec.roster_id].append({"id": cand["id"], "name": cand["name"], "position": cand["pos"], "uv": cand["uv"]})
+        # team comes from players_db rather than the candidate record: the trajectory's own
+        # candidate shape carries no team, and a bye is a property of the team (see
+        # DataMerger.bye_week_by_team).
+        by_team[rec.roster_id].append({
+            "id": cand["id"], "name": cand["name"], "position": cand["pos"], "uv": cand["uv"],
+            "team": (players_db.get(str(cand["id"])) or {}).get("team"),
+        })
         drafted_counts[cand["pos"]] += 1
 
     # replacement_levels needs a scored DataFrame carrying "universal_value" -- that column
@@ -124,19 +197,52 @@ def compute_team_diagnostics(
     # -- so depth_ratings.depth_label is called with the identical peer-comparison shape every
     # other surface already uses.
     depth: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(lambda: {"count": 0, "value": 0.0}))
+    # UNPRICED PLAYERS ARE EXCLUDED FROM VALUE AND COUNTED, never coerced to 0.0 -- the rule
+    # this module already states for replacement_level_surplus below, applied to the three
+    # other places that were summing `uv` unguarded. `uv` is Optional: it is None exactly when
+    # the position had no replacement level, which is a state the engine is CONTRACTUALLY
+    # REQUIRED to produce. Summing it raised TypeError, so a single unpriced pick anywhere in a
+    # trajectory took the whole diagnostic down -- and this module is how the battery measures
+    # roster quality, so the instrument died on the regime it most needed to measure.
+    #
+    # `count` still counts every player: the roster really does hold him. Only `value` skips
+    # him, so a depth cell says "3 players, the two I can price are worth X" rather than
+    # claiming he is worth nothing.
     for rid, players in by_team.items():
         for p in players:
             cell = depth[rid][p["position"]]
             cell["count"] += 1
-            cell["value"] += p["uv"]
+            if p["uv"] is not None:
+                cell["value"] += p["uv"]
 
     slots = lineup_optimizer.slots_from_roster_positions(roster_positions)
+    bye_by_team = merger.bye_week_by_team()
 
     results: dict[str, TeamDiagnostics] = {}
     for rid, players in by_team.items():
-        opt_players = [{"id": p["id"], "value": p["uv"], "eligible": {p["position"]}} for p in players]
+        # THE ONE PLACE WHERE EXCLUDING IS AN ASSERTION, NOT A GUARD, so it is named here.
+        # These rows become `value` in the lineup solve. Dropping an unpriced player does not
+        # merely understate a total -- it removes him from the optimisation, so a lineup that
+        # is legally fillable can come back short a starter and starting_lineup_value silently
+        # changes meaning. Every alternative asserts something too: 0.0 says he is startable
+        # and worthless (the absence contract broken inside the tool that checks it), and his
+        # replacement level asserts a price the engine explicitly declined to give.
+        #
+        # Excluding is chosen because it is the only option that asserts nothing about his
+        # VALUE, and because it matches the rule this module already holds itself to. The cost
+        # is recorded in unpriced_players so the number states its own coverage: a
+        # starting_lineup_value computed with unpriced_players > 0 is a FLOOR, not a total.
+        valued = [p for p in players if p["uv"] is not None]
+        unpriced_players = len(players) - len(valued)
+        opt_players = [{"id": p["id"], "value": p["uv"], "eligible": {p["position"]},
+                        "bye": bye_by_team.get(p.get("team"))} for p in valued]
         lineup = lineup_optimizer.optimize_lineup(opt_players, slots)
-        accumulated_value = round(sum(p["uv"] for p in players), 2)
+        # Same rows, same solver, one more question asked of them: what is this lineup worth in
+        # the week its byes land. Observable only -- nothing here feeds a value (see
+        # lineup_optimizer.bye_collision on why that is a measured decision, not an omission).
+        bye_exposure = lineup_optimizer.bye_collision(opt_players, roster_positions)
+        bye_shape = lineup_optimizer.bye_concentration(opt_players, roster_positions)
+        accumulated_value = round(sum(p["uv"] for p in valued), 2)
         starting_lineup_value = lineup["total_value"]
         bench_surplus_value = round(accumulated_value - starting_lineup_value, 2)
 
@@ -155,7 +261,16 @@ def compute_team_diagnostics(
         # numerically identical to accumulated_value above, under a name that claims to mean
         # something else. Unpriced players are excluded and COUNTED, so the number states its
         # own coverage instead of quietly absorbing the gap.
-        priced = [p for p in players if p["position"] in repl_levels]
+        # BOTH conditions, not one. The position test alone is a PROXY for what the arithmetic
+        # below actually requires, and the two are not the same predicate: `p["position"] in
+        # repl_levels` says a replacement level exists, while `p["uv"] is not None` says this
+        # player has a value to subtract it from. In production they co-occur (uv is None
+        # exactly when bpa is, which is exactly when the position has no level), so this is
+        # robustness rather than a reachable production crash -- but the earlier version
+        # guarded a proxy and would have raised the moment that coincidence stopped holding,
+        # which is the same implicit-invariant shape the rest of this register keeps finding.
+        priced = [p for p in players
+                  if p["position"] in repl_levels and p["uv"] is not None]
         replacement_level_surplus = round(
             sum(p["uv"] - repl_levels[p["position"]] for p in priced), 2,
         )
@@ -166,7 +281,9 @@ def compute_team_diagnostics(
             starting_lineup_value=starting_lineup_value, bench_surplus_value=bench_surplus_value,
             replacement_level_surplus=replacement_level_surplus,
             replacement_level_unpriced=replacement_level_unpriced,
+            unpriced_players=unpriced_players,
             positional_counts=positional_counts, thin_positions=tuple(sorted(thin_positions)),
-            structural_holes=structural_holes,
+            structural_holes=structural_holes, bye_collision=bye_exposure,
+            bye_concentration=bye_shape,
         )
     return results

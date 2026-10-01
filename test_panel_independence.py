@@ -17,9 +17,10 @@ from pathlib import Path
 
 import bot_config
 import panel_independence as pi
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 _ONE_KEY = {role: "claude" for role in bot_config.ROLES}
 _THREE_KEYS = {"quant": "claude", "beat": "gemini", "contrarian": "openai", "moderator": "claude"}

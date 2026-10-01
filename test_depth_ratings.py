@@ -3,7 +3,11 @@ shipped in the Trade Calculator (>=1.3x Strong, <=0.7x Weak) so the extraction (
 review, F3) can't quietly drift from what was already live."""
 
 import unittest
+from pathlib import Path
 
+import depth_ratings
+import lineup_readiness
+import ui_source
 from depth_ratings import depth_label
 
 
@@ -49,6 +53,44 @@ class DepthLabelTests(unittest.TestCase):
         # being rated, not just its peers.
         peers = [_cell(1, 200)]  # only entry is the cell itself
         self.assertEqual(depth_label(_cell(1, 200), peers), "Average")
+
+
+class LabelVocabularyTests(unittest.TestCase):
+    """One vocabulary, owned by the producer, with no re-spelled copies anywhere downstream.
+
+    The literal "None — no rostered players here" (em dash) existed in FOUR places: this
+    module, two app.py sites, and lineup_readiness. They fail ASYMMETRICALLY under a rename:
+    the two membership tests go quietly silent (no thin position is ever flagged again), while
+    the Trade Calculator's _DEPTH_RANK lookup silently reclassifies every empty position room
+    as a measured, mid-league "Average" and feeds that into a trade verdict."""
+
+    def test_the_label_returned_is_the_named_constant_itself(self):
+        peers = [_cell(3, 100), _cell(0, None)]
+        self.assertIs(depth_label(_cell(0, None), peers), depth_ratings.NO_PLAYERS_LABEL)
+
+    def test_every_rating_is_drawn_from_the_declared_vocabulary(self):
+        peers = [_cell(4, 400), _cell(1, 50), _cell(2, 150)]
+        for cell in (_cell(4, 400), _cell(1, 50), _cell(2, 150), _cell(0, None)):
+            self.assertIn(depth_label(cell, peers), depth_ratings.LABELS)
+
+    def test_the_docstring_no_longer_disagrees_with_the_string_it_describes(self):
+        # The module docstring wrote the label with an ASCII "--" while the code returned an
+        # em dash -- the vocabulary drifting inside a single file, before any consumer.
+        source = Path(depth_ratings.__file__).read_text()
+        self.assertNotIn("None -- no rostered players here", source)
+
+    def test_the_thin_reader_consumes_the_producers_tuple_rather_than_copying_it(self):
+        self.assertIs(lineup_readiness._THIN_LABELS, depth_ratings.THIN_LABELS)
+
+    def test_no_owned_consumer_respells_the_literal(self):
+        # Scoped to the consumers this pass owns. roster_diagnostics.py carries a FIFTH copy of
+        # the same literal and is outside this file-ownership boundary -- reported, not edited.
+        surfaces = {
+            "lineup_readiness.py": Path(lineup_readiness.__file__).read_text(),
+            "the UI surface": ui_source.text(),
+        }
+        for name, source in surfaces.items():
+            self.assertNotIn(depth_ratings.NO_PLAYERS_LABEL, source, f"{name} respells the label")
 
 
 if __name__ == "__main__":

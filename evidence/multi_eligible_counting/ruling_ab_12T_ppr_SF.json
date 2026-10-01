@@ -1,0 +1,241 @@
+{
+  "arm": "12T_ppr_SF",
+  "teams": 12,
+  "roster_positions": [
+    "QB",
+    "RB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "FLEX",
+    "FLEX",
+    "SUPER_FLEX",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN",
+    "BN"
+  ],
+  "checkpoints": [
+    {
+      "after_round": 4,
+      "picks": 48,
+      "demand": {
+        "RB": {
+          "by_label": 19.6,
+          "by_assignment": 19.1
+        },
+        "TE": {
+          "by_label": 17.6,
+          "by_assignment": 17.1
+        },
+        "WR": {
+          "by_label": 22.6,
+          "by_assignment": 22.1
+        }
+      },
+      "need_bonus_inputs_differ": {
+        "RB": {
+          "old": 4.72,
+          "new": 4.67
+        },
+        "TE": {
+          "old": 4.72,
+          "new": 4.67
+        },
+        "WR": {
+          "old": 4.72,
+          "new": 4.67
+        }
+      },
+      "top40_moved": [
+        {
+          "name": "Rashee Rice",
+          "pos": "WR",
+          "rank": [
+            3,
+            0
+          ],
+          "final_score": -1.2,
+          "universal_value": -1.2
+        },
+        {
+          "name": "Breece Hall",
+          "pos": "RB",
+          "rank": [
+            0,
+            1
+          ],
+          "final_score": -8.66,
+          "universal_value": -8.66
+        },
+        {
+          "name": "Kyren Williams",
+          "pos": "RB",
+          "rank": [
+            2,
+            2
+          ],
+          "final_score": -8.66,
+          "universal_value": -8.66
+        },
+        {
+          "name": "George Pickens",
+          "pos": "WR",
+          "rank": [
+            6,
+            3
+          ],
+          "final_score": -1.2,
+          "universal_value": -1.2
+        },
+        {
+          "name": "Tyler Warren",
+          "pos": "TE",
+          "rank": [
+            1,
+            4
+          ],
+          "final_score": -10.04,
+          "universal_value": -10.04
+        },
+        {
+          "name": "Zay Flowers",
+          "pos": "WR",
+          "rank": [
+            7,
+            5
+          ],
+          "final_score": -1.2,
+          "universal_value": -1.2
+        },
+        {
+          "name": "Tee Higgins",
+          "pos": "WR",
+          "rank": [
+            8,
+            6
+          ],
+          "final_score": -1.2,
+          "universal_value": -1.2
+        },
+        {
+          "name": "Javonte Williams",
+          "pos": "RB",
+          "rank": [
+            4,
+            7
+          ],
+          "final_score": -8.66,
+          "universal_value": -8.66
+        },
+        {
+          "name": "DeVonta Smith",
+          "pos": "WR",
+          "rank": [
+            10,
+            8
+          ],
+          "final_score": -1.2,
+          "universal_value": -1.2
+        },
+        {
+          "name": "David Montgomery",
+          "pos": "RB",
+          "rank": [
+            5,
+            9
+          ],
+          "final_score": -8.66,
+          "universal_value": -8.66
+        },
+        {
+          "name": "Jaylen Waddle",
+          "pos": "WR",
+          "rank": [
+            14,
+            10
+          ],
+          "final_score": -1.2,
+          "universal_value": -1.2
+        },
+        {
+          "name": "Tucker Kraft",
+          "pos": "TE",
+          "rank": [
+            9,
+            11
+          ],
+          "final_score": -10.04,
+          "universal_value": -10.04
+        }
+      ],
+      "top40_moved_n": 40,
+      "top_pick": {
+        "by_label": "Breece Hall",
+        "by_assignment": "Rashee Rice"
+      },
+      "multi_eligible_held": 0
+    },
+    {
+      "after_round": 9,
+      "picks": 108,
+      "demand": {
+        "RB": {
+          "by_label": 7.17,
+          "by_assignment": 0.0
+        },
+        "TE": {
+          "by_label": 8.6,
+          "by_assignment": 0.0
+        }
+      },
+      "need_bonus_inputs_differ": {
+        "RB": {
+          "old": 0.72,
+          "new": 0.0
+        },
+        "TE": {
+          "old": 0.72,
+          "new": 0.0
+        }
+      },
+      "top40_moved": [],
+      "top40_moved_n": 0,
+      "top_pick": {
+        "by_label": "Jakobi Meyers",
+        "by_assignment": "Jakobi Meyers"
+      },
+      "multi_eligible_held": 0
+    },
+    {
+      "after_round": 14,
+      "picks": 168,
+      "demand": {
+        "RB": {
+          "by_label": 2.87,
+          "by_assignment": 0.0
+        },
+        "TE": {
+          "by_label": 3.58,
+          "by_assignment": 0.0
+        }
+      },
+      "need_bonus_inputs_differ": {
+        "TE": {
+          "old": 0.72,
+          "new": 0.0
+        }
+      },
+      "top40_moved": [],
+      "top40_moved_n": 0,
+      "top_pick": {
+        "by_label": "Rashod Bateman",
+        "by_assignment": "Rashod Bateman"
+      },
+      "multi_eligible_held": 0
+    }
+  ]
+}

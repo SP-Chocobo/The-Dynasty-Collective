@@ -1,0 +1,19 @@
+{
+ "arm": "12T_ppr",
+ "n_picks": 24,
+ "n_concurrent": 3,
+ "n_cores": 4,
+ "solo_wall": [
+  51.19
+ ],
+ "solo_elapsed": 51.19434833526611,
+ "concurrent_walls": [
+  50.72,
+  50.72,
+  50.72
+ ],
+ "concurrent_elapsed": 50.720468282699585,
+ "contention_factor": 0.9908185192420395,
+ "sum_over_picks": 2.1133333333333333,
+ "solo_per_pick": 2.1329166666666666
+}

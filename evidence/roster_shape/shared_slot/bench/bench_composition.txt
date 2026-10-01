@@ -1,0 +1,30 @@
+== 12T_ppr
+  seat  1 SELF    QB:Jordan Love WR:Marvin Harrison WR:Jakobi Meyers WR:Devaughn Vele WR:KC Concepcion WR:De'Zhaun Stribling
+  seat  1 SHARED  QB:Jordan Love WR:Jakobi Meyers WR:Xavier Worthy WR:Devaughn Vele WR:KC Concepcion WR:De'Zhaun Stribling
+  seat 12 SELF    WR:Michael Pittman WR:Courtland Sutton WR:Tre Tucker WR:Rashid Shaheed WR:Cooper Kupp WR:De'Zhaun Stribling
+  seat 12 SHARED  WR:Courtland Sutton WR:Marvin Harrison TE:Dallas Goedert WR:Tre Tucker WR:Cooper Kupp RB:J.K. Dobbins
+  seat  6 SELF    WR:Brian Thomas WR:Michael Pittman WR:Wan'Dale Robinson WR:Rashid Shaheed WR:Cooper Kupp WR:De'Zhaun Stribling
+  seat  6 SHARED  WR:Brian Thomas WR:Michael Pittman WR:Wan'Dale Robinson RB:Jadarian Price TE:Brenton Strange WR:De'Zhaun Stribling
+  TOTAL SELF    {'QB': 1, 'WR': 17}  WR share 17/18
+  TOTAL SHARED  {'QB': 1, 'WR': 13, 'TE': 2, 'RB': 2}  WR share 13/18
+
+== 12T_ppr_SF
+  seat  1 SELF    WR:Courtland Sutton WR:Marvin Harrison WR:Devaughn Vele WR:KC Concepcion WR:De'Zhaun Stribling WR:Makai Lemon
+  seat  1 SHARED  WR:Courtland Sutton WR:Marvin Harrison WR:Devaughn Vele WR:KC Concepcion WR:De'Zhaun Stribling WR:Makai Lemon
+  seat 12 SELF    WR:Chris Godwin WR:Tre Tucker WR:Rashid Shaheed WR:Cooper Kupp RB:J.K. Dobbins WR:Dontayvion Wicks
+  seat 12 SHARED  WR:Brian Thomas TE:Dallas Goedert RB:Jadarian Price WR:Cooper Kupp RB:J.K. Dobbins WR:Dontayvion Wicks
+  seat  6 SELF    WR:Brian Thomas WR:Wan'Dale Robinson WR:Rashid Shaheed WR:Cooper Kupp WR:De'Zhaun Stribling WR:Jordyn Tyson
+  seat  6 SHARED  WR:Carnell Tate WR:Jakobi Meyers RB:Jadarian Price TE:Brenton Strange WR:De'Zhaun Stribling WR:Jordyn Tyson
+  TOTAL SELF    {'WR': 17, 'RB': 1}  WR share 17/18
+  TOTAL SHARED  {'WR': 13, 'TE': 2, 'RB': 3}  WR share 13/18
+
+== OWNER_3RR_SF_noTE
+  seat  1 SELF    WR:Wan'Dale Robinson WR:Matthew Golden WR:Jauan Jennings WR:Cooper Kupp
+  seat  1 SHARED  RB:Rachaad White RB:Aaron Jones RB:Blake Corum
+  seat 12 SELF    WR:Chris Godwin WR:Rashid Shaheed WR:Keenan Allen WR:Rashod Bateman
+  seat 12 SHARED  RB:Bhayshul Tuten RB:Jadarian Price WR:Rashid Shaheed RB:Woody Marks
+  seat  6 SELF    WR:Courtland Sutton WR:Tre Tucker WR:Kayshon Boutte WR:Ryan Flournoy
+  seat  6 SHARED  WR:Deebo Samuel RB:Chuba Hubbard RB:Jacory Croskey-Mer RB:Tyjae Spears
+  TOTAL SELF    {'WR': 12}  WR share 12/12
+  TOTAL SHARED  {'RB': 9, 'WR': 2}  WR share 2/11
+

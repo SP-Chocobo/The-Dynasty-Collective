@@ -41,6 +41,7 @@ from pathlib import Path
 import bot_config
 import llm_engine
 import pick_debate
+import ui_source
 
 _HERE = Path(__file__).parent
 
@@ -157,7 +158,7 @@ def prompt_surface() -> dict[str, str]:
     surface: dict[str, str] = {}
     for module in PROMPT_SOURCE_MODULES:
         surface.update(_module_prompt_strings(module))
-    app_source = (_HERE / "app.py").read_text()
+    app_source = ui_source.text()
     surface["app.build_context"] = _function_prose(app_source, "build_context")
     surface["screen_context (all literals)"] = "\n".join(
         n.value for n in ast.walk(ast.parse((_HERE / "screen_context.py").read_text()))

@@ -3,7 +3,9 @@ reshaping of already-computed arguments, and that to_prompt_seed never drops or 
 evidence a surface handed over."""
 
 import unittest
+from unittest import mock
 
+import pick_synthesis as ps
 from pick_synthesis import CandidateSnapshot, PickSnapshot
 from screen_context import (
     DRAFT_ROOM_PICK_DEBATE_HELP, UNIVERSAL_DEBATE_HELP,
@@ -14,18 +16,17 @@ from screen_context import (
 
 def _candidate(**overrides) -> CandidateSnapshot:
     base = dict(
+        position_best_now=None, position_next_turn_value=None, acting_now_value=None,
         player_id="123", name="J. Gibbs", position="RB", team="DET",
         bpa=88.5, bpa_source="points_vor_draftsharks", confidence=80.0,
-        universal_value=88.5, need_bonus=6.0, eligibility_bonus=2.9,
-        team_acquisition_value=97.4, survival_probability=0.31, intervening_picks=11,
+        universal_value=88.5, need_bonus=6.0, team_acquisition_value=97.4, survival_probability=0.31, survival_basis=None, intervening_picks=11,
         opportunity_cost=67.2, expected_value_of_waiting=27.4,
-        denial_value=8.4, denial_team="Roster 9", rival_premium=8.4,
+        denial_value=8.4, rival_premium_basis=None, denial_basis="measured", denial_team="Roster 9", rival_premium=8.4,
         positional_forfeit=77.9, position_expected_taken=2.4,
         positional_cliff={"tier": "HIGH", "gap": 22.4, "typical_gap": 6.1},
         position_run_detected=False, pick_necessity=88.0, necessity_label="STRONG ACTION",
         near_tie_with_leader=True, cliff_protection=True, block_opportunity=True,
-        pure_value=False, context_elevated=False,
-        consensus_rank=None, consensus_tier=None, reach_label=None, projected_points=250.0,
+        pure_value=False, consensus_rank=None, consensus_tier=None, projected_points=250.0,
     )
     base.update(overrides)
     return CandidateSnapshot(**base)
@@ -174,14 +175,41 @@ class BuildDraftRoomContextTests(unittest.TestCase):
         self.assertIn("MUST TAKE", ctx.evidence)
         self.assertIn("97", ctx.evidence)
 
-    def test_survival_probability_rendered_as_a_percent(self):
+    def test_the_withheld_survival_estimate_does_not_reach_the_seed(self):
+        """INVERTED (#52 phase 7.1). This asserted `31%` appears in the seed, and it did --
+        unconditionally, in the surface furthest from the gate that withholds it. The seed feeds
+        a question box A PERSON READS, so it is a presentation boundary like any other, and it
+        was the one that never asked.
+
+        The claim this test makes -- the seed carries a real availability signal per candidate --
+        is right and is kept. What changed is WHICH signal: the measured count of picks before
+        the next turn, which is the same substitution the Draft Room and the chair prompts
+        already make. "11 picks until your turn" is a fact; "31% survival" is an estimate that
+        lost to a constant predictor on two arms."""
         c = _candidate(survival_probability=0.31)
         ctx = build_draft_room_context(_snapshot([c]))
+        self.assertNotIn("31%", ctx.evidence)
+        self.assertIn("picks until your turn", ctx.evidence)
+
+    def test_the_estimate_DOES_reach_the_seed_once_it_is_presentable(self):
+        """Non-vacuity, and the forward check: the seed reads the policy rather than having the
+        number removed from it, so the day calibration passes it comes back with no edit here."""
+        c = _candidate(survival_probability=0.31)
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", True):
+            ctx = build_draft_room_context(_snapshot([c]))
         self.assertIn("31%", ctx.evidence)
 
-    def test_missing_survival_probability_reads_as_unknown_not_a_crash(self):
-        c = _candidate(survival_probability=None)
+    def test_a_missing_pick_count_reads_as_unknown_not_a_crash(self):
+        """The absence contract on the quantity that replaced it (#187): a candidate with no
+        intervening_picks says so, rather than rendering a bare number or blowing up."""
+        c = _candidate(survival_probability=None, intervening_picks=None)
         ctx = build_draft_room_context(_snapshot([c]))
+        self.assertIn("unknown", ctx.evidence)
+
+    def test_a_missing_survival_estimate_is_still_not_a_crash_when_presentable(self):
+        c = _candidate(survival_probability=None)
+        with mock.patch.object(ps, "SURVIVAL_IS_CALIBRATED", True):
+            ctx = build_draft_room_context(_snapshot([c]))
         self.assertIn("unknown", ctx.evidence)
 
     def test_empty_candidates_reads_as_none_available_not_blank(self):
@@ -241,10 +269,22 @@ class BuildLeagueContextTests(unittest.TestCase):
         self.assertIn("Justin Jefferson (WR, MIN)", ctx.evidence)
         self.assertIn("18.4", ctx.evidence)
 
-    def test_injury_status_included_when_present(self):
+    def test_a_material_injury_status_is_included(self):
+        row = self._row(injury_status="IR")
+        ctx = build_league_context("X", [row])
+        self.assertIn("IR", ctx.evidence)
+
+    def test_QUESTIONABLE_is_not_handed_to_a_chair_at_all(self):
+        """Inverted, not deleted (#191). This test used to assert the opposite.
+
+        The owner's ruling went further than the arithmetic: Questionable is out of the PROSE
+        too. Raising a designation to a person is a claim that the fact matters, and the
+        engine has measured that this one does not -- Sleeper projects such players for a full
+        season (95 of 100 at gp=17), and its former -1.5 moved no board row more than six
+        ranks. Repeating it here would spend a reader's attention on noise."""
         row = self._row(injury_status="Questionable")
         ctx = build_league_context("X", [row])
-        self.assertIn("Questionable", ctx.evidence)
+        self.assertNotIn("Questionable", ctx.evidence)
 
     def test_no_injury_status_omits_it_cleanly(self):
         row = self._row(injury_status=None)

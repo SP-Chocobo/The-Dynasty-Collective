@@ -19,6 +19,40 @@ universal fact or one-league-specific commentary):
 The actual file always lives in one shared data/attachments/ directory
 regardless of scope — only the metadata differs — so changing an item's
 scope later never requires moving files around.
+
+STORAGE POLICY (#149, ruled by the owner 2026-09-16). This app answers
+"extract or keep the artifact?" in two OPPOSITE ways, deliberately, and
+until this ruling neither was written down anywhere:
+
+  * REFERENCE MATERIAL (this module) keeps the ARTIFACT. The raw file is
+    stored and never parsed; only a user-written caption reaches the model.
+    The file is the point — a screenshot is worth keeping to look at.
+  * CREDENTIALS (app.save_api_key_overrides) EXTRACTS AND DISCARDS. The
+    upload is read into memory, parsed, written out as KEY= lines, and never
+    persisted. That is the stronger custody posture of the two, and it was
+    the undocumented one.
+
+The rule that separates them: keep the artifact when a human will look at it
+again; extract and discard when only the extracted value is ever used. A
+secret has no viewing value, so nothing justifies retaining it.
+
+RETENTION is "until a human deletes it", and that is now a CHOICE rather
+than an omission. There is no expiry and no pruning. Attachments are
+user-curated reference material with no natural expiry date — an injury
+screenshot stays true — so a timer would delete things the user still wants
+without asking. Deletion stays explicit (see remove()).
+
+THE SINGLE-LOCAL-USER ASSUMPTION IS LOAD-BEARING HERE AND IS STATED SO.
+app.py already states it for .env ("meant to run locally, where .env is
+private to you; not the (unsupported) case of a shared public deployment")
+and nothing stated it for attachments, although the management view lists
+every item from every scope UNFILTERED and there is no authentication. That
+view is defensible ONLY under the same assumption, which is now written
+where the store lives rather than inferred from a neighbouring module.
+
+Client-side custody — the item's original first clause — is DECLINED as a
+freeze item: storage is server-side on whatever machine runs Streamlit, so
+moving it is an architecture change, not a setting.
 """
 
 from __future__ import annotations

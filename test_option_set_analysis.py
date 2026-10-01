@@ -1,6 +1,6 @@
 import unittest
 
-from draft_counterfactual import NodeComparison
+from draft_counterfactual import NodeComparison, classify_deviation
 from draft_simulation import DraftTrajectory, PickRecord
 from option_set_analysis import analyze_option_sets
 
@@ -19,6 +19,11 @@ def _rec(pick_no, roster_id, chosen_id, candidates):
 
 
 def _nc(pick_no, roster_id, bpa_id, bpa_name, bpa_pos, bpa_uv, equals_bpa):
+    # The verdict and its basis are DERIVED from the same inputs the fixture declares, never
+    # hand-set as a pair (#195). A fixture free to state "unsupported" beside a basis of
+    # "necessity" can assert a combination production cannot produce, and then a test written
+    # against it pins a state that does not exist.
+    supported, basis = classify_deviation("NEUTRAL", False)
     return NodeComparison(
         pick_no=pick_no, pick_label=f"1.{pick_no:02d}", roster_id=roster_id,
         engine_player_id="x", engine_player_name="Engine Pick", engine_position="RB",
@@ -28,7 +33,8 @@ def _nc(pick_no, roster_id, bpa_id, bpa_name, bpa_pos, bpa_uv, equals_bpa):
         adp_available=False, adp_unavailable_reason="n/a", adp_player_id=None,
         adp_player_name=None, adp_consensus_rank=None, adp_tav=None,
         regret_vs_bpa=0.0, regret_vs_adp=None,
-        equals_bpa=equals_bpa, equals_adp=None, deviation_supported=None,
+        equals_bpa=equals_bpa, equals_adp=None,
+        deviation_supported=supported, deviation_support_basis=basis,
     )
 
 

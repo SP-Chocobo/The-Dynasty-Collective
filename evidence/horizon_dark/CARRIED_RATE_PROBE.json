@@ -1,0 +1,4537 @@
+{
+  "complete": true,
+  "arms": [
+    {
+      "label": "12T_ppr_SF_DRAFTROOM",
+      "hint": {
+        "scoring": "ppr",
+        "superflex": true,
+        "te_premium": false
+      },
+      "rounds": 15,
+      "picks": 180,
+      "opening_rates": {
+        "RB": 0.711493,
+        "TE": 0.545527,
+        "WR": 0.37396
+      },
+      "opening_demands": {
+        "DB": 0,
+        "DL": 0,
+        "RB": 33,
+        "DEF": 0,
+        "TE": 21,
+        "QB": 22,
+        "WR": 33,
+        "LB": 0,
+        "K": 0
+      },
+      "stride": 12,
+      "samples": [
+        {
+          "picks_made": 0,
+          "round": 1,
+          "priced_left": 481,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.711493,
+            "TE": 0.545527,
+            "WR": 0.37396
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 63.87,
+              "DEF": null,
+              "TE": 87.06,
+              "QB": 30.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 63.87,
+              "DEF": null,
+              "TE": 87.06,
+              "QB": 30.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 63.87,
+              "DEF": null,
+              "TE": 87.06,
+              "QB": 30.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {},
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.0,
+            "DEF": 0.0,
+            "TE": 0.0,
+            "QB": 0.0,
+            "WR": 0.0,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.0,
+            "DEF": 0.0,
+            "TE": 0.0,
+            "QB": 0.0,
+            "WR": 0.0,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 12,
+          "round": 2,
+          "priced_left": 469,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.708302,
+            "TE": 0.545527,
+            "WR": 0.41002
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 30.0,
+              "WR": 192.73,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 30.0,
+              "WR": 192.73,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 63.87,
+              "DEF": null,
+              "TE": 87.06,
+              "QB": 30.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 4,
+            "WR": 4,
+            "QB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.631,
+            "DEF": 0.0,
+            "TE": 2.27,
+            "QB": 2.418,
+            "WR": 2.681,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.631,
+            "DEF": 0.0,
+            "TE": -2.27,
+            "QB": 1.582,
+            "WR": 1.319,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 24,
+          "round": 3,
+          "priced_left": 457,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.712864,
+            "TE": 0.545527,
+            "WR": 0.434377
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 30.0,
+              "WR": 192.73,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 30.0,
+              "WR": 192.73,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 63.87,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 30.0,
+              "WR": 195.02,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 8,
+            "WR": 2,
+            "RB": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.573,
+            "DEF": 0.0,
+            "TE": 2.227,
+            "QB": 2.413,
+            "WR": 2.787,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.573,
+            "DEF": 0.0,
+            "TE": -2.227,
+            "QB": 5.587,
+            "WR": -0.787,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 36,
+          "round": 4,
+          "priced_left": 445,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.7068,
+            "TE": 0.537837,
+            "WR": 0.43935
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.3,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 28.0,
+              "WR": 190.01,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.3,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 28.0,
+              "WR": 190.01,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 63.87,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 28.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 6,
+            "RB": 1,
+            "WR": 3,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.554,
+            "DEF": 0.0,
+            "TE": 2.205,
+            "QB": 2.411,
+            "WR": 2.831,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -3.554,
+            "DEF": 0.0,
+            "TE": -0.205,
+            "QB": 3.589,
+            "WR": 0.169,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 48,
+          "round": 5,
+          "priced_left": 433,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.701793,
+            "TE": 0.537837,
+            "WR": 0.495283
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 28.0,
+              "WR": 188.17,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 28.0,
+              "WR": 188.17,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 28.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 6,
+            "RB": 2,
+            "QB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.375,
+            "DEF": 0.0,
+            "TE": 2.134,
+            "QB": 2.404,
+            "WR": 3.088,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.375,
+            "DEF": 0.0,
+            "TE": -2.134,
+            "QB": 1.596,
+            "WR": 2.912,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 60,
+          "round": 6,
+          "priced_left": 421,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.682381,
+            "TE": 0.531999,
+            "WR": 0.486922
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 28.0,
+              "WR": 188.17,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 28.0,
+              "WR": 188.17,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 28.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 6,
+            "WR": 3,
+            "QB": 2,
+            "TE": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.342,
+            "DEF": 0.0,
+            "TE": 2.154,
+            "QB": 2.406,
+            "WR": 3.098,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 1.658,
+            "DEF": 0.0,
+            "TE": -1.154,
+            "QB": -0.406,
+            "WR": -0.098,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 72,
+          "round": 7,
+          "priced_left": 409,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.719153,
+            "TE": 0.544303,
+            "WR": 0.518689
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 30.0,
+              "WR": 180.19,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 30.0,
+              "WR": 180.19,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 87.55,
+              "QB": 28.0,
+              "WR": 194.53,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 5,
+            "WR": 6,
+            "TE": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.358,
+            "DEF": 0.0,
+            "TE": 2.099,
+            "QB": 2.4,
+            "WR": 3.143,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.642,
+            "DEF": 0.0,
+            "TE": -1.099,
+            "QB": -2.4,
+            "WR": 2.857,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 84,
+          "round": 8,
+          "priced_left": 397,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.701332,
+            "TE": 0.527598,
+            "WR": 0.511871
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.98,
+              "QB": 30.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 89.98,
+              "QB": 30.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 30.0,
+              "WR": 192.73,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "RB": 4,
+            "TE": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.348,
+            "DEF": 0.0,
+            "TE": 2.081,
+            "QB": 2.398,
+            "WR": 3.173,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.348,
+            "DEF": 0.0,
+            "TE": 0.919,
+            "QB": -2.398,
+            "WR": 1.827,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 96,
+          "round": 9,
+          "priced_left": 385,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.756143,
+            "TE": 0.483818,
+            "WR": 0.509921
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.3,
+              "DEF": null,
+              "TE": 90.94,
+              "QB": 31.32,
+              "WR": 170.24,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.3,
+              "DEF": null,
+              "TE": 90.94,
+              "QB": 31.32,
+              "WR": 170.24,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.0,
+              "DEF": null,
+              "TE": 89.15,
+              "QB": 31.32,
+              "WR": 188.17,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 2,
+            "RB": 3,
+            "WR": 7
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.623,
+            "DEF": 0.0,
+            "TE": 1.882,
+            "QB": 2.377,
+            "WR": 3.117,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.623,
+            "DEF": 0.0,
+            "TE": 0.118,
+            "QB": -2.377,
+            "WR": 3.883,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 108,
+          "round": 10,
+          "priced_left": 373,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.753124,
+            "TE": 0.495374,
+            "WR": 0.498735
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 34.0,
+              "WR": 165.07,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.48,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 34.0,
+              "WR": 165.07,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 64.3,
+              "DEF": null,
+              "TE": 89.98,
+              "QB": 31.32,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 5,
+            "WR": 4,
+            "RB": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.622,
+            "DEF": 0.0,
+            "TE": 1.935,
+            "QB": 2.383,
+            "WR": 3.061,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.622,
+            "DEF": 0.0,
+            "TE": 3.065,
+            "QB": -2.383,
+            "WR": 0.939,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 120,
+          "round": 11,
+          "priced_left": 361,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.753124,
+            "TE": 0.495374,
+            "WR": 0.46355
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 72.61,
+              "DEF": null,
+              "TE": 104.13,
+              "QB": 0.0,
+              "WR": 165.07,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 72.61,
+              "DEF": null,
+              "TE": 104.13,
+              "QB": 0.0,
+              "WR": 165.07,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 72.61,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 0.0,
+              "WR": 170.24,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 8,
+            "WR": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.726,
+            "DEF": 0.0,
+            "TE": 1.978,
+            "QB": 2.387,
+            "WR": 2.909,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -4.726,
+            "DEF": 0.0,
+            "TE": -1.978,
+            "QB": 5.613,
+            "WR": 1.091,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 132,
+          "round": 12,
+          "priced_left": 349,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.808119,
+            "TE": 0.446806,
+            "WR": 0.537749
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 89.32,
+              "DEF": null,
+              "TE": 122.29,
+              "QB": 15.0,
+              "WR": 138.97,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 89.32,
+              "DEF": null,
+              "TE": 122.29,
+              "QB": 15.0,
+              "WR": 138.97,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 89.32,
+              "DEF": null,
+              "TE": 104.13,
+              "QB": 15.0,
+              "WR": 150.99,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 8,
+            "RB": 2,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.78,
+            "DEF": 0.0,
+            "TE": 1.682,
+            "QB": 2.357,
+            "WR": 3.181,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.78,
+            "DEF": 0.0,
+            "TE": 0.318,
+            "QB": -2.357,
+            "WR": 4.819,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 144,
+          "round": 13,
+          "priced_left": 337,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.811731,
+            "TE": 0.462061,
+            "WR": 0.5163
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 104.13,
+              "QB": 30.0,
+              "WR": 134.63,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 104.13,
+              "QB": 30.0,
+              "WR": 134.63,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 30.0,
+              "WR": 135.49,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "TE": 4,
+            "RB": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.822,
+            "DEF": 0.0,
+            "TE": 1.747,
+            "QB": 2.363,
+            "WR": 3.067,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.822,
+            "DEF": 0.0,
+            "TE": 2.253,
+            "QB": -2.363,
+            "WR": 1.933,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 156,
+          "round": 14,
+          "priced_left": 325,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.859254,
+            "TE": 0.477354,
+            "WR": 0.515235
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 31.32,
+              "WR": 129.65,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 31.32,
+              "WR": 129.65,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 90.94,
+              "QB": 31.32,
+              "WR": 134.63,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 4,
+            "RB": 5,
+            "TE": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.934,
+            "DEF": 0.0,
+            "TE": 1.744,
+            "QB": 2.363,
+            "WR": 2.959,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.066,
+            "DEF": 0.0,
+            "TE": 1.256,
+            "QB": -2.363,
+            "WR": 1.041,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 168,
+          "round": 15,
+          "priced_left": 313,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.888376,
+            "TE": 0.448663,
+            "WR": 0.4864
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 56.0,
+              "WR": 127.51,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.08,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 56.0,
+              "WR": 127.51,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 96.65,
+              "DEF": null,
+              "TE": 94.45,
+              "QB": 56.0,
+              "WR": 127.51,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "TE": 3,
+            "RB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 5.161,
+            "DEF": 0.0,
+            "TE": 1.659,
+            "QB": 2.354,
+            "WR": 2.826,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.161,
+            "DEF": 0.0,
+            "TE": 1.341,
+            "QB": -2.354,
+            "WR": 2.174,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 180,
+          "round": 16,
+          "priced_left": 301,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.887977,
+            "TE": 0.492124,
+            "WR": 0.517073
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 105.0,
+              "DEF": null,
+              "TE": 90.94,
+              "QB": 95.19,
+              "WR": 115.05,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 105.0,
+              "DEF": null,
+              "TE": 90.94,
+              "QB": 95.19,
+              "WR": 115.05,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 105.0,
+              "DEF": null,
+              "TE": 90.94,
+              "QB": 95.19,
+              "WR": 115.05,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 7,
+            "QB": 1,
+            "RB": 2,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.98,
+            "DEF": 0.0,
+            "TE": 1.756,
+            "QB": 2.364,
+            "WR": 2.9,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.98,
+            "DEF": 0.0,
+            "TE": 0.244,
+            "QB": -1.364,
+            "WR": 4.1,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "label": "CAPTURE_fourth_and_forever_DRAFTROOM",
+      "hint": {
+        "scoring": "half_ppr",
+        "superflex": true,
+        "te_premium": true
+      },
+      "rounds": 26,
+      "picks": 312,
+      "opening_rates": {
+        "RB": 0.743516,
+        "TE": 0.620701,
+        "WR": 0.445327
+      },
+      "opening_demands": {
+        "DB": 0,
+        "DL": 0,
+        "RB": 37,
+        "DEF": 0,
+        "TE": 25,
+        "QB": 22,
+        "WR": 37,
+        "LB": 0,
+        "K": 0
+      },
+      "stride": 12,
+      "samples": [
+        {
+          "picks_made": 0,
+          "round": 1,
+          "priced_left": 481,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.743516,
+            "TE": 0.620701,
+            "WR": 0.445327
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.54,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.54,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.54,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {},
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.0,
+            "DEF": 0.0,
+            "TE": 0.0,
+            "QB": 0.0,
+            "WR": 0.0,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.0,
+            "DEF": 0.0,
+            "TE": 0.0,
+            "QB": 0.0,
+            "WR": 0.0,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 12,
+          "round": 2,
+          "priced_left": 469,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.748065,
+            "TE": 0.620701,
+            "WR": 0.473329
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 99.81,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 99.81,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.54,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 3,
+            "WR": 2,
+            "QB": 7
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.475,
+            "DEF": 0.0,
+            "TE": 2.509,
+            "QB": 2.184,
+            "WR": 2.832,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.475,
+            "DEF": 0.0,
+            "TE": -2.509,
+            "QB": 4.816,
+            "WR": -0.832,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 24,
+          "round": 3,
+          "priced_left": 457,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.752047,
+            "TE": 0.620701,
+            "WR": 0.506308
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.97,
+              "DEF": null,
+              "TE": 37.61,
+              "QB": null,
+              "WR": 97.2,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.97,
+              "DEF": null,
+              "TE": 37.61,
+              "QB": null,
+              "WR": 97.2,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 2,
+            "RB": 1,
+            "QB": 9
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.402,
+            "DEF": 0.0,
+            "TE": 2.455,
+            "QB": 2.18,
+            "WR": 2.964,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -3.402,
+            "DEF": 0.0,
+            "TE": -2.455,
+            "QB": 6.82,
+            "WR": -0.964,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 36,
+          "round": 4,
+          "priced_left": 445,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.749841,
+            "TE": 0.610429,
+            "WR": 0.512057
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 38.67,
+              "QB": null,
+              "WR": 97.2,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 38.67,
+              "QB": null,
+              "WR": 97.2,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 6,
+            "WR": 3,
+            "RB": 2,
+            "TE": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.399,
+            "DEF": 0.0,
+            "TE": 2.42,
+            "QB": 2.177,
+            "WR": 3.004,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.399,
+            "DEF": 0.0,
+            "TE": -1.42,
+            "QB": 3.823,
+            "WR": -0.004,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 48,
+          "round": 5,
+          "priced_left": 433,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.768596,
+            "TE": 0.608382,
+            "WR": 0.534767
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 93.23,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 93.23,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 6,
+            "RB": 3,
+            "TE": 1,
+            "QB": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.406,
+            "DEF": 0.0,
+            "TE": 2.356,
+            "QB": 2.172,
+            "WR": 3.066,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.406,
+            "DEF": 0.0,
+            "TE": -1.356,
+            "QB": -0.172,
+            "WR": 2.934,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 60,
+          "round": 6,
+          "priced_left": 421,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.773775,
+            "TE": 0.605007,
+            "WR": 0.542312
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 91.53,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 91.53,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "RB": 6,
+            "TE": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.41,
+            "DEF": 0.0,
+            "TE": 2.33,
+            "QB": 2.17,
+            "WR": 3.091,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 1.59,
+            "DEF": 0.0,
+            "TE": -1.33,
+            "QB": -2.17,
+            "WR": 1.909,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 72,
+          "round": 7,
+          "priced_left": 409,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.784314,
+            "TE": 0.56655,
+            "WR": 0.547718
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 43.02,
+              "QB": null,
+              "WR": 91.53,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 43.02,
+              "QB": null,
+              "WR": 91.53,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 102.44,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 5,
+            "WR": 5,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.501,
+            "DEF": 0.0,
+            "TE": 2.197,
+            "QB": 2.159,
+            "WR": 3.143,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.499,
+            "DEF": 0.0,
+            "TE": -0.197,
+            "QB": -2.159,
+            "WR": 1.857,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 84,
+          "round": 8,
+          "priced_left": 397,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.828154,
+            "TE": 0.531651,
+            "WR": 0.541266
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.18,
+              "DEF": null,
+              "TE": 45.65,
+              "QB": null,
+              "WR": 91.53,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.18,
+              "DEF": null,
+              "TE": 45.65,
+              "QB": null,
+              "WR": 91.53,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.72,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": null,
+              "WR": 100.77,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "RB": 4,
+            "TE": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.72,
+            "DEF": 0.0,
+            "TE": 2.047,
+            "QB": 2.148,
+            "WR": 3.085,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.72,
+            "DEF": 0.0,
+            "TE": 0.953,
+            "QB": -2.148,
+            "WR": 1.915,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 96,
+          "round": 9,
+          "priced_left": 385,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.833956,
+            "TE": 0.538144,
+            "WR": 0.541646
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.3,
+              "DEF": null,
+              "TE": 45.78,
+              "QB": null,
+              "WR": 84.29,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.3,
+              "DEF": null,
+              "TE": 45.78,
+              "QB": null,
+              "WR": 84.29,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 37.61,
+              "QB": null,
+              "WR": 99.81,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 2,
+            "TE": 1,
+            "WR": 9
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.724,
+            "DEF": 0.0,
+            "TE": 2.06,
+            "QB": 2.148,
+            "WR": 3.068,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.724,
+            "DEF": 0.0,
+            "TE": -1.06,
+            "QB": -2.148,
+            "WR": 5.932,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 108,
+          "round": 10,
+          "priced_left": 373,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.842096,
+            "TE": 0.53005,
+            "WR": 0.594627
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 47.09,
+              "QB": null,
+              "WR": 74.71,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 47.09,
+              "QB": null,
+              "WR": 74.71,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 5.54,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 84.33,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 8,
+            "RB": 2,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.625,
+            "DEF": 0.0,
+            "TE": 1.967,
+            "QB": 2.141,
+            "WR": 3.266,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.625,
+            "DEF": 0.0,
+            "TE": 0.033,
+            "QB": -2.141,
+            "WR": 4.734,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 120,
+          "round": 11,
+          "priced_left": 361,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.867689,
+            "TE": 0.530403,
+            "WR": 0.575658
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 73.74,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 4.82,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 73.74,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.34,
+              "DEF": null,
+              "TE": 42.77,
+              "QB": null,
+              "WR": 79.83,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 4,
+            "WR": 5,
+            "RB": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.748,
+            "DEF": 0.0,
+            "TE": 1.961,
+            "QB": 2.141,
+            "WR": 3.15,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.748,
+            "DEF": 0.0,
+            "TE": 2.039,
+            "QB": -2.141,
+            "WR": 1.85,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 132,
+          "round": 12,
+          "priced_left": 349,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.869601,
+            "TE": 0.549002,
+            "WR": 0.543362
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.34,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 75.89,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.34,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 75.89,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 9.13,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 79.83,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 8,
+            "WR": 2,
+            "TE": 1,
+            "RB": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.803,
+            "DEF": 0.0,
+            "TE": 2.049,
+            "QB": 2.148,
+            "WR": 3.001,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -3.803,
+            "DEF": 0.0,
+            "TE": -1.049,
+            "QB": 5.852,
+            "WR": -1.001,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 144,
+          "round": 13,
+          "priced_left": 337,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.896827,
+            "TE": 0.587502,
+            "WR": 0.524627
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.34,
+              "DEF": null,
+              "TE": 47.09,
+              "QB": null,
+              "WR": 75.89,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.34,
+              "DEF": null,
+              "TE": 47.09,
+              "QB": null,
+              "WR": 75.89,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 9.26,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 79.18,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 4,
+            "WR": 3,
+            "RB": 5
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.855,
+            "DEF": 0.0,
+            "TE": 2.149,
+            "QB": 2.156,
+            "WR": 2.84,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.145,
+            "DEF": 0.0,
+            "TE": 1.851,
+            "QB": -2.156,
+            "WR": 0.16,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 156,
+          "round": 14,
+          "priced_left": 325,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.89812,
+            "TE": 0.551345,
+            "WR": 0.541768
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.56,
+              "DEF": null,
+              "TE": 50.8,
+              "QB": null,
+              "WR": 72.25,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 6.56,
+              "DEF": null,
+              "TE": 50.8,
+              "QB": null,
+              "WR": 72.25,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 9.77,
+              "DEF": null,
+              "TE": 43.02,
+              "QB": null,
+              "WR": 74.71,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "TE": 3,
+            "RB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.883,
+            "DEF": 0.0,
+            "TE": 2.025,
+            "QB": 2.146,
+            "WR": 2.946,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.883,
+            "DEF": 0.0,
+            "TE": 0.975,
+            "QB": -2.146,
+            "WR": 2.054,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 168,
+          "round": 15,
+          "priced_left": 313,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.897376,
+            "TE": 0.5517,
+            "WR": 0.613712
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 9.77,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 60.85,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 9.77,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 60.85,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 11.28,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 70.82,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 3,
+            "RB": 3,
+            "WR": 6
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.697,
+            "DEF": 0.0,
+            "TE": 1.951,
+            "QB": 2.14,
+            "WR": 3.212,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.697,
+            "DEF": 0.0,
+            "TE": 1.049,
+            "QB": -2.14,
+            "WR": 2.788,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 180,
+          "round": 16,
+          "priced_left": 301,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.885077,
+            "TE": 0.529331,
+            "WR": 0.687946
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 11.36,
+              "DEF": null,
+              "TE": 56.48,
+              "QB": null,
+              "WR": 54.7,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 11.36,
+              "DEF": null,
+              "TE": 56.48,
+              "QB": null,
+              "WR": 54.7,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 11.36,
+              "DEF": null,
+              "TE": 43.59,
+              "QB": null,
+              "WR": 63.45,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 2,
+            "RB": 2,
+            "WR": 7,
+            "QB": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.525,
+            "DEF": 0.0,
+            "TE": 1.828,
+            "QB": 2.13,
+            "WR": 3.517,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.525,
+            "DEF": 0.0,
+            "TE": 0.172,
+            "QB": -1.13,
+            "WR": 3.483,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 192,
+          "round": 17,
+          "priced_left": 289,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.92888,
+            "TE": 0.563602,
+            "WR": 0.782286
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 15.62,
+              "DEF": null,
+              "TE": 56.48,
+              "QB": null,
+              "WR": 49.79,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 15.62,
+              "DEF": null,
+              "TE": 56.48,
+              "QB": null,
+              "WR": 49.79,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 15.02,
+              "DEF": null,
+              "TE": 45.65,
+              "QB": null,
+              "WR": 60.82,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 6,
+            "RB": 3,
+            "QB": 1,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.384,
+            "DEF": 0.0,
+            "TE": 1.797,
+            "QB": 2.128,
+            "WR": 3.692,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.384,
+            "DEF": 0.0,
+            "TE": 0.203,
+            "QB": -1.128,
+            "WR": 2.308,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 204,
+          "round": 18,
+          "priced_left": 277,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.969343,
+            "TE": 0.61849,
+            "WR": 0.782397
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 17.12,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 47.06,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 17.12,
+              "DEF": null,
+              "TE": 50.0,
+              "QB": null,
+              "WR": 47.06,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 16.56,
+              "DEF": null,
+              "TE": 43.02,
+              "QB": null,
+              "WR": 56.08,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 6,
+            "TE": 4,
+            "RB": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.407,
+            "DEF": 0.0,
+            "TE": 1.9,
+            "QB": 2.136,
+            "WR": 3.557,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.407,
+            "DEF": 0.0,
+            "TE": 2.1,
+            "QB": -2.136,
+            "WR": 2.443,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 216,
+          "round": 19,
+          "priced_left": 265,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.657099,
+            "WR": 0.81678
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 28.34,
+              "DEF": null,
+              "TE": 45.65,
+              "QB": null,
+              "WR": 38.97,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 28.34,
+              "DEF": null,
+              "TE": 45.65,
+              "QB": null,
+              "WR": 38.97,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 17.61,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 54.7,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "TE": 5,
+            "RB": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.651,
+            "DEF": 0.0,
+            "TE": 2.18,
+            "QB": 2.158,
+            "WR": 4.011,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.651,
+            "DEF": 0.0,
+            "TE": 2.82,
+            "QB": -2.158,
+            "WR": 0.989,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 228,
+          "round": 20,
+          "priced_left": 253,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.72008,
+            "WR": 0.845465
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 32.6,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 38.91,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 34.3,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 38.84,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 20.55,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 50.74,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 5,
+            "WR": 5,
+            "RB": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.522,
+            "DEF": 0.0,
+            "TE": 2.305,
+            "QB": 2.168,
+            "WR": 4.005,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.522,
+            "DEF": 0.0,
+            "TE": 2.695,
+            "QB": -2.168,
+            "WR": 0.995,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 240,
+          "round": 21,
+          "priced_left": 241,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.679973,
+            "WR": 0.870938
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 29.15,
+              "DEF": null,
+              "TE": 43.02,
+              "QB": null,
+              "WR": 38.55,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 29.15,
+              "DEF": null,
+              "TE": 43.02,
+              "QB": null,
+              "WR": 38.55,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 20.41,
+              "DEF": null,
+              "TE": 42.77,
+              "QB": null,
+              "WR": 47.06,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 4,
+            "TE": 2,
+            "RB": 5,
+            "DB": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.528,
+            "DEF": 0.0,
+            "TE": 2.18,
+            "QB": 2.158,
+            "WR": 4.133,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 1.0,
+            "DL": 0.0,
+            "RB": 1.472,
+            "DEF": 0.0,
+            "TE": -0.18,
+            "QB": -2.158,
+            "WR": -0.133,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 252,
+          "round": 22,
+          "priced_left": 229,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.699784,
+            "WR": 0.876416
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 32.6,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 38.05,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 34.3,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 38.05,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 25.45,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": null,
+              "WR": 39.18,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 2,
+            "WR": 7,
+            "TE": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.495,
+            "DEF": 0.0,
+            "TE": 2.223,
+            "QB": 2.161,
+            "WR": 4.12,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.495,
+            "DEF": 0.0,
+            "TE": 0.777,
+            "QB": -2.161,
+            "WR": 2.88,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 264,
+          "round": 23,
+          "priced_left": 217,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.707346,
+            "WR": 0.911401
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 34.3,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 37.06,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 35.38,
+              "DEF": null,
+              "TE": 42.85,
+              "QB": null,
+              "WR": 36.88,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 28.34,
+              "DEF": null,
+              "TE": 42.77,
+              "QB": null,
+              "WR": 38.55,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 3,
+            "WR": 6,
+            "TE": 2,
+            "QB": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.43,
+            "DEF": 0.0,
+            "TE": 2.205,
+            "QB": 2.16,
+            "WR": 4.205,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.43,
+            "DEF": 0.0,
+            "TE": -0.205,
+            "QB": -1.16,
+            "WR": 1.795,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 276,
+          "round": 24,
+          "priced_left": 205,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.726034,
+            "WR": 0.938164
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 34.3,
+              "DEF": null,
+              "TE": 42.77,
+              "QB": 0.0,
+              "WR": 37.06,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 35.38,
+              "DEF": null,
+              "TE": 41.48,
+              "QB": 0.0,
+              "WR": 36.88,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 28.34,
+              "DEF": null,
+              "TE": 38.67,
+              "QB": null,
+              "WR": 38.49,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 4,
+            "TE": 4,
+            "WR": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.368,
+            "DEF": 0.0,
+            "TE": 2.222,
+            "QB": 2.161,
+            "WR": 4.249,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.632,
+            "DEF": 0.0,
+            "TE": 1.778,
+            "QB": -2.161,
+            "WR": -0.249,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 288,
+          "round": 25,
+          "priced_left": 193,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.822332,
+            "WR": 0.937564
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 29.15,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": 14.0,
+              "WR": 38.26,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 29.15,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": 14.0,
+              "WR": 38.26,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 27.21,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": 14.0,
+              "WR": 38.84,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 6,
+            "TE": 5,
+            "WR": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.265,
+            "DEF": 0.0,
+            "TE": 2.44,
+            "QB": 2.179,
+            "WR": 4.117,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 2.735,
+            "DEF": 0.0,
+            "TE": 2.56,
+            "QB": -2.179,
+            "WR": -3.117,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 300,
+          "round": 26,
+          "priced_left": 181,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.927854,
+            "WR": 1.0
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 29.15,
+              "DEF": null,
+              "TE": 35.94,
+              "QB": 30.0,
+              "WR": 37.64,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 32.6,
+              "DEF": null,
+              "TE": 35.54,
+              "QB": 30.0,
+              "WR": 37.64,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 28.34,
+              "DEF": null,
+              "TE": 35.54,
+              "QB": 30.0,
+              "WR": 38.05,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 3,
+            "RB": 3,
+            "WR": 6
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.077,
+            "DEF": 0.0,
+            "TE": 2.594,
+            "QB": 2.191,
+            "WR": 4.138,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.077,
+            "DEF": 0.0,
+            "TE": 0.406,
+            "QB": -2.191,
+            "WR": 1.862,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 312,
+          "round": 27,
+          "priced_left": 169,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 35.38,
+              "DEF": null,
+              "TE": 35.46,
+              "QB": 34.39,
+              "WR": 34.62,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 35.38,
+              "DEF": null,
+              "TE": 35.46,
+              "QB": 34.39,
+              "WR": 34.62,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 4,
+            "WR": 7,
+            "RB": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.536,
+            "DEF": 0.0,
+            "TE": 2.559,
+            "QB": 2.188,
+            "WR": 2.717,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -3.536,
+            "DEF": 0.0,
+            "TE": 1.441,
+            "QB": -2.188,
+            "WR": 4.283,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "label": "12T_ppr_SF_MOCKDRAFT",
+      "hint": {
+        "scoring": "ppr",
+        "superflex": true,
+        "te_premium": false
+      },
+      "rounds": 15,
+      "picks": 180,
+      "opening_rates": {
+        "RB": 0.717949,
+        "TE": 0.762238,
+        "WR": 0.353234
+      },
+      "opening_demands": {
+        "DB": 0,
+        "DL": 0,
+        "RB": 33,
+        "DEF": 0,
+        "TE": 21,
+        "QB": 22,
+        "WR": 33,
+        "LB": 0,
+        "K": 0
+      },
+      "stride": 12,
+      "samples": [
+        {
+          "picks_made": 0,
+          "round": 1,
+          "priced_left": 256,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.717949,
+            "TE": 0.762238,
+            "WR": 0.353234
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 60.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 60.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 60.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {},
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.0,
+            "DEF": 0.0,
+            "TE": 0.0,
+            "QB": 0.0,
+            "WR": 0.0,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.0,
+            "DEF": 0.0,
+            "TE": 0.0,
+            "QB": 0.0,
+            "WR": 0.0,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 12,
+          "round": 2,
+          "priced_left": 246,
+          "measurable_live": [
+            "RB",
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "RB": 0.720779,
+            "TE": 0.762238,
+            "WR": 0.413265
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 4,
+            "WR": 4,
+            "QB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.239,
+            "DEF": 0.0,
+            "TE": 2.853,
+            "QB": 2.478,
+            "WR": 2.43,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.239,
+            "DEF": 0.0,
+            "TE": -2.853,
+            "QB": 1.522,
+            "WR": 1.57,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 24,
+          "round": 3,
+          "priced_left": 234,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.762238,
+            "WR": 0.402116
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 71.0,
+              "DEF": null,
+              "TE": 54.0,
+              "QB": 0.0,
+              "WR": 174.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 178.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 8,
+            "WR": 2,
+            "RB": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.258,
+            "DEF": 0.0,
+            "TE": 2.877,
+            "QB": 2.481,
+            "WR": 2.385,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.258,
+            "DEF": 0.0,
+            "TE": -2.877,
+            "QB": 5.519,
+            "WR": -0.385,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 36,
+          "round": 4,
+          "priced_left": 223,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.8,
+            "WR": 0.391304
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 71.0,
+              "DEF": null,
+              "TE": 36.0,
+              "QB": 0.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 66.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 6,
+            "RB": 1,
+            "WR": 3,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.218,
+            "DEF": 0.0,
+            "TE": 2.991,
+            "QB": 2.493,
+            "WR": 2.299,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -3.218,
+            "DEF": 0.0,
+            "TE": -0.991,
+            "QB": 3.507,
+            "WR": 0.701,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 48,
+          "round": 5,
+          "priced_left": 211,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.8,
+            "WR": 0.482955
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 78.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 70.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 0.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 6,
+            "RB": 2,
+            "QB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.999,
+            "DEF": 0.0,
+            "TE": 2.835,
+            "QB": 2.476,
+            "WR": 2.69,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.999,
+            "DEF": 0.0,
+            "TE": -2.835,
+            "QB": 1.524,
+            "WR": 3.31,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 60,
+          "round": 6,
+          "priced_left": 199,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.828358,
+            "WR": 0.531792
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 78.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 0.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 71.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 0.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 65.0,
+              "DEF": null,
+              "TE": 58.0,
+              "QB": 0.0,
+              "WR": 177.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 6,
+            "WR": 3,
+            "QB": 2,
+            "TE": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.848,
+            "DEF": 0.0,
+            "TE": 2.826,
+            "QB": 2.475,
+            "WR": 2.851,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 2.152,
+            "DEF": 0.0,
+            "TE": -1.826,
+            "QB": -0.475,
+            "WR": 0.149,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 72,
+          "round": 7,
+          "priced_left": 188,
+          "measurable_live": [
+            "TE",
+            "WR"
+          ],
+          "rate_live": {
+            "TE": 0.838462,
+            "WR": 0.513333
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 82.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 0.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 78.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 0.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 66.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 0.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "RB": 5,
+            "WR": 6,
+            "TE": 1
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.872,
+            "DEF": 0.0,
+            "TE": 2.878,
+            "QB": 2.481,
+            "WR": 2.769,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 1.128,
+            "DEF": 0.0,
+            "TE": -1.878,
+            "QB": -2.481,
+            "WR": 3.231,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 84,
+          "round": 8,
+          "priced_left": 176,
+          "measurable_live": [
+            "WR"
+          ],
+          "rate_live": {
+            "WR": 0.588652
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 82.0,
+              "DEF": null,
+              "TE": 66.0,
+              "QB": 15.0,
+              "WR": 150.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 78.0,
+              "DEF": null,
+              "TE": 63.0,
+              "QB": 15.0,
+              "WR": 164.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 66.0,
+              "DEF": null,
+              "TE": 59.0,
+              "QB": 15.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "RB": 4,
+            "TE": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.827,
+            "DEF": 0.0,
+            "TE": 2.585,
+            "QB": 2.45,
+            "WR": 3.138,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.173,
+            "DEF": 0.0,
+            "TE": 0.415,
+            "QB": -2.45,
+            "WR": 1.862,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 96,
+          "round": 9,
+          "priced_left": 164,
+          "measurable_live": [
+            "WR"
+          ],
+          "rate_live": {
+            "WR": 1.0
+          },
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": 82.0,
+              "DEF": null,
+              "TE": 66.0,
+              "QB": 28.0,
+              "WR": 149.0,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 95.0,
+              "DEF": null,
+              "TE": 69.0,
+              "QB": 28.0,
+              "WR": 143.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 66.0,
+              "DEF": null,
+              "TE": 60.0,
+              "QB": 15.0,
+              "WR": 176.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 2,
+            "RB": 3,
+            "WR": 7
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 3.128,
+            "DEF": 0.0,
+            "TE": 2.113,
+            "QB": 2.401,
+            "WR": 4.357,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.128,
+            "DEF": 0.0,
+            "TE": -0.113,
+            "QB": -2.401,
+            "WR": 2.643,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 108,
+          "round": 10,
+          "priced_left": 152,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 70.0,
+              "DEF": null,
+              "TE": 63.0,
+              "QB": 28.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 70.0,
+              "DEF": null,
+              "TE": 63.0,
+              "QB": 28.0,
+              "WR": 173.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "TE": 5,
+            "WR": 4,
+            "RB": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.387,
+            "DEF": 0.0,
+            "TE": 2.036,
+            "QB": -2.49,
+            "WR": 1.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 120,
+          "round": 11,
+          "priced_left": 141,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 94.0,
+              "DEF": null,
+              "TE": 66.0,
+              "QB": null,
+              "WR": 169.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 94.0,
+              "DEF": null,
+              "TE": 66.0,
+              "QB": null,
+              "WR": 169.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "QB": 8,
+            "WR": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -4.387,
+            "DEF": 0.0,
+            "TE": -2.964,
+            "QB": 5.51,
+            "WR": 1.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 132,
+          "round": 12,
+          "priced_left": 129,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 104.0,
+              "DEF": null,
+              "TE": 73.0,
+              "QB": 0.0,
+              "WR": 145.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 104.0,
+              "DEF": null,
+              "TE": 73.0,
+              "QB": 0.0,
+              "WR": 145.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 8,
+            "RB": 2,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.387,
+            "DEF": 0.0,
+            "TE": -0.964,
+            "QB": -2.49,
+            "WR": 5.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 144,
+          "round": 13,
+          "priced_left": 118,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 108.0,
+              "DEF": null,
+              "TE": 69.0,
+              "QB": 15.0,
+              "WR": 136.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 108.0,
+              "DEF": null,
+              "TE": 69.0,
+              "QB": 15.0,
+              "WR": 136.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "TE": 4,
+            "RB": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -1.387,
+            "DEF": 0.0,
+            "TE": 1.036,
+            "QB": -2.49,
+            "WR": 2.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 156,
+          "round": 14,
+          "priced_left": 108,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 108.0,
+              "DEF": null,
+              "TE": 69.0,
+              "QB": 30.0,
+              "WR": 145.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 108.0,
+              "DEF": null,
+              "TE": 69.0,
+              "QB": 30.0,
+              "WR": 145.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 4,
+            "RB": 5,
+            "TE": 3
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 0.613,
+            "DEF": 0.0,
+            "TE": 0.036,
+            "QB": -2.49,
+            "WR": 1.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 168,
+          "round": 15,
+          "priced_left": 97,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 108.0,
+              "DEF": null,
+              "TE": 86.0,
+              "QB": 56.0,
+              "WR": 148.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 108.0,
+              "DEF": null,
+              "TE": 86.0,
+              "QB": 56.0,
+              "WR": 148.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 5,
+            "TE": 3,
+            "RB": 4
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -0.387,
+            "DEF": 0.0,
+            "TE": 0.036,
+            "QB": -2.49,
+            "WR": 2.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        },
+        {
+          "picks_made": 180,
+          "round": 16,
+          "priced_left": 86,
+          "measurable_live": [],
+          "rate_live": {},
+          "floors": {
+            "A_status_quo": {
+              "DB": null,
+              "DL": null,
+              "RB": null,
+              "DEF": null,
+              "TE": null,
+              "QB": null,
+              "WR": null,
+              "LB": null,
+              "K": null
+            },
+            "B_hybrid": {
+              "DB": null,
+              "DL": null,
+              "RB": 116.0,
+              "DEF": null,
+              "TE": 92.0,
+              "QB": 110.0,
+              "WR": 141.0,
+              "LB": null,
+              "K": null
+            },
+            "C_locked": {
+              "DB": null,
+              "DL": null,
+              "RB": 116.0,
+              "DEF": null,
+              "TE": 92.0,
+              "QB": 110.0,
+              "WR": 141.0,
+              "LB": null,
+              "K": null
+            }
+          },
+          "observed_window": {
+            "WR": 7,
+            "QB": 1,
+            "RB": 2,
+            "TE": 2
+          },
+          "predicted_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": 4.387,
+            "DEF": 0.0,
+            "TE": 2.964,
+            "QB": 2.49,
+            "WR": 2.159,
+            "LB": 0.0,
+            "K": 0.0
+          },
+          "residual_window": {
+            "DB": 0.0,
+            "DL": 0.0,
+            "RB": -2.387,
+            "DEF": 0.0,
+            "TE": -0.964,
+            "QB": -1.49,
+            "WR": 4.841,
+            "LB": 0.0,
+            "K": 0.0
+          }
+        }
+      ]
+    }
+  ],
+  "seconds": 43.1
+}

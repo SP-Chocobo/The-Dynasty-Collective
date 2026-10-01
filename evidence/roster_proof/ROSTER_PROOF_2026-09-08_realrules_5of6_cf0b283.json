@@ -1,0 +1,1450 @@
+{
+  "commit": "cf0b283",
+  "complete": false,
+  "formats_done": 5,
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ]
+  },
+  "rounds_requested": "derived from roster_positions",
+  "pricing": {
+    "priced_from": "vendor+sleeper",
+    "sleeper_basis": "season_sum",
+    "season_projections_supplied": 5346,
+    "season_projections_priceable": 840,
+    "scoring_keys": 64
+  },
+  "control": "best projected points at an unfilled starting slot, else best available by projection; player_id tiebreak",
+  "rulers": {
+    "cdme": "pre-draft board universal_value -- the engine's own objective",
+    "points": "projected season points -- the control's objective"
+  },
+  "compared_on": {
+    "cdme": "total_value",
+    "points": "starter_value"
+  },
+  "known_contamination": {
+    "cdme": "total_value sums below-replacement negatives; what such a player is worth to own is reserved (#155/#165)"
+  },
+  "seconds": 1835.5,
+  "formats": [
+    {
+      "label": "12T_ppr",
+      "teams": 12,
+      "superflex": false,
+      "scoring": "ppr",
+      "te_premium": false,
+      "pool": 481,
+      "rounds": 14,
+      "roster_slots": 14,
+      "runs": 12,
+      "by_ruler": {
+        "cdme": {
+          "compared_on": "total_value",
+          "comparable_runs": 12,
+          "engine_wins": 12,
+          "win_rate": 1.0,
+          "engine_mean": 333.32,
+          "control_mean": 188.0,
+          "mean_gap": 145.33,
+          "advantage_population": 12,
+          "mean_advantage_pct": 78.224,
+          "worst_advantage_pct": 5.297,
+          "best_advantage_pct": 125.798
+        },
+        "points": {
+          "compared_on": "starter_value",
+          "comparable_runs": 12,
+          "engine_wins": 0,
+          "win_rate": 0.0,
+          "engine_mean": 1932.97,
+          "control_mean": 2176.95,
+          "mean_gap": -243.98,
+          "advantage_population": 12,
+          "mean_advantage_pct": -11.205,
+          "worst_advantage_pct": -13.792,
+          "best_advantage_pct": -8.521
+        }
+      },
+      "per_seat": [
+        {
+          "engine_seat": "1",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 408.71,
+            "control_mean": 181.01,
+            "engine_starter_value": 333.68,
+            "engine_total_value": 408.71,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1987.06,
+            "control_mean": 2172.14,
+            "engine_starter_value": 1987.06,
+            "engine_total_value": 3152.22,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "2",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 403.51,
+            "control_mean": 181.48,
+            "engine_starter_value": 330.13,
+            "engine_total_value": 403.51,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1982.82,
+            "control_mean": 2171.81,
+            "engine_starter_value": 1982.82,
+            "engine_total_value": 3131.62,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "3",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 401.0,
+            "control_mean": 181.71,
+            "engine_starter_value": 327.62,
+            "engine_total_value": 401.0,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1978.32,
+            "control_mean": 2172.42,
+            "engine_starter_value": 1978.32,
+            "engine_total_value": 3127.12,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "4",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 356.55,
+            "control_mean": 185.75,
+            "engine_starter_value": 283.17,
+            "engine_total_value": 356.55,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1946.34,
+            "control_mean": 2173.29,
+            "engine_starter_value": 1946.34,
+            "engine_total_value": 3095.14,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "5",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 337.36,
+            "control_mean": 187.49,
+            "engine_starter_value": 276.66,
+            "engine_total_value": 337.36,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1940.1,
+            "control_mean": 2173.93,
+            "engine_starter_value": 1940.1,
+            "engine_total_value": 3073.52,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "6",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 307.61,
+            "control_mean": 191.0,
+            "engine_starter_value": 238.9,
+            "engine_total_value": 307.61,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1898.74,
+            "control_mean": 2178.79,
+            "engine_starter_value": 1898.74,
+            "engine_total_value": 3053.95,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "7",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 316.03,
+            "control_mean": 190.24,
+            "engine_starter_value": 238.9,
+            "engine_total_value": 316.03,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1898.74,
+            "control_mean": 2179.18,
+            "engine_starter_value": 1898.74,
+            "engine_total_value": 3063.61,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "8",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 334.42,
+            "control_mean": 187.76,
+            "engine_starter_value": 254.32,
+            "engine_total_value": 334.42,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1913.21,
+            "control_mean": 2179.15,
+            "engine_starter_value": 1913.21,
+            "engine_total_value": 3078.4,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "9",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 323.04,
+            "control_mean": 188.8,
+            "engine_starter_value": 239.39,
+            "engine_total_value": 323.04,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1918.82,
+            "control_mean": 2179.37,
+            "engine_starter_value": 1918.82,
+            "engine_total_value": 3071.91,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "10",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 338.04,
+            "control_mean": 187.43,
+            "engine_starter_value": 253.37,
+            "engine_total_value": 338.04,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1918.2,
+            "control_mean": 2178.23,
+            "engine_starter_value": 1918.2,
+            "engine_total_value": 3084.51,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "11",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 263.96,
+            "control_mean": 194.17,
+            "engine_starter_value": 252.65,
+            "engine_total_value": 263.96,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1929.53,
+            "control_mean": 2179.93,
+            "engine_starter_value": 1929.53,
+            "engine_total_value": 3085.2,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "12",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 209.65,
+            "control_mean": 199.1,
+            "engine_starter_value": 191.1,
+            "engine_total_value": 209.65,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1883.79,
+            "control_mean": 2185.17,
+            "engine_starter_value": 1883.79,
+            "engine_total_value": 3043.26,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        }
+      ],
+      "engine_unpriced_total": {
+        "cdme": 0,
+        "points": 0
+      },
+      "seconds": 381.7
+    },
+    {
+      "label": "12T_ppr_SF",
+      "teams": 12,
+      "superflex": true,
+      "scoring": "ppr",
+      "te_premium": false,
+      "pool": 481,
+      "rounds": 15,
+      "roster_slots": 15,
+      "runs": 12,
+      "by_ruler": {
+        "cdme": {
+          "compared_on": "total_value",
+          "comparable_runs": 12,
+          "engine_wins": 12,
+          "win_rate": 1.0,
+          "engine_mean": 791.5,
+          "control_mean": 489.3,
+          "mean_gap": 302.2,
+          "advantage_population": 12,
+          "mean_advantage_pct": 61.847,
+          "worst_advantage_pct": 49.213,
+          "best_advantage_pct": 77.54
+        },
+        "points": {
+          "compared_on": "starter_value",
+          "comparable_runs": 12,
+          "engine_wins": 1,
+          "win_rate": 0.0833,
+          "engine_mean": 2363.88,
+          "control_mean": 2489.14,
+          "mean_gap": -125.26,
+          "advantage_population": 12,
+          "mean_advantage_pct": -5.028,
+          "worst_advantage_pct": -8.766,
+          "best_advantage_pct": 0.869
+        }
+      },
+      "per_seat": [
+        {
+          "engine_seat": "1",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 857.97,
+            "control_mean": 483.26,
+            "engine_starter_value": 757.16,
+            "engine_total_value": 857.97,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2469.38,
+            "control_mean": 2483.38,
+            "engine_starter_value": 2469.38,
+            "engine_total_value": 3671.09,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "2",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 854.54,
+            "control_mean": 483.57,
+            "engine_starter_value": 756.01,
+            "engine_total_value": 854.54,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2447.37,
+            "control_mean": 2485.58,
+            "engine_starter_value": 2447.37,
+            "engine_total_value": 3648.67,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "3",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 839.96,
+            "control_mean": 484.89,
+            "engine_starter_value": 741.43,
+            "engine_total_value": 839.96,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2436.39,
+            "control_mean": 2486.19,
+            "engine_starter_value": 2436.39,
+            "engine_total_value": 3637.69,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "4",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 830.76,
+            "control_mean": 485.73,
+            "engine_starter_value": 797.76,
+            "engine_total_value": 830.76,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2506.61,
+            "control_mean": 2485.02,
+            "engine_starter_value": 2506.61,
+            "engine_total_value": 3654.04,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "5",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 803.59,
+            "control_mean": 488.2,
+            "engine_starter_value": 690.6,
+            "engine_total_value": 803.59,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2382.87,
+            "control_mean": 2490.67,
+            "engine_starter_value": 2382.87,
+            "engine_total_value": 3597.57,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "6",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 809.4,
+            "control_mean": 487.67,
+            "engine_starter_value": 663.45,
+            "engine_total_value": 809.4,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2356.67,
+            "control_mean": 2490.67,
+            "engine_starter_value": 2356.67,
+            "engine_total_value": 3601.46,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "7",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 737.43,
+            "control_mean": 494.21,
+            "engine_starter_value": 570.5,
+            "engine_total_value": 737.43,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2274.92,
+            "control_mean": 2490.31,
+            "engine_starter_value": 2274.92,
+            "engine_total_value": 3591.54,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "8",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 748.67,
+            "control_mean": 493.19,
+            "engine_starter_value": 586.85,
+            "engine_total_value": 748.67,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2292.44,
+            "control_mean": 2490.03,
+            "engine_starter_value": 2292.44,
+            "engine_total_value": 3600.58,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "9",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 748.67,
+            "control_mean": 493.19,
+            "engine_starter_value": 586.85,
+            "engine_total_value": 748.67,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2292.44,
+            "control_mean": 2490.03,
+            "engine_starter_value": 2292.44,
+            "engine_total_value": 3600.58,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "10",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 760.11,
+            "control_mean": 492.15,
+            "engine_starter_value": 611.89,
+            "engine_total_value": 760.11,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2325.94,
+            "control_mean": 2489.01,
+            "engine_starter_value": 2325.94,
+            "engine_total_value": 3626.41,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "11",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 767.9,
+            "control_mean": 491.44,
+            "engine_starter_value": 592.63,
+            "engine_total_value": 767.9,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2304.67,
+            "control_mean": 2493.17,
+            "engine_starter_value": 2304.67,
+            "engine_total_value": 3613.93,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "12",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 738.95,
+            "control_mean": 494.08,
+            "engine_starter_value": 557.67,
+            "engine_total_value": 738.95,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2276.92,
+            "control_mean": 2495.68,
+            "engine_starter_value": 2276.92,
+            "engine_total_value": 3592.2,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        }
+      ],
+      "engine_unpriced_total": {
+        "cdme": 0,
+        "points": 0
+      },
+      "seconds": 415.0
+    },
+    {
+      "label": "10T_ppr",
+      "teams": 10,
+      "superflex": false,
+      "scoring": "ppr",
+      "te_premium": false,
+      "pool": 481,
+      "rounds": 14,
+      "roster_slots": 14,
+      "runs": 10,
+      "by_ruler": {
+        "cdme": {
+          "compared_on": "total_value",
+          "comparable_runs": 10,
+          "engine_wins": 10,
+          "win_rate": 1.0,
+          "engine_mean": 358.3,
+          "control_mean": 185.73,
+          "mean_gap": 172.57,
+          "advantage_population": 10,
+          "mean_advantage_pct": 93.237,
+          "worst_advantage_pct": 71.775,
+          "best_advantage_pct": 118.987
+        },
+        "points": {
+          "compared_on": "starter_value",
+          "comparable_runs": 10,
+          "engine_wins": 0,
+          "win_rate": 0.0,
+          "engine_mean": 2037.3,
+          "control_mean": 2257.12,
+          "mean_gap": -219.82,
+          "advantage_population": 10,
+          "mean_advantage_pct": -9.738,
+          "worst_advantage_pct": -11.864,
+          "best_advantage_pct": -5.891
+        }
+      },
+      "per_seat": [
+        {
+          "engine_seat": "1",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 390.47,
+            "control_mean": 178.31,
+            "engine_starter_value": 323.4,
+            "engine_total_value": 390.47,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2084.33,
+            "control_mean": 2250.25,
+            "engine_starter_value": 2084.33,
+            "engine_total_value": 3289.52,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "2",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 370.73,
+            "control_mean": 180.5,
+            "engine_starter_value": 234.34,
+            "engine_total_value": 370.73,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1994.12,
+            "control_mean": 2251.47,
+            "engine_starter_value": 1994.12,
+            "engine_total_value": 3238.11,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "3",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 371.84,
+            "control_mean": 180.38,
+            "engine_starter_value": 233.31,
+            "engine_total_value": 371.84,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1989.81,
+            "control_mean": 2252.03,
+            "engine_starter_value": 1989.81,
+            "engine_total_value": 3235.44,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "4",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 352.25,
+            "control_mean": 188.05,
+            "engine_starter_value": 328.29,
+            "engine_total_value": 352.25,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2085.21,
+            "control_mean": 2253.62,
+            "engine_starter_value": 2085.21,
+            "engine_total_value": 3365.26,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "5",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 332.73,
+            "control_mean": 190.22,
+            "engine_starter_value": 373.92,
+            "engine_total_value": 332.73,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2123.96,
+            "control_mean": 2256.92,
+            "engine_starter_value": 2123.96,
+            "engine_total_value": 3367.19,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "6",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 384.0,
+            "control_mean": 184.52,
+            "engine_starter_value": 296.35,
+            "engine_total_value": 384.0,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2042.58,
+            "control_mean": 2259.75,
+            "engine_starter_value": 2042.58,
+            "engine_total_value": 3313.6,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "7",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 347.89,
+            "control_mean": 188.54,
+            "engine_starter_value": 260.08,
+            "engine_total_value": 347.89,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2011.31,
+            "control_mean": 2259.68,
+            "engine_starter_value": 2011.31,
+            "engine_total_value": 3214.56,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "8",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 327.71,
+            "control_mean": 190.78,
+            "engine_starter_value": 242.86,
+            "engine_total_value": 327.71,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1993.79,
+            "control_mean": 2262.18,
+            "engine_starter_value": 1993.79,
+            "engine_total_value": 3210.47,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "9",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 352.62,
+            "control_mean": 188.01,
+            "engine_starter_value": 273.12,
+            "engine_total_value": 352.62,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2024.57,
+            "control_mean": 2262.7,
+            "engine_starter_value": 2024.57,
+            "engine_total_value": 3263.65,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "10",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 352.79,
+            "control_mean": 187.99,
+            "engine_starter_value": 273.02,
+            "engine_total_value": 352.79,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2023.3,
+            "control_mean": 2262.58,
+            "engine_starter_value": 2023.3,
+            "engine_total_value": 3263.44,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        }
+      ],
+      "engine_unpriced_total": {
+        "cdme": 0,
+        "points": 0
+      },
+      "seconds": 297.1
+    },
+    {
+      "label": "10T_ppr_SF",
+      "teams": 10,
+      "superflex": true,
+      "scoring": "ppr",
+      "te_premium": false,
+      "pool": 481,
+      "rounds": 15,
+      "roster_slots": 15,
+      "runs": 10,
+      "by_ruler": {
+        "cdme": {
+          "compared_on": "total_value",
+          "comparable_runs": 10,
+          "engine_wins": 10,
+          "win_rate": 1.0,
+          "engine_mean": 868.29,
+          "control_mean": 541.2,
+          "mean_gap": 327.09,
+          "advantage_population": 10,
+          "mean_advantage_pct": 60.485,
+          "worst_advantage_pct": 50.983,
+          "best_advantage_pct": 72.925
+        },
+        "points": {
+          "compared_on": "starter_value",
+          "comparable_runs": 10,
+          "engine_wins": 0,
+          "win_rate": 0.0,
+          "engine_mean": 2310.88,
+          "control_mean": 2600.56,
+          "mean_gap": -289.68,
+          "advantage_population": 10,
+          "mean_advantage_pct": -11.131,
+          "worst_advantage_pct": -14.296,
+          "best_advantage_pct": -6.79
+        }
+      },
+      "per_seat": [
+        {
+          "engine_seat": "1",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 867.84,
+            "control_mean": 541.85,
+            "engine_starter_value": 443.85,
+            "engine_total_value": 867.84,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2286.81,
+            "control_mean": 2601.93,
+            "engine_starter_value": 2286.81,
+            "engine_total_value": 3938.44,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "2",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 888.15,
+            "control_mean": 539.6,
+            "engine_starter_value": 560.69,
+            "engine_total_value": 888.15,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2411.82,
+            "control_mean": 2592.19,
+            "engine_starter_value": 2411.82,
+            "engine_total_value": 3958.83,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "3",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 886.55,
+            "control_mean": 539.77,
+            "engine_starter_value": 559.09,
+            "engine_total_value": 886.55,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2409.49,
+            "control_mean": 2592.76,
+            "engine_starter_value": 2409.49,
+            "engine_total_value": 3956.5,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "4",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 884.24,
+            "control_mean": 540.03,
+            "engine_starter_value": 567.89,
+            "engine_total_value": 884.24,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2418.34,
+            "control_mean": 2594.5,
+            "engine_starter_value": 2418.34,
+            "engine_total_value": 3940.35,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "5",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 829.91,
+            "control_mean": 546.07,
+            "engine_starter_value": 413.62,
+            "engine_total_value": 829.91,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2253.89,
+            "control_mean": 2609.0,
+            "engine_starter_value": 2253.89,
+            "engine_total_value": 3895.14,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "6",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 825.25,
+            "control_mean": 546.58,
+            "engine_starter_value": 408.96,
+            "engine_total_value": 825.25,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2250.87,
+            "control_mean": 2608.66,
+            "engine_starter_value": 2250.87,
+            "engine_total_value": 3892.12,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "7",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 856.04,
+            "control_mean": 543.16,
+            "engine_starter_value": 388.75,
+            "engine_total_value": 856.04,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2241.17,
+            "control_mean": 2604.96,
+            "engine_starter_value": 2241.17,
+            "engine_total_value": 3960.34,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "8",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 860.53,
+            "control_mean": 542.66,
+            "engine_starter_value": 385.65,
+            "engine_total_value": 860.53,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2232.56,
+            "control_mean": 2604.97,
+            "engine_starter_value": 2232.56,
+            "engine_total_value": 3955.93,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "9",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 867.28,
+            "control_mean": 541.91,
+            "engine_starter_value": 386.39,
+            "engine_total_value": 867.28,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2233.96,
+            "control_mean": 2604.82,
+            "engine_starter_value": 2233.96,
+            "engine_total_value": 3963.35,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        },
+        {
+          "engine_seat": "10",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 917.16,
+            "control_mean": 530.38,
+            "engine_starter_value": 502.21,
+            "engine_total_value": 917.16,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 2369.88,
+            "control_mean": 2591.78,
+            "engine_starter_value": 2369.88,
+            "engine_total_value": 4021.51,
+            "engine_starters_filled": 9,
+            "starting_slots": 9
+          }
+        }
+      ],
+      "engine_unpriced_total": {
+        "cdme": 0,
+        "points": 0
+      },
+      "seconds": 307.1
+    },
+    {
+      "label": "12T_standard",
+      "teams": 12,
+      "superflex": false,
+      "scoring": "standard",
+      "te_premium": false,
+      "pool": 481,
+      "rounds": 14,
+      "roster_slots": 14,
+      "runs": 12,
+      "by_ruler": {
+        "cdme": {
+          "compared_on": "total_value",
+          "comparable_runs": 12,
+          "engine_wins": 12,
+          "win_rate": 1.0,
+          "engine_mean": 316.51,
+          "control_mean": 99.75,
+          "mean_gap": 216.76,
+          "advantage_population": 12,
+          "mean_advantage_pct": 217.876,
+          "worst_advantage_pct": 118.967,
+          "best_advantage_pct": 277.497
+        },
+        "points": {
+          "compared_on": "starter_value",
+          "comparable_runs": 12,
+          "engine_wins": 0,
+          "win_rate": 0.0,
+          "engine_mean": 1521.54,
+          "control_mean": 1687.02,
+          "mean_gap": -165.48,
+          "advantage_population": 12,
+          "mean_advantage_pct": -9.808,
+          "worst_advantage_pct": -15.118,
+          "best_advantage_pct": -7.641
+        }
+      },
+      "per_seat": [
+        {
+          "engine_seat": "1",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 203.0,
+            "control_mean": 92.71,
+            "engine_starter_value": 167.78,
+            "engine_total_value": 203.0,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1434.78,
+            "control_mean": 1690.32,
+            "engine_starter_value": 1434.78,
+            "engine_total_value": 2316.69,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "2",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 250.44,
+            "control_mean": 107.34,
+            "engine_starter_value": 215.22,
+            "engine_total_value": 250.44,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1478.79,
+            "control_mean": 1689.18,
+            "engine_starter_value": 1478.79,
+            "engine_total_value": 2360.7,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "3",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 331.15,
+            "control_mean": 100.0,
+            "engine_starter_value": 279.04,
+            "engine_total_value": 331.15,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1546.56,
+            "control_mean": 1688.34,
+            "engine_starter_value": 1546.56,
+            "engine_total_value": 2371.13,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "4",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 337.06,
+            "control_mean": 99.46,
+            "engine_starter_value": 282.21,
+            "engine_total_value": 337.06,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1547.83,
+            "control_mean": 1687.96,
+            "engine_starter_value": 1547.83,
+            "engine_total_value": 2375.34,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "5",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 333.84,
+            "control_mean": 99.75,
+            "engine_starter_value": 282.21,
+            "engine_total_value": 333.84,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1547.83,
+            "control_mean": 1687.96,
+            "engine_starter_value": 1547.83,
+            "engine_total_value": 2370.23,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "6",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 271.69,
+            "control_mean": 105.4,
+            "engine_starter_value": 232.13,
+            "engine_total_value": 271.69,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1496.31,
+            "control_mean": 1687.36,
+            "engine_starter_value": 1496.31,
+            "engine_total_value": 2381.91,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "7",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 338.27,
+            "control_mean": 99.35,
+            "engine_starter_value": 291.28,
+            "engine_total_value": 338.27,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1558.12,
+            "control_mean": 1687.02,
+            "engine_starter_value": 1558.12,
+            "engine_total_value": 2375.88,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "8",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 322.79,
+            "control_mean": 100.76,
+            "engine_starter_value": 279.75,
+            "engine_total_value": 322.79,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1544.57,
+            "control_mean": 1688.47,
+            "engine_starter_value": 1544.57,
+            "engine_total_value": 2359.93,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "9",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 356.7,
+            "control_mean": 97.68,
+            "engine_starter_value": 278.49,
+            "engine_total_value": 356.7,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1543.08,
+            "control_mean": 1686.45,
+            "engine_starter_value": 1543.08,
+            "engine_total_value": 2351.69,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "10",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 327.19,
+            "control_mean": 100.36,
+            "engine_starter_value": 240.33,
+            "engine_total_value": 327.19,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1500.42,
+            "control_mean": 1686.16,
+            "engine_starter_value": 1500.42,
+            "engine_total_value": 2319.37,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "11",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 365.65,
+            "control_mean": 96.86,
+            "engine_starter_value": 269.77,
+            "engine_total_value": 365.65,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1528.43,
+            "control_mean": 1682.96,
+            "engine_starter_value": 1528.43,
+            "engine_total_value": 2357.6,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        },
+        {
+          "engine_seat": "12",
+          "cdme": {
+            "compared_on": "total_value",
+            "engine": 360.36,
+            "control_mean": 97.34,
+            "engine_starter_value": 268.16,
+            "engine_total_value": 360.36,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          },
+          "points": {
+            "compared_on": "starter_value",
+            "engine": 1531.77,
+            "control_mean": 1682.03,
+            "engine_starter_value": 1531.77,
+            "engine_total_value": 2393.0,
+            "engine_starters_filled": 8,
+            "starting_slots": 8
+          }
+        }
+      ],
+      "engine_unpriced_total": {
+        "cdme": 0,
+        "points": 0
+      },
+      "seconds": 389.9
+    }
+  ]
+}

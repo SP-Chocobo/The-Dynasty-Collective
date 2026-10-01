@@ -30,9 +30,10 @@ from pathlib import Path
 import decision_log
 import llm_engine
 import pick_debate
+import ui_source
 
 _HERE = Path(__file__).parent
-_APP = (_HERE / "app.py").read_text()
+_APP = ui_source.text()
 
 
 def _stub_provider(response: str):

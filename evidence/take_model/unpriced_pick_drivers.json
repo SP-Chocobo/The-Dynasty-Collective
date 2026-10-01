@@ -1,0 +1,83 @@
+{
+ "league": "Greatest Show on Paper 2",
+ "LIMITS": "ONE league, 31 events. Refutes a proposed mechanism and relocates the question. Sets nothing. No engine constant may be calibrated to it.",
+ "seed": 20260916,
+ "shuffles": 20000,
+ "late_regime_from_round": 14,
+ "picks_resolved": 301,
+ "picks_unpriced": 31,
+ "by_round_band": {
+  "1-6": {
+   "picks": 64,
+   "unpriced": 0,
+   "rate": 0.0
+  },
+  "7-13": {
+   "picks": 71,
+   "unpriced": 0,
+   "rate": 0.0
+  },
+  "14-19": {
+   "picks": 63,
+   "unpriced": 6,
+   "rate": 0.09523809523809523
+  },
+  "20-24": {
+   "picks": 49,
+   "unpriced": 12,
+   "rate": 0.24489795918367346
+  },
+  "25-30": {
+   "picks": 54,
+   "unpriced": 13,
+   "rate": 0.24074074074074073
+  }
+ },
+ "by_position": {
+  "QB": {
+   "late_picks": 24,
+   "unpriced": 17,
+   "rate": 0.7083333333333334
+  },
+  "RB": {
+   "late_picks": 45,
+   "unpriced": 7,
+   "rate": 0.15555555555555556
+  },
+  "TE": {
+   "late_picks": 33,
+   "unpriced": 1,
+   "rate": 0.030303030303030304
+  },
+  "WR": {
+   "late_picks": 64,
+   "unpriced": 6,
+   "rate": 0.09375
+  }
+ },
+ "roster_state_contrast": {
+  "late_all_positions": {
+   "n": 166,
+   "unpriced": 31,
+   "priced": 135,
+   "mean_diff": -0.4741,
+   "perm_p": 0.01575
+  },
+  "late_QB_only": {
+   "n": 24,
+   "unpriced": 17,
+   "priced": 7,
+   "mean_diff": -0.2067,
+   "perm_p": 0.13095
+  },
+  "late_non_QB": {
+   "n": 142,
+   "unpriced": 14,
+   "priced": 128,
+   "mean_diff": -0.3487,
+   "perm_p": 0.17585
+  }
+ },
+ "roster_state_effect_dissolves_under_stratification": true,
+ "VERDICT": "WITHDRAWN: the pooled roster-state contrast is a position-mix artifact (Simpson's paradox), not a driver. The real signal is positional -- superflex QBs past the startable floor -- which makes the unpriced block a PRICING gap (#168/#185), not a take-model parameter."
+}

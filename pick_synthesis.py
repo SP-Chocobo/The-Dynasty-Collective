@@ -52,30 +52,42 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         collapsed to the identical maximum penalty regardless of how far behind each actually
         was. The sole candidate in a single-candidate snapshot gets full credit here (there is,
         literally, no alternative to compare against).
-      - survival_probability: (1 - survival) scaled up -- the core "what do you lose by
-        waiting" signal.
+      - survival_probability: RETIRED FROM THIS SCORE (#24 / W1-07, ruled). It weighed 20.0 as
+        (1 - survival). The field still exists on the snapshot and in the withholding contract;
+        it simply no longer moves necessity. See the note below the bullets.
       - positional_cliff: HIGH/MEDIUM add real points; LOW adds none.
       - position_run_detected: a real, observed signal, not a guess.
       - rival_premium (NOT denial_value): how much more the best-positioned intervening rival's
         own roster makes this player worth to them than his team-agnostic universal_value --
-        their need/eligibility premium, normalized against draft_room's own NEED_BONUS_MAX
-        scale. Deliberately the p_take-FREE half of the denial signal: denial_value is
-        (opponent value x take-probability), and that same take-probability already compounds
-        into survival_probability above, so using denial_value here counted the identical
+        their need/eligibility/depth premium, normalized against the SUM of draft_room's
+        team-specific caps -- that premium's own bound, not one term's (#144). Deliberately the p_take-FREE half of the denial signal: denial_value is
+        (opponent value x take-probability), and that same take-probability used to compound
+        into a survival term in this very score, so using denial_value here counted the identical
         underlying probability twice -- measured at r = +0.82 between the survival and denial
-        components across simulated draft states before this was split. Probability enters
-        necessity exactly once (survival); rival-gain magnitude exactly once (this term). The
+        components across simulated draft states before this was split. AFTER #24 there is no
+        probability term left in necessity at all, so the double count is now impossible rather
+        than merely avoided -- but this term stays p_take-FREE, because the reason was never only
+        the overlap: rival-gain MAGNITUDE and take PROBABILITY are different quantities, and the
+        snapshot's denial_value is still defined as their product for the debate layer. The
         snapshot's denial_value field itself is unchanged -- as an expected-value number for
-        the debate layer it is correctly defined as is. A moderate RESIDUAL correlation
-        between the survival and rival-premium components (~0.6 measured across controlled
-        backtest states) is an ACCEPTED property, not an oversight: the two formulas share no
-        term, but both respond to the same real market fact (a genuinely in-demand player has
-        lower survival AND higher rival value) through independent pathways -- shared cause,
-        not shared measurement. Orthogonalizing further would mean residualizing one real
-        signal against the other, making both less interpretable to remove a correlation that
-        reflects reality.
+        the debate layer it is correctly defined as is. The residual correlation of ~0.6 that used to be recorded here,
+        between the survival and rival-premium components, is kept as history rather than as a
+        live property: one of the two components no longer exists. It was an ACCEPTED property
+        while both did, because the formulas shared no term and both responded to the same real
+        market fact (a genuinely in-demand player has lower survival AND higher rival value)
+        through independent pathways -- shared cause, not shared measurement.
+      - positional_forfeit (#48/#71) -- what delaying this POSITION to the next turn costs.
+        It was the MAGNITUDE half of a pair whose PROBABILITY half was survival_probability;
+        after #24 retired that half, this term is the whole of what waiting costs in this score.
+        Its weight did NOT change to absorb the freed 20 -- see the #24 note below for why there
+        was nothing to absorb. Normalized against the
+        universal_value scale's own top and weighted like the denial magnitude beside it.
       - need_bonus + eligibility_bonus (this roster's own fit) -- applied directly, the same
-        additive-nudge treatment draft_room.py already gives these two terms.
+        additive-nudge treatment draft_room.py already gives these two terms. Deliberately TWO
+        of draft_room's three team-specific terms: depth_exposure is excluded, because
+        team_acquisition_value already reads it and necessity's counterpart to it is the
+        positional waiting magnitude directly above. See the roster_fit_component itself, and ENGINE_WIRING_PASS.md, for the
+        level-versus-rate decomposition that makes that a ruling rather than an oversight.
       - round: late-round picks (round >= draft_room's own UPSIDE_MODE_DEFAULT_ROUND) get the
         WHOLE score rescaled proportionally into a low band (see LATE_ROUND_NECESSITY_CAP), not
         forced to one identical flat number -- deliberately NOT the same shape as the
@@ -100,21 +112,18 @@ Five real signals this module adds that didn't exist anywhere in the engine befo
         identical survival risk should score the identical necessity contribution from that
         risk, not a bigger one for the pricier player).
 
-  * consensus_reach -- how far this candidate's real-world MARKET CONSENSUS standing sits from
-    where he's being taken right now, and whether that's a normal deviation or a real reach.
+  * consensus_standing -- where the real-world MARKET CONSENSUS itself places this candidate.
     Built from KeepTradeCut's own crowd-sourced dynasty rankings (already loaded elsewhere in
     this app -- see draft_room.py's _rookie_lookup for the same source used a different way):
     real rank + real tier, not this engine's own VOR math validating itself. This exists
-    specifically to guard against the engine "fighting the market" -- recommending a player
-    nobody drafts this early without a real, board-specific reason (a genuine survival/cliff/
-    denial case), versus quietly assuming its own valuation should just override established
-    consensus. Deliberately does NOT block or penalize a deviation -- it's informational
-    evidence for the debate layer, not a hard rule (a justified reach is a normal, legitimate
-    outcome; the point is making the debate account for it explicitly, not suppressing it).
-    Uses KTC's own TIER boundaries to size how big a deviation is, not a raw rank-number gap --
-    a tight cluster of similarly-valued players tolerates a big rank swing with no real
-    justification needed, while crossing an actual tier line the market itself drew is a bigger
-    deal regardless of the raw rank distance. IMPORTANT DISTINCTION worth stating plainly:
+    specifically so the engine cannot quietly "fight the market" unobserved -- a debate that
+    can see where consensus puts a player can account for recommending him earlier; one that
+    cannot, can't. Deliberately does NOT block or penalize a deviation, and deliberately does
+    not GRADE one either: it reports the two sourced numbers and stops. It used to also bucket
+    the tier distance into a three-way reach verdict; #167 measured that verdict changing no
+    engine decision and tagging 85% of candidates purely because KTC's early tiers are wide,
+    so the verdict was removed and the numbers it was derived from kept (see
+    consensus_standing's own docstring). IMPORTANT DISTINCTION worth stating plainly:
     KTC's rank/tier reflect dynasty TRADE-VALUE consensus, not literal startup-draft ADP --
     those correlate strongly for established players but are not the same measurement, so this
     is a real, sourced, useful PROXY for draft-position expectation, never presented as an
@@ -147,12 +156,67 @@ from __future__ import annotations
 from dataclasses import dataclass, fields as dataclass_fields
 from typing import Optional
 
+import inspect
+
 import draft_room as dr
 import draft_strategy as ds
+import league_config as lc
+import lineup_optimizer as lo
+import player_universe as pu
 from content_hash import fingerprint
 from data_merger import DataMerger, name_key, normalize_name
 
 DEFAULT_NARROW_COUNT = 5
+
+#: RE-EXPORT, not a copy (#187). draft_strategy owns this vocabulary because it owns the
+#: measurement; pick_debate is a snapshot CONSUMER and may not import draft_strategy at all
+#: (test_pick_synthesis.DecisionBoundaryIsClosedTests forbids it, so that a consumer cannot
+#: recompute what the frozen snapshot already decided). Binding the same object here lets the
+#: words have one home while the boundary stays closed -- a second literal table in
+#: pick_debate would be exactly the #186 defect, one module over.
+DENIAL_BASIS_LABELS = ds.DENIAL_BASIS_LABELS
+#: #206: the survival vocabulary crosses the decision boundary the same way denial's does --
+#: re-exported here, never imported from draft_strategy by a consumer. test_pick_synthesis's
+#: DecisionBoundaryIsClosedTests caught me importing the engine into pick_debate directly, and
+#: it was right to: PickSnapshot plus this module's vocabulary is the whole contract, and a
+#: second import path is a second way for a consumer to drift from it.
+SURVIVAL_NO_NEXT_PICK = ds.SURVIVAL_NO_NEXT_PICK
+SURVIVAL_NO_INTERVENING_PICKS = ds.SURVIVAL_NO_INTERVENING_PICKS
+SURVIVAL_MEASURED = ds.SURVIVAL_MEASURED
+SURVIVAL_BASIS_LABELS = ds.SURVIVAL_BASIS_LABELS
+
+#: Same re-export, same reason (#174). lineup_optimizer is likewise forbidden to snapshot
+#: consumers, and depth_exposure's basis was simply DROPPED here rather than carried -- the
+#: quantity crossed the boundary without the thing that gives it meaning, which is #166's
+#: defect with the two halves swapped.
+EXPOSURE_BASIS_LABELS = lo.EXPOSURE_BASIS_LABELS
+#: The one token a consumer needs to ASK a question with, rather than to print. Re-exported
+#: for the same reason as the labels: lineup_optimizer is closed to snapshot consumers, and
+#: a consumer spelling "measured" as its own literal is a second home for the vocabulary.
+EXPOSURE_MEASURED = lo.EXPOSURE_MEASURED
+#: #216: the fourth term's vocabulary, re-exported for the same reason and consumed the same
+#: way (draft_board_ui carries the table to the JS; pick_debate qualifies the clause).
+DISPLACEMENT_BASIS_LABELS = lo.DISPLACEMENT_BASIS_LABELS
+DISPLACEMENT_MEASURED = lo.DISPLACEMENT_MEASURED
+DISPLACEMENT_ROSTER_PARTIAL = lo.DISPLACEMENT_ROSTER_PARTIAL
+#: #112: the fifth re-export, and the first whose forbidden module is draft_room itself. A
+#: consumer that imported draft_room for these two names would acquire compute_draft_board with
+#: them -- the debate layer could then re-price the candidate it was told not to recompute, and
+#: `DecisionBoundaryIsClosedTests` fails on exactly that, as it did to my first attempt here.
+#: The vocabulary keeps ONE home (draft_room, #126) and crosses the boundary the way the other
+#: four do: through the snapshot module, which is the boundary rather than a consumer of it.
+ABSENCE_KINDS = dr.ABSENCE_KINDS
+ABSENCE_KIND_LABELS = dr.ABSENCE_KIND_LABELS
+
+#: THE HEALTH BASIS VOCABULARY, RE-EXPORTED THE SAME WAY AND FOR THE SAME REASON. `pick_debate`
+#: must not import `draft_room` -- it could reach `compute_draft_board` and re-price a candidate,
+#: which `test_pick_debate_does_not_import_draft_room` enforces and which the first version of the
+#: `risk_basis` repair broke. These are the SAME OBJECTS, never copies, so a value added in
+#: `draft_room` cannot be missing here (`#126`).
+HEALTH_BASIS_IN_PROJECTION = dr.HEALTH_BASIS_IN_PROJECTION
+HEALTH_BASIS_UNPRICED = dr.HEALTH_BASIS_UNPRICED
+HEALTH_BASIS_NO_PROJECTION = dr.HEALTH_BASIS_NO_PROJECTION
+HEALTH_BASIS_CHARGED = dr.HEALTH_BASIS_CHARGED
 
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right
@@ -166,9 +230,23 @@ DEFAULT_NARROW_COUNT = 5
 POSITION_VIEW_DEPTH_CAP = 12
 
 
-def _board_order(row: dict) -> tuple:
-    """Sort key for a board row: highest final_score first, UNPRICED rows last, player_id as
-    the tiebreak.
+def _board_order(row: dict, value_key: str = "final_score") -> tuple:
+    """Sort key for a board row: the feasibility backstop first, then the fieldability backstop,
+    then highest final_score, UNPRICED rows last, player_id as the tiebreak.
+
+    ONE KEY, TWO KEY NAMES, NOT TWO KEYS (#126). The same quantity is called `final_score` on a
+    board row and `team_acquisition_value` on a candidate dict -- `build_snapshot` renames it at
+    the boundary (`"team_acquisition_value": row["final_score"]`). `value_key` lets the candidate
+    caller read it under its own name rather than hand-list a second copy of this tuple, which is
+    how the ordering vocabulary drifted the first time.
+
+    THE BACKSTOP LEADS, and it has to be honoured here rather than only in draft_room, because
+    this function is a SECOND ORDERING AUTHORITY (#155): it re-sorts every board it is handed,
+    so compute_draft_board's own row order never survives to the pick. Tier 3 was measured
+    promoting a QB correctly on the board while the chair still took its seventh RB, purely
+    because this key threw that order away. `fills_required_slot` is False on essentially every
+    row of essentially every board -- see draft_room.feasibility_first for why it binds only
+    when a roster has as few picks left as it has unfillable named slots.
 
     Two things this deliberately does not do. It does not substitute a number for an absent
     score -- a row whose position has no replacement level has no team_acquisition_value, and
@@ -182,8 +260,15 @@ def _board_order(row: dict) -> tuple:
     survived only on Python's sort being stable -- while draft_room's own board sort has
     carried an explicit player_id tiebreak for exactly this reason since the players_db
     iteration-order bug."""
-    score = row.get("final_score")
-    return (score is None, -score if score is not None else 0.0, str(row.get("player_id")))
+    score = row.get(value_key)
+    return (not row.get("fills_required_slot", False),
+            # The second backstop, honoured here for the identical reason (#155): this function
+            # re-sorts every board it is handed, so a decision expressed only as draft_room's
+            # row order never survives to the pick. `cannot_be_fielded` is False on essentially
+            # every row -- see draft_room.unfieldable_last for the ceiling it is derived from
+            # and for the measured roster (nine defenses, one receiver) that required it.
+            bool(row.get("cannot_be_fielded", False)),
+            score is None, -score if score is not None else 0.0, str(row.get("player_id")))
 
 
 def position_view_depth(replacement_rank: Optional[int]) -> int:
@@ -231,11 +316,168 @@ NECESSITY_STANDOUT_WEIGHT = 30.0     # normalized margin over the best OTHER nar
 # leader's standout component to the full 15.0 (half the weight) under a relative anchor, when a
 # genuinely tiny 0.5-point edge should barely move the needle at all.
 NECESSITY_STANDOUT_REFERENCE_GAP = 15.0
-NECESSITY_SURVIVAL_WEIGHT = 20.0     # (1 - survival_probability) scaled up
 NECESSITY_CLIFF_POINTS = {"HIGH": 12.0, "MEDIUM": 6.0, "LOW": 0.0}
+
+# #160 (A2), ruled by the owner: cliff_protection is gated on THE CLIFF MACHINERY IT IS NAMED
+# FOR, not on a magnitude borrowed from a different quantity. It used to read
+# `positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP` -- a normalizer's reference, chosen
+# to sit above the leader-second TAV margin distribution (max 12.66 across five formats),
+# applied as a firing threshold to a quantity whose max is 248.0. Twenty times the range, one
+# literal, and it fired on 39-72% of candidates depending on format.
+#
+# DERIVED FROM THE TABLE ABOVE RATHER THAN HAND-LISTED. The engine has already ratified which
+# tiers are material by giving them necessity points; writing "HIGH"/"MEDIUM" out a second time
+# would be a second source of truth that can silently drift from the first (the same reasoning
+# behind league_config.ambiguities() and source_policy's derived allowlist).
+#
+# WHAT THIS DOES AND DOES NOT FIX, measured across five formats before choosing rather than
+# after: HIGH+MEDIUM fires 49.0% pooled (43.5-55.3%), HIGH alone 37.3% (34.8-40.4%). So this
+# does NOT make the badge rare, and it is not claimed to. What it fixes is that the rate is now
+# driven by a real detected cliff carrying its own derived materiality gate, and that it is
+# STABLE: the old rule swung 33 points across formats, this swings 12. HIGH-alone was rejected
+# deliberately -- picking it would mean choosing a bar because its percentage reads better,
+# which is exactly the move #56 exists to forbid.
+CLIFF_PROTECTION_TIERS = frozenset(
+    tier for tier, points in NECESSITY_CLIFF_POINTS.items() if points > 0
+)
 NECESSITY_RUN_BONUS = 6.0
-NECESSITY_DENIAL_WEIGHT = 10.0       # rival_premium normalized against draft_room.NEED_BONUS_MAX
-NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibility_bonus)
+NECESSITY_DENIAL_WEIGHT = 10.0       # the denial contribution at ONE team-term's worth of
+                                     # rival premium. Kept as the RATE's anchor; the ramp's
+                                     # own ceiling is derived from it below (#144).
+
+# #144, closed by measurement. rival_premium is (rival TAV - rival UV) -- the SUM of
+# draft_room's team-specific terms, so a saturation point for it has to be a bound on that sum.
+# It used to be NEED_BONUS_MAX, the cap on ONE of them, which was an upper bound on the quantity
+# right up until #139 added a third term and stopped being one.
+#
+# "each independently capped" USED TO BE PART OF THAT SENTENCE and is not true any more: #216
+# added a fourth term that has no cap. The note below says why the sum of the capped three is
+# still the right UPPER bound, and this line no longer states the stronger thing three
+# paragraphs above the correction. (Recorded rather than quietly edited: I read this stale half
+# as an unhandled defect and wrote it up as one before reading on. It was handled. See #220.)
+#
+# Derived from draft_room's own caps rather than written as 36.0, so a fourth team-specific
+# term moves it automatically instead of silently re-flattening the ramp the way the third did.
+#: The three CAPPED team-specific terms, named ONCE so everything that needs "the bound on
+#: their sum" or "one term's worth" derives from the same tuple.
+#:
+#: #216 added a FOURTH term, displacement_adj, and it is deliberately NOT here: it is
+#: non-positive by construction (draft_room.displacement_adjustments -- it only ever removes
+#: credit the league anchor gave for a slot the roster cannot offer), so it cannot raise the
+#: sum these caps bound.
+#:
+#: THAT PREMISE IS FALSE, AND TWO CONSTANTS BELOW WERE DERIVED FROM IT (#52 phase 6).
+#:
+#: displacement_adj is NOT non-positive. Measured on the owner's own league, pre-draft:
+#: Travis Hunter (WR primary, WR/DB eligible) carries displacement_adj = +79.44, and his
+#: team_acquisition_value - universal_value is 87.82 against a claimed upper bound of 36.0.
+#: The mechanism is a multi-eligible player anchored on his PRIMARY position's level who
+#: reaches, through a SECOND eligibility, a slot priced below that anchor -- which lifts rather
+#: than removes credit: the uncapped multi-eligibility lift ELIGIBILITY_BONUS_MAX was introduced
+#: to prevent, arriving through the fourth term instead. NOT an IDP-only case, though the
+#: measured example is one: on a plain one-TE rulebook with the owner's pool shape (TE scarce at
+#: 258, RB deep at 100) an RB/TE anchored on TE is lifted 158.0 with his own TE slot standing
+#: open, and three RB/TE players are in the real capture. The exact two-population bound lives
+#: at lineup_optimizer.displacement_level under THE SIGN.
+#:
+#: So sum(TEAM_SPECIFIC_CAPS) is NOT the upper bound on team_acquisition_value -
+#: universal_value. It is the upper bound on the sum of the CAPPED TERMS, which is a
+#: different and much weaker statement, and the difference is exactly the fourth term's range.
+#: Measured across eight sampled board states: the capped terms reach 11.73; the full
+#: gap runs -55.27 to 8.33 there, and 87.82 on the pre-draft board where the
+#: multi-eligible case lives. Neither direction is bounded by this tuple.
+#:
+#: THE 6.1b RULING MOVES ONE OF THESE CONSTANTS. Retiring `eligibility_bonus` removed its cap
+#: from this tuple, so the tuple goes from three members to two:
+#:
+#:     NECESSITY_DENIAL_SATURATION   36.0 -> 24.0   (the SUM lost a 12.0 member)
+#:     CONTEXT_ELEVATED_THRESHOLD    12.0 -> 12.0   (the MEAN of equal caps is invariant)
+#:
+#: THAT IS A DERIVATION, NOT A CALIBRATION, and the distinction is the whole reason it is
+#: allowed to happen here. #56 forbids CHOOSING a new saturation point for a distribution
+#: nobody has argued for -- and nobody chose one. The formula is untouched; its input lost a
+#: member because a term retired. A constant that moves because its derivation's input moved
+#: is the derivation working; a constant that stays put across such a change would be the
+#: hand-maintained number #56 actually prohibits.
+#:
+#: It is still a live behaviour change: the denial component now saturates at 24.0 of
+#: rival_premium instead of 36.0, so denial reaches its ceiling sooner and the term is
+#: effectively stronger per point of premium below that. Measured, not asserted -- see the
+#: 6.1b entry in POST_AUDIT_PLAN.md.
+#:
+#: What 6.1b does NOT fix is the falsity above: `displacement_adj` is still uncapped and still
+#: reaches +79.44, so sum(TEAM_SPECIFIC_CAPS) is still not a bound on
+#: team_acquisition_value - universal_value. Fewer terms, same false premise.
+#:
+#: WHAT IS AND IS NOT CHANGED HERE. The claim is corrected; the VALUES are not. Re-deriving
+#: NECESSITY_DENIAL_SATURATION or CONTEXT_ELEVATED_THRESHOLD means choosing a new saturation
+#: point and a new threshold for a distribution nobody has argued for -- #56's exact
+#: prohibition, and a valuation change rather than a repair. The honest position is that both
+#: constants are now known to rest on a false premise, the engine's behaviour is unchanged
+#: until someone rules on what should replace them, and the falsity is written down where the
+#: next reader meets the constants rather than in a document they may not open.
+#:
+#: The lower bound was always open, which the original text said, and that matters more than
+#: it appears: at -67.00 the fourth term can subtract five times what any capped term can add.
+TEAM_SPECIFIC_CAPS = (dr.NEED_BONUS_MAX, dr.DEPTH_EXPOSURE_MAX)
+
+NECESSITY_DENIAL_SATURATION = sum(TEAM_SPECIFIC_CAPS)
+
+# `CONTEXT_ELEVATED_THRESHOLD` WAS DERIVED HERE AND IS GONE WITH ITS FLAG (#25, ruled
+# 2026-09-21). Its last form was `max(TEAM_SPECIFIC_CAPS)`, corrected at 6.1d.1 from the mean
+# because the two capped terms are MUTUALLY EXCLUSIVE -- need_bonus wants an EMPTY slot,
+# depth_exposure wants SURPLUS, and 0 of 10,887 priced rows carried both. That derivation was
+# right and it is what made the badge's deadness undeniable: the threshold sat AT the real
+# ceiling while the observed gap topped out at 8.72, so it fired on ONE row across 36 formats.
+#
+# The constant is removed rather than left unused: `#56`'s companion problem is a bound sitting
+# around with nothing reading it, which the next reader mistakes for a live threshold. The
+# MEASUREMENT survives in evidence/context_elevated/, and the mutual-exclusion fact it rests on
+# is still pinned by test_threshold_reachability, because that fact is about the two terms and
+# outlives the flag that happened to read them.
+
+# THE DIVISOR AND THE WEIGHT ARE ONE SLOPE, NOT TWO KNOBS, and that is the whole of what the
+# measurement found. Below saturation the term is `premium x (WEIGHT / DIVISOR)`, so raising
+# the divisor to 36 while holding the weight at 10 does not repair a saturation -- it cuts
+# denial's calibrated influence to a third of itself. Measured across six real turns and 272
+# candidates:
+#
+#   divisor 36, weight held    478/7046 pairs reorder, 54/272 necessity labels flip, mean
+#                              necessity falls 3-4.5 points -- and 259 of those inversions are
+#                              at ROUND 4, where nothing clips at all. Pure re-weighting.
+#   this form (both scaled)      7/7046 pairs reorder, 1/272 labels flip, max change 0.9, and
+#                              `rows changed` equals `rows clipped` on every single turn.
+#
+# So the ceiling moves WITH the saturation point, by the same factor, which holds the rate at
+# exactly what it was calibrated at (10/12 = 0.8333 necessity points per premium point) and
+# changes nothing except the flat spot above 12.
+NECESSITY_DENIAL_CEILING = NECESSITY_DENIAL_SATURATION * (
+    NECESSITY_DENIAL_WEIGHT / dr.NEED_BONUS_MAX
+)
+
+# #48 / #71: the POSITIONAL WAITING MAGNITUDE -- what delaying this position to my next turn
+# actually costs. Set equal to NECESSITY_DENIAL_WEIGHT deliberately, and no new number is
+# introduced: both are magnitude terms on the universal_value scale normalized into necessity
+# points, they are one class, and giving them different weights would rank them by nothing
+# (the same reasoning that set DEPTH_EXPOSURE_MAX = NEED_BONUS_MAX).
+NECESSITY_FORFEIT_WEIGHT = 10.0
+
+# The divisor, and it is borrowed rather than invented. positional_forfeit is a gap on the
+# universal_value scale, and that scale is CONSTRUCTED so 100 is the largest real VOR gap in
+# the remaining pool (see draft_room's ARCHITECTURE section on linear scaling). So a forfeit
+# expressed as a fraction of 100 is already a meaningful fraction of "the biggest gap actually
+# out there" -- the same move eligibility_bonus and depth_exposure make with
+# TRADE_VALUE_SCALE_MAX. Measured on real boards: forfeit p50 23.47, p90 95.82, max 117.39, so
+# this is a real gradient rather than a near-constant, and the min() below is a defensive clip
+# at the scale's documented top, not the mechanism doing the work.
+#: FALLBACK ONLY since #52 phase 5. The operative scale is now measured from the pool the
+#: candidates came from -- see _forfeit_scale below. This value survives for a caller that
+#: supplies no usable spread (a single candidate, or a board where every value is None), where
+#: dividing by a measured nothing is worse than dividing by a stated something.
+FORFEIT_SCALE_MAX = 100.0
+NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied to need_bonus -- NOT
+                                     # depth_exposure; see the component for why that
+                                     # exclusion is a ruling rather than an omission
 
 # Credible-rival-path floor for the human-facing block_opportunity ("denies a rival") flag --
 # the premium-driving rival's own real take_probability must clear this before the label
@@ -247,22 +489,71 @@ NECESSITY_ROSTER_FIT_WEIGHT = 0.8    # applied directly to (need_bonus + eligibi
 # scoped to this ONE flag -- rival_premium's own continuous contribution to pick_necessity
 # (NECESSITY_DENIAL_WEIGHT above) is untouched by this threshold; only the label a UI is
 # allowed to display "DENIAL" for is gated.
-CREDIBLE_RIVAL_PATH_THRESHOLD = 0.10
+#: MANDATE 3.4: THE SAME BAR, IN THE UNIT IT WAS ALWAYS STATED IN. This was
+#: `CREDIBLE_RIVAL_PATH_THRESHOLD = 0.10`, compared against a take_probability, and the comment
+#: above says what 0.10 meant: "roughly rank-4-or-better under draft_strategy's own
+#: RANK_TAKE_PROBABILITY", whose rank-4 entry is exactly 0.10.
+#:
+#: IT BECAME UNREACHABLE. `#206` normalised the rank model so one opponent's take probabilities
+#: are mutually exclusive and sum to <= 1 across their whole board -- unnormalised they summed to
+#: 23.49. The threshold was left in RAW table units. Measured on a real mid-draft turn with 23
+#: intervening picks: the largest take_probability reaching this gate is 0.028, `rival_premium >=
+#: 2 x NEED_BONUS_PER_DEDICATED_SLOT` fires on 24 of 48 candidates, and `block_opportunity` is
+#: True on 0 of 48. The premium half fires abundantly and the AND is always False, so the flag has
+#: been dead since the normalisation and the "Denies {team}" label it gates has never appeared.
+#:
+#: Expressed as a RANK the bar cannot drift with the probability model again, which is the whole
+#: lesson of the constant it replaces. Derived from the same table rather than chosen (`#56`):
+#: rank 4 is the entry whose value WAS 0.10.
+#:
+#: NOT A NEW BAR. This restores a stated intent; it does not decide a different one. Whether
+#: rank-4-or-better is the right bar is a separate question, and one measurement recorded here for
+#: whoever asks it: the pace-driven branch of the take model can exceed the rank-based probability
+#: for a rival whose ROSTER pace makes the take likely at a worse rank, and such a rival is not
+#: credited with a credible path by a rank test. That was equally true of the 0.10 version.
+CREDIBLE_RIVAL_PATH_MAX_RANK = 4
 
 LATE_ROUND_THRESHOLD = dr.UPSIDE_MODE_DEFAULT_ROUND  # same round draft_room switches to upside mode
 LATE_ROUND_NECESSITY_CAP = 30.0
 
 # A team_acquisition_value gap at or below this is field noise, not ordering signal --
-# DATA-DERIVED, not an invented percentage: on a real fresh 12-team superflex dynasty board,
-# adjacent tav gaps in the top 40 ran median 1.23 / p75 2.26 / p90 3.53, so 2.0 sits right at
-# the "most adjacent pairs are inside it" line (72% measured). Candidates this close to the
+# DERIVED ON ONE POPULATION, THEN CHECKED AGAINST THE FOUR IT ACTUALLY GATES (#160). The
+# original derivation is the first sentence below and it is honest about only one thing --
+# where the number CAME from, which is not the same as where it is USED:
+#
+#   ORIGIN. On a real fresh 12-team superflex dynasty board, ADJACENT tav gaps in the top 40
+#   ran median 1.23 / p75 2.26 / p90 3.53, so 2.0 sat at the "most adjacent pairs are inside
+#   it" line (72% measured). One board, one format, one population.
+#
+#   WHERE IT IS ACTUALLY USED. Three of the four rules this constant gates are LEADER-RELATIVE
+#   over the NARROWED CANDIDATE LIST, not adjacent gaps over the top 40; the fourth
+#   (CLIFF_MIN_MATERIAL_GAP) is a WITHIN-POSITION bpa gap. Those are three different
+#   populations and none of them is the one the origin measured. That the value works on all
+#   of them was, until #160, luck this comment was claiming as design.
+#
+#   THE CHECK (#160), five formats differing in team count, scoring, superflex and IDP. Share
+#   of each population the band splits off:
+#       leader-relative gap, narrowed     8% - 23%
+#       leader-second margin             29% - 86%
+#       best_uv - leader_uv (pure_value)  0% - 43%
+#       within-position bpa gap          55% - 62%
+#   Every one splits. Nothing is degenerate, no re-value is supported, and the number stands --
+#   now on the populations it governs rather than on the one it came from.
+#
+#   ONE CAVEAT KEPT RATHER THAN SMOOTHED: pure_value fires 0.0% on two of the five formats. It
+#   is not dead (42.9% on IDP) but it IS format-dependent, which nothing previously recorded.
+#
+# Candidates this close to the
 # LEADER form a tie group where the deterministic ordering must not be presented as a real
 # preference -- this is exactly where the user's own player preference legitimately decides,
 # and the debate layer needs the boundary handed to it as a computed number (an LLM inventing
 # its own "feels close" threshold is precisely what this module's frozen-snapshot architecture
 # exists to prevent). Distinct from NECESSITY_STANDOUT_REFERENCE_GAP (15.0), which measures a
-# CUMULATIVE lead over the whole field -- that reference sits above the largest adjacent gap
-# ever observed (10.6) on purpose, since full standout credit should demand something rare.
+# CUMULATIVE lead over the whole field -- that reference sits above the largest gap ever
+# observed on purpose, since full standout credit should demand something rare. (#160 re-checked
+# that across five formats: the largest leader-second margin anywhere is 12.66, so 15.0 is still
+# above the distribution. The 10.6 previously quoted here was one format's figure, stated
+# without its scope -- the same slip this block's own origin note now warns about.)
 NEAR_TIE_BAND = 2.0
 
 # A cliff is a RATIO ("this drop is unusually large for this position"), which silently
@@ -302,6 +593,157 @@ CLIFF_MIN_MATERIAL_GAP = NEAR_TIE_BAND
 # marginal lead that's still probably safe) stays in the ordinary tiebreaker-prose regime.
 DECISIVE_SURVIVAL_THRESHOLD = 0.15
 
+#: THE THRESHOLD IS NOT SET, AND "decisive" IS UNREACHABLE BY DESIGN (#206, owner delegated).
+#:
+#: `decision_regime` needs survival <= DECISIVE_SURVIVAL_THRESHOLD to call a board "decisive".
+#: `evidence/survival_calibration/` measured whether survival can carry that weight, against the
+#: owner's own contract for it -- "a mathematical representation of what are the chances this
+#: player makes it back to my next selection" -- and it cannot:
+#:
+#:   SMOKE  120 sim picks, 5 selection policies   engine Brier 0.22480 vs constant 0.19348
+#:   REAL   360 real picks, Greatest Show 2       engine Brier 0.16127 vs constant 0.14224
+#:   Both arms: oracle 0.0, ceilings hold, and the engine LOSES TO PREDICTING THE BASE RATE.
+#:
+#: And it loses WORST exactly where this threshold reads. The 0.0-0.1 bucket on real picks:
+#: n=74, predicted 0.028, observed 0.500. A "he will not last" call was right about half the
+#: time, which is a coin flip wearing an alarm's clothing. No value of this constant is
+#: defensible against that distribution -- not 0.15, not 0.5, not any number -- so none is
+#: chosen. Choosing one to make the state fire would be fitting a threshold to noise, which is
+#: what `#56` forbids and what the capture's LIMITS forbid doing against a single league.
+#:
+#: THE GATE IS NOT WHY "decisive" STOPPED FIRING, and saying so was my own error, caught by
+#: this file's vacuity check. Lift the gate and the state STILL never fires on a real board.
+#: The load-bearing cause is arithmetic and it came from #206's OWN mass-conservation repair
+#: (364042a): survival used to be far too low -- 0.00 for a player who survived 60 picks, the
+#: symptom that opened #206 -- and normalising each opponent's take mass to 1.0 raised it past
+#: the threshold. Measured across 8 real board states: the leader's survival floor is 0.212
+#: against a threshold of 0.15, and 0 of 8 boards clear it (the tie-band half clears on 2 of
+#: 8, so it is not the blocker). test_the_threshold_sits_below_the_leader_survival_floor pins
+#: that, and the freeze record must not claim calibration is the reason the state is dark.
+#:
+#: The refusal is still ENFORCED rather than documented: decision_regime will not return
+#: "decisive" while this is False, so the constant above is inert and cannot quietly start
+#: deciding if the arithmetic ever changes underneath it.
+#: test_threshold_reachability pins the unreachability AND FAILS IF CALIBRATION EVER PASSES --
+#: it is a trigger to revisit this, not a silencer. The numbers here are checked against the
+#: committed evidence by test_survival_calibration_declaration, so this block cannot drift
+#: away from the files it cites.
+SURVIVAL_IS_CALIBRATED = False
+
+
+#: THE SURVIVAL FAMILY: every quantity that is a function of survival_probability, in one place
+#: (#126) so a surface cannot suppress the headline number and keep its derivatives.
+#:   opportunity_cost          = team_acquisition_value * (1 - survival)
+#:   expected_value_of_waiting = universal_value * survival
+#: Both inherit the miscalibration EXACTLY -- they are the same estimate in different units, so
+#: showing them while hiding survival would be suppression in name only.
+SURVIVAL_DERIVED_FIELDS = ("survival_probability", "opportunity_cost",
+                           "expected_value_of_waiting")
+
+
+def survival_is_presentable() -> bool:
+    """Whether the survival family may be shown to a person.
+
+    False while SURVIVAL_IS_CALIBRATED is False. This is NOT the absence contract: the numbers
+    were measured and they exist -- `estimate_survival` still computes them, the chairs' own
+    reasoning still has them available upstream, and the evidence files keep them. What is
+    withheld is the CLAIM, because two arms measured it losing to a constant predictor and a
+    person reading "62%" has no way to know that.
+
+    What replaces it is the quantity that IS true: `intervening_picks`, the count of picks
+    before your next selection. Verified against the engine's own value at all 5,567 candidates
+    of the REAL arm with zero mismatches, on a draft with 135 traded seats. "11 picks until
+    your next turn" is a fact; "62% survival" is an estimate that failed its own test."""
+    return SURVIVAL_IS_CALIBRATED
+
+
+def withheld_fields() -> frozenset:
+    """Every field a surface must NOT present right now -- the one question every presentation
+    boundary asks, and the whole of the propagation rule (#52 phase 7.1).
+
+    THE RULE. A quantity withheld from presentation must not reach a person, on any surface,
+    under any name, as itself or as a delta of itself. `SURVIVAL_DERIVED_FIELDS` has always been
+    the vocabulary, and its own docstring already said it exists "so a surface cannot suppress
+    the headline number and keep its derivatives" -- but nothing made a surface ASK. Four did
+    not, and each leaked the whole family:
+
+      * `diff_snapshots` listed all three in `_DIFF_FIELDS` and emitted their deltas;
+      * `format_snapshot_for_llm` printed those deltas into WHAT CHANGED, under their human
+        labels, directly beneath the block telling the model the estimate is WITHHELD;
+      * the three system prompts named the family among "real, already-computed numbers" and
+        offered "19% survival with a QB run detected" as a worked example of a KEY FACTOR;
+      * `screen_context` printed "survival NN%" into the Prytaneum seed.
+
+    `draft_board_ui` is the surface that got it right and is the model for this: it asks, keeps
+    the family together, ships the POLICY beside the value so the renderer can say "not shown"
+    rather than the absence contract's "not measured", and redacts at render. A boundary that
+    calls this function is doing what that one does by hand.
+
+    EMPTY, NOT ABSENT, when the numbers are presentable: callers filter against this set, so the
+    calibrated case is the empty set and every call site keeps exactly one shape.
+
+    NOT a secrecy boundary and not the absence contract. The numbers are real and still computed
+    -- `estimate_survival` produces them, the engine still reasons with them upstream, and the
+    evidence files keep them. What is withheld is the CLAIM, because two arms measured it losing
+    to a constant predictor and a person reading "62%" has no way to know that.
+    """
+    return frozenset() if survival_is_presentable() else frozenset(SURVIVAL_DERIVED_FIELDS)
+
+
+#: Where the claim above comes from, so a reader can check it rather than trust it.
+SURVIVAL_CALIBRATION_EVIDENCE = {
+    "smoke": "evidence/survival_calibration/calibration.json",
+    "real": "evidence/survival_calibration/calibration_real.json",
+}
+
+#: WHAT A SURFACE PUTS THERE INSTEAD, as data rather than as prose repeated per surface (#126).
+#: Four surfaces have to tell a person that a number is withheld rather than missing -- the
+#: board's focus sentence, the chairs' briefing, their system prompts, and the Draft Room's
+#: metric cards -- and a hand-copied sentence in each is four places to go stale the day
+#: SURVIVAL_IS_CALIBRATED flips.
+WITHHELD_CARD_TEXT = "withheld"
+WITHHELD_REASON = (
+    "Withheld, not missing: this number is computed, and it failed its calibration check "
+    "against real drafts -- it lost to a constant predictor on two independent arms, and it is "
+    "worst exactly where a reader would lean on it hardest. So the claim is not put in front of "
+    "a person. Do not estimate one from the numbers that are shown."
+)
+
+
+#: The mark a surface shows for a quantity that does not exist. It lived in `app.py`, which this
+#: module cannot import (Streamlit), so the absence check below had nowhere to read it from -- which
+#: is part of why the check was missing. One home, here, on the boundary `app.py` already imports.
+ABSENT_FIGURE = "\u2014"
+
+def presentable_text(field: str, rendered: str) -> str:
+    """`rendered` for a quantity that may be shown; WITHHELD_CARD_TEXT for one that may not.
+
+    The propagation rule (`withheld_fields`) with a return value a widget can take, for the one
+    surface that cannot be imported to be measured: `app.py` is a Streamlit script, so the Draft
+    Room's cards are checked by reading the source. A source check can prove the call is THERE;
+    only a function can prove what it returns. This is that function, and
+    test_withheld_propagation exercises it on both arms.
+
+    WHY NOT AN EM DASH. The panel already uses "--" for the absence contract: not measured, no
+    value exists. A withheld number is the opposite case -- it exists and is not trusted -- and
+    #187 is about never collapsing the two. A reader told "not measured" about a withheld figure
+    will assume the data was missing and reason around the gap.
+
+    AND THE SAME COLLAPSE RAN THE OTHER WAY, corrected at the v4 blind pass. This returned
+    WITHHELD_CARD_TEXT for any withheld FIELD, ignoring `rendered` entirely -- so a value that was
+    never computed was shown as "withheld", which this docstring defines as "it exists and is not
+    trusted". At the user's last pick `estimate_survival` returns absent with basis
+    `no_next_pick`, and `opportunity_cost` and `expected_value_of_waiting` are then None for EVERY
+    candidate: measured at 48 of 48. The survival card beside them correctly said "no next pick"
+    while these two said "withheld", of a number the engine had ruled does not arise.
+
+    So the absence is checked FIRST. A withheld field that holds no value renders as the absence
+    mark, because withholding is a judgement about a number and there is no number to judge.
+    """
+    if rendered is None or rendered == ABSENT_FIGURE:
+        return rendered
+    return WITHHELD_CARD_TEXT if field in withheld_fields() else rendered
+
 # Checked top-down; the first threshold this score meets or exceeds wins.
 NECESSITY_LABEL_THRESHOLDS = [
     (98.0, "MUST TAKE"),
@@ -320,6 +762,64 @@ def _necessity_label(score: float) -> str:
     return NECESSITY_LABEL_THRESHOLDS[-1][1]
 
 
+def _forfeit_scale(raw_candidates: list[dict]) -> float:
+    """The largest real VOR gap in this pool -- measured, which is what the prose always said.
+
+    THE DEFECT THIS REPLACES. `FORFEIT_SCALE_MAX = 100.0` sat under a comment stating the scale
+    "is CONSTRUCTED so 100 is the largest real VOR gap in the remaining pool". That construction
+    was real once: `draft_room._scale_vor_to_bpa` used to normalise VOR onto a 0-100 band. It is
+    now the identity -- "No reference, no rescale, no clip" -- so nothing produces that band, and
+    the divisor was left calibrated against a scale that had been removed. Measured on the
+    owner's league: the largest real VOR gap is 446.05, not 100, so the term saturated at its
+    ceiling for any scarce position and `positional_forfeit` stopped discriminating between them.
+
+    WHY THIS IS NOT A NEW CONSTANT, which #56 would forbid. No number is chosen here. The scale
+    is read off the same candidates the forfeit is being computed for, which is precisely the
+    derivation the original comment claimed and the code stopped performing. A different league,
+    a different round or a drained board each get their own spread, and none of them get a
+    hand-set one.
+
+    Falls back to FORFEIT_SCALE_MAX when the pool cannot answer -- fewer than two priced
+    candidates, or a spread of zero -- because dividing by a measured nothing is worse than
+    dividing by a stated something, and that case is an absent measurement rather than a scale
+    of zero.
+    """
+    values = [c.get("team_acquisition_value") for c in raw_candidates]
+    priced = [v for v in values if isinstance(v, (int, float)) and v == v]
+    if len(priced) < 2:
+        return FORFEIT_SCALE_MAX
+    spread = max(priced) - min(priced)
+    return spread if spread > 0 else FORFEIT_SCALE_MAX
+
+
+def _round_being_decided(pick_label, picks: list, league: Optional[dict] = None) -> int:
+    """Which round the pick under consideration is in -- not the one behind it.
+
+    A pick label is "<round>.<pick>", so its first field answers this directly and exactly.
+    Without one, fall back to counting: `n` completed picks means the next is n // teams + 1.
+    Both beat `max(round of completed picks)`, which is off by one at every round boundary and
+    correct everywhere else, which is why it survived.
+    """
+    if isinstance(pick_label, str) and "." in pick_label:
+        head = pick_label.split(".", 1)[0].strip()
+        if head.isdigit() and int(head) > 0:
+            return int(head)
+    if not picks:
+        return 1
+    # THE THIRD DERIVATION, retired: this spelled `n // teams + 1` itself over its own team count,
+    # beside `league_config.round_of` and `team_count` which each exist to be the only copy.
+    #
+    # THE BASIS IS LOAD-BEARING HERE, not decoration. `team_count` floors at 1, so routing this
+    # through it bare would turn "nothing said how many teams there are" into "a one-team league"
+    # and answer `len(picks) + 1` -- where this function has a better answer of its own in the
+    # round its picks already carry. That fallback is the one `round_of`'s docstring means when it
+    # returns None rather than guessing, and it is kept at its own site as that docstring says.
+    teams, basis = lc.team_count_with_basis(league, picks=picks)
+    if basis == lc.TEAM_BASIS_FLOOR:
+        return max((p.get("round") or 1) for p in picks)
+    return lc.round_of(len(picks), teams)
+
+
 def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[tuple[float, str]]:
     """(pick_necessity, necessity_label) per candidate, in the same order as raw_candidates --
     see the module docstring for the full reasoning behind every term. Each entry in
@@ -327,6 +827,7 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
     survival_probability (or None), positional_cliff (dict or None), position_run_detected,
     rival_premium (or None/0)."""
     values = [c["team_acquisition_value"] for c in raw_candidates]
+    forfeit_scale = _forfeit_scale(raw_candidates)
 
     results = []
     for i, c in enumerate(raw_candidates):
@@ -359,24 +860,122 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
             # standout is real signal and keeps rewarding proportionally up to the +1 cap.
             standout_component = max(0.0, min(1.0, normalized_margin)) * NECESSITY_STANDOUT_WEIGHT
 
-        survival = c.get("survival_probability")
-        survival_component = (1 - survival) * NECESSITY_SURVIVAL_WEIGHT if survival is not None else 0.0
-
         cliff = c.get("positional_cliff")
         cliff_component = NECESSITY_CLIFF_POINTS.get(cliff["tier"], 0.0) if cliff else 0.0
+
+        # THE POSITIONAL WAITING MAGNITUDE (#48/#71). What it costs to take the other position
+        # now and come back to this one next turn -- the magnitude whose PROBABILITY half is
+        # survival_component above. That split is the same one already made deliberately for
+        # denial (rival_premium carries the magnitude, survival carries the probability, and
+        # denial_value's p_take-weighted form was removed for counting the probability twice).
+        # Residual r(forfeit, survival) = -0.352 measured, which is shared CAUSE -- a scarce
+        # position is both harder to wait on and likelier to be picked -- not shared
+        # measurement, and well inside the ~0.6 already accepted for the denial pair.
+        #
+        # WHY THIS TERM AND NOT waiting_cost, which #48 originally named and which this
+        # module's own comments incorrectly claimed was already wired. Measured on real boards:
+        #   - HORIZON. necessity asks "act now, or next turn?". positional_forfeit is exactly
+        #     the next-turn cost; waiting_cost is the cost of deferring to the END OF THE
+        #     DRAFT, which answers a different question.
+        #   - DOUBLE-COUNT. r(waiting_cost, bpa) = +0.847. necessity's standout component is
+        #     already TAV/bpa-anchored, so wiring waiting_cost would re-add it under another
+        #     name. r(positional_forfeit, bpa) = +0.364.
+        #   - COVERAGE. positional_forfeit is present on 100% of candidates; waiting_cost is
+        #     `measured` on 52% (28% imputed, 17% unavailable).
+        # The two are r = +0.569 with each other: genuinely two costs at two horizons (#71),
+        # not one quantity under two names.
+        #
+        # It is NOT redundant with cliff_component beside it: r(forfeit, cliff_points) = +0.207,
+        # and forfeit's range inside each cliff tier is nearly the full range (HIGH p50 24.44,
+        # LOW p50 20.45, both spanning 0 to 117.39). The tier is an adjacent-gap shape; this is
+        # the decay over the intervening picks.
+        #
+        # None, not 0.0, when there is nothing to forfeit -- a back-to-back snake turn has no
+        # intervening picks, so the question does not arise. Contributing 0.0 there is correct
+        # and means "no wait to pay for", which is why absence and zero coincide for once.
+        forfeit = c.get("positional_forfeit")
+        forfeit_component = (
+            min(max(forfeit, 0.0) / forfeit_scale, 1.0) * NECESSITY_FORFEIT_WEIGHT
+            if forfeit is not None else 0.0
+        )
 
         run_component = NECESSITY_RUN_BONUS if c.get("position_run_detected") else 0.0
 
         # p_take-free by design -- see the module docstring's rival_premium bullet for why
         # the p_take-weighted denial_value double-counted survival's own probability here.
-        rival_premium = c.get("rival_premium") or 0.0
-        denial_component = (min(rival_premium / dr.NEED_BONUS_MAX, 1.0) * NECESSITY_DENIAL_WEIGHT) if rival_premium > 0 else 0.0
+        #
+        # #144 CLOSED. This divided by NEED_BONUS_MAX -- the cap on ONE of the terms
+        # rival_premium sums -- which was an upper bound on the quantity until #139 added a
+        # third one. It then clipped, and a clipped normalizer is not a smaller version of the
+        # same signal: it is the SAME number for every candidate above the bar.
+        #
+        # The repair the old note proposed (divisor -> 36, weight held) was measured and is
+        # NOT what it claimed to be; see NECESSITY_DENIAL_SATURATION above for the numbers.
+        # Saturating against the quantity's real bound while holding the calibrated rate
+        # changes exactly the rows that were being flattened and nothing else.
+        # #207: rival_premium is now three-state. An ABSENT premium contributes NOTHING to
+        # necessity -- which is the same arithmetic as before -- but it is no longer the same
+        # CLAIM: `or 0.0` on a bare number said "no rival wanted him more", and this says "no
+        # rival premium was measurable, so this component adds nothing". necessity carries no
+        # selection authority (#55, owner's ruling), so leaving the arithmetic alone here is
+        # deliberate; what changes is that the absence is now visible in rival_premium_basis
+        # rather than laundered into a measured zero on the way in.
+        measured_premium = c.get("rival_premium")
+        rival_premium = measured_premium if measured_premium is not None else 0.0
+        denial_component = (
+            min(rival_premium / NECESSITY_DENIAL_SATURATION, 1.0) * NECESSITY_DENIAL_CEILING
+        ) if rival_premium > 0 else 0.0
 
-        roster_fit_component = (c.get("need_bonus", 0.0) + c.get("eligibility_bonus", 0.0)) * NECESSITY_ROSTER_FIT_WEIGHT
+        # TWO of draft_room's three team-specific terms, and the third is EXCLUDED ON PURPOSE.
+        #
+        # depth_exposure (#139) is the same quantity class on the same scale, and reading it
+        # here is the obvious-looking move -- it was written, measured (up to 7.39 necessity
+        # points, 0 argmax flips on 8 real board states), and then reverted, because the
+        # measurement was not the question. ENGINE_WIRING_PASS.md rules that exposure and
+        # waiting_cost are different functions of one concern and belong in one layer each:
+        #
+        #   team_acquisition_value reads depth_exposure     -- the LEVEL: this hole is expensive
+        #   pick_necessity reads positional_forfeit         -- the RATE:  and it is getting
+        #                                                      harder to fill
+        #
+        # CORRECTED (#48). These lines previously named waiting_cost as the rate half AND
+        # asserted necessity already read it. Necessity read neither: waiting_cost appeared in
+        # this module only as a dataclass field and in this claim. Measured, it is also the
+        # WRONG half -- it prices deferral to the end of the DRAFT, and r(waiting_cost, bpa) =
+        # +0.847 would re-add the standout component under a new name. positional_forfeit
+        # prices deferral to the NEXT TURN, which is the horizon a per-pick decision has, and
+        # it is now genuinely wired (see forfeit_component).
+        #
+        # A hole worth 12 points with twelve replacements still on the board is expensive and
+        # not urgent. Adding exposure here would boost the same position twice for one reason,
+        # with nothing downstream able to separate the two contributions -- the exact
+        # double-count that pass exists to prevent. necessity still SEES the term, through
+        # team_acquisition_value's own standout component; it just does not count it again.
+        #
+        # The snapshot carries depth_exposure regardless (see CandidateSnapshot), because
+        # "does not score it" and "cannot show it" are different claims and only the first is
+        # intended. test_pick_synthesis holds this boundary as an executable assertion.
+        # `eligibility_bonus` was summed in here until the 6.1b ruling retired it. Measured
+        # before removal: it reached 0.84 on five of 46,020 rows, so this component moves by at
+        # most 0.67 anywhere, and on 46,015 rows by nothing at all.
+        # MANDATE 2.5: read WITHOUT a default, so an absent term cannot arrive as a measured zero.
+        #
+        # Numerically a missing term and a term worth 0.0 add the same amount to a sum, so the
+        # score does not move. What changes is whether it may be DESCRIBED as including roster fit,
+        # and in upside mode it may not. That fact needs no new flag: the candidate carries
+        # `need_bonus = None`, which says it. A separate necessity-basis field beside it would be a
+        # second statement of one fact -- the thing `#126` is about. (An earlier version of this
+        # comment named such a field in backticks. It does not exist; prose_names caught the
+        # invented name, which is what that instrument is for, and inventing the field to make the
+        # comment true would have been `0.8`'s defect written fresh.)
+        need_bonus = c.get("need_bonus")
+        roster_fit_component = (need_bonus * NECESSITY_ROSTER_FIT_WEIGHT
+                                if need_bonus is not None else 0.0)
 
         raw_score = (
-            NECESSITY_BASELINE + standout_component + survival_component
+            NECESSITY_BASELINE + standout_component
             + cliff_component + run_component + denial_component + roster_fit_component
+            + forfeit_component
         )
         raw_score = max(0.0, min(100.0, raw_score))
 
@@ -386,14 +985,6 @@ def compute_pick_necessity(raw_candidates: list[dict], round_num: int) -> list[t
             score = round(raw_score, 1)
         results.append((score, _necessity_label(score)))
     return results
-
-
-# Reach labels by TIER GAP (candidate's own KTC tier minus whichever tier is normally occupied
-# at the current overall pick) -- see consensus_reach's own docstring for why tier gap, not a
-# raw rank-number gap, is the right unit here (a market-drawn tier boundary is a real signal;
-# an arbitrary rank-count threshold isn't).
-CONSENSUS_REACH_LABELS = {0: "WITHIN CONSENSUS BAND", 1: "MODEST REACH"}
-CONSENSUS_REACH_LABEL_DEFAULT = "SIGNIFICANT REACH"
 
 
 def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str, str], dict]:
@@ -414,7 +1005,7 @@ def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str,
     CDME's ingestion trust boundary, made explicit: merger.external_values also carries
     bot_research.json's own LLM-originated findings (source_name == "bot_research", see
     data_merger.load_bot_research_as_external), sharing this same DataFrame. The
-    source_name == "keeptradecut" filter below is what keeps that data out of consensus_reach
+    source_name == "keeptradecut" filter below is what keeps that data out of consensus_standing
     -- proven, not just asserted, by test_cdme_ingestion_boundary.py's adversarial injection
     tests. Loosening this filter would reopen that boundary."""
     if not is_superflex:
@@ -436,33 +1027,34 @@ def _consensus_lookup(merger: DataMerger, is_superflex: bool) -> dict[tuple[str,
     return lookup
 
 
-def consensus_reach(
-    player_name: str, current_overall_pick: int, consensus_by_key: dict[tuple[str, str], dict],
+def consensus_standing(
+    player_name: str, consensus_by_key: dict[tuple[str, str], dict],
 ) -> Optional[dict]:
-    """{"consensus_rank", "consensus_tier", "tier_gap", "reach_label"} for this candidate, or
-    None when he isn't in the loaded consensus data at all (a real player KTC doesn't cover --
-    common for deep bench/practice-squad-tier players -- gets no reach signal rather than a
-    guessed one). tier_gap is the candidate's own KTC tier MINUS whichever tier is normally
-    occupied at current_overall_pick (found by nearest consensus rank to that pick number) --
-    0 or negative (his tier is the same as or BETTER than what's normally happening here) means
-    no reach at all; the bigger the positive gap, the more this pick deviates from what the
-    market itself would consider a comparable-tier player at this spot. See module docstring
-    for why this is a real, sourced PROXY for draft-position expectation (KTC's own rank/tier
-    reflect trade-value consensus, not literal ADP) and why it's informational evidence for the
-    debate layer, never a block or a penalty applied here."""
+    """{"consensus_rank", "consensus_tier"} -- where the real-world market itself places this
+    candidate -- or None when he isn't in the loaded consensus data at all (a real player KTC
+    doesn't cover -- common for deep bench/practice-squad-tier players -- gets no consensus
+    signal rather than a guessed one). See module docstring for why KTC rank/tier is a real,
+    sourced PROXY for draft-position expectation (it reflects trade-value consensus, not
+    literal ADP) and why it's informational evidence for the debate layer, never a block or a
+    penalty applied here.
+
+    WHAT THIS DELIBERATELY NO LONGER RETURNS (#167). It used to also derive `tier_gap` -- this
+    candidate's tier minus the tier normally occupied at the current overall pick -- and bucket
+    that into a `reach_label` (WITHIN CONSENSUS BAND / MODEST REACH / SIGNIFICANT REACH).
+    Ablation measured that label changing 0 of 36 engine decisions, and the 85% of candidates
+    it tagged as some kind of reach turned out to be an artifact of how wide KTC's early tiers
+    are, not a property of the candidate. A three-way verdict that reads as a judgment while
+    carrying none is worse than no verdict, so the judgment is gone and the sourced numbers it
+    was derived from stay. This function therefore takes no pick number: the market's own
+    ranking of a player does not depend on where in the draft you ask."""
     if not consensus_by_key:
         return None
     key = name_key(normalize_name(player_name))
     candidate = consensus_by_key.get(key)
     if candidate is None or candidate.get("tier") is None:
         return None
-    nearest = min(consensus_by_key.values(), key=lambda c: abs(c["rank"] - current_overall_pick))
-    if nearest.get("tier") is None:
-        return None
-    tier_gap = max(int(candidate["tier"] - nearest["tier"]), 0)
     return {
         "consensus_rank": int(candidate["rank"]), "consensus_tier": int(candidate["tier"]),
-        "tier_gap": tier_gap, "reach_label": CONSENSUS_REACH_LABELS.get(tier_gap, CONSENSUS_REACH_LABEL_DEFAULT),
     }
 
 
@@ -473,12 +1065,28 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
     frozen-snapshot architecture exists to prevent). Every boundary here REUSES an existing,
     already-justified engine constant -- no new number was introduced for presentation's sake:
 
-      cliff_protection -- positional_forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP: delaying
-        this candidate's position until the next pick forfeits at least a standout-sized
-        value gap, the same absolute gap this module already treats as "a genuine standout"
-        when it separates candidates.
+      cliff_protection -- this candidate's position carries a MATERIAL DETECTED CLIFF
+        (detect_positional_cliff's tier is in CLIFF_PROTECTION_TIERS, i.e. one the engine
+        already prices into necessity). Taking him now is protection against the drop-off
+        behind him at his own position.
+
+        REBUILT UNDER #160. It used to read `positional_forfeit >= NECESSITY_STANDOUT_
+        REFERENCE_GAP` -- a normalizer's reference borrowed as a firing threshold on a
+        quantity twenty times its range, firing on 39-72% of candidates. It now asks the
+        cliff machinery it is named for. Absence stays False rather than None on purpose:
+        detect_positional_cliff returns None when the player is last at his position or the
+        remaining pool is too small to have a typical gap, and in BOTH of those cases "is
+        there a cliff behind him" genuinely has no cliff to protect against -- so False is
+        the answer, not an invention.
+
+        NOT CLAIMED TO BE RARE. Measured across five formats: 49.0% pooled. The repair is to
+        its MEANING and its STABILITY across formats (a 12-point spread, against 33 before),
+        not to how often it lights.
+
       block_opportunity -- rival_premium >= 2 x NEED_BONUS_PER_DEDICATED_SLOT AND that same
-        premium-driving rival's own take_probability clears CREDIBLE_RIVAL_PATH_THRESHOLD:
+        premium-driving rival's own rank on his board clears CREDIBLE_RIVAL_PATH_MAX_RANK
+        (MANDATE 3.4 -- it was a take_probability against a threshold, on a scale `#206`'s
+        normalisation had since moved out from under it):
         at least one intervening rival values him at a MULTIPLE-unfilled-dedicated-starters
         premium over his universal value -- a rival with a genuinely gaping hole (the real
         observed case: a superflex rival with no QB1 at all), not routine need -- AND that
@@ -504,16 +1112,25 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
         exceeding NEAR_TIE_BAND (beyond measured ordering noise, same band, same scale):
         the board's best raw asset is being outranked by contextual terms -- real, worth
         surfacing explicitly so context never silently buries a materially better player.
-      context_elevated -- this candidate's own (team_acquisition_value - universal_value)
-        meets or exceeds NEED_BONUS_MAX: the maximum a single roster slot can ever contribute
-        to acquisition value. Unlike pure_value (a cross-candidate comparison -- TAV can never
-        fall below UV for any one candidate, since need_bonus/eligibility_bonus are both
-        non-negative by construction, so "his own TAV dipping under his own UV" is structurally
-        impossible), this is a real per-candidate quantity: a large, meaningful share of his
-        rank here is roster fit, not raw talent. The two are the Context Gap signal's two
-        directions -- pure_value is "buried despite excellent talent," context_elevated is
-        "ranked highly substantially because of fit" -- and a UI is expected to surface them as
-        one indicator with two readings, never as competing scores.
+      `context_elevated` WAS THE SECOND HALF OF THE CONTEXT GAP SIGNAL, AND IS RETIRED
+        (#25, ruled 2026-09-21). It read "this candidate's own tav - uv meets or exceeds a cap",
+        and was documented as pure_value's opposite direction -- "ranked highly substantially
+        because of fit". It never measured that:
+
+          * the gap's MEAN across 10,887 priced rows is **-3.46**, because displacement_adj only
+            subtracts over that population, so the flag read a quantity that is usually a
+            PENALTY;
+          * the two capped terms feeding it are MUTUALLY EXCLUSIVE (0 of 10,887 rows carry
+            both -- need_bonus wants an EMPTY slot, depth_exposure wants SURPLUS), so the gap can
+            only ever hold ONE cap's worth;
+          * across all 36 battery formats it fired on exactly ONE row in the corpus -- a
+            multi-eligible WR/DB lifted +79.44 by displacement_adj. Everywhere else the gap tops
+            out at 8.72.
+
+        So in practice it meant "multi-eligible with a cheap second slot", not "fit". Retired
+        rather than repointed, the way 6.1b retired eligibility_bonus -- the population was not
+        there. `pure_value` is unaffected and stays: it is a cross-candidate comparison and a
+        different question. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
 
     Classification over existing numbers, never new scoring: nothing here feeds necessity,
     ranking, or any value -- same rule as near_tie_flags below. Expects each candidate dict
@@ -538,25 +1155,27 @@ def decision_path_flags(candidates: list[dict]) -> list[dict]:
 
     flags = []
     for i, c in enumerate(candidates):
-        forfeit = c.get("positional_forfeit")
         premium = c.get("rival_premium") or 0.0
-        take_prob = c.get("rival_premium_take_probability")
-        credible_rival_path = take_prob is not None and take_prob >= CREDIBLE_RIVAL_PATH_THRESHOLD
+        # MANDATE 3.4: asked of the RANK, not of a normalised probability compared against a
+        # raw-table number. `None` means no rival board could price him at all, which is not a
+        # credible path -- the same reading the probability version gave absence.
+        take_rank = c.get("rival_premium_take_rank")
+        credible_rival_path = take_rank is not None and take_rank <= CREDIBLE_RIVAL_PATH_MAX_RANK
         measurable = i in priced
         flags.append({
-            # cliff_protection and block_opportunity read forfeit and rival_premium, which carry
-            # their own absence handling and are not this row's own value -- unchanged.
-            "cliff_protection": forfeit is not None and forfeit >= NECESSITY_STANDOUT_REFERENCE_GAP,
+            # block_opportunity reads rival_premium and cliff_protection reads the cliff dict.
+            # Neither is this row's own value, and both carry their own absence handling, so
+            # neither is gated on `measurable` the way the two value comparisons below are.
+            # `positional_forfeit` is no longer read here at all -- #160 moved cliff_protection
+            # onto the cliff machinery -- and the local that held it is gone with it, rather
+            # than left behind to imply a dependency that no longer exists.
+            "cliff_protection": (c.get("positional_cliff") or {}).get("tier") in CLIFF_PROTECTION_TIERS,
             "block_opportunity": premium >= 2 * dr.NEED_BONUS_PER_DEDICATED_SLOT and credible_rival_path,
             "pure_value": (
                 measurable
                 and i != tav_leader_idx
                 and c["universal_value"] == best_uv
                 and c["universal_value"] - leader_uv > NEAR_TIE_BAND
-            ),
-            "context_elevated": (
-                measurable
-                and (c["team_acquisition_value"] - c["universal_value"]) >= dr.NEED_BONUS_MAX
             ),
         })
     return flags
@@ -628,6 +1247,15 @@ def decision_regime(candidates: list[dict]) -> str:
     # falls through to "contested" instead of being read as "measured, and not close", which is
     # what `not None` would have done. That is #61's invariant 8: decision_regime never returns
     # "decisive" from an unknown margin.
+    # THE CALIBRATION GATE (#206). "decisive" is a claim that the leader is both clear of the
+    # field AND unlikely to survive -- and the second half rests entirely on a quantity that
+    # was measured, on two independent arms, to carry less information than predicting the base
+    # rate. It is worst precisely in the band this threshold reads: predicted 0.028, observed
+    # 0.500 over 74 real pairs. Gating here rather than at the constant is deliberate -- it
+    # leaves the threshold visible and inert instead of deleting a decision the evidence may
+    # later support, and it means no future caller can reach "decisive" by tuning a number.
+    if not SURVIVAL_IS_CALIBRATED:
+        return "contested"
     if (leader_in_tie_group is False
             and survival is not None and survival <= DECISIVE_SURVIVAL_THRESHOLD):
         return "decisive"
@@ -745,6 +1373,73 @@ def detect_positional_cliff(board: list[dict], player_id) -> Optional[dict]:
     return {"tier": tier, "gap": round(this_gap, 2), "typical_gap": round(typical_gap, 2)}
 
 
+def acting_now_value(team_acquisition_value: Optional[float],
+                     position_next_turn_value: Optional[float]) -> Optional[float]:
+    """What taking THIS player NOW is worth over taking this position at my next turn instead.
+
+        acting_now_value = team_acquisition_value - position_next_turn_value
+
+    Both operands are in final_score's units and both describe a player landing on MY roster,
+    so every team-specific term the candidate carries is carried by his alternative too and
+    cancels. draft_strategy computes the subtrahend by walking the position's own final_score
+    curve down by `expected_taken` -- the same walk, the same index, the same _curve_at that
+    produces positional_forfeit, differing only in which column the curve is built from.
+
+    WHAT THIS IS FOR, AND WHAT IT IS NOT FOR (#22). It is an OBSERVABLE. It reaches the card,
+    the debate and necessity; it does NOT order the board. That distinction is the whole of #22
+    and was bought expensively, so it is written here rather than left to a commit message.
+
+    THE QUESTION IT ASKS IS REAL. A draft pick is not "who is best", it is "who must I take NOW
+    rather than later", and the two differ exactly when a position replaces its own best player
+    cheaply. That gap is what put the first defense of a 16-round draft in ROUND 5
+    (evidence/blind_pass/KDST_VALUATION.md): that board recorded tav 34.47 and
+    positional_forfeit 0.13 on the same row of the same snapshot, and ranked on the first.
+
+    ORDERING ON IT COST 6.090% OF STARTING-LINEUP POINTS against a fixed field across six
+    formats -- 10 of 68 seats won where the value order won 56 (evidence/smoke_seats/). The
+    cause is structural, not calibration: this is a NUMERICAL DERIVATIVE, so it carries a
+    curve's local SLOPE and discards its HEIGHT. Measured at depth 30 of a real board, a
+    quarterback worth -208.35 carries more of it than a running back worth +4.68. Scarcity goes
+    the same way -- superflex enters through replacement_levels as a LEVEL shift of +127.14 per
+    quarterback, which moves the slope by +0.08, so an order reading only this cannot tell a
+    superflex league from a 1QB one.
+
+    AND THERE IS NO LONGER-HORIZON VERSION THAT ESCAPES IT. replacement_levels sets the
+    replacement rank to the league's remaining starter demand, and bpa is defined as points
+    minus that level, so a baseline taken at the starters-exhausted index is 0 by construction
+    and the difference collapses to team_acquisition_value itself. The value order already IS
+    this quantity at the full horizon; the one-gap form is its truncation. Measured in
+    evidence/smoke_seats/V2_MECHANISM.md.
+
+    THE SWAP ALGEBRA IS STILL CORRECT, which is why the number stays. For "fill P now and Q next
+    turn" against the reverse, the plans differ by exactly acting_now(P) - acting_now(Q). Its
+    PRECONDITION is that the roster is committed to acquiring both positions, and ordering every
+    candidate by it silently dropped that precondition. The defect it was built to work around
+    is a VALUATION one -- 34.47 asserts an unshrunk projection spread is bankable -- and belongs
+    there.
+
+    WHY THE SUBTRAHEND IS TEAM-RELATIVE, which the first implementation of this got wrong.
+    Subtracting the team-AGNOSTIC forfeit curve instead leaves the team terms ADDED rather than
+    cancelled. Measured on a real round-9 board: every kicker and defense then held a flat
+    +4.00 `need_bonus` for a dedicated slot -- a slot that is still empty at the next turn, so
+    the replacement earns the same +4.00 and the credit belongs to neither. It is the original
+    defect wearing a different term, and it kept K and DEF on top of the board even after the
+    order changed.
+
+    NO CONSTANT IS INTRODUCED, so #56 is not engaged. Both operands are quantities this engine
+    already computes on every board.
+
+    ABSENT, NEVER ZERO (#187). None whenever either operand is missing -- an unpriced row, a
+    back-to-back turn with no intervening picks, or upside mode, where draft_strategy builds no
+    position curves at all and every forfeit is legitimately absent. A 0.0 would read as
+    "measured, and acting now gains exactly nothing", an argument for waiting asserted from an
+    absence. No caller orders on it, so absence costs a row nothing -- it is displayed as
+    absent, which is the honest thing to show."""
+    if team_acquisition_value is None or position_next_turn_value is None:
+        return None
+    return team_acquisition_value - position_next_turn_value
+
+
 def expected_value_of_waiting(universal_value: float, survival_probability: Optional[float]) -> Optional[float]:
     """The flip side of draft_strategy.py's opportunity_cost -- what you'd expect to walk away
     with, in universal_value's own units, if you pass on this player now and gamble on him
@@ -836,22 +1531,58 @@ class CandidateSnapshot:
     name: str
     position: str
     team: Optional[str]
-    bpa: float
+    # These three are Optional and were annotated `float` until now, which is the defect that
+    # matters more than the wrong hint: a reader of this dataclass sees `float` and writes
+    # f"{rec.universal_value:.0f}" with no guard -- which is exactly what two of the six Draft
+    # Room metric cards did, raising TypeError on an unpriced leader. The absence contract has
+    # always been that a position with no replacement level yields bpa=None, and None then
+    # propagates to universal_value and team_acquisition_value (draft_room.py normalizes the
+    # NaN at the board edge). The behaviour was right; the annotation lied about it.
+    bpa: Optional[float]
     bpa_source: str
     confidence: float
-    universal_value: float
-    need_bonus: float
-    eligibility_bonus: float
-    team_acquisition_value: float
+    universal_value: Optional[float]
+    #: MANDATE 2.5: Optional, because upside mode does not compute it and the board says so by
+    #: omitting it. A float here made every consumer read a fabricated zero as roster fit.
+    need_bonus: Optional[float]
+    team_acquisition_value: Optional[float]
     survival_probability: Optional[float]
+    #: The companion that makes survival_probability readable (#206/#187), same pattern as
+    #: denial_basis below. THREE states, never inferred from the number:
+    #:   no_next_pick          -- there is no next selection, so the question does not arise.
+    #:                            survival is None here, NOT 1.0: the old 1.0 made
+    #:                            opportunity_cost render 0.00, "waiting costs you nothing",
+    #:                            at the one moment waiting costs you the player permanently.
+    #:   no_intervening_picks  -- back-to-back; survives by ARITHMETIC, not by estimate.
+    #:   measured              -- estimated against every intervening rival's board.
+    #: REQUIRED, not defaulted, for the reason denial_basis is: a defaulted companion is one a
+    #: new call site can forget, and then the absence travels unlabelled.
+    survival_basis: Optional[str]
     intervening_picks: Optional[int]
     opportunity_cost: Optional[float]
     expected_value_of_waiting: Optional[float]
     denial_value: Optional[float]
+    # The companion that makes denial_value readable (#187). Three states, never inferred from
+    # the number: no_intervening_rival / no_rival_priced / measured.
+    denial_basis: Optional[str]
+    #: #207. Which of the three states rival_premium is in -- same vocabulary as denial_basis,
+    #: because it is the same question about the same rivals. Without it a None premium reaches
+    #: the card with no way to say whether nobody was there or nobody could be priced.
+    #: REQUIRED, like denial_basis: a defaulted companion is one a new call site can forget.
+    rival_premium_basis: Optional[str]
     denial_team: Optional[str]
     rival_premium: Optional[float]
     positional_forfeit: Optional[float]
     position_expected_taken: Optional[float]
+    #: positional_forfeits' third member, carried so a reader can check a forfeit against the
+    #: curve it came from rather than taking it on trust.
+    position_best_now: Optional[float]
+    #: The alternative acting_now_value weighs this candidate against -- what his position is
+    #: expected to still offer at the next turn, in final_score's units.
+    position_next_turn_value: Optional[float]
+    #: WHAT THIS CANDIDATE'S ORDER IS. Optional because it is a measurement, and an absent one
+    #: stays absent (#187) -- see acting_now_value. Carried, displayed, never ordered on (#22).
+    acting_now_value: Optional[float]
     positional_cliff: Optional[dict]
     position_run_detected: bool
     pick_necessity: float
@@ -862,15 +1593,98 @@ class CandidateSnapshot:
     cliff_protection: bool
     block_opportunity: bool
     pure_value: bool
-    context_elevated: bool
+    #: `context_elevated` WAS HERE and is RETIRED (#25, ruled 2026-09-21). It fired on exactly
+    #: ONE row across all 36 battery formats -- a multi-eligible WR/DB -- while the quantity it
+    #: read had a MEAN of -3.46, so "ranked highly because of fit" was reading what is usually a
+    #: penalty. Retired rather than repointed, the way 6.1b retired eligibility_bonus: the
+    #: population was not there. evidence/context_elevated/THE_CEILING_IS_MAX_NOT_SUM.md.
     consensus_rank: Optional[int]
     consensus_tier: Optional[int]
-    reach_label: Optional[str]
     projected_points: Optional[float]
-    # The premium-driving rival's own real take_probability -- see CREDIBLE_RIVAL_PATH_
-    # THRESHOLD and decision_path_flags' block_opportunity, the one consumer. Defaulted so
-    # existing hand-built CandidateSnapshot fixtures that predate this field still construct.
+    # The premium-driving rival's own real take_probability. OBSERVABLE ONLY since MANDATE 3.4 --
+    # it no longer gates anything, because `#206`'s normalisation left it on a different scale from
+    # the bar that read it. Kept because it is the magnitude a reader wants beside the rank.
+    # Defaulted so existing hand-built CandidateSnapshot fixtures still construct.
     rival_premium_take_probability: Optional[float] = None
+    # That rival's RANK on his own board -- see CREDIBLE_RIVAL_PATH_MAX_RANK and
+    # decision_path_flags' block_opportunity, the one consumer. `None` means no rival board priced
+    # him, which is a different statement from "ranked badly" (`#187`).
+    rival_premium_take_rank: Optional[int] = None
+    # #139's third team-specific term, alongside need_bonus and eligibility_bonus above.
+    # Defaulted, and down here rather than beside them, for the same two reasons that field
+    # is: upside-mode boards genuinely never compute it, and hand-built CandidateSnapshot
+    # fixtures predate it. None means "not measured", which is what depth_basis says in words
+    # on the board row this is read from -- never "this roster's depth here is safe".
+    depth_exposure: Optional[float] = None
+    #: #119. universal_value's own two addends, carried so the price can be explained rather
+    #: than only asserted. Defaulted for the same reason depth_exposure is: upside-mode boards
+    #: never compute them, and hand-built CandidateSnapshot fixtures predate the fields. None
+    #: means NOT COMPUTED FOR THIS BOARD -- never "this player carries no horizon or risk
+    #: adjustment", which is a different and much stronger claim.
+    time_horizon_adj: Optional[float] = None
+    risk_adj: Optional[float] = None
+    #: WHICH of `health_penalty`'s four paths produced `risk_adj` (`#166`). Carried because the
+    #: number alone cannot be read: 0.0 arrives from four causes and only one of them means the
+    #: designation is unpriced. `pick_debate` told the chair the wrong one of the four until this
+    #: crossed the boundary. Defaulted to None so a snapshot built before this field replays as
+    #: "no verdict recorded" rather than inventing one -- absence, not a measured basis (`#187`).
+    risk_basis: Optional[str] = None
+    #: #112. Which KIND of absence left this row unpriced -- see draft_room.ABSENCE_KINDS. None
+    #: on a priced row. The register names three kinds with three different answers to the
+    #: ordering question, and only one of them ("below every source's cutoff") is evidence of
+    #: low value; carrying one token for all three asserted the strongest of them about all.
+    absence_kind: Optional[str] = None
+    #: EVERY POSITION THIS MAN CAN BE STARTED AT, not just the one the feed named first (C-F3).
+    #:
+    #: `position` is a single primary bucket, and it was the only positional fact that crossed
+    #: this boundary -- so `draft_board_ui.filter_candidates_by_view` had nothing else to filter
+    #: on, and a dual-eligible candidate appeared in exactly ONE single-position view. Measured on
+    #: the owner league at pick 1.01, a 94-candidate snapshot: the LB view hid 8 eligible
+    #: candidates, T.J. Watt among them -- while the board's own `need_bonus` had already priced
+    #: him with LB slots in the assignment. `#174`'s exact shape: the number crossed, its
+    #: companion did not.
+    #:
+    #: Defaulted to ABSENT rather than required, so every existing construction site and every
+    #: stored board written before this field keep working; consumers fall back to `position`,
+    #: which is what they did before this existed.
+    #:
+    #: `None`, NOT `frozenset()` (review finding 16, `#187`). The default was an empty set for the
+    #: compatibility reason above, and that made the default indistinguishable from the PRODUCER's
+    #: empty answer -- `player_eligible_positions` returning nothing for a man Sleeper says starts
+    #: nowhere. One of those means "nobody filled this in, read the label"; the other means "the
+    #: label is wrong, do not read it". A consumer handed `frozenset()` cannot tell them apart, so
+    #: the view filter's fallback had to fire on both, which resurrected the raw `position` in
+    #: exactly the case `#172` exists to prevent. The compatibility intent is unchanged and better
+    #: served: an older stored board carries no value, which is now sayable.
+    eligible_positions: Optional[frozenset] = None
+    #: MANDATE 2.5: INJURY STATUS NEVER CROSSED THIS BOUNDARY, while the DISCOUNT IT CAUSES DID.
+    #: `risk_adj` is carried above, and part of what it is made of is `availability_factor`'s cut
+    #: for a designation Sleeper reported. So a chair received the penalty and had no way to see
+    #: what caused it -- and the Skeptic prompt then told that chair the engine knows nothing about
+    #: injuries, which was true only because of this gap. The board has had both columns all along.
+    #:
+    #: THE BASIS TRAVELS WITH IT (`#166`), for the reason availability_factor states at the source:
+    #: a factor of 1.0 means four different things -- nobody said anything, the designation carries
+    #: no information, the designation is unrecognised, or games-played was never reported -- and a
+    #: consumer that cannot tell them apart reads the last two as health. A bare status string has
+    #: the same failure: absent because he is healthy, or absent because nothing was reported.
+    injury_status: Optional[str] = None
+    availability_basis: Optional[str] = None
+    # THE COMPANION THAT WAS DROPPED HERE (#174). The board emits it beside depth_exposure and
+    # the snapshot did not carry it, so every consumer past this boundary -- the chair prose,
+    # the board UI, screen_context -- saw a 0.0 and could not tell "measured, no exposure" from
+    # "never measured". The docstring above already said the basis "says in words" what the
+    # number means; it just never arrived. Defaulted for the same reason depth_exposure is:
+    # upside-mode boards never compute it, and hand-built fixtures predate it.
+    depth_basis: Optional[str] = None
+    # #216's fourth team-specific term: the league replacement anchor's over-credit for a slot
+    # this roster cannot offer him (draft_room.displacement_adjustments). Non-positive, unbounded
+    # by construction (it IS the measured over-credit), 0.0 wherever a slot he can reach is
+    # open. Carried WITH its basis from the first commit rather than after the fact (#174): a
+    # 0.0 under `measured` is a solved lineup with room for him; under any other token it is a
+    # number that was never produced. Defaulted for the same reasons as depth_exposure.
+    displacement_adj: Optional[float] = None
+    displacement_basis: Optional[str] = None
     # What deferring this position actually costs: this player's projected points minus the
     # points of the best player at his position expected to be STILL UNDRAFTED when the draft
     # ends (draft_room.horizon_replacement). OBSERVABLE ONLY -- read by nothing that scores,
@@ -889,6 +1703,54 @@ class CandidateSnapshot:
     # QB by 63, because QB falls off a cliff just past its horizon. Consumers must not state
     # a waiting cost more confidently than this allows.
     horizon_sensitivity: Optional[float] = None
+    # #138's two remaining write-only quantities. Both were computed by compute_draft_board,
+    # placed on every board row, and then dropped HERE -- so nothing downstream could read
+    # them, including the retained decision record that exists to answer "why this player".
+    #
+    # "live_starter_demand" | "predraft_anchor": which anchor this row's price actually rests
+    # on. Two different STRENGTHS of claim that the board presented as one number -- a position
+    # whose league-wide starter demand is exhausted keeps being priced against its PRE-DRAFT
+    # level (see draft_room._fill_omitted_from_anchor), and a record that renders both
+    # identically asserts a live measurement it does not have.
+    replacement_basis: Optional[str] = None
+    # Upside mode only, and there it is the term that DECIDES late picks:
+    # final_score = bpa + TIME_HORIZON_SLOPE * growth. Measured on real upside boards --
+    # 43-52% of rows carry growth > 0, mean 11.1 rising to 25.5 as the pool drains, and by
+    # round 15 it changes which player is taken. None in balanced mode, where the quantity
+    # genuinely is not computed; never 0.0, which would read as "measured, no trajectory".
+    growth_signal: Optional[float] = None
+    # #154's feasibility backstop, which until now ordered the board from off-screen.
+    # pick_synthesis._board_order leads with this key, so a candidate that fills a REQUIRED
+    # roster slot is placed above better-scoring candidates that do not -- and no surface said
+    # so. A reordering the user cannot see is a reordering the user cannot audit, and this is
+    # the same field whose invisibility let an unpriced leader reach an unguarded format.
+    # Defaulted False and placed in the tail so every existing construction site still works.
+    fills_required_slot: bool = False
+    # The fieldability backstop's companion, carried for the same reason: `_board_order` honours
+    # it, so a candidate at a position this roster can no longer field is placed BELOW every
+    # candidate it can, and the card must be able to say so. See draft_room.unfieldable_last.
+    cannot_be_fielded: bool = False
+
+
+#: The vocabulary of CandidateSnapshot.horizon_basis, re-exported at the snapshot boundary.
+#:
+#: BOUND to draft_room's constants, never copied: there is still exactly one definition of each
+#: value, and a rename or revalue there follows through here automatically. What this adds is a
+#: LEGAL CHANNEL. A snapshot consumer may not import from draft_room -- reaching a valuation
+#: module is how a consumer recomputes what the frozen snapshot already decided, and
+#: test_pick_synthesis pins that with an allowance of exactly one unit constant. So a consumer
+#: that needs to branch on this field had no way to name the value and used a literal instead,
+#: which is the drift #122 measured: renaming APPETITE_IMPUTED passed the full suite while the
+#: Draft Room's "this floor is an estimate" sentence silently stopped rendering.
+#:
+#: The vocabulary belongs here on its own terms, not only as a workaround: horizon_basis is a
+#: field of THIS dataclass, and the tokens a field can hold are part of that field's contract.
+#: All three are exported rather than only the one branched on today -- a partial vocabulary is
+#: an invitation to write the next literal.
+HORIZON_BASIS_MEASURED = dr.APPETITE_MEASURED
+HORIZON_BASIS_IMPUTED = dr.APPETITE_IMPUTED
+HORIZON_BASIS_UNAVAILABLE = dr.APPETITE_UNAVAILABLE
+
 
 
 @dataclass(frozen=True)
@@ -916,6 +1778,70 @@ class PickSnapshot:
     picks_consumed: Optional[int] = None
     data_freshest_date: Optional[str] = None
     decision_regime: str = "contested"
+    #: MANDATE 1.7. THE REST OF THE WORLD, because the two stamp fields above could not see it and
+    #: `staleness_note` reported "current" across changes that rebuild the board entirely.
+    #:
+    #: `pool_scope` decides WHO IS IN THE POOL (all / rookies_only / veterans_only) and nothing
+    #: carried it, so a debate run over rookies-only was presented as current against an
+    #: all-players board. `players_db_stamp` is the player universe's own fingerprint: a sync that
+    #: changes an injury status moves the board by 24 points (measured) while `data_freshest_date`
+    #: -- the MERGER's date -- does not move at all.
+    #:
+    #: Written by build_snapshot from its own arguments, never by a caller: a stamp a caller
+    #: supplies is a stamp that can disagree with the board it is stapled to.
+    pool_scope: str = "all"
+    players_db_stamp: Optional[str] = None
+    #: MANDATE 2.2. WHETHER THE LEAGUE THIS BOARD WAS PRICED ON COULD BE READ AT ALL.
+    #:
+    #: `league_config.ambiguities` derives everything about a league this app could not read
+    #: cleanly, and it had ZERO production callers. So a board built on a config the gate would
+    #: refuse was priced exactly like one built on a config it accepts, and no consumer -- a
+    #: surface, a stored record, a debate -- could tell the two apart. That is the half of 2.2 the
+    #: mandate explicitly rules out as a design question.
+    #:
+    #: NOT A STALENESS STAMP, and deliberately absent from `stamp_is_current`. The four fields
+    #: above answer "is this board still CURRENT". This answers "may this board be TRUSTED AT
+    #: ALL" -- a different question with a different remedy, since a stale board is rebuilt and a
+    #: board on an unreadable config needs the CONFIG fixed. Folded into the staleness check it
+    #: would report a board as stale because its league had become readable, which is backwards.
+    #:
+    #: THREE STATES, NOT TWO (`#187`). `None` means NOBODY ASKED -- a hand-built snapshot, or one
+    #: from before this field existed. An EMPTY TUPLE means the gate was asked and found nothing
+    #: wrong. A non-empty tuple carries `(kind, detail)` pairs. "Nothing was found" and "nothing
+    #: was checked" are opposite statements about a board's trustworthiness, and a reader that
+    #: collapses them presents the second as the first -- which is the exact failure the absence
+    #: contract exists to forbid.
+    #:
+    #: Written by build_snapshot from its own `league` argument, never by a caller, for the same
+    #: reason as the two fields above it: a verdict a caller supplies is a verdict that can
+    #: disagree with the league the board was actually priced on.
+    config_ambiguities: Optional[tuple] = None
+
+
+def snapshot_eligibility(row: dict, players_db: Optional[dict]) -> frozenset:
+    """Every position this candidate can be STARTED at, for the snapshot (`C-F3`).
+
+    READ THROUGH THE ONE ELIGIBILITY READER (`#172`/MANDATE 2.6), never off the row's own label,
+    so the view filter downstream keys off exactly what `need_bonus` keyed off.
+
+    AT MODULE SCOPE BECAUSE A CLOSURE CANNOT BE TESTED (R19). This was a local function inside
+    `build_snapshot`, so the only way to reach it was to build a whole board -- and no test did.
+    Replacing its body with `frozenset()` left `test_one_eligibility_vocabulary_everywhere`,
+    `test_pick_synthesis`, `test_snapshot_identity_boundary` and `test_draft_board_ui` all green,
+    because the suite pinned that the FIELD EXISTS and that a view READS it, never that anything
+    FILLS it. Every board would have gone back to showing a dual-eligible man in one view only.
+
+    THE FALLBACK IS THE ROW'S OWN LABEL AND NOTHING ELSE. A frame may carry `position` without a
+    `player_id` the pool knows; that row is placed on its primary bucket rather than dropped, and
+    an empty eligibility would silently remove it from every view.
+
+    THE COMPOSITION LIVES IN `player_universe.eligible_positions_for` AND NOT HERE (review finding
+    16). This was one of three local spellings of it, and all three fell back on an EMPTY set
+    rather than on a MISSING RECORD -- which are different things (`#187`), and the difference is
+    exactly what `player_eligible_positions` refuses to blur. This function stays as the snapshot's
+    named entry point, because `R19` is why it is at module scope at all.
+    """
+    return pu.eligible_positions_for(row.get("player_id"), row.get("position"), players_db)
 
 
 def build_snapshot(
@@ -932,6 +1858,16 @@ def build_snapshot(
     pool_scope: str = "all",
     top_n: int = DEFAULT_NARROW_COUNT,
     user_selected_player_id: Optional[str] = None,
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+    #: #261. Forwarded untouched to compute_draft_board, which owns the vocabulary and the
+    #: default. Nothing here interprets it -- a second reading of the mode rule in this module
+    #: would be the #126 failure (one home for a vocabulary) in the file that consumes it.
+    upside_rule: str = dr.UPSIDE_RULE_ROUND,
+    #: #30. Forwarded untouched to compute_draft_board, which owns what it means, exactly as
+    #: `upside_rule` above is. Nothing in this module interprets it. None (the default) is the
+    #: previous behaviour exactly: no streaming floor is derived and no replacement level moves.
+    weekly_projections: Optional[dict] = None,
 ) -> PickSnapshot:
     """Build one frozen PickSnapshot: compute the real board, narrow to the live candidates,
     layer on survival/opportunity-cost/denial (draft_strategy.pick_analysis) and positional
@@ -939,15 +1875,27 @@ def build_snapshot(
     "balanced" (not draft_room's own "auto") -- upside-mode scoring drops universal_value/
     need_bonus/eligibility_bonus entirely (see draft_room.compute_draft_board's own docstring),
     and this snapshot's whole shape depends on those fields existing."""
+    # #180: sleeper_projections had NO production caller -- build_snapshot never passed it, so
+    # score_projection never ran outside the measurement harness and the league's own scoring
+    # reached no price at any position. scoring_settings was already wired (compute_draft_board
+    # reads it off `league`); the stats were the missing half. Passing None keeps the previous
+    # behaviour exactly, which is what every offline caller and every test does.
     board = dr.compute_draft_board(
-        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode, pool_scope=pool_scope,
+        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
+        pool_scope=pool_scope, sleeper_projections=sleeper_projections,
+        sleeper_basis=sleeper_basis, upside_rule=upside_rule,
+        weekly_projections=weekly_projections,
     )
     # Real per-league positional depth for narrow_candidates' position_depth -- the same
     # remaining-demand rank replacement_levels itself uses for VOR (num_teams matches
     # compute_draft_board's own derivation above), capped at POSITION_VIEW_DEPTH_CAP so a deep
     # position (WR/RB can run 30+ replacement rank in a real league) never balloons the
     # candidate set past what's actually useful to display or affordable to fully analyze.
-    num_teams = league.get("total_rosters") or len({p.get("roster_id") for p in picks}) or 1
+    # THE SAME DERIVATION THE SCREEN AND THE ENGINE USE (A-F5/C-F2). This line spelled the
+    # pre-consolidation form -- and without `team_count`'s `None` filter, so a pick lacking a
+    # roster_id counted as a team here and did not there. It feeds `replacement_ranks` ->
+    # `position_depth` -> `narrow_candidates`, so it set every replacement level on this snapshot.
+    num_teams = lc.team_count(league, picks=picks)
     replacement_ranks = dr.replacement_ranks(
         league.get("roster_positions") or [], num_teams, picks, players_db)
     position_depth = {pos: position_view_depth(rank) for pos, rank in replacement_ranks.items()}
@@ -962,17 +1910,26 @@ def build_snapshot(
 
     analysis_by_id: dict[str, dict] = {}
     if candidate_ids:
+        # #214/F2: THE SAME PRICES THIS SNAPSHOT'S OWN BOARD WAS BUILT WITH. Without these two
+        # arguments pick_analysis rebuilt every board vendor-only, and the snapshot then
+        # packaged survival/opportunity_cost/denial/rival_premium from one pricing universe
+        # beside a universal_value from another -- as a single decomposition of one candidate.
         analysis = ds.pick_analysis(
             merger, players_db, picks, pick_order, current_index=current_index, my_roster_id=my_roster_id,
             league=league, candidate_player_ids=candidate_ids, mode=mode, pool_scope=pool_scope,
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+            # #30. The rival boards must be priced the way MY board is -- #214/F2's rule, and
+            # the streaming floor moves K and DEF by ~38 points, so omitting it here would put
+            # survival, denial and rival_premium on a different set of prices from the
+            # universal_value they are displayed beside, at exactly those positions.
+            weekly_projections=weekly_projections,
         )
         analysis_by_id = {str(a["player_id"]): a for a in analysis}
 
     # Real market-consensus data (KeepTradeCut), not this engine's own valuation -- see
-    # consensus_reach's own docstring for why this only ever applies to a superflex league.
+    # consensus_standing's own docstring for why this only ever applies to a superflex league.
     is_superflex = "SUPER_FLEX" in (league.get("roster_positions") or [])
     consensus_by_key = _consensus_lookup(merger, is_superflex)
-    current_overall_pick = current_index + 1
 
     # First pass: gather every real per-candidate number EXCEPT pick_necessity, which needs the
     # whole narrowed set as context (a standout only means something relative to the field) --
@@ -988,25 +1945,66 @@ def build_snapshot(
         # every consumer quietly deciding for itself what an absent column meant -- and would
         # swallow a genuinely new third shape instead of failing where it was introduced.
         universal_value = row["universal_value"]
-        reach = consensus_reach(row["name"], current_overall_pick, consensus_by_key)
+        standing = consensus_standing(row["name"], consensus_by_key)
         raw_candidates.append({
             "player_id": pid, "name": row["name"], "position": row["position"], "team": row.get("team"),
             "bpa": row["bpa"], "bpa_source": row["bpa_source"], "confidence": row["confidence"],
-            "universal_value": universal_value, "need_bonus": row.get("need_bonus", 0.0),
-            "eligibility_bonus": row.get("eligibility_bonus", 0.0), "team_acquisition_value": row["final_score"],
-            "survival_probability": survival, "intervening_picks": a.get("intervening_picks"),
+            "universal_value": universal_value,
+            # MANDATE 2.5 / `#187`: NOT DEFAULTED. This read `row.get("need_bonus", 0.0)`, and the
+            # comment four lines below it -- about the two terms beside it -- already stated the
+            # rule it was breaking: "Carried, never defaulted: upside mode genuinely does not
+            # compute them and a 0.0 here would fabricate a measurement". Measured: in upside mode
+            # compute_draft_board OMITS the key entirely, which is the honest absence, and this
+            # line turned it into a measured zero at the boundary. `#183`'s note in pick_debate
+            # anticipated the repair exactly -- "a contract violation rather than a live path, so
+            # it is guarded rather than repaired upstream" -- and this is the upstream.
+            "need_bonus": row.get("need_bonus"),
+            # #119: the two terms that MAKE universal_value (bpa + time_horizon_adj + risk_adj).
+            # The board computes both and, until now, nothing downstream read either -- so the
+            # price crossed this boundary as a bare number and "why is he worth that?" had no
+            # answer past the valuation leaf. Carried, never defaulted: upside mode genuinely
+            # does not compute them and a 0.0 here would fabricate a measurement (draft_room
+            # says so at the emission site, and this mirrors it rather than restating it).
+            "time_horizon_adj": row.get("time_horizon_adj"),
+            "risk_adj": row.get("risk_adj"),
+            "risk_basis": row.get("risk_basis"),
+            # MANDATE 2.5: WHAT risk_adj IS PARTLY MADE OF. Carried with its basis and never
+            # defaulted -- an absent status is "nothing was reported", which is not "healthy", and
+            # the basis is the only thing that separates them.
+            "injury_status": row.get("injury_status"),
+            "availability_basis": row.get("availability_basis"),
+            # #112: WHY this row is unpriced, if it is. None on a priced row -- there is no
+            # absence to classify -- so this is not a three-state flag wearing two states.
+            "absence_kind": row.get("absence_kind"),
+            "depth_exposure": row.get("depth_exposure"),
+            # Read this BEFORE depth_exposure: a 0.0 whose basis is not `measured` is an
+            # absence wearing a number's clothes (#174).
+            "depth_basis": row.get("depth_basis"),
+            # #216: the same discipline for the fourth term -- the basis travels with the number.
+            "displacement_adj": row.get("displacement_adj"),
+            "displacement_basis": row.get("displacement_basis"),
+            "team_acquisition_value": row["final_score"],
+            "survival_probability": survival, "survival_basis": a.get("survival_basis"),
+            "intervening_picks": a.get("intervening_picks"),
             "opportunity_cost": a.get("opportunity_cost"),
             "expected_value_of_waiting": expected_value_of_waiting(universal_value, survival),
-            "denial_value": a.get("denial_value"), "denial_team": a.get("denial_team"),
+            "denial_value": a.get("denial_value"),
+            # #187: read this BEFORE denial_value. A 0.0 means "measured, nothing to keep from
+            # anyone"; None means no rival board could price him and nothing was measured.
+            "denial_basis": a.get("denial_basis"),
+            "rival_premium_basis": a.get("rival_premium_basis"),
+            "denial_team": a.get("denial_team"),
             "rival_premium": a.get("rival_premium"),
             "rival_premium_take_probability": a.get("rival_premium_take_probability"),
+            "rival_premium_take_rank": a.get("rival_premium_take_rank"),
             "positional_forfeit": a.get("positional_forfeit"),
             "position_expected_taken": a.get("position_expected_taken"),
+            "position_best_now": a.get("position_best_now"),
+            "position_next_turn_value": a.get("position_next_turn_value"),
             "positional_cliff": detect_positional_cliff(board, pid),
             "position_run_detected": (run_position is not None and row["position"] == run_position),
-            "consensus_rank": reach["consensus_rank"] if reach else None,
-            "consensus_tier": reach["consensus_tier"] if reach else None,
-            "reach_label": reach["reach_label"] if reach else None,
+            "consensus_rank": standing["consensus_rank"] if standing else None,
+            "consensus_tier": standing["consensus_tier"] if standing else None,
             "projected_points": row.get("projected_points"),
             # Straight off the board row -- computed once per board in draft_room, not
             # recomputed per candidate here (see _attach_waiting_cost).
@@ -1014,16 +2012,89 @@ def build_snapshot(
             "horizon_floor": row.get("horizon_floor"),
             "horizon_basis": row.get("horizon_basis"),
             "horizon_sensitivity": row.get("horizon_sensitivity"),
+            # Straight off the board row, same as the horizon fields above. balanced-mode
+            # boards carry no growth_signal at all, so .get returns None there -- which is the
+            # honest reading, not a fabricated zero.
+            "replacement_basis": row.get("replacement_basis"),
+            "growth_signal": row.get("growth_signal"),
+            # False, not None: the backstop either binds or it does not, and "did not bind"
+            # is a real measured state rather than an absence.
+            "fills_required_slot": bool(row.get("fills_required_slot", False)),
+            # Same reading: the backstop either binds or it does not.
+            "cannot_be_fielded": bool(row.get("cannot_be_fielded", False)),
         })
 
-    round_num = (max((p.get("round") or 1) for p in picks) if picks else 1)
+    # WHAT ACTING NOW IS WORTH -- COMPUTED, CARRIED, AND DELIBERATELY NOT ORDERED ON (#22).
+    #
+    # This block briefly sorted on `acting_now_value`, and that ordering is REVERTED here. The
+    # number is still computed and still reaches the card and the debate; what it no longer has
+    # is selection authority.
+    #
+    # WHY, MEASURED. Against a FIXED field of heuristic opponents -- not self-play -- ordering on
+    # it lost 6.090% of starting-lineup points across six formats, winning 10 of 68 seats where
+    # the value order won 56. `evidence/smoke_seats/V2_REGRESSION.md` has the run;
+    # `evidence/smoke_seats/V2_MECHANISM.md` has the cause, which is structural rather than a
+    # calibration problem:
+    #
+    #   `acting_now(i) = F(i) - F(i + expected_taken)` is a NUMERICAL DERIVATIVE. It reads the
+    #   local SLOPE of a position's curve and discards its HEIGHT. Measured at depth 30 of a real
+    #   12T_ppr board, a quarterback worth -208.35 carries more of it (3.81) than a running back
+    #   worth +4.68 (3.58), and `team_acquisition_value` broke only EXACT float ties, which do not
+    #   occur. `expected_taken` sets the step length, so correcting the take model moves WHERE the
+    #   slope is read and can never put height back into the key -- which is why `#21` cannot
+    #   rescue this ordering and is tracked as its own defect.
+    #
+    #   The same cancellation reaches scarcity. `SUPER_FLEX_QB_SHARE` enters through
+    #   `replacement_levels`, and `bpa` subtracts that level from every player at the position --
+    #   a LEVEL SHIFT, invisible to a difference. Measured across 40 QB rows, superflex moves the
+    #   curve's level by +127.14 and its slope by +0.08, so this key could not tell a superflex
+    #   league from a 1QB one. That is `#20`.
+    #
+    # AND WHY THERE IS NO LONGER-HORIZON VERSION TO REACH FOR. `replacement_levels` sets the
+    # replacement rank to the league's remaining starter demand -- the starters-exhausted index --
+    # and `bpa` is defined as points minus that level, so `F(k_exhaust)` is 0 by construction and
+    # `F(i) - F(k_exhaust)` IS the value key. Measured, eleven of twelve position-format cells
+    # land within [-6.61, +4.31] of zero. The value order already is regret at the full horizon;
+    # this was its one-gap truncation.
+    #
+    # WHAT SURVIVES, and is not a consolation prize. The two-position swap algebra
+    # `positional_forfeits` derives is CORRECT -- its precondition is that the roster is committed
+    # to acquiring both positions, and ordering every candidate by it dropped that precondition.
+    # The number is real, it is what put a defense in round 5 on the board's own evidence, and it
+    # belongs in front of a person. The defect it was built to work around is a VALUATION one (a
+    # defense at 34.47 claims an unshrunk projection spread is bankable) and is tracked there.
+    for c in raw_candidates:
+        c["acting_now_value"] = acting_now_value(
+            c["team_acquisition_value"], c["position_next_turn_value"])
+
+    # The candidate dicts arrive in `narrowed` order already, but say it rather than lean on it:
+    # an order this list's readers depend on should not be a property of how it was assembled.
+    # `team_acquisition_value` is the candidate-side name for the board's `final_score` (set at
+    # the top of this loop), so this is `_board_order` itself, not a copy of it.
+    raw_candidates.sort(key=lambda c: _board_order(c, "team_acquisition_value"))
+
+    # THE ROUND OF THE PICK BEING DECIDED, not of the last pick already made (#52 phase 6).
+    #
+    # This was `max(p["round"] for p in picks)`, which is the round of the pick BEHIND you. At
+    # the first pick of round 15 the 168 completed picks top out at round 14, so the snapshot
+    # said 14: `format_snapshot_for_llm` printed "PICK 15.01 (round 14)" to the chairs, and
+    # LATE_ROUND_NECESSITY_CAP -- which applies from LATE_ROUND_THRESHOLD -- skipped the first
+    # pick of every late round. Measured: necessity 68.5 "PREFERRED" at 15.01, capped to 21.0
+    # one pick later at 15.02, with nothing changing in between but the arithmetic.
+    #
+    # `pick_label` is the caller's own statement of which pick this is ("15.01"), so it is the
+    # authority rather than a count that has to be reconstructed. The pick-count fallback is
+    # for a caller that supplies no label, and it is the same question asked a different way:
+    # with `n` picks complete the next one is n // teams + 1.
+    round_num = _round_being_decided(pick_label, picks, league)
     necessity_by_candidate = compute_pick_necessity(raw_candidates, round_num)
     tie_flags = near_tie_flags([c["team_acquisition_value"] for c in raw_candidates])
     path_flags = decision_path_flags(raw_candidates)
 
     candidates = [
         CandidateSnapshot(**c, pick_necessity=necessity, necessity_label=label,
-                          near_tie_with_leader=tie, **paths)
+                          near_tie_with_leader=tie,
+                          eligible_positions=snapshot_eligibility(c, players_db), **paths)
         for c, (necessity, label), tie, paths in zip(
             raw_candidates, necessity_by_candidate, tie_flags, path_flags)
     ]
@@ -1037,6 +2108,16 @@ def build_snapshot(
         picks_consumed=len(picks),
         data_freshest_date=merger.freshest_date,
         decision_regime=decision_regime(raw_candidates),
+        # MANDATE 1.7: from this call's OWN arguments. Both are what the board was actually built
+        # from, so neither can drift from it.
+        pool_scope=pool_scope,
+        players_db_stamp=dr._players_db_fingerprint(players_db),
+        # MANDATE 2.2: from this call's OWN `league`, for the same reason -- this is the config the
+        # board above was priced on, so the verdict cannot be about a different one. Always a
+        # tuple here, empty when the gate found nothing: only a snapshot nobody built through this
+        # function is entitled to say the check never ran.
+        config_ambiguities=tuple(
+            (item["kind"], item["detail"]) for item in lc.ambiguities(league)),
     )
 
 
@@ -1069,6 +2150,104 @@ def _canonical(value) -> str:
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(_canonical(v) for v in value) + "]"
     return repr(value)
+
+
+#: Inputs with no generic canonical form, fingerprinted by something that knows their shape.
+#: Keyed by PARAMETER NAME, which is the only thing that identifies them: a DataMerger is a bag
+#: of DataFrames and a players_db is 6,595 nested dicts, and neither has a stable repr. Both
+#: fingerprinters are draft_room's own, reused rather than restated (#126) -- they are the
+#: functions anchor_cache_key already trusts for exactly this question, and a second hasher in
+#: this file that is SUPPOSED to agree with those is the drift class content_hash.py exists to
+#: end.
+_INPUT_FINGERPRINTERS = {
+    "merger": lambda value: dr._merger_content_fingerprint(value),
+    "players_db": lambda value: dr._players_db_fingerprint(value),
+}
+
+#: What _canonical can render from content alone. Everything else must be named above or the
+#: key refuses to be computed -- see _refuse_uncanonicalizable.
+_CANONICALIZABLE = (bool, int, float, str, bytes, dict, list, tuple, type(None))
+
+
+def _refuse_uncanonicalizable(name: str, value, path: str = "") -> None:
+    """An input this key cannot honestly describe must stop the key, not be papered over.
+
+    `_canonical` ends in `repr(value)`, which is right for its own population (the dataclass
+    fields of a frozen snapshot, measured to be builtins) and WRONG here. An object with the
+    default repr renders as `<Thing at 0x7f...>`: a memory address. Inside one process that
+    address is stable while the object's CONTENTS change, so the key would go on matching
+    across a real change -- the precise failure this function exists to prevent, arriving
+    through the fallback meant to be harmless.
+
+    Recursive, because a dict of DataFrames passes an `isinstance(value, dict)` check at the
+    top level and then hits the fallback one layer down.
+    """
+    where = f"{name}{path}"
+    if not isinstance(value, _CANONICALIZABLE):
+        raise TypeError(
+            f"snapshot_input_key cannot fingerprint {where} ({type(value).__name__}): it has no "
+            f"content-derived rendering, and repr() would key on a memory address that stays "
+            f"stable while the contents change. Add it to _INPUT_FINGERPRINTERS with a "
+            f"fingerprinter that reads its content.")
+    if isinstance(value, dict):
+        for key, inner in value.items():
+            _refuse_uncanonicalizable(name, inner, f"{path}[{key!r}]")
+    elif isinstance(value, (list, tuple)):
+        for index, inner in enumerate(value):
+            _refuse_uncanonicalizable(name, inner, f"{path}[{index}]")
+
+
+def _input_canonical(name: str, value) -> str:
+    fingerprinter = _INPUT_FINGERPRINTERS.get(name)
+    if fingerprinter is not None:
+        return fingerprinter(value)
+    _refuse_uncanonicalizable(name, value)
+    return _canonical(value)
+
+
+def snapshot_input_key(**inputs) -> str:
+    """The identity of the WORLD a snapshot would be built from -- every input build_snapshot
+    reads, in one fingerprint, for a caller that wants to reuse a snapshot instead of
+    rebuilding it.
+
+    The companion of snapshot_identity below, and its opposite end: that one names the board
+    that came out, this one names the inputs that went in. A cache needs the second. Nothing
+    in the engine reads either.
+
+    DERIVED FROM build_snapshot'S SIGNATURE, never hand-listed, and that is the whole point.
+    The key this replaces was written at its call site in app.py as a six-tuple:
+
+        (draft_id, target_index, my_roster_id, pool_scope, len(draft_picks), freshest_date)
+
+    against a function taking fifteen inputs. Three of those six are proxies, and `len(picks)`
+    is the one that shows what a proxy costs -- it is a count standing in for contents.
+    Measured on the real rulebook, at one constant key:
+
+      * swapping which player the last pick took, count unchanged (a commissioner undo and
+        re-pick): Drake London enters the top five at 93.70, from absent.
+      * turning season_projections on, everything else held (a mid-draft sync): the leader
+        changes from Tyler Warren to Bijan Robinson and universal_value goes 76.32 -> 219.61.
+
+    Both served from cache under a key that could not tell the two worlds apart.
+
+    Because the parameters come from `inspect.signature`, an argument added to build_snapshot
+    is in this key the day it is added, with no second place to remember. `bind` refuses a
+    call it could not make, and `apply_defaults` puts the defaulted arguments in too -- a
+    default is still an input, and a caller that starts passing something else must not
+    collide with one that did not.
+
+    Costed against the board build this exists to skip: 60.4 ms for a full key on the real
+    rulebook (merger 19.0, players_db 3.4, the rest mostly the recursive walk over 5,346
+    nested season-projection dicts), against 870 ms warm and 9.8 s cold. 7% of the warm case
+    and 0.6% of the cold one -- which is the right trade for a cache that was serving the
+    wrong board, but it is a real cost and it is written down rather than assumed.
+    """
+    bound = inspect.signature(build_snapshot).bind(**inputs)
+    bound.apply_defaults()
+    return fingerprint(*(
+        f"{name}={_input_canonical(name, value)}"
+        for name, value in bound.arguments.items()
+    ))
 
 
 def snapshot_identity(snapshot: PickSnapshot) -> str:
@@ -1105,9 +2284,26 @@ def snapshot_identity(snapshot: PickSnapshot) -> str:
     return fingerprint(*parts)
 
 
+def players_db_stamp(players_db: dict[str, dict]) -> str:
+    """The player universe's fingerprint, under the one name every staleness consumer uses.
+
+    `draft_room` owns the hashing (it owns the pool build, so it owns what a change to the pool
+    means); this is the name the staleness layer reaches for, so a UI or a debate does not have to
+    reach through two modules for a private function (`#126` -- one home for a vocabulary, and the
+    home is named rather than reached into)."""
+    return dr._players_db_fingerprint(players_db)
+
+
 def stamp_is_current(
     picks_consumed: Optional[int], data_freshest_date: Optional[str],
     picks: list[dict], merger: DataMerger,
+    #: MANDATE 1.7. The rest of the world, optional TOGETHER with their live counterparts so a
+    #: caller holding only the old two-field stamp (a draft-history record written before this)
+    #: asks exactly the question it used to, rather than being told a world changed that it has
+    #: no way to describe. A stamp present with no live value to compare it against is not a
+    #: comparison, and this function does not pretend otherwise.
+    pool_scope: Optional[str] = None, live_pool_scope: Optional[str] = None,
+    players_db_stamp: Optional[str] = None, live_players_db_stamp: Optional[str] = None,
 ) -> tuple[bool, Optional[str]]:
     """The staleness check itself, over a bare INPUT-STATE STAMP rather than a live object.
 
@@ -1131,10 +2327,24 @@ def stamp_is_current(
         )
     if merger.freshest_date != data_freshest_date:
         return False, "the underlying player data changed since this snapshot was built"
+    # MANDATE 1.7, in the order a reader would want them: the scope change is the one a person
+    # made deliberately and can therefore act on, the universe change is the one that happened
+    # underneath them.
+    if (pool_scope is not None and live_pool_scope is not None
+            and pool_scope != live_pool_scope):
+        return False, (f"the player pool was {pool_scope.replace('_', ' ')} when this was built "
+                       f"and is {live_pool_scope.replace('_', ' ')} now")
+    if (players_db_stamp is not None and live_players_db_stamp is not None
+            and players_db_stamp != live_players_db_stamp):
+        return False, ("the player universe changed since this was built (an injury status, a "
+                       "roster move or a status change -- the kind the merger's own date does "
+                       "not move)")
     return True, None
 
 
-def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger) -> tuple[bool, Optional[str]]:
+def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataMerger, *,
+                        live_pool_scope: Optional[str] = None,
+                        live_players_db: Optional[dict] = None) -> tuple[bool, Optional[str]]:
     """(is_current, reason) -- whether this frozen snapshot still describes the live state its
     consumer is about to act on, checked purely by INPUT IDENTITY (the stamp build_snapshot
     wrote), never by recomputing anything. False comes with a plain reason string a UI or
@@ -1143,14 +2353,116 @@ def snapshot_is_current(snapshot: PickSnapshot, picks: list[dict], merger: DataM
     provenance" and "known current" are different claims, same don't-fabricate posture as
     everywhere else in this app."""
     return stamp_is_current(
-        snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger)
+        snapshot.picks_consumed, snapshot.data_freshest_date, picks, merger,
+        # MANDATE 1.7: a live snapshot knows its own pool scope and universe, so the caller does
+        # not have to be told to pass them.
+        pool_scope=snapshot.pool_scope, live_pool_scope=live_pool_scope,
+        players_db_stamp=snapshot.players_db_stamp,
+        live_players_db_stamp=(None if live_players_db is None
+                               else players_db_stamp(live_players_db)))
+
+
+#: Every per-candidate quantity a diff can report a delta for. The team-specific terms come from
+#: draft_room's own tuple rather than being repeated here (#126) -- this list had all four spelled
+#: out, which is a second statement of what they are, and the audit's sharpest finding was a
+#: fourth term arriving without the places that enumerate them noticing.
+#:
+#: WITHHELD FIELDS ARE NOT REMOVED FROM THIS LIST, they are filtered at diff time by
+#: withheld_fields(). The distinction matters: this names what a diff CAN report, which does not
+#: change when a calibration verdict does, and the filter is read once per diff so the day
+#: SURVIVAL_IS_CALIBRATED flips the deltas come back with no edit here.
+#: What a `transitions` entry can say, as the two words a consumer renders. A transition is the
+#: OPPOSITE of a delta: no magnitude, no unit, and no arithmetic relating the two sides. Named
+#: constants rather than bare strings so a renderer cannot invent a third state, and so the one
+#: place that decides the vocabulary is this one (`#126`).
+TRANSITION_BECAME_MEASURED = "became_measured"
+TRANSITION_STOPPED_BEING_MEASURED = "stopped_being_measured"
+
+#: Reader-facing wording for each, kept beside the constants so a surface never composes its own.
+#: A transition explains itself in a clause, because "Survival probability: now measured" without
+#: the "was not before" half reads as a statement about the value rather than about the change.
+TRANSITION_PHRASES = {
+    TRANSITION_BECAME_MEASURED: "now measured (was not measurable before)",
+    TRANSITION_STOPPED_BEING_MEASURED: "no longer measurable (it was before)",
+}
 
 
 _DIFF_FIELDS = (
-    "universal_value", "need_bonus", "eligibility_bonus", "team_acquisition_value",
-    "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
-    "rival_premium", "positional_forfeit", "pick_necessity",
+    ("universal_value",) + tuple(dr.TEAM_SPECIFIC_TERMS) + (
+        "team_acquisition_value",
+        "survival_probability", "opportunity_cost", "expected_value_of_waiting", "denial_value",
+        "rival_premium", "positional_forfeit", "pick_necessity",
+    )
 )
+
+
+def diff_anchor(previous: PickSnapshot, current: PickSnapshot) -> dict:
+    """WHAT the diff below is a diff OF -- the two boards' own relationship, as data.
+
+    MANDATE 1.7. `diff_snapshots` reports per-candidate deltas under a heading that says "WHAT
+    CHANGED SINCE THE LAST SNAPSHOT", and neither the heading nor the rows said WHICH two boards, or
+    what happened between them. So the single largest cause of movement on the list -- the reader's
+    own pick, which removes a player from every candidate list and re-prices every roster-aware term
+    against a roster that now has one more player on it -- arrived looking exactly like the market
+    moving around them.
+
+    Every field is DERIVED from the two snapshots and nothing is passed in:
+
+      * `picks_between` from the two stamps. None when either is unstamped, never 0 -- a count of
+        zero and a count nobody took are different facts (`#187`).
+      * `your_own_turn_passed` from the two pick labels. A snapshot's `pick_label` is the READER'S
+        own next selection, so the label moves when and only when their own pick was made: picks by
+        other rosters advance the board without advancing it. Recorded rather than inferred at each
+        surface, because two surfaces render this and a second derivation is a second answer.
+      * `pool_scope_changed` and `player_universe_changed` from the world stamps added earlier in
+        this same item. A diff across a pool-scope change is not a diff of the same population, and
+        saying "entered the candidate pool" of a player who was simply never eligible before would
+        be a false claim about the market.
+
+    A DICT, not a sentence, because `draft_history` stores it and two surfaces render it. The
+    sentence is `diff_anchor_sentence` below, and both surfaces use that one so they cannot drift."""
+    picks_between = (None if previous.picks_consumed is None or current.picks_consumed is None
+                     else current.picks_consumed - previous.picks_consumed)
+    return {
+        "from_pick_label": previous.pick_label,
+        "to_pick_label": current.pick_label,
+        "picks_between": picks_between,
+        "your_own_turn_passed": previous.pick_label != current.pick_label,
+        "pool_scope_changed": previous.pool_scope != current.pool_scope,
+        "from_pool_scope": previous.pool_scope,
+        "to_pool_scope": current.pool_scope,
+        "player_universe_changed": bool(
+            previous.players_db_stamp is not None and current.players_db_stamp is not None
+            and previous.players_db_stamp != current.players_db_stamp),
+    }
+
+
+def diff_anchor_sentence(anchor: dict) -> str:
+    """The anchor as one line, in the one place both surfaces read it from (`#126`).
+
+    Written so every clause is either a measured fact or absent. "1 pick" rather than "1 picks";
+    an unstamped pair says the count could not be established rather than implying zero."""
+    span = f"Since your board at {anchor['from_pick_label']}"
+    if anchor["to_pick_label"] != anchor["from_pick_label"]:
+        span += f", now at {anchor['to_pick_label']}"
+    count = anchor["picks_between"]
+    if count is None:
+        parts = ["how many picks were made in between could not be established"]
+    elif count == 1:
+        parts = ["1 pick has been made"]
+    else:
+        parts = [f"{count} picks have been made"]
+    parts.append("YOUR OWN PICK IS AMONG THEM" if anchor["your_own_turn_passed"]
+                 else "none of them yours")
+    if anchor["pool_scope_changed"]:
+        parts.append(f"and the player pool changed from "
+                     f"{anchor['from_pool_scope'].replace('_', ' ')} to "
+                     f"{anchor['to_pool_scope'].replace('_', ' ')}, so the two lists are not the "
+                     f"same population")
+    if anchor["player_universe_changed"]:
+        parts.append("and the player data itself changed underneath (an injury status, a roster "
+                     "move) -- movement below may be that rather than the market")
+    return f"{span}: " + ", ".join(parts) + "."
 
 
 def diff_snapshots(previous: PickSnapshot, current: PickSnapshot) -> list[dict]:
@@ -1180,17 +2492,39 @@ def diff_snapshots(previous: PickSnapshot, current: PickSnapshot) -> list[dict]:
             diffs.append({"player_id": player_id, "name": prev_c.name, "entered": False, "rank": prev_rank[player_id]})
             continue
         deltas = {}
-        for attr in _DIFF_FIELDS:
+        # THE PROPAGATION RULE, applied (#52 phase 7.1). A delta of a withheld quantity IS that
+        # quantity -- `survival_probability: -0.08` printed beneath a block saying the estimate
+        # is withheld tells a reader both the direction and the size of the thing being refused.
+        # Measured before this line: a 1.01 -> 1.02 diff emitted survival_probability -0.08 and
+        # opportunity_cost +17.22 into the chairs' WHAT CHANGED section and the Draft Room's own
+        # diff drawer, which labels them "Survival probability" and "Opportunity cost".
+        # MANDATE 2.5: A TERM CROSSING INTO OR OUT OF MEASURABILITY IS A CHANGE, and this was the
+        # one comparison that could not see it. `if prev_val is None or curr_val is None: continue`
+        # skipped exactly the transitions `#187` exists to keep visible -- a forfeit that went from
+        # unmeasurable to 14.2, a survival estimate that stopped being computable -- so the audit
+        # trail whose job is to answer "why did this move" was silent about the largest kind of
+        # move a term can make. It is NOT a delta: there is no magnitude and no unit to give it
+        # (`#116`), and subtracting from None to produce one would be the fabrication the same
+        # mandate item is about. So it is its own field, in its own vocabulary.
+        transitions = {}
+        reportable = [attr for attr in _DIFF_FIELDS if attr not in withheld_fields()]
+        for attr in reportable:
             prev_val, curr_val = getattr(prev_c, attr), getattr(curr_c, attr)
-            if prev_val is None or curr_val is None:
+            if prev_val is None and curr_val is None:
+                continue  # absent on both sides: still absent, and that is not a change
+            if prev_val is None:
+                transitions[attr] = TRANSITION_BECAME_MEASURED
+                continue
+            if curr_val is None:
+                transitions[attr] = TRANSITION_STOPPED_BEING_MEASURED
                 continue
             delta = round(curr_val - prev_val, 2)
             if delta != 0:
                 deltas[attr] = delta
         rank_delta = curr_rank[player_id] - prev_rank[player_id]
-        if deltas or rank_delta:
+        if deltas or transitions or rank_delta:
             diffs.append({
                 "player_id": player_id, "name": curr_c.name, "entered": None,
-                "rank_delta": rank_delta, "deltas": deltas,
+                "rank_delta": rank_delta, "deltas": deltas, "transitions": transitions,
             })
     return diffs

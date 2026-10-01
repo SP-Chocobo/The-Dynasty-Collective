@@ -1,0 +1,66 @@
+{
+  "_comment": "#30: base vs a DERIVED streaming replacement level for K/DEF, both graded on realized outcomes. Experiment, not a shipped change -- see streaming_arm_experiment.py.",
+  "arm": "12T_ppr_K_DEF",
+  "arms": {
+    "base": {
+      "distinct": 12,
+      "engine_totals": [
+        2085.54,
+        2217.14,
+        2183.04,
+        2156.84,
+        2129.14,
+        1991.46,
+        2156.16,
+        2165.06,
+        2089.06,
+        2049.56,
+        2124.66,
+        2100.26
+      ],
+      "first_kdst_rounds": [
+        4,
+        5
+      ],
+      "mean_delta": -640.95,
+      "mean_delta_distinct": -640.95,
+      "median_delta": -634.91,
+      "seats": 12,
+      "wins": 0
+    },
+    "streaming": {
+      "distinct": 11,
+      "engine_totals": [
+        2415.24,
+        2343.14,
+        2278.84,
+        2278.84,
+        2414.44,
+        2374.14,
+        2369.04,
+        2344.94,
+        2465.54,
+        2433.44,
+        2323.94,
+        2512.34
+      ],
+      "first_kdst_rounds": [
+        7,
+        8
+      ],
+      "mean_delta": -363.08,
+      "mean_delta_distinct": -353.98,
+      "median_delta": -372.75,
+      "seats": 12,
+      "wins": 0
+    }
+  },
+  "paired_engine_delta_mean": 258.83,
+  "paired_engine_delta_median": 249.09,
+  "season": "2024",
+  "seats_improved": 12,
+  "streaming_levels": {
+    "DEF": 146.05,
+    "K": 164.5
+  }
+}

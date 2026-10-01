@@ -38,9 +38,10 @@ import bot_research
 import data_merger as dm
 import draft_room
 import llm_engine
+import ui_source
 
 
-_APP_SOURCE = Path(__file__).with_name("app.py").read_text()
+_APP_SOURCE = ui_source.text()
 
 _NOT_APPLICABLE_REASON = "a team defense has no career arc to project; no source publishes one"
 
@@ -185,6 +186,18 @@ class ContextConsumesTheStateTests(unittest.TestCase):
         self.assertIn("horizon_gap_lines", _APP_SOURCE.split("from league_format")[0])
 
 
+def _keys_naming_more_than_one_group(projections) -> set:
+    """name_keys that cover more than one position GROUP in the committed pool -- the keys
+    _compute_percentiles refuses to assign a bot_research percentile to. Derived from the pool
+    rather than listed, so it cannot go stale against it (#126)."""
+    groups: dict = {}
+    for norm, pos in zip(projections["norm_name"], projections["position"]):
+        if pd.isna(pos):
+            continue
+        groups.setdefault(dm.name_key(norm), set()).add(dm.identity_namespace(pos))
+    return {key for key, seen in groups.items() if len(seen) > 1}
+
+
 class AiClaimsCannotSilentlyBecomeAuthoritativeTests(unittest.TestCase):
     """§18's last question, measured end to end rather than argued."""
 
@@ -192,7 +205,49 @@ class AiClaimsCannotSilentlyBecomeAuthoritativeTests(unittest.TestCase):
     def setUpClass(cls):
         cls.baseline = dm.DataMerger()
         priced = cls.baseline.projections[cls.baseline.projections["proj_3yr_state"] == "known"]
-        cls.target = priced.iloc[0]["name"]
+        # THE TARGET HAS TO BE ABLE TO CARRY A RESEARCH COMPONENT AT ALL, and `priced.iloc[0]`
+        # is not guaranteed to be (#52 phase 6). _compute_percentiles segments the bot_research
+        # pool by position group, and a name_key naming TWO groups names no pool -- so those
+        # rows are deliberately ranked in neither and carry no percentile. This fixture took
+        # whatever sorted first, which is "J Allen": the one name in this repository that is
+        # canonically two different men (the Bills QB and a DL), and therefore the one target
+        # that cannot reach the composite. Every test in this class is about what happens to a
+        # claim ONCE IT IS IN the blend, so the fixture picks a target whose key names one pool,
+        # and the ambiguous case is pinned on purpose below rather than met by accident here.
+        cls.ambiguous_keys = _keys_naming_more_than_one_group(cls.baseline.projections)
+        unambiguous = [row for _, row in priced.iterrows()
+                       if dm.name_key(row["norm_name"]) not in cls.ambiguous_keys]
+        assert unambiguous, "no priced player has an unambiguous name key; re-read this fixture"
+        cls.target = unambiguous[0]["name"]
+        cls.ambiguous_target = next(
+            (row["name"] for _, row in priced.iterrows()
+             if dm.name_key(row["norm_name"]) in cls.ambiguous_keys), None)
+
+    def test_a_claim_about_an_ambiguously_keyed_player_is_ranked_in_neither_pool(self):
+        """The consequence of the segmentation, pinned where it can be seen.
+
+        A name_key that names two position groups names no pool, so bot_research rows under it
+        get no percentile and contribute no weight -- deliberately: ranking an offensive player
+        against defenders is the error the segmentation exists to prevent, and picking one pool
+        by coin flip is that error with a tidier face. But the cost is real and was invisible:
+        a confirmed, allowlisted, rank-bearing finding about one of these players silently does
+        not count. Measured on the committed baseline: 19 of 745 keys, 40 players.
+
+        This test exists so that the day someone decides those players should be rankable --
+        by carrying the finding's own position, or by ranking in both pools and letting the
+        query pick -- the change is visible here instead of surprising someone.
+        """
+        if self.ambiguous_target is None:
+            self.skipTest("no priced player has an ambiguous name key on this baseline")
+        self._plant(self.ambiguous_target, "ESPN", "ESPN has him #1 overall", 1)
+        after = dm.DataMerger().composite_player_score(self.ambiguous_target)
+        sources = [c["source"] for c in (after or {}).get("components", [])]
+        self.assertNotIn("bot_research", sources)
+        # Non-vacuity: the SAME planted claim does reach the composite for an unambiguous name,
+        # so this is the key's ambiguity and not the plant failing to land.
+        self._plant(self.target, "ESPN", "ESPN has him #1 overall", 1)
+        reached = dm.DataMerger().composite_player_score(self.target)
+        self.assertIn("bot_research", [c["source"] for c in (reached or {}).get("components", [])])
 
     def setUp(self):
         self._real = bot_research.FINDINGS_PATH
@@ -287,14 +342,14 @@ class KindOfAbsenceStopsAtTheBoardTests(unittest.TestCase):
         frozen boundary #107 is parked on. Delete this test when #112 is settled; do not loosen
         it.
         """
-        tree = ast.parse(Path(__file__).with_name("draft_room.py").read_text())
-        board = next(n for n in ast.walk(tree)
-                     if isinstance(n, ast.FunctionDef) and n.name == "compute_draft_board")
-        emitted = set()
-        for node in ast.walk(board):
-            if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.List):
-                emitted.update(e.value for e in node.slice.elts
-                               if isinstance(e, ast.Constant) and isinstance(e.value, str))
+        # dr.board_emitted_columns(), not an AST walk for a `results[[...]]` literal (#52 phase
+        # 6.3). That pattern was the board's column list until the two inline lists were given
+        # one home as BALANCED_BOARD_COLUMNS / UPSIDE_BOARD_COLUMNS -- at which point the slice
+        # became a Name, the walk matched nothing, and `emitted` came back as an empty set. The
+        # non-vacuity guard below is what caught that, doing exactly the job it was put there
+        # for. Reading the names the board actually emits is both simpler and stronger than
+        # re-deriving them from the syntax that happens to spell them today.
+        emitted = draft_room.board_emitted_columns()
         self.assertIn("bpa_source", emitted)      # non-vacuity: this really is the column list
         self.assertIn("confidence", emitted)
         self.assertNotIn("proj_3yr_state", emitted)

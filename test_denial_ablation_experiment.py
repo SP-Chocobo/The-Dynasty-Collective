@@ -19,13 +19,13 @@ class ThreeConditionScorerFidelityTests(unittest.TestCase):
         return [
             {
                 "player_id": "a", "team_acquisition_value": 100.0, "need_bonus": 2.0,
-                "eligibility_bonus": 1.0, "survival_probability": 0.6,
+                "survival_probability": 0.6,
                 "positional_cliff": None, "position_run_detected": False,
                 "rival_premium": rival_premium,
             },
             {
                 "player_id": "b", "team_acquisition_value": 90.0, "need_bonus": 0.0,
-                "eligibility_bonus": 0.0, "survival_probability": 0.8,
+                "survival_probability": 0.8,
                 "positional_cliff": None, "position_run_detected": False,
                 "rival_premium": 0.0,
             },

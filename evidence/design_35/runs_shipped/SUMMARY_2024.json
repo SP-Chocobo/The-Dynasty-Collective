@@ -1,0 +1,108 @@
+{
+  "_comment": "#35 as SHIPPED vs the engine without it, graded on realized weekly outcomes. This replaces the c_prime arm's figures, which were measured on a different composition of the slot alternatives -- see this file's docstring.",
+  "arms": {
+    "cap_off": {
+      "cap_stats": {
+        "by_position": {},
+        "calls": 0,
+        "levels_capped": 0
+      },
+      "engine_totals": {
+        "1": 2907.54,
+        "10": 2755.74,
+        "11": 2839.24,
+        "12": 2796.64,
+        "2": 2934.84,
+        "3": 2764.64,
+        "4": 2821.94,
+        "5": 2807.96,
+        "6": 2733.66,
+        "7": 2811.04,
+        "8": 2933.74,
+        "9": 2797.04
+      },
+      "first_kdst_round": [
+        8,
+        8,
+        8,
+        8,
+        8,
+        9,
+        9,
+        10,
+        12,
+        12,
+        12,
+        12
+      ],
+      "mean_delta": 82.89,
+      "median_delta": 66.54,
+      "seats": 12,
+      "seconds": 803.0,
+      "wins": 11
+    },
+    "shipped": {
+      "cap_stats": {
+        "by_position": {
+          "QB": 748,
+          "WR": 713
+        },
+        "calls": 1375,
+        "levels_capped": 1461
+      },
+      "engine_totals": {
+        "1": 2927.94,
+        "10": 2823.54,
+        "11": 2844.44,
+        "12": 2884.24,
+        "2": 2902.24,
+        "3": 2825.44,
+        "4": 2826.74,
+        "5": 2751.74,
+        "6": 2686.06,
+        "7": 2890.54,
+        "8": 2938.04,
+        "9": 2863.44
+      },
+      "first_kdst_round": [
+        8,
+        8,
+        8,
+        8,
+        8,
+        12,
+        12,
+        12,
+        12,
+        13,
+        13,
+        13
+      ],
+      "mean_delta": 97.74,
+      "median_delta": 104.43,
+      "seats": 12,
+      "seconds": 813.1,
+      "wins": 10
+    }
+  },
+  "paired_mean": 21.7,
+  "paired_median": 12.8,
+  "paired_shipped_minus_off": {
+    "1": 20.4,
+    "10": 67.8,
+    "11": 5.2,
+    "12": 87.6,
+    "2": -32.6,
+    "3": 60.8,
+    "4": 4.8,
+    "5": -56.22,
+    "6": -47.6,
+    "7": 79.5,
+    "8": 4.3,
+    "9": 66.4
+  },
+  "paired_total": 260.38,
+  "season": "2024",
+  "seats_improved": 9,
+  "seats_worsened": 3
+}

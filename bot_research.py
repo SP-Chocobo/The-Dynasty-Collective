@@ -61,7 +61,7 @@ COMPARISONS_PATH = Path("data/baseline/bot_comparisons.json")
 # both, and clearing neither costs it anything except its number -- it is still stored, still
 # shown, still read by the panel. Prose stays free; only the arithmetic is gated.
 
-#: 6.2a's states, in the order a finding can travel them. `PANEL_ONLY` is what the Moderator's
+#: 6.2a's states, in the order a finding can travel them. `ADJUDICATION_PANEL_ONLY` is what the Moderator's
 #: own gate establishes and it is NOT a second adjudication: app.py's own comment on the persist
 #: site says so plainly -- "trusting the Moderator's own gate, not re-verifying it a second time
 #: in code". 6.2a asked whether anything re-adjudicates; the answer was no queue and no second

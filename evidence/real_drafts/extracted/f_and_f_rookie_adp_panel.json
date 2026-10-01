@@ -1,0 +1,81 @@
+{
+ "provenance": {
+  "league": "Fourth and Forever",
+  "draft": "4-round rookie draft, caption: 'This was done immediately after the veteran draft, which was done on aug 14th'",
+  "source_images": [
+   "026873_0.jpg",
+   "026873_1.jpg",
+   "026873_2.jpg"
+  ],
+  "what_the_panel_is": "The Sleeper PLAYERS tab (undrafted pool) rendered under the completed board. Filter chips read 'ALL 3/4', 'QB 1/1', 'RB 1/2', 'WR 1/2' - i.e. the entire undrafted pool at capture time was 4 players and 3 rows are on screen. The same 3 rows appear identically in all three images (the shots differ only in which board columns are scrolled into view).",
+  "legibility": "ADP column fully legible for all 3 rows. PTS column is cut by the right screen edge after the decimal point in every shot ('43.' / '36.' / '35.'), so projected_points is recorded as illegible-with-partial and never completed. The 4th pool player is not visible in any of the three images.",
+  "what_this_is_not": "This is NOT a broad ADP panel. It is 3 ADP values for deep-undrafted rookies (ADP 265-279). The corpus README's description ('undrafted-pool panel with ADP and projected points') is accurate in kind but the supply is 3 rows, not a ranking.",
+  "badge_key_as_read": "purple 'R' badge = rookie flag; yellow 'Q' = injury designation (questionable). Transcribed as printed, not interpreted further.",
+  "counts": {
+   "entries": 3,
+   "adp_legible": 3,
+   "projected_points_legible": 0,
+   "illegible_entries": 3
+  }
+ },
+ "entries": [
+  {
+   "player": "B. Lance",
+   "position": "WR",
+   "nfl_team": "NO",
+   "bye": 8,
+   "list_rank_as_printed": 265,
+   "adp": 265.2,
+   "projected_points": {
+    "illegible": true,
+    "partial": "43."
+   },
+   "badges_as_printed": [
+    "R"
+   ],
+   "illegible": true,
+   "illegible_fields": [
+    "projected_points"
+   ]
+  },
+  {
+   "player": "K. Coleman",
+   "position": "WR",
+   "nfl_team": "MIA",
+   "bye": 6,
+   "list_rank_as_printed": 275,
+   "adp": 275.8,
+   "projected_points": {
+    "illegible": true,
+    "partial": "36."
+   },
+   "badges_as_printed": [
+    "R",
+    "Q"
+   ],
+   "illegible": true,
+   "illegible_fields": [
+    "projected_points"
+   ]
+  },
+  {
+   "player": "J. Taylor",
+   "position": "RB",
+   "nfl_team": "JAX",
+   "bye": 7,
+   "list_rank_as_printed": 278,
+   "adp": 278.7,
+   "projected_points": {
+    "illegible": true,
+    "partial": "35."
+   },
+   "badges_as_printed": [
+    "R"
+   ],
+   "illegible": true,
+   "illegible_fields": [
+    "projected_points"
+   ]
+  }
+ ]
+}

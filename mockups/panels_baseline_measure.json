@@ -1,0 +1,224 @@
+{
+ "note": "the app's own panel group, seeded with mockups/panels_data.py, Import Audit view, dock collapsed, 1400x1400",
+ "items": {
+  "Pinned Messages": 2,
+  "Decision Log": 6,
+  "Bot Research": 8,
+  "Active Objectives": 4,
+  "Archive": 3
+ },
+ "asShipped": {
+  "Pinned Messages": {
+   "present": true,
+   "open": false,
+   "headerText": "keyboard_arrow_right 📌 Pinned Messages (2)",
+   "top": 705,
+   "height": 40,
+   "bodyHeight": 0,
+   "textElements": 13,
+   "buttons": 2,
+   "inputs": 0,
+   "selects": 0,
+   "dataframes": 0,
+   "dataframeHeights": [],
+   "captionWords": 1,
+   "colourEmoji": 1,
+   "minFontPx": 14
+  },
+  "Decision Log": {
+   "present": true,
+   "open": false,
+   "headerText": "keyboard_arrow_right 📋 Decision Log (6)",
+   "top": 761,
+   "height": 40,
+   "bodyHeight": 0,
+   "textElements": 8,
+   "buttons": 7,
+   "inputs": 3,
+   "selects": 2,
+   "dataframes": 1,
+   "dataframeHeights": [
+    247
+   ],
+   "captionWords": 1,
+   "colourEmoji": 1,
+   "minFontPx": 14
+  },
+  "Bot Research": {
+   "present": true,
+   "open": false,
+   "headerText": "keyboard_arrow_right 🔬 Bot Research (6 findings, 2 comparisons)",
+   "top": 817,
+   "height": 40,
+   "bodyHeight": 0,
+   "textElements": 29,
+   "buttons": 11,
+   "inputs": 0,
+   "selects": 0,
+   "dataframes": 2,
+   "dataframeHeights": [
+    247,
+    107
+   ],
+   "captionWords": 1,
+   "colourEmoji": 1,
+   "minFontPx": 14
+  },
+  "Active Objectives": {
+   "present": true,
+   "open": true,
+   "headerText": "keyboard_arrow_down 🎯 Active Objectives (4)",
+   "top": 873,
+   "height": 1483,
+   "bodyHeight": 1443,
+   "textElements": 41,
+   "buttons": 18,
+   "inputs": 8,
+   "selects": 0,
+   "dataframes": 0,
+   "dataframeHeights": [],
+   "captionWords": 76,
+   "colourEmoji": 23,
+   "minFontPx": 12.5
+  },
+  "Archive": {
+   "present": true,
+   "open": false,
+   "headerText": "keyboard_arrow_right 🗄️ Archive (3)",
+   "top": 2373,
+   "height": 40,
+   "bodyHeight": 0,
+   "textElements": 25,
+   "buttons": 6,
+   "inputs": 1,
+   "selects": 0,
+   "dataframes": 0,
+   "dataframeHeights": [],
+   "captionWords": 1,
+   "colourEmoji": 1,
+   "minFontPx": 12.5
+  },
+  "_page": {
+   "scrollHeight": 1400,
+   "viewport": 1400,
+   "firstPanelTop": 705,
+   "lastPanelBottom": 2413
+  }
+ },
+ "opened": {
+  "Pinned Messages": {
+   "present": true,
+   "open": true,
+   "headerText": "keyboard_arrow_down 📌 Pinned Messages (2)",
+   "top": 705,
+   "height": 670,
+   "bodyHeight": 630,
+   "textElements": 13,
+   "buttons": 2,
+   "inputs": 0,
+   "selects": 0,
+   "dataframes": 0,
+   "dataframeHeights": [],
+   "captionWords": 38,
+   "colourEmoji": 1,
+   "minFontPx": 14
+  },
+  "Decision Log": {
+   "present": true,
+   "open": true,
+   "headerText": "keyboard_arrow_down 📋 Decision Log (6)",
+   "top": 660,
+   "height": 678,
+   "bodyHeight": 638,
+   "textElements": 8,
+   "buttons": 7,
+   "inputs": 3,
+   "selects": 2,
+   "dataframes": 1,
+   "dataframeHeights": [
+    247
+   ],
+   "captionWords": 24,
+   "colourEmoji": 1,
+   "minFontPx": 14
+  },
+  "Bot Research": {
+   "present": true,
+   "open": true,
+   "headerText": "keyboard_arrow_down 🔬 Bot Research (6 findings, 2 comparisons)",
+   "top": 652,
+   "height": 1197,
+   "bodyHeight": 1157,
+   "textElements": 29,
+   "buttons": 11,
+   "inputs": 0,
+   "selects": 0,
+   "dataframes": 2,
+   "dataframeHeights": [
+    247,
+    107
+   ],
+   "captionWords": 78,
+   "colourEmoji": 1,
+   "minFontPx": 14
+  },
+  "Active Objectives": {
+   "present": true,
+   "open": true,
+   "headerText": "keyboard_arrow_down 🎯 Active Objectives (4)",
+   "top": 708,
+   "height": 1483,
+   "bodyHeight": 1443,
+   "textElements": 41,
+   "buttons": 18,
+   "inputs": 8,
+   "selects": 0,
+   "dataframes": 0,
+   "dataframeHeights": [],
+   "captionWords": 76,
+   "colourEmoji": 23,
+   "minFontPx": 12.5
+  },
+  "Archive": {
+   "present": true,
+   "open": true,
+   "headerText": "keyboard_arrow_down 🗄️ Archive (3)",
+   "top": 1042,
+   "height": 805,
+   "bodyHeight": 765,
+   "textElements": 25,
+   "buttons": 6,
+   "inputs": 1,
+   "selects": 0,
+   "dataframes": 0,
+   "dataframeHeights": [],
+   "captionWords": 34,
+   "colourEmoji": 10,
+   "minFontPx": 12.5
+  }
+ },
+ "checks": {
+  "pinnedHeader": "keyboard_arrow_right\n\n📌 Pinned Messages (2)",
+  "pinnedCaptionsEndWithEllipsis": [
+   "",
+   "",
+   ""
+  ],
+  "pinnedShowsRecommendation": false,
+  "objectivesHeader": "keyboard_arrow_down\n\n🎯 Active Objectives (4)",
+  "dockHeaderCount": "▲ Expand Last call: WAIT — The 2027 1st is priced at a league average it will not reach if Roster 6 contends again; the trade is even only at that",
+  "researchHeader": "keyboard_arrow_right\n\n🔬 Bot Research (6 findings, 2 comparisons)",
+  "decisionPickerOptions": [
+   "2025-09-07 — Roster 6 just offered me their 2027 1st and Kyren Williams for Achane.",
+   "2025-09-06 — On the clock at 3.03. The board has Stafford at 107 and Shough at 104",
+   "2025-08-30 — Promote Shough from taxi or keep the slot? [Worked]",
+   "2025-08-22 — Roster 6 wants Achane for their 2027 1st. Hold or sell? [Didn't Work]",
+   "2025-08-15 — Nacua or Adams at WR2 this week? [Mixed]"
+  ],
+  "outcomeDefault": [
+   "Decision",
+   "Outcome"
+  ],
+  "decisionTableCells": ""
+ }
+}

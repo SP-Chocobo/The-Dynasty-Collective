@@ -1,0 +1,6771 @@
+{
+  "universe": {
+    "source": "data/fixtures/sleeper_capture.json",
+    "captured_at": "2026-09-07T08:14:10.990206+00:00",
+    "season": "2026",
+    "players_in_capture": 6595,
+    "players_in_pool": 6595,
+    "injury_statuses_present": [
+      "DNR",
+      "IR",
+      "NA",
+      "Out",
+      "PUP",
+      "Questionable",
+      "Sus"
+    ],
+    "season_projections_supplied": 5346,
+    "priced_from": "vendor+sleeper",
+    "sleeper_basis": "season_sum"
+  },
+  "formats": 33,
+  "independent_formats": 32,
+  "duplicate_arms": [
+    {
+      "label": "12T_ppr_mode_balanced",
+      "duplicates": "12T_ppr"
+    }
+  ],
+  "picks": 5340,
+  "total_findings": 15,
+  "seconds": 14512.3,
+  "results": [
+    {
+      "label": "8T_standard",
+      "picks": 112,
+      "rosters": 8,
+      "findings": [],
+      "shape": {
+        "1": {
+          "RB": 5,
+          "QB": 4,
+          "TE": 2,
+          "WR": 3
+        },
+        "2": {
+          "RB": 4,
+          "WR": 5,
+          "TE": 3,
+          "QB": 2
+        },
+        "3": {
+          "RB": 5,
+          "TE": 4,
+          "WR": 3,
+          "QB": 2
+        },
+        "4": {
+          "RB": 5,
+          "WR": 5,
+          "TE": 2,
+          "QB": 2
+        },
+        "5": {
+          "WR": 5,
+          "TE": 3,
+          "RB": 5,
+          "QB": 1
+        },
+        "6": {
+          "RB": 3,
+          "TE": 4,
+          "WR": 5,
+          "QB": 2
+        },
+        "7": {
+          "WR": 6,
+          "TE": 4,
+          "RB": 2,
+          "QB": 2
+        },
+        "8": {
+          "WR": 7,
+          "RB": 3,
+          "TE": 2,
+          "QB": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 112,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8
+        },
+        "median_margin": 1.15
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 81,
+          "predraft_anchor": 31
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "decisive": 23,
+        "contested": 89
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 268.1,
+            "total_value": 152.9,
+            "bench_value": -115.2,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 243.24,
+            "total_value": 152.37,
+            "bench_value": -90.87,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 241.82,
+            "total_value": 134.89,
+            "bench_value": -106.93,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 233.82,
+            "total_value": 155.91,
+            "bench_value": -77.91,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 239.66,
+            "total_value": 146.22,
+            "bench_value": -93.44,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 233.12,
+            "total_value": 159.86,
+            "bench_value": -73.26,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 223.2,
+            "total_value": 166.76,
+            "bench_value": -56.44,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 214.83,
+            "total_value": 124.88,
+            "bench_value": -89.95,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 214.83,
+        "starter_value_median": 239.66,
+        "starter_value_max": 268.1,
+        "starter_value_spread": 53.27
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 112,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 8,
+      "rounds": 14,
+      "seconds": 228.7
+    },
+    {
+      "label": "8T_standard_SF",
+      "picks": 120,
+      "rosters": 8,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 5,
+          "RB": 3,
+          "WR": 6,
+          "TE": 1
+        },
+        "2": {
+          "QB": 2,
+          "RB": 3,
+          "WR": 5,
+          "TE": 5
+        },
+        "3": {
+          "QB": 5,
+          "RB": 5,
+          "WR": 3,
+          "TE": 2
+        },
+        "4": {
+          "QB": 2,
+          "RB": 4,
+          "WR": 5,
+          "TE": 4
+        },
+        "5": {
+          "QB": 4,
+          "RB": 4,
+          "WR": 4,
+          "TE": 3
+        },
+        "6": {
+          "QB": 4,
+          "WR": 4,
+          "RB": 4,
+          "TE": 3
+        },
+        "7": {
+          "QB": 4,
+          "TE": 4,
+          "RB": 5,
+          "WR": 2
+        },
+        "8": {
+          "QB": 2,
+          "RB": 4,
+          "WR": 7,
+          "TE": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 120,
+        "zero_margin_picks": 4,
+        "zero_margin_share": 0.03333333333333333,
+        "zero_margin_by_round": {
+          "12": 1,
+          "15": 3
+        },
+        "picks_by_round": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8,
+          "15": 8
+        },
+        "median_margin": 1.31
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 76,
+          "predraft_anchor": 16,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 7,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 27,
+        "contested": 93
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 452.19,
+            "total_value": 578.5,
+            "bench_value": 126.31,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 582.96,
+            "total_value": 538.79,
+            "bench_value": -44.17,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 404.17,
+            "total_value": 554.24,
+            "bench_value": 150.07,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 593.0,
+            "total_value": 549.5,
+            "bench_value": -43.5,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 481.83,
+            "total_value": 555.57,
+            "bench_value": 73.74,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 428.3,
+            "total_value": 548.25,
+            "bench_value": 119.95,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 422.65,
+            "total_value": 538.15,
+            "bench_value": 115.5,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 572.41,
+            "total_value": 522.74,
+            "bench_value": -49.67,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 404.17,
+        "starter_value_median": 481.83,
+        "starter_value_max": 593.0,
+        "starter_value_spread": 188.83
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 120,
+        "picks_with_an_unpriced_candidate": 40,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 8,
+      "rounds": 15,
+      "seconds": 242.0
+    },
+    {
+      "label": "8T_half_ppr",
+      "picks": 112,
+      "rosters": 8,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 3,
+          "RB": 6,
+          "QB": 3,
+          "TE": 2
+        },
+        "2": {
+          "QB": 2,
+          "WR": 8,
+          "RB": 3,
+          "TE": 1
+        },
+        "3": {
+          "WR": 4,
+          "RB": 7,
+          "QB": 2,
+          "TE": 1
+        },
+        "4": {
+          "WR": 6,
+          "RB": 5,
+          "QB": 1,
+          "TE": 2
+        },
+        "5": {
+          "WR": 7,
+          "RB": 4,
+          "TE": 2,
+          "QB": 1
+        },
+        "6": {
+          "WR": 5,
+          "RB": 6,
+          "QB": 1,
+          "TE": 2
+        },
+        "7": {
+          "TE": 2,
+          "WR": 8,
+          "RB": 2,
+          "QB": 2
+        },
+        "8": {
+          "RB": 3,
+          "TE": 5,
+          "WR": 5,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 112,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.008928571428571428,
+        "zero_margin_by_round": {
+          "7": 1
+        },
+        "picks_by_round": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8
+        },
+        "median_margin": 0.34
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 72,
+          "predraft_anchor": 40
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 112
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 137.94,
+            "total_value": 94.88,
+            "bench_value": -43.06,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 80.38,
+            "total_value": 30.78,
+            "bench_value": -49.6,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 42.36,
+            "total_value": 14.92,
+            "bench_value": -27.44,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 54.08,
+            "total_value": 5.24,
+            "bench_value": -48.84,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 52.49,
+            "total_value": -4.92,
+            "bench_value": -57.41,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 51.44,
+            "total_value": 2.98,
+            "bench_value": -48.46,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 49.83,
+            "total_value": 3.69,
+            "bench_value": -46.14,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 59.28,
+            "total_value": 9.05,
+            "bench_value": -50.23,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 42.36,
+        "starter_value_median": 54.08,
+        "starter_value_max": 137.94,
+        "starter_value_spread": 95.58
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 112,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 8,
+      "rounds": 14,
+      "seconds": 233.4
+    },
+    {
+      "label": "8T_half_ppr_SF",
+      "picks": 120,
+      "rosters": 8,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 3,
+          "WR": 8,
+          "RB": 3,
+          "TE": 1
+        },
+        "2": {
+          "QB": 5,
+          "TE": 2,
+          "RB": 4,
+          "WR": 4
+        },
+        "3": {
+          "QB": 2,
+          "WR": 5,
+          "RB": 3,
+          "TE": 5
+        },
+        "4": {
+          "QB": 4,
+          "WR": 8,
+          "RB": 2,
+          "TE": 1
+        },
+        "5": {
+          "QB": 3,
+          "WR": 6,
+          "RB": 5,
+          "TE": 1
+        },
+        "6": {
+          "QB": 3,
+          "WR": 2,
+          "RB": 7,
+          "TE": 3
+        },
+        "7": {
+          "QB": 4,
+          "RB": 2,
+          "WR": 7,
+          "TE": 2
+        },
+        "8": {
+          "QB": 4,
+          "RB": 4,
+          "TE": 4,
+          "WR": 3
+        }
+      },
+      "margins": {
+        "picks_measured": 120,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.008333333333333333,
+        "zero_margin_by_round": {
+          "11": 1
+        },
+        "picks_by_round": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8,
+          "15": 8
+        },
+        "median_margin": 0.65
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 91,
+          "predraft_anchor": 1,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 7,
+        "picks_with_growth_above_zero": 1,
+        "max_growth": 85.6
+      },
+      "regimes": {
+        "decisive": 7,
+        "contested": 113
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 336.53,
+            "total_value": 411.48,
+            "bench_value": 74.95,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 283.83,
+            "total_value": 362.09,
+            "bench_value": 78.26,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 413.73,
+            "total_value": 373.53,
+            "bench_value": -40.2,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 296.47,
+            "total_value": 367.57,
+            "bench_value": 71.1,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 309.64,
+            "total_value": 356.03,
+            "bench_value": 46.39,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 306.36,
+            "total_value": 350.56,
+            "bench_value": 44.2,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 286.35,
+            "total_value": 375.3,
+            "bench_value": 88.95,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 289.31,
+            "total_value": 387.28,
+            "bench_value": 97.97,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 283.83,
+        "starter_value_median": 306.36,
+        "starter_value_max": 413.73,
+        "starter_value_spread": 129.9
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 120,
+        "picks_with_an_unpriced_candidate": 43,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 8,
+      "rounds": 15,
+      "seconds": 241.7
+    },
+    {
+      "label": "8T_ppr",
+      "picks": 112,
+      "rosters": 8,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 3,
+          "RB": 7,
+          "QB": 2,
+          "TE": 2
+        },
+        "2": {
+          "QB": 2,
+          "WR": 4,
+          "RB": 6,
+          "TE": 2
+        },
+        "3": {
+          "WR": 8,
+          "RB": 3,
+          "QB": 2,
+          "TE": 1
+        },
+        "4": {
+          "WR": 8,
+          "RB": 2,
+          "TE": 2,
+          "QB": 2
+        },
+        "5": {
+          "WR": 6,
+          "RB": 4,
+          "QB": 2,
+          "TE": 2
+        },
+        "6": {
+          "TE": 4,
+          "RB": 5,
+          "WR": 3,
+          "QB": 2
+        },
+        "7": {
+          "TE": 4,
+          "RB": 5,
+          "WR": 4,
+          "QB": 1
+        },
+        "8": {
+          "RB": 3,
+          "WR": 8,
+          "TE": 2,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 112,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8
+        },
+        "median_margin": 0.75
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 79,
+          "predraft_anchor": 33
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 111,
+        "decisive": 1
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 124.74,
+            "total_value": 59.19,
+            "bench_value": -65.55,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 104.9,
+            "total_value": 40.42,
+            "bench_value": -64.48,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 101.1,
+            "total_value": 30.97,
+            "bench_value": -70.13,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 93.07,
+            "total_value": 21.75,
+            "bench_value": -71.32,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 99.27,
+            "total_value": 31.97,
+            "bench_value": -67.3,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 105.93,
+            "total_value": 45.96,
+            "bench_value": -59.97,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 110.29,
+            "total_value": 28.72,
+            "bench_value": -81.57,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 106.53,
+            "total_value": 35.71,
+            "bench_value": -70.82,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 93.07,
+        "starter_value_median": 105.93,
+        "starter_value_max": 124.74,
+        "starter_value_spread": 31.67
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 112,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 8,
+      "rounds": 14,
+      "seconds": 232.7
+    },
+    {
+      "label": "8T_ppr_SF",
+      "picks": 120,
+      "rosters": 8,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 3,
+          "TE": 5,
+          "RB": 5,
+          "WR": 2
+        },
+        "2": {
+          "QB": 3,
+          "WR": 7,
+          "RB": 3,
+          "TE": 2
+        },
+        "3": {
+          "QB": 3,
+          "RB": 7,
+          "WR": 3,
+          "TE": 2
+        },
+        "4": {
+          "QB": 2,
+          "WR": 3,
+          "TE": 5,
+          "RB": 5
+        },
+        "5": {
+          "QB": 5,
+          "WR": 7,
+          "RB": 2,
+          "TE": 1
+        },
+        "6": {
+          "QB": 4,
+          "WR": 8,
+          "RB": 2,
+          "TE": 1
+        },
+        "7": {
+          "QB": 3,
+          "WR": 8,
+          "TE": 2,
+          "RB": 2
+        },
+        "8": {
+          "QB": 5,
+          "RB": 4,
+          "WR": 4,
+          "TE": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 120,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 8,
+          "2": 8,
+          "3": 8,
+          "4": 8,
+          "5": 8,
+          "6": 8,
+          "7": 8,
+          "8": 8,
+          "9": 8,
+          "10": 8,
+          "11": 8,
+          "12": 8,
+          "13": 8,
+          "14": 8,
+          "15": 8
+        },
+        "median_margin": 0.75
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 92,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 7,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 5,
+        "contested": 115
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 371.39,
+            "total_value": 458.54,
+            "bench_value": 87.15,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 367.12,
+            "total_value": 411.87,
+            "bench_value": 44.75,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 355.99,
+            "total_value": 410.0,
+            "bench_value": 54.01,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 444.04,
+            "total_value": 402.39,
+            "bench_value": -41.65,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 286.26,
+            "total_value": 379.39,
+            "bench_value": 93.13,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 311.71,
+            "total_value": 386.69,
+            "bench_value": 74.98,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 349.8,
+            "total_value": 373.66,
+            "bench_value": 23.86,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 302.89,
+            "total_value": 393.35,
+            "bench_value": 90.46,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 286.26,
+        "starter_value_median": 355.99,
+        "starter_value_max": 444.04,
+        "starter_value_spread": 157.78
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 120,
+        "picks_with_an_unpriced_candidate": 31,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 8,
+      "rounds": 15,
+      "seconds": 241.1
+    },
+    {
+      "label": "10T_standard",
+      "picks": 140,
+      "rosters": 10,
+      "findings": [],
+      "shape": {
+        "1": {
+          "RB": 6,
+          "QB": 3,
+          "WR": 3,
+          "TE": 2
+        },
+        "2": {
+          "RB": 4,
+          "WR": 7,
+          "TE": 1,
+          "QB": 2
+        },
+        "3": {
+          "RB": 3,
+          "TE": 6,
+          "WR": 4,
+          "QB": 1
+        },
+        "4": {
+          "RB": 3,
+          "TE": 4,
+          "WR": 6,
+          "QB": 1
+        },
+        "5": {
+          "RB": 4,
+          "WR": 5,
+          "TE": 3,
+          "QB": 2
+        },
+        "6": {
+          "WR": 4,
+          "RB": 3,
+          "TE": 3,
+          "QB": 4
+        },
+        "7": {
+          "RB": 7,
+          "WR": 4,
+          "TE": 2,
+          "QB": 1
+        },
+        "8": {
+          "RB": 3,
+          "TE": 5,
+          "WR": 5,
+          "QB": 1
+        },
+        "9": {
+          "WR": 8,
+          "TE": 2,
+          "RB": 2,
+          "QB": 2
+        },
+        "10": {
+          "WR": 6,
+          "RB": 4,
+          "TE": 2,
+          "QB": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 140,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "4": 10,
+          "5": 10,
+          "6": 10,
+          "7": 10,
+          "8": 10,
+          "9": 10,
+          "10": 10,
+          "11": 10,
+          "12": 10,
+          "13": 10,
+          "14": 10
+        },
+        "median_margin": 1.04
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 96,
+          "predraft_anchor": 44
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "decisive": 28,
+        "contested": 112
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 289.57,
+            "total_value": 171.22,
+            "bench_value": -118.35,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 225.46,
+            "total_value": 107.97,
+            "bench_value": -117.49,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 252.76,
+            "total_value": 139.91,
+            "bench_value": -112.85,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 259.46,
+            "total_value": 148.81,
+            "bench_value": -110.65,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 257.25,
+            "total_value": 141.98,
+            "bench_value": -115.27,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 241.72,
+            "total_value": 122.4,
+            "bench_value": -119.32,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 244.47,
+            "total_value": 131.94,
+            "bench_value": -112.53,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 238.09,
+            "total_value": 123.25,
+            "bench_value": -114.84,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 229.86,
+            "total_value": 121.92,
+            "bench_value": -107.94,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 233.21,
+            "total_value": 109.54,
+            "bench_value": -123.67,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 225.46,
+        "starter_value_median": 244.47,
+        "starter_value_max": 289.57,
+        "starter_value_spread": 64.11
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 140,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 10,
+      "rounds": 14,
+      "seconds": 328.1
+    },
+    {
+      "label": "10T_standard_SF",
+      "picks": 150,
+      "rosters": 10,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 5,
+          "RB": 6,
+          "TE": 2,
+          "WR": 2
+        },
+        "2": {
+          "QB": 4,
+          "RB": 3,
+          "TE": 5,
+          "WR": 3
+        },
+        "3": {
+          "QB": 2,
+          "RB": 4,
+          "WR": 6,
+          "TE": 3
+        },
+        "4": {
+          "QB": 1,
+          "RB": 4,
+          "WR": 6,
+          "TE": 4
+        },
+        "5": {
+          "RB": 4,
+          "QB": 2,
+          "WR": 5,
+          "TE": 4
+        },
+        "6": {
+          "QB": 2,
+          "RB": 4,
+          "TE": 4,
+          "WR": 5
+        },
+        "7": {
+          "QB": 2,
+          "RB": 4,
+          "TE": 3,
+          "WR": 6
+        },
+        "8": {
+          "QB": 2,
+          "WR": 5,
+          "RB": 4,
+          "TE": 4
+        },
+        "9": {
+          "QB": 4,
+          "WR": 7,
+          "RB": 2,
+          "TE": 2
+        },
+        "10": {
+          "QB": 4,
+          "RB": 3,
+          "WR": 5,
+          "TE": 3
+        }
+      },
+      "margins": {
+        "picks_measured": 150,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.006666666666666667,
+        "zero_margin_by_round": {
+          "15": 1
+        },
+        "picks_by_round": {
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "4": 10,
+          "5": 10,
+          "6": 10,
+          "7": 10,
+          "8": 10,
+          "9": 10,
+          "10": 10,
+          "11": 10,
+          "12": 10,
+          "13": 10,
+          "14": 10,
+          "15": 10
+        },
+        "median_margin": 1.32
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 112,
+          "predraft_anchor": 10,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 9,
+        "picks_with_growth_above_zero": 1,
+        "max_growth": 35.6
+      },
+      "regimes": {
+        "decisive": 42,
+        "contested": 108
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 374.38,
+            "total_value": 473.0,
+            "bench_value": 98.62,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 345.83,
+            "total_value": 401.48,
+            "bench_value": 55.65,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 490.15,
+            "total_value": 432.25,
+            "bench_value": -57.9,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 516.45,
+            "total_value": 412.58,
+            "bench_value": -103.87,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 496.78,
+            "total_value": 392.63,
+            "bench_value": -104.15,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 512.79,
+            "total_value": 416.87,
+            "bench_value": -95.92,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 507.19,
+            "total_value": 408.18,
+            "bench_value": -99.01,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 510.47,
+            "total_value": 393.77,
+            "bench_value": -116.7,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 511.5,
+            "total_value": 406.28,
+            "bench_value": -105.22,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 349.3,
+            "total_value": 390.04,
+            "bench_value": 40.74,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 345.83,
+        "starter_value_median": 507.19,
+        "starter_value_max": 516.45,
+        "starter_value_spread": 170.62
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 150,
+        "picks_with_an_unpriced_candidate": 51,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 10,
+      "rounds": 15,
+      "seconds": 351.2
+    },
+    {
+      "label": "10T_half_ppr",
+      "picks": 140,
+      "rosters": 10,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 5,
+          "RB": 7,
+          "QB": 1,
+          "TE": 1
+        },
+        "2": {
+          "QB": 1,
+          "WR": 8,
+          "RB": 4,
+          "TE": 1
+        },
+        "3": {
+          "WR": 5,
+          "RB": 6,
+          "QB": 1,
+          "TE": 2
+        },
+        "4": {
+          "WR": 8,
+          "RB": 2,
+          "QB": 2,
+          "TE": 2
+        },
+        "5": {
+          "WR": 8,
+          "RB": 3,
+          "QB": 1,
+          "TE": 2
+        },
+        "6": {
+          "WR": 5,
+          "RB": 5,
+          "TE": 2,
+          "QB": 2
+        },
+        "7": {
+          "TE": 3,
+          "RB": 7,
+          "WR": 2,
+          "QB": 2
+        },
+        "8": {
+          "RB": 3,
+          "WR": 6,
+          "TE": 4,
+          "QB": 1
+        },
+        "9": {
+          "TE": 2,
+          "RB": 8,
+          "WR": 3,
+          "QB": 1
+        },
+        "10": {
+          "RB": 5,
+          "WR": 6,
+          "QB": 1,
+          "TE": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 140,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "4": 10,
+          "5": 10,
+          "6": 10,
+          "7": 10,
+          "8": 10,
+          "9": 10,
+          "10": 10,
+          "11": 10,
+          "12": 10,
+          "13": 10,
+          "14": 10
+        },
+        "median_margin": 0.35
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 102,
+          "predraft_anchor": 38
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 138,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 133.94,
+            "total_value": 78.02,
+            "bench_value": -55.92,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 50.35,
+            "total_value": -2.79,
+            "bench_value": -53.14,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 75.9,
+            "total_value": 14.53,
+            "bench_value": -61.37,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 52.43,
+            "total_value": 1.88,
+            "bench_value": -50.55,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 48.11,
+            "total_value": -5.62,
+            "bench_value": -53.73,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 52.55,
+            "total_value": -10.13,
+            "bench_value": -62.68,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 47.55,
+            "total_value": -1.09,
+            "bench_value": -48.64,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 54.78,
+            "total_value": 9.8,
+            "bench_value": -44.98,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 46.49,
+            "total_value": -9.33,
+            "bench_value": -55.82,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 49.1,
+            "total_value": -12.97,
+            "bench_value": -62.07,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 46.49,
+        "starter_value_median": 52.43,
+        "starter_value_max": 133.94,
+        "starter_value_spread": 87.45
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 140,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 10,
+      "rounds": 14,
+      "seconds": 343.5
+    },
+    {
+      "label": "10T_half_ppr_SF",
+      "picks": 150,
+      "rosters": 10,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 4,
+          "WR": 8,
+          "RB": 2,
+          "TE": 1
+        },
+        "2": {
+          "QB": 3,
+          "RB": 8,
+          "WR": 3,
+          "TE": 1
+        },
+        "3": {
+          "QB": 4,
+          "RB": 2,
+          "WR": 4,
+          "TE": 5
+        },
+        "4": {
+          "QB": 3,
+          "RB": 7,
+          "WR": 3,
+          "TE": 2
+        },
+        "5": {
+          "QB": 3,
+          "WR": 8,
+          "RB": 2,
+          "TE": 2
+        },
+        "6": {
+          "QB": 4,
+          "RB": 5,
+          "WR": 4,
+          "TE": 2
+        },
+        "7": {
+          "QB": 1,
+          "WR": 7,
+          "RB": 4,
+          "TE": 3
+        },
+        "8": {
+          "QB": 2,
+          "WR": 3,
+          "RB": 8,
+          "TE": 2
+        },
+        "9": {
+          "QB": 2,
+          "WR": 5,
+          "TE": 4,
+          "RB": 4
+        },
+        "10": {
+          "QB": 2,
+          "WR": 6,
+          "TE": 3,
+          "RB": 4
+        }
+      },
+      "margins": {
+        "picks_measured": 150,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.006666666666666667,
+        "zero_margin_by_round": {
+          "9": 1
+        },
+        "picks_by_round": {
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "4": 10,
+          "5": 10,
+          "6": 10,
+          "7": 10,
+          "8": 10,
+          "9": 10,
+          "10": 10,
+          "11": 10,
+          "12": 10,
+          "13": 10,
+          "14": 10,
+          "15": 10
+        },
+        "median_margin": 0.53
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 115,
+          "predraft_anchor": 7,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 9,
+        "picks_with_growth_above_zero": 1,
+        "max_growth": 88.9
+      },
+      "regimes": {
+        "decisive": 5,
+        "contested": 145
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 287.39,
+            "total_value": 331.35,
+            "bench_value": 43.96,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 317.28,
+            "total_value": 263.35,
+            "bench_value": -53.93,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 262.02,
+            "total_value": 272.27,
+            "bench_value": 10.25,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 262.17,
+            "total_value": 300.69,
+            "bench_value": 38.52,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 265.35,
+            "total_value": 293.43,
+            "bench_value": 28.08,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 270.07,
+            "total_value": 291.13,
+            "bench_value": 21.06,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 252.35,
+            "total_value": 285.44,
+            "bench_value": 33.09,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 305.36,
+            "total_value": 252.05,
+            "bench_value": -53.31,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 314.72,
+            "total_value": 260.44,
+            "bench_value": -54.28,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 324.68,
+            "total_value": 278.43,
+            "bench_value": -46.25,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 252.35,
+        "starter_value_median": 287.39,
+        "starter_value_max": 324.68,
+        "starter_value_spread": 72.33
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 150,
+        "picks_with_an_unpriced_candidate": 87,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 10,
+      "rounds": 15,
+      "seconds": 352.1
+    },
+    {
+      "label": "10T_ppr",
+      "picks": 140,
+      "rosters": 10,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 4,
+          "RB": 6,
+          "TE": 3,
+          "QB": 1
+        },
+        "2": {
+          "WR": 5,
+          "RB": 4,
+          "TE": 4,
+          "QB": 1
+        },
+        "3": {
+          "QB": 3,
+          "WR": 3,
+          "RB": 4,
+          "TE": 4
+        },
+        "4": {
+          "WR": 7,
+          "RB": 4,
+          "TE": 2,
+          "QB": 1
+        },
+        "5": {
+          "TE": 5,
+          "RB": 3,
+          "WR": 5,
+          "QB": 1
+        },
+        "6": {
+          "RB": 2,
+          "WR": 7,
+          "TE": 4,
+          "QB": 1
+        },
+        "7": {
+          "TE": 5,
+          "RB": 3,
+          "WR": 4,
+          "QB": 2
+        },
+        "8": {
+          "WR": 5,
+          "RB": 5,
+          "QB": 2,
+          "TE": 2
+        },
+        "9": {
+          "RB": 8,
+          "WR": 3,
+          "QB": 1,
+          "TE": 2
+        },
+        "10": {
+          "WR": 6,
+          "RB": 5,
+          "QB": 2,
+          "TE": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 140,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.007142857142857143,
+        "zero_margin_by_round": {
+          "10": 1
+        },
+        "picks_by_round": {
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "4": 10,
+          "5": 10,
+          "6": 10,
+          "7": 10,
+          "8": 10,
+          "9": 10,
+          "10": 10,
+          "11": 10,
+          "12": 10,
+          "13": 10,
+          "14": 10
+        },
+        "median_margin": 0.49
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 107,
+          "predraft_anchor": 33
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 139,
+        "decisive": 1
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 126.71,
+            "total_value": 45.77,
+            "bench_value": -80.94,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 93.76,
+            "total_value": 20.77,
+            "bench_value": -72.99,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 103.41,
+            "total_value": 9.83,
+            "bench_value": -93.58,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 106.37,
+            "total_value": 23.68,
+            "bench_value": -82.69,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 105.35,
+            "total_value": 31.59,
+            "bench_value": -73.76,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 100.9,
+            "total_value": 1.08,
+            "bench_value": -99.82,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 88.77,
+            "total_value": -15.33,
+            "bench_value": -104.1,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 100.89,
+            "total_value": 2.49,
+            "bench_value": -98.4,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 103.56,
+            "total_value": 15.35,
+            "bench_value": -88.21,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 96.72,
+            "total_value": 13.27,
+            "bench_value": -83.45,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 88.77,
+        "starter_value_median": 103.41,
+        "starter_value_max": 126.71,
+        "starter_value_spread": 37.94
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 140,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 10,
+      "rounds": 14,
+      "seconds": 337.1
+    },
+    {
+      "label": "10T_ppr_SF",
+      "picks": 150,
+      "rosters": 10,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 2,
+          "WR": 3,
+          "RB": 7,
+          "TE": 3
+        },
+        "2": {
+          "QB": 3,
+          "RB": 7,
+          "TE": 3,
+          "WR": 2
+        },
+        "3": {
+          "QB": 3,
+          "WR": 7,
+          "RB": 2,
+          "TE": 3
+        },
+        "4": {
+          "QB": 4,
+          "RB": 6,
+          "WR": 3,
+          "TE": 2
+        },
+        "5": {
+          "QB": 4,
+          "RB": 6,
+          "WR": 4,
+          "TE": 1
+        },
+        "6": {
+          "QB": 3,
+          "WR": 5,
+          "RB": 5,
+          "TE": 2
+        },
+        "7": {
+          "QB": 2,
+          "WR": 7,
+          "RB": 5,
+          "TE": 1
+        },
+        "8": {
+          "QB": 2,
+          "RB": 3,
+          "WR": 7,
+          "TE": 3
+        },
+        "9": {
+          "QB": 3,
+          "TE": 4,
+          "WR": 6,
+          "RB": 2
+        },
+        "10": {
+          "QB": 2,
+          "TE": 4,
+          "WR": 6,
+          "RB": 3
+        }
+      },
+      "margins": {
+        "picks_measured": 150,
+        "zero_margin_picks": 7,
+        "zero_margin_share": 0.04666666666666667,
+        "zero_margin_by_round": {
+          "7": 1,
+          "15": 6
+        },
+        "picks_by_round": {
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "4": 10,
+          "5": 10,
+          "6": 10,
+          "7": 10,
+          "8": 10,
+          "9": 10,
+          "10": 10,
+          "11": 10,
+          "12": 10,
+          "13": 10,
+          "14": 10,
+          "15": 10
+        },
+        "median_margin": 0.63
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 122,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 9,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 3,
+        "contested": 147
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 401.31,
+            "total_value": 324.73,
+            "bench_value": -76.58,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 380.6,
+            "total_value": 300.03,
+            "bench_value": -80.57,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 273.84,
+            "total_value": 313.24,
+            "bench_value": 39.4,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 301.55,
+            "total_value": 315.08,
+            "bench_value": 13.53,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 297.75,
+            "total_value": 307.05,
+            "bench_value": 9.3,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 271.45,
+            "total_value": 298.54,
+            "bench_value": 27.09,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 366.17,
+            "total_value": 296.37,
+            "bench_value": -69.8,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 365.69,
+            "total_value": 268.8,
+            "bench_value": -96.89,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 368.06,
+            "total_value": 286.88,
+            "bench_value": -81.18,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 327.86,
+            "total_value": 309.65,
+            "bench_value": -18.21,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 271.45,
+        "starter_value_median": 365.69,
+        "starter_value_max": 401.31,
+        "starter_value_spread": 129.86
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 150,
+        "picks_with_an_unpriced_candidate": 55,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 10,
+      "rounds": 15,
+      "seconds": 354.7
+    },
+    {
+      "label": "12T_standard",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "RB": 5,
+          "QB": 2,
+          "WR": 6,
+          "TE": 1
+        },
+        "2": {
+          "RB": 5,
+          "WR": 5,
+          "TE": 2,
+          "QB": 2
+        },
+        "3": {
+          "RB": 3,
+          "TE": 4,
+          "WR": 4,
+          "QB": 3
+        },
+        "4": {
+          "RB": 4,
+          "WR": 4,
+          "TE": 3,
+          "QB": 3
+        },
+        "5": {
+          "RB": 4,
+          "WR": 6,
+          "TE": 2,
+          "QB": 2
+        },
+        "6": {
+          "WR": 5,
+          "TE": 4,
+          "RB": 2,
+          "QB": 3
+        },
+        "7": {
+          "RB": 4,
+          "WR": 5,
+          "QB": 2,
+          "TE": 3
+        },
+        "8": {
+          "RB": 3,
+          "WR": 6,
+          "TE": 2,
+          "QB": 3
+        },
+        "9": {
+          "WR": 5,
+          "RB": 4,
+          "TE": 3,
+          "QB": 2
+        },
+        "10": {
+          "WR": 4,
+          "RB": 3,
+          "TE": 4,
+          "QB": 3
+        },
+        "11": {
+          "RB": 3,
+          "TE": 4,
+          "WR": 4,
+          "QB": 3
+        },
+        "12": {
+          "TE": 5,
+          "WR": 4,
+          "RB": 4,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 2,
+        "zero_margin_share": 0.011904761904761904,
+        "zero_margin_by_round": {
+          "6": 1,
+          "12": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 1.04
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 141,
+          "predraft_anchor": 27
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "decisive": 37,
+        "contested": 131
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 311.26,
+            "total_value": 180.63,
+            "bench_value": -130.63,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 250.98,
+            "total_value": 20.32,
+            "bench_value": -230.66,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 235.61,
+            "total_value": 3.84,
+            "bench_value": -231.77,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 52.95,
+            "total_value": -2.36,
+            "bench_value": -55.31,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 251.17,
+            "total_value": 130.01,
+            "bench_value": -121.16,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 274.61,
+            "total_value": 133.45,
+            "bench_value": -141.16,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 257.76,
+            "total_value": 100.41,
+            "bench_value": -157.35,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 264.0,
+            "total_value": 129.49,
+            "bench_value": -134.51,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 265.34,
+            "total_value": 95.07,
+            "bench_value": -170.27,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 263.33,
+            "total_value": 100.09,
+            "bench_value": -163.24,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 263.68,
+            "total_value": 34.08,
+            "bench_value": -229.6,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 260.89,
+            "total_value": 80.71,
+            "bench_value": -180.18,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 52.95,
+        "starter_value_median": 263.33,
+        "starter_value_max": 311.26,
+        "starter_value_spread": 258.31
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 450.7
+    },
+    {
+      "label": "12T_standard_SF",
+      "picks": 180,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 2,
+          "RB": 6,
+          "TE": 2,
+          "WR": 5
+        },
+        "2": {
+          "RB": 7,
+          "QB": 2,
+          "WR": 5,
+          "TE": 1
+        },
+        "3": {
+          "QB": 2,
+          "WR": 5,
+          "RB": 6,
+          "TE": 2
+        },
+        "4": {
+          "QB": 2,
+          "WR": 6,
+          "RB": 5,
+          "TE": 2
+        },
+        "5": {
+          "QB": 4,
+          "RB": 3,
+          "WR": 6,
+          "TE": 2
+        },
+        "6": {
+          "QB": 3,
+          "RB": 4,
+          "WR": 5,
+          "TE": 3
+        },
+        "7": {
+          "QB": 2,
+          "RB": 4,
+          "TE": 4,
+          "WR": 5
+        },
+        "8": {
+          "QB": 2,
+          "RB": 3,
+          "WR": 5,
+          "TE": 5
+        },
+        "9": {
+          "QB": 2,
+          "RB": 2,
+          "TE": 7,
+          "WR": 4
+        },
+        "10": {
+          "QB": 2,
+          "RB": 3,
+          "TE": 6,
+          "WR": 4
+        },
+        "11": {
+          "QB": 3,
+          "RB": 6,
+          "WR": 3,
+          "TE": 3
+        },
+        "12": {
+          "QB": 2,
+          "RB": 5,
+          "WR": 4,
+          "TE": 4
+        }
+      },
+      "margins": {
+        "picks_measured": 180,
+        "zero_margin_picks": 2,
+        "zero_margin_share": 0.011111111111111112,
+        "zero_margin_by_round": {
+          "10": 1,
+          "15": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12,
+          "15": 12
+        },
+        "median_margin": 1.46
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 136,
+          "predraft_anchor": 16,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 11,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 47,
+        "contested": 133
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 535.35,
+            "total_value": 376.87,
+            "bench_value": -158.48,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 504.31,
+            "total_value": 382.24,
+            "bench_value": -122.07,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 419.93,
+            "total_value": 343.44,
+            "bench_value": -76.49,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 506.52,
+            "total_value": 368.7,
+            "bench_value": -137.82,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 510.19,
+            "total_value": 348.2,
+            "bench_value": -161.99,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 507.33,
+            "total_value": 350.99,
+            "bench_value": -156.34,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 508.19,
+            "total_value": 344.93,
+            "bench_value": -163.26,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 445.6,
+            "total_value": 331.17,
+            "bench_value": -114.43,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 500.24,
+            "total_value": 350.79,
+            "bench_value": -149.45,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 497.38,
+            "total_value": 347.04,
+            "bench_value": -150.34,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 510.66,
+            "total_value": 355.31,
+            "bench_value": -155.35,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 507.03,
+            "total_value": 400.26,
+            "bench_value": -106.77,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 419.93,
+        "starter_value_median": 507.03,
+        "starter_value_max": 535.35,
+        "starter_value_spread": 115.42
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 180,
+        "picks_with_an_unpriced_candidate": 65,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 15,
+      "seconds": 489.0
+    },
+    {
+      "label": "12T_half_ppr",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 5,
+          "RB": 6,
+          "QB": 1,
+          "TE": 2
+        },
+        "2": {
+          "QB": 2,
+          "WR": 6,
+          "RB": 4,
+          "TE": 2
+        },
+        "3": {
+          "WR": 4,
+          "RB": 7,
+          "QB": 1,
+          "TE": 2
+        },
+        "4": {
+          "WR": 4,
+          "RB": 7,
+          "QB": 1,
+          "TE": 2
+        },
+        "5": {
+          "WR": 6,
+          "RB": 5,
+          "QB": 1,
+          "TE": 2
+        },
+        "6": {
+          "WR": 6,
+          "RB": 3,
+          "TE": 4,
+          "QB": 1
+        },
+        "7": {
+          "RB": 3,
+          "WR": 5,
+          "TE": 4,
+          "QB": 2
+        },
+        "8": {
+          "TE": 4,
+          "RB": 4,
+          "WR": 5,
+          "QB": 1
+        },
+        "9": {
+          "TE": 5,
+          "RB": 5,
+          "WR": 3,
+          "QB": 1
+        },
+        "10": {
+          "RB": 8,
+          "WR": 3,
+          "QB": 1,
+          "TE": 2
+        },
+        "11": {
+          "WR": 5,
+          "RB": 7,
+          "TE": 1,
+          "QB": 1
+        },
+        "12": {
+          "RB": 4,
+          "WR": 8,
+          "QB": 1,
+          "TE": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 3,
+        "zero_margin_share": 0.017857142857142856,
+        "zero_margin_by_round": {
+          "4": 1,
+          "10": 1,
+          "14": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.23
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 118,
+          "predraft_anchor": 50
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 166,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 135.71,
+            "total_value": 80.7,
+            "bench_value": -55.01,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 52.3,
+            "total_value": -0.3,
+            "bench_value": -52.6,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 54.13,
+            "total_value": 3.75,
+            "bench_value": -50.38,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 47.11,
+            "total_value": -9.59,
+            "bench_value": -56.7,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 78.52,
+            "total_value": 21.49,
+            "bench_value": -57.03,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 56.66,
+            "total_value": 3.28,
+            "bench_value": -53.38,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 53.33,
+            "total_value": -2.77,
+            "bench_value": -56.1,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 59.01,
+            "total_value": 3.91,
+            "bench_value": -55.1,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 53.59,
+            "total_value": -10.16,
+            "bench_value": -63.75,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 46.58,
+            "total_value": -17.33,
+            "bench_value": -63.91,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 54.31,
+            "total_value": -5.0,
+            "bench_value": -59.31,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 57.67,
+            "total_value": -2.96,
+            "bench_value": -60.63,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 46.58,
+        "starter_value_median": 54.31,
+        "starter_value_max": 135.71,
+        "starter_value_spread": 89.13
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 464.6
+    },
+    {
+      "label": "12T_half_ppr_SF",
+      "picks": 180,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 4,
+          "WR": 6,
+          "RB": 4,
+          "TE": 1
+        },
+        "2": {
+          "QB": 4,
+          "WR": 8,
+          "RB": 2,
+          "TE": 1
+        },
+        "3": {
+          "QB": 2,
+          "WR": 4,
+          "RB": 6,
+          "TE": 3
+        },
+        "4": {
+          "QB": 3,
+          "WR": 9,
+          "RB": 2,
+          "TE": 1
+        },
+        "5": {
+          "QB": 2,
+          "WR": 4,
+          "RB": 6,
+          "TE": 3
+        },
+        "6": {
+          "QB": 2,
+          "WR": 4,
+          "RB": 6,
+          "TE": 3
+        },
+        "7": {
+          "QB": 2,
+          "RB": 5,
+          "WR": 5,
+          "TE": 3
+        },
+        "8": {
+          "QB": 2,
+          "TE": 4,
+          "RB": 6,
+          "WR": 3
+        },
+        "9": {
+          "QB": 2,
+          "TE": 4,
+          "RB": 6,
+          "WR": 3
+        },
+        "10": {
+          "QB": 2,
+          "RB": 6,
+          "WR": 4,
+          "TE": 3
+        },
+        "11": {
+          "QB": 2,
+          "WR": 4,
+          "RB": 5,
+          "TE": 4
+        },
+        "12": {
+          "QB": 1,
+          "WR": 2,
+          "RB": 7,
+          "TE": 5
+        }
+      },
+      "margins": {
+        "picks_measured": 180,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.005555555555555556,
+        "zero_margin_by_round": {
+          "8": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12,
+          "15": 12
+        },
+        "median_margin": 0.38
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 146,
+          "predraft_anchor": 6,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 11,
+        "picks_with_growth_above_zero": 1,
+        "max_growth": 90.1
+      },
+      "regimes": {
+        "decisive": 4,
+        "contested": 176
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 250.62,
+            "total_value": 280.72,
+            "bench_value": 30.1,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 285.41,
+            "total_value": 235.86,
+            "bench_value": -49.55,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 300.88,
+            "total_value": 238.9,
+            "bench_value": -61.98,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 289.54,
+            "total_value": 231.57,
+            "bench_value": -57.97,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 224.54,
+            "total_value": 222.3,
+            "bench_value": -2.24,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 277.35,
+            "total_value": 223.58,
+            "bench_value": -53.77,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 236.12,
+            "total_value": 227.37,
+            "bench_value": -8.75,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 281.7,
+            "total_value": 223.01,
+            "bench_value": -58.69,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 286.15,
+            "total_value": 230.96,
+            "bench_value": -55.19,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 284.71,
+            "total_value": 224.5,
+            "bench_value": -60.21,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 286.38,
+            "total_value": 224.99,
+            "bench_value": -61.39,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 290.86,
+            "total_value": 238.0,
+            "bench_value": -52.86,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 224.54,
+        "starter_value_median": 285.41,
+        "starter_value_max": 300.88,
+        "starter_value_spread": 76.34
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 180,
+        "picks_with_an_unpriced_candidate": 85,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 15,
+      "seconds": 491.8
+    },
+    {
+      "label": "12T_ppr",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 5,
+          "TE": 5,
+          "RB": 3,
+          "QB": 1
+        },
+        "2": {
+          "WR": 7,
+          "TE": 4,
+          "RB": 2,
+          "QB": 1
+        },
+        "3": {
+          "WR": 6,
+          "RB": 3,
+          "TE": 4,
+          "QB": 1
+        },
+        "4": {
+          "RB": 4,
+          "WR": 5,
+          "QB": 2,
+          "TE": 3
+        },
+        "5": {
+          "WR": 4,
+          "RB": 5,
+          "TE": 4,
+          "QB": 1
+        },
+        "6": {
+          "TE": 4,
+          "RB": 6,
+          "WR": 3,
+          "QB": 1
+        },
+        "7": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 3,
+          "TE": 2
+        },
+        "8": {
+          "TE": 3,
+          "WR": 3,
+          "RB": 6,
+          "QB": 2
+        },
+        "9": {
+          "RB": 6,
+          "WR": 5,
+          "QB": 1,
+          "TE": 2
+        },
+        "10": {
+          "WR": 8,
+          "RB": 3,
+          "QB": 2,
+          "TE": 1
+        },
+        "11": {
+          "RB": 5,
+          "WR": 6,
+          "QB": 1,
+          "TE": 2
+        },
+        "12": {
+          "RB": 6,
+          "WR": 5,
+          "TE": 2,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 2,
+        "zero_margin_share": 0.011904761904761904,
+        "zero_margin_by_round": {
+          "10": 1,
+          "13": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.59
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 133,
+          "predraft_anchor": 35
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 166,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 134.77,
+            "total_value": 32.04,
+            "bench_value": -102.73,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 102.88,
+            "total_value": 23.72,
+            "bench_value": -79.16,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 105.47,
+            "total_value": 16.13,
+            "bench_value": -89.34,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 103.78,
+            "total_value": 17.28,
+            "bench_value": -86.5,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 111.03,
+            "total_value": 18.32,
+            "bench_value": -92.71,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 108.61,
+            "total_value": 12.45,
+            "bench_value": -96.16,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 114.45,
+            "total_value": 15.43,
+            "bench_value": -99.02,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 111.72,
+            "total_value": 12.89,
+            "bench_value": -98.83,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 110.17,
+            "total_value": 4.35,
+            "bench_value": -105.82,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 115.57,
+            "total_value": 21.93,
+            "bench_value": -93.64,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 109.57,
+            "total_value": 16.28,
+            "bench_value": -93.29,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 109.78,
+            "total_value": 20.91,
+            "bench_value": -88.87,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 102.88,
+        "starter_value_median": 110.17,
+        "starter_value_max": 134.77,
+        "starter_value_spread": 31.89
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 488.1
+    },
+    {
+      "label": "12T_ppr_SF",
+      "picks": 180,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 2,
+          "WR": 7,
+          "TE": 3,
+          "RB": 3
+        },
+        "2": {
+          "QB": 2,
+          "WR": 6,
+          "RB": 4,
+          "TE": 3
+        },
+        "3": {
+          "QB": 5,
+          "WR": 5,
+          "RB": 4,
+          "TE": 1
+        },
+        "4": {
+          "QB": 2,
+          "RB": 6,
+          "WR": 5,
+          "TE": 2
+        },
+        "5": {
+          "QB": 1,
+          "WR": 4,
+          "TE": 3,
+          "RB": 7
+        },
+        "6": {
+          "QB": 2,
+          "WR": 5,
+          "RB": 5,
+          "TE": 3
+        },
+        "7": {
+          "QB": 2,
+          "TE": 4,
+          "WR": 6,
+          "RB": 3
+        },
+        "8": {
+          "QB": 2,
+          "RB": 6,
+          "WR": 4,
+          "TE": 3
+        },
+        "9": {
+          "QB": 2,
+          "WR": 6,
+          "RB": 3,
+          "TE": 4
+        },
+        "10": {
+          "QB": 3,
+          "RB": 6,
+          "WR": 4,
+          "TE": 2
+        },
+        "11": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 3,
+          "TE": 3
+        },
+        "12": {
+          "QB": 3,
+          "RB": 5,
+          "WR": 5,
+          "TE": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 180,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12,
+          "15": 12
+        },
+        "median_margin": 0.56
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 120,
+          "predraft_anchor": 32,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 11,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 4,
+        "contested": 176
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 370.18,
+            "total_value": 284.81,
+            "bench_value": -85.37,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 294.25,
+            "total_value": 261.83,
+            "bench_value": -32.42,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 346.98,
+            "total_value": 257.56,
+            "bench_value": -89.42,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 342.18,
+            "total_value": 261.86,
+            "bench_value": -80.32,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 332.01,
+            "total_value": 258.75,
+            "bench_value": -73.26,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 226.58,
+            "total_value": 263.18,
+            "bench_value": 36.6,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 333.37,
+            "total_value": 261.3,
+            "bench_value": -72.07,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 334.94,
+            "total_value": 250.61,
+            "bench_value": -84.33,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 345.72,
+            "total_value": 264.98,
+            "bench_value": -80.74,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 340.08,
+            "total_value": 244.91,
+            "bench_value": -95.17,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 335.97,
+            "total_value": 239.93,
+            "bench_value": -96.04,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 334.0,
+            "total_value": 246.61,
+            "bench_value": -87.39,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 226.58,
+        "starter_value_median": 335.97,
+        "starter_value_max": 370.18,
+        "starter_value_spread": 143.6
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 180,
+        "picks_with_an_unpriced_candidate": 81,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 15,
+      "seconds": 511.1
+    },
+    {
+      "label": "14T_standard",
+      "picks": 196,
+      "rosters": 14,
+      "findings": [
+        {
+          "audit": "unpriced_picks",
+          "pick": "14.02",
+          "player": "Jake Haener",
+          "reason": "chosen with tav=None"
+        }
+      ],
+      "shape": {
+        "1": {
+          "RB": 3,
+          "TE": 4,
+          "WR": 4,
+          "QB": 3
+        },
+        "2": {
+          "RB": 4,
+          "WR": 4,
+          "QB": 3,
+          "TE": 3
+        },
+        "3": {
+          "RB": 2,
+          "WR": 4,
+          "QB": 4,
+          "TE": 4
+        },
+        "4": {
+          "RB": 3,
+          "WR": 4,
+          "QB": 4,
+          "TE": 3
+        },
+        "5": {
+          "RB": 3,
+          "QB": 4,
+          "WR": 4,
+          "TE": 3
+        },
+        "6": {
+          "RB": 5,
+          "TE": 3,
+          "WR": 3,
+          "QB": 3
+        },
+        "7": {
+          "RB": 3,
+          "WR": 5,
+          "TE": 2,
+          "QB": 4
+        },
+        "8": {
+          "WR": 4,
+          "RB": 5,
+          "TE": 2,
+          "QB": 3
+        },
+        "9": {
+          "RB": 5,
+          "WR": 5,
+          "TE": 1,
+          "QB": 3
+        },
+        "10": {
+          "RB": 4,
+          "TE": 2,
+          "WR": 5,
+          "QB": 3
+        },
+        "11": {
+          "RB": 6,
+          "WR": 5,
+          "TE": 2,
+          "QB": 1
+        },
+        "12": {
+          "WR": 5,
+          "RB": 3,
+          "TE": 5,
+          "QB": 1
+        },
+        "13": {
+          "RB": 5,
+          "TE": 4,
+          "WR": 4,
+          "QB": 1
+        },
+        "14": {
+          "WR": 5,
+          "RB": 3,
+          "QB": 3,
+          "TE": 3
+        }
+      },
+      "margins": {
+        "picks_measured": 196,
+        "zero_margin_picks": 4,
+        "zero_margin_share": 0.02040816326530612,
+        "zero_margin_by_round": {
+          "11": 1,
+          "12": 1,
+          "14": 2
+        },
+        "picks_by_round": {
+          "1": 14,
+          "2": 14,
+          "3": 14,
+          "4": 14,
+          "5": 14,
+          "6": 14,
+          "7": 14,
+          "8": 14,
+          "9": 14,
+          "10": 14,
+          "11": 14,
+          "12": 14,
+          "13": 14,
+          "14": 14
+        },
+        "median_margin": 1.39
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "None": 1,
+          "live_starter_demand": 176,
+          "predraft_anchor": 19
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "decisive": 62,
+        "contested": 134
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 331.83,
+            "total_value": 27.32,
+            "bench_value": -304.51,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 253.95,
+            "total_value": -159.89,
+            "bench_value": -413.84,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 247.65,
+            "total_value": 132.15,
+            "bench_value": -115.5,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 228.74,
+            "total_value": 181.21,
+            "bench_value": -47.53,
+            "unpriced_players": 0
+          },
+          "13": {
+            "starter_value": 282.73,
+            "total_value": 226.27,
+            "bench_value": -56.46,
+            "unpriced_players": 1
+          },
+          "14": {
+            "starter_value": 289.07,
+            "total_value": 122.43,
+            "bench_value": -166.64,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 290.88,
+            "total_value": -1.31,
+            "bench_value": -292.19,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 317.64,
+            "total_value": -136.25,
+            "bench_value": -453.89,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 290.02,
+            "total_value": -143.53,
+            "bench_value": -433.55,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 301.0,
+            "total_value": -195.93,
+            "bench_value": -496.93,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 281.74,
+            "total_value": -136.68,
+            "bench_value": -418.42,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 278.47,
+            "total_value": -210.08,
+            "bench_value": -488.55,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 261.98,
+            "total_value": -185.78,
+            "bench_value": -447.76,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 268.93,
+            "total_value": -172.79,
+            "bench_value": -441.72,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 228.74,
+        "starter_value_median": 282.73,
+        "starter_value_max": 331.83,
+        "starter_value_spread": 103.09
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 196,
+        "picks_with_an_unpriced_candidate": 46,
+        "picks_that_took_an_unpriced_candidate": 1,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 14,
+      "rounds": 14,
+      "seconds": 617.8
+    },
+    {
+      "label": "14T_standard_SF",
+      "picks": 210,
+      "rosters": 14,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 1,
+          "RB": 6,
+          "WR": 7,
+          "TE": 1
+        },
+        "2": {
+          "RB": 6,
+          "QB": 1,
+          "WR": 6,
+          "TE": 2
+        },
+        "3": {
+          "QB": 2,
+          "RB": 6,
+          "WR": 5,
+          "TE": 2
+        },
+        "4": {
+          "QB": 2,
+          "RB": 3,
+          "WR": 7,
+          "TE": 3
+        },
+        "5": {
+          "RB": 4,
+          "QB": 1,
+          "WR": 6,
+          "TE": 4
+        },
+        "6": {
+          "QB": 2,
+          "WR": 5,
+          "RB": 4,
+          "TE": 4
+        },
+        "7": {
+          "RB": 5,
+          "QB": 2,
+          "TE": 4,
+          "WR": 4
+        },
+        "8": {
+          "RB": 4,
+          "QB": 2,
+          "TE": 3,
+          "WR": 6
+        },
+        "9": {
+          "QB": 1,
+          "RB": 4,
+          "WR": 7,
+          "TE": 3
+        },
+        "10": {
+          "QB": 1,
+          "RB": 4,
+          "WR": 6,
+          "TE": 4
+        },
+        "11": {
+          "QB": 4,
+          "RB": 4,
+          "TE": 3,
+          "WR": 4
+        },
+        "12": {
+          "QB": 2,
+          "TE": 5,
+          "RB": 4,
+          "WR": 4
+        },
+        "13": {
+          "QB": 5,
+          "RB": 3,
+          "WR": 4,
+          "TE": 3
+        },
+        "14": {
+          "QB": 2,
+          "RB": 2,
+          "WR": 5,
+          "TE": 6
+        }
+      },
+      "margins": {
+        "picks_measured": 210,
+        "zero_margin_picks": 8,
+        "zero_margin_share": 0.0380952380952381,
+        "zero_margin_by_round": {
+          "7": 1,
+          "9": 1,
+          "12": 1,
+          "14": 1,
+          "15": 4
+        },
+        "picks_by_round": {
+          "1": 14,
+          "2": 14,
+          "3": 14,
+          "4": 14,
+          "5": 14,
+          "6": 14,
+          "7": 14,
+          "8": 14,
+          "9": 14,
+          "10": 14,
+          "11": 14,
+          "12": 14,
+          "13": 14,
+          "14": 14,
+          "15": 14
+        },
+        "median_margin": 1.19
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 152,
+          "predraft_anchor": 30,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 13,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 54,
+        "contested": 156
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 525.51,
+            "total_value": 348.56,
+            "bench_value": -176.95,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 474.67,
+            "total_value": 290.29,
+            "bench_value": -184.38,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 467.97,
+            "total_value": 294.43,
+            "bench_value": -173.54,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 484.29,
+            "total_value": 277.48,
+            "bench_value": -206.81,
+            "unpriced_players": 0
+          },
+          "13": {
+            "starter_value": 263.04,
+            "total_value": 303.36,
+            "bench_value": 40.32,
+            "unpriced_players": 0
+          },
+          "14": {
+            "starter_value": 494.52,
+            "total_value": 333.48,
+            "bench_value": -161.04,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 519.55,
+            "total_value": 302.02,
+            "bench_value": -217.53,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 482.51,
+            "total_value": 281.59,
+            "bench_value": -200.92,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 489.65,
+            "total_value": 309.03,
+            "bench_value": -180.62,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 474.38,
+            "total_value": 270.78,
+            "bench_value": -203.6,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 465.3,
+            "total_value": 269.1,
+            "bench_value": -196.2,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 490.4,
+            "total_value": 268.61,
+            "bench_value": -221.79,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 480.46,
+            "total_value": 297.21,
+            "bench_value": -183.25,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 470.29,
+            "total_value": 279.51,
+            "bench_value": -190.78,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 263.04,
+        "starter_value_median": 482.51,
+        "starter_value_max": 525.51,
+        "starter_value_spread": 262.47
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 210,
+        "picks_with_an_unpriced_candidate": 80,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 14,
+      "rounds": 15,
+      "seconds": 645.0
+    },
+    {
+      "label": "14T_half_ppr",
+      "picks": 196,
+      "rosters": 14,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 3,
+          "QB": 1,
+          "RB": 5,
+          "TE": 5
+        },
+        "2": {
+          "QB": 1,
+          "WR": 4,
+          "TE": 7,
+          "RB": 2
+        },
+        "3": {
+          "WR": 4,
+          "RB": 7,
+          "QB": 1,
+          "TE": 2
+        },
+        "4": {
+          "WR": 5,
+          "RB": 5,
+          "TE": 3,
+          "QB": 1
+        },
+        "5": {
+          "WR": 5,
+          "RB": 5,
+          "QB": 1,
+          "TE": 3
+        },
+        "6": {
+          "WR": 6,
+          "RB": 3,
+          "QB": 1,
+          "TE": 4
+        },
+        "7": {
+          "TE": 3,
+          "RB": 6,
+          "WR": 4,
+          "QB": 1
+        },
+        "8": {
+          "RB": 4,
+          "WR": 3,
+          "QB": 1,
+          "TE": 6
+        },
+        "9": {
+          "TE": 7,
+          "WR": 3,
+          "RB": 3,
+          "QB": 1
+        },
+        "10": {
+          "RB": 7,
+          "WR": 4,
+          "QB": 2,
+          "TE": 1
+        },
+        "11": {
+          "WR": 8,
+          "QB": 2,
+          "RB": 3,
+          "TE": 1
+        },
+        "12": {
+          "QB": 1,
+          "RB": 8,
+          "WR": 4,
+          "TE": 1
+        },
+        "13": {
+          "QB": 1,
+          "RB": 3,
+          "WR": 5,
+          "TE": 5
+        },
+        "14": {
+          "RB": 8,
+          "QB": 1,
+          "WR": 3,
+          "TE": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 196,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 14,
+          "2": 14,
+          "3": 14,
+          "4": 14,
+          "5": 14,
+          "6": 14,
+          "7": 14,
+          "8": 14,
+          "9": 14,
+          "10": 14,
+          "11": 14,
+          "12": 14,
+          "13": 14,
+          "14": 14
+        },
+        "median_margin": 0.24
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 176,
+          "predraft_anchor": 20
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 194,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 149.65,
+            "total_value": 77.04,
+            "bench_value": -72.61,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 34.13,
+            "total_value": 10.8,
+            "bench_value": -23.33,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 31.26,
+            "total_value": 0.92,
+            "bench_value": -30.34,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 66.75,
+            "total_value": 20.12,
+            "bench_value": -46.63,
+            "unpriced_players": 0
+          },
+          "13": {
+            "starter_value": 64.59,
+            "total_value": -11.7,
+            "bench_value": -76.29,
+            "unpriced_players": 0
+          },
+          "14": {
+            "starter_value": 64.42,
+            "total_value": 16.13,
+            "bench_value": -48.29,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 98.72,
+            "total_value": 11.43,
+            "bench_value": -87.29,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 67.42,
+            "total_value": 16.87,
+            "bench_value": -50.55,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 51.88,
+            "total_value": -1.07,
+            "bench_value": -52.95,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 65.09,
+            "total_value": 13.4,
+            "bench_value": -51.69,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 53.47,
+            "total_value": -9.05,
+            "bench_value": -62.52,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 49.56,
+            "total_value": -7.0,
+            "bench_value": -56.56,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 62.72,
+            "total_value": -21.31,
+            "bench_value": -84.03,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 57.85,
+            "total_value": -36.75,
+            "bench_value": -94.6,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 31.26,
+        "starter_value_median": 64.42,
+        "starter_value_max": 149.65,
+        "starter_value_spread": 118.39
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 196,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 14,
+      "rounds": 14,
+      "seconds": 607.9
+    },
+    {
+      "label": "14T_half_ppr_SF",
+      "picks": 210,
+      "rosters": 14,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 2,
+          "WR": 8,
+          "TE": 2,
+          "RB": 3
+        },
+        "2": {
+          "QB": 1,
+          "WR": 5,
+          "RB": 7,
+          "TE": 2
+        },
+        "3": {
+          "QB": 2,
+          "WR": 8,
+          "RB": 4,
+          "TE": 1
+        },
+        "4": {
+          "QB": 3,
+          "WR": 5,
+          "TE": 4,
+          "RB": 3
+        },
+        "5": {
+          "QB": 2,
+          "TE": 3,
+          "RB": 6,
+          "WR": 4
+        },
+        "6": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 4,
+          "TE": 2
+        },
+        "7": {
+          "QB": 2,
+          "WR": 3,
+          "RB": 7,
+          "TE": 3
+        },
+        "8": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 4,
+          "TE": 2
+        },
+        "9": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 4,
+          "TE": 2
+        },
+        "10": {
+          "QB": 2,
+          "RB": 6,
+          "WR": 4,
+          "TE": 3
+        },
+        "11": {
+          "QB": 2,
+          "WR": 8,
+          "RB": 3,
+          "TE": 2
+        },
+        "12": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 4,
+          "TE": 2
+        },
+        "13": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 4,
+          "TE": 2
+        },
+        "14": {
+          "WR": 4,
+          "QB": 2,
+          "RB": 6,
+          "TE": 3
+        }
+      },
+      "margins": {
+        "picks_measured": 210,
+        "zero_margin_picks": 4,
+        "zero_margin_share": 0.01904761904761905,
+        "zero_margin_by_round": {
+          "5": 1,
+          "11": 1,
+          "14": 1,
+          "15": 1
+        },
+        "picks_by_round": {
+          "1": 14,
+          "2": 14,
+          "3": 14,
+          "4": 14,
+          "5": 14,
+          "6": 14,
+          "7": 14,
+          "8": 14,
+          "9": 14,
+          "10": 14,
+          "11": 14,
+          "12": 14,
+          "13": 14,
+          "14": 14,
+          "15": 14
+        },
+        "median_margin": 0.31
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 113,
+          "predraft_anchor": 69,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 13,
+        "picks_with_growth_above_zero": 2,
+        "max_growth": 93.7
+      },
+      "regimes": {
+        "decisive": 5,
+        "contested": 205
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 258.07,
+            "total_value": 187.33,
+            "bench_value": -70.74,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 265.3,
+            "total_value": 208.95,
+            "bench_value": -56.35,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 267.82,
+            "total_value": 205.88,
+            "bench_value": -61.94,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 269.15,
+            "total_value": 212.26,
+            "bench_value": -56.89,
+            "unpriced_players": 0
+          },
+          "13": {
+            "starter_value": 266.99,
+            "total_value": 211.7,
+            "bench_value": -55.29,
+            "unpriced_players": 0
+          },
+          "14": {
+            "starter_value": 271.22,
+            "total_value": 216.9,
+            "bench_value": -54.32,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 221.61,
+            "total_value": 151.83,
+            "bench_value": -69.78,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 240.65,
+            "total_value": 158.82,
+            "bench_value": -81.83,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 247.42,
+            "total_value": 191.55,
+            "bench_value": -55.87,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 252.18,
+            "total_value": 199.49,
+            "bench_value": -52.69,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 251.18,
+            "total_value": 196.95,
+            "bench_value": -54.23,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 252.61,
+            "total_value": 198.73,
+            "bench_value": -53.88,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 248.02,
+            "total_value": 197.75,
+            "bench_value": -50.27,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 262.46,
+            "total_value": 209.33,
+            "bench_value": -53.13,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 221.61,
+        "starter_value_median": 258.07,
+        "starter_value_max": 271.22,
+        "starter_value_spread": 49.61
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 210,
+        "picks_with_an_unpriced_candidate": 101,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 14,
+      "rounds": 15,
+      "seconds": 640.5
+    },
+    {
+      "label": "14T_ppr",
+      "picks": 196,
+      "rosters": 14,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 2,
+          "QB": 1,
+          "TE": 5,
+          "RB": 6
+        },
+        "2": {
+          "QB": 2,
+          "WR": 3,
+          "RB": 4,
+          "TE": 5
+        },
+        "3": {
+          "WR": 3,
+          "QB": 1,
+          "RB": 5,
+          "TE": 5
+        },
+        "4": {
+          "WR": 5,
+          "TE": 5,
+          "QB": 1,
+          "RB": 3
+        },
+        "5": {
+          "TE": 5,
+          "RB": 3,
+          "WR": 4,
+          "QB": 2
+        },
+        "6": {
+          "RB": 3,
+          "WR": 5,
+          "QB": 2,
+          "TE": 4
+        },
+        "7": {
+          "TE": 5,
+          "RB": 5,
+          "WR": 3,
+          "QB": 1
+        },
+        "8": {
+          "WR": 4,
+          "RB": 4,
+          "QB": 2,
+          "TE": 4
+        },
+        "9": {
+          "RB": 7,
+          "WR": 4,
+          "TE": 2,
+          "QB": 1
+        },
+        "10": {
+          "WR": 6,
+          "RB": 3,
+          "TE": 4,
+          "QB": 1
+        },
+        "11": {
+          "RB": 5,
+          "WR": 4,
+          "QB": 1,
+          "TE": 4
+        },
+        "12": {
+          "RB": 6,
+          "WR": 4,
+          "TE": 3,
+          "QB": 1
+        },
+        "13": {
+          "RB": 3,
+          "WR": 7,
+          "QB": 2,
+          "TE": 2
+        },
+        "14": {
+          "WR": 7,
+          "RB": 5,
+          "TE": 1,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 196,
+        "zero_margin_picks": 1,
+        "zero_margin_share": 0.00510204081632653,
+        "zero_margin_by_round": {
+          "5": 1
+        },
+        "picks_by_round": {
+          "1": 14,
+          "2": 14,
+          "3": 14,
+          "4": 14,
+          "5": 14,
+          "6": 14,
+          "7": 14,
+          "8": 14,
+          "9": 14,
+          "10": 14,
+          "11": 14,
+          "12": 14,
+          "13": 14,
+          "14": 14
+        },
+        "median_margin": 0.49
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 172,
+          "predraft_anchor": 24
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 192,
+        "decisive": 4
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 154.87,
+            "total_value": 53.49,
+            "bench_value": -101.38,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 121.35,
+            "total_value": -12.66,
+            "bench_value": -134.01,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 106.87,
+            "total_value": -16.31,
+            "bench_value": -123.18,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 116.21,
+            "total_value": -0.68,
+            "bench_value": -116.89,
+            "unpriced_players": 0
+          },
+          "13": {
+            "starter_value": 107.51,
+            "total_value": 5.96,
+            "bench_value": -101.55,
+            "unpriced_players": 0
+          },
+          "14": {
+            "starter_value": 107.78,
+            "total_value": 24.79,
+            "bench_value": -82.99,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 140.29,
+            "total_value": 18.8,
+            "bench_value": -121.49,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 127.12,
+            "total_value": 6.8,
+            "bench_value": -120.32,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 129.38,
+            "total_value": 2.09,
+            "bench_value": -127.29,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 123.49,
+            "total_value": 0.25,
+            "bench_value": -123.24,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 123.68,
+            "total_value": 13.7,
+            "bench_value": -109.98,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 128.81,
+            "total_value": 1.65,
+            "bench_value": -127.16,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 124.57,
+            "total_value": 5.12,
+            "bench_value": -119.45,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 118.32,
+            "total_value": 32.74,
+            "bench_value": -85.58,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 106.87,
+        "starter_value_median": 123.68,
+        "starter_value_max": 154.87,
+        "starter_value_spread": 48.0
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 196,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 14,
+      "rounds": 14,
+      "seconds": 599.1
+    },
+    {
+      "label": "14T_ppr_SF",
+      "picks": 210,
+      "rosters": 14,
+      "findings": [],
+      "shape": {
+        "1": {
+          "QB": 2,
+          "TE": 2,
+          "RB": 5,
+          "WR": 6
+        },
+        "2": {
+          "QB": 2,
+          "TE": 3,
+          "WR": 5,
+          "RB": 5
+        },
+        "3": {
+          "QB": 2,
+          "WR": 5,
+          "RB": 6,
+          "TE": 2
+        },
+        "4": {
+          "QB": 1,
+          "WR": 4,
+          "RB": 7,
+          "TE": 3
+        },
+        "5": {
+          "QB": 1,
+          "WR": 5,
+          "RB": 6,
+          "TE": 3
+        },
+        "6": {
+          "QB": 2,
+          "WR": 6,
+          "TE": 2,
+          "RB": 5
+        },
+        "7": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 4,
+          "TE": 2
+        },
+        "8": {
+          "QB": 3,
+          "RB": 7,
+          "WR": 3,
+          "TE": 2
+        },
+        "9": {
+          "QB": 1,
+          "WR": 3,
+          "RB": 7,
+          "TE": 4
+        },
+        "10": {
+          "QB": 2,
+          "WR": 7,
+          "TE": 3,
+          "RB": 3
+        },
+        "11": {
+          "QB": 2,
+          "RB": 8,
+          "WR": 3,
+          "TE": 2
+        },
+        "12": {
+          "QB": 3,
+          "WR": 7,
+          "RB": 4,
+          "TE": 1
+        },
+        "13": {
+          "QB": 3,
+          "WR": 2,
+          "RB": 8,
+          "TE": 2
+        },
+        "14": {
+          "QB": 2,
+          "RB": 5,
+          "WR": 3,
+          "TE": 5
+        }
+      },
+      "margins": {
+        "picks_measured": 210,
+        "zero_margin_picks": 2,
+        "zero_margin_share": 0.009523809523809525,
+        "zero_margin_by_round": {
+          "11": 1,
+          "15": 1
+        },
+        "picks_by_round": {
+          "1": 14,
+          "2": 14,
+          "3": 14,
+          "4": 14,
+          "5": 14,
+          "6": 14,
+          "7": 14,
+          "8": 14,
+          "9": 14,
+          "10": 14,
+          "11": 14,
+          "12": 14,
+          "13": 14,
+          "14": 14,
+          "15": 14
+        },
+        "median_margin": 0.6
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 140,
+          "predraft_anchor": 42,
+          "startable_floor": 28
+        },
+        "picks_with_growth_measured": 13,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": 0.0
+      },
+      "regimes": {
+        "decisive": 8,
+        "contested": 202
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 349.1,
+            "total_value": 248.35,
+            "bench_value": -100.75,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 316.03,
+            "total_value": 216.82,
+            "bench_value": -99.21,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 315.88,
+            "total_value": 234.05,
+            "bench_value": -81.83,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 310.99,
+            "total_value": 229.22,
+            "bench_value": -81.77,
+            "unpriced_players": 0
+          },
+          "13": {
+            "starter_value": 318.45,
+            "total_value": 241.89,
+            "bench_value": -76.56,
+            "unpriced_players": 0
+          },
+          "14": {
+            "starter_value": 311.76,
+            "total_value": 220.28,
+            "bench_value": -91.48,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 314.0,
+            "total_value": 205.96,
+            "bench_value": -108.04,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 309.14,
+            "total_value": 207.13,
+            "bench_value": -102.01,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 301.18,
+            "total_value": 200.65,
+            "bench_value": -100.53,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 292.48,
+            "total_value": 186.03,
+            "bench_value": -106.45,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 312.71,
+            "total_value": 208.74,
+            "bench_value": -103.97,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 300.85,
+            "total_value": 212.24,
+            "bench_value": -88.61,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 254.94,
+            "total_value": 222.66,
+            "bench_value": -32.28,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 303.31,
+            "total_value": 208.41,
+            "bench_value": -94.9,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 254.94,
+        "starter_value_median": 311.76,
+        "starter_value_max": 349.1,
+        "starter_value_spread": 94.16
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 210,
+        "picks_with_an_unpriced_candidate": 85,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 14,
+      "rounds": 15,
+      "seconds": 640.9
+    },
+    {
+      "label": "12T_ppr_TEP_dynasty",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "TE": 6,
+          "WR": 4,
+          "RB": 3,
+          "QB": 1
+        },
+        "2": {
+          "WR": 3,
+          "TE": 6,
+          "RB": 4,
+          "QB": 1
+        },
+        "3": {
+          "TE": 6,
+          "WR": 3,
+          "RB": 3,
+          "QB": 2
+        },
+        "4": {
+          "WR": 5,
+          "RB": 5,
+          "TE": 3,
+          "QB": 1
+        },
+        "5": {
+          "WR": 6,
+          "RB": 3,
+          "TE": 3,
+          "QB": 2
+        },
+        "6": {
+          "RB": 3,
+          "WR": 4,
+          "TE": 5,
+          "QB": 2
+        },
+        "7": {
+          "WR": 5,
+          "RB": 5,
+          "QB": 2,
+          "TE": 2
+        },
+        "8": {
+          "QB": 2,
+          "RB": 5,
+          "WR": 4,
+          "TE": 3
+        },
+        "9": {
+          "RB": 5,
+          "WR": 5,
+          "TE": 3,
+          "QB": 1
+        },
+        "10": {
+          "WR": 7,
+          "RB": 4,
+          "TE": 2,
+          "QB": 1
+        },
+        "11": {
+          "RB": 7,
+          "TE": 2,
+          "WR": 4,
+          "QB": 1
+        },
+        "12": {
+          "RB": 5,
+          "WR": 7,
+          "TE": 1,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.77
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 149,
+          "predraft_anchor": 19
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 166,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 152.69,
+            "total_value": -18.44,
+            "bench_value": -171.13,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 121.8,
+            "total_value": 14.24,
+            "bench_value": -107.56,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 121.18,
+            "total_value": 45.04,
+            "bench_value": -76.14,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 110.88,
+            "total_value": 54.82,
+            "bench_value": -56.06,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 131.51,
+            "total_value": -22.24,
+            "bench_value": -153.75,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 140.05,
+            "total_value": -61.58,
+            "bench_value": -201.63,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 113.41,
+            "total_value": 40.7,
+            "bench_value": -72.71,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 118.75,
+            "total_value": 9.56,
+            "bench_value": -109.19,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 108.08,
+            "total_value": -38.82,
+            "bench_value": -146.9,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 111.21,
+            "total_value": 41.13,
+            "bench_value": -70.08,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 125.16,
+            "total_value": -11.2,
+            "bench_value": -136.36,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 113.84,
+            "total_value": 12.28,
+            "bench_value": -101.56,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 108.08,
+        "starter_value_median": 121.18,
+        "starter_value_max": 152.69,
+        "starter_value_spread": 44.61
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 459.3
+    },
+    {
+      "label": "12T_ppr_redraft",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 5,
+          "RB": 6,
+          "TE": 2,
+          "QB": 1
+        },
+        "2": {
+          "RB": 3,
+          "WR": 7,
+          "TE": 2,
+          "QB": 2
+        },
+        "3": {
+          "WR": 6,
+          "RB": 5,
+          "TE": 2,
+          "QB": 1
+        },
+        "4": {
+          "WR": 8,
+          "RB": 3,
+          "TE": 2,
+          "QB": 1
+        },
+        "5": {
+          "WR": 5,
+          "RB": 6,
+          "TE": 2,
+          "QB": 1
+        },
+        "6": {
+          "TE": 5,
+          "WR": 5,
+          "RB": 3,
+          "QB": 1
+        },
+        "7": {
+          "QB": 2,
+          "WR": 4,
+          "TE": 2,
+          "RB": 6
+        },
+        "8": {
+          "TE": 3,
+          "WR": 6,
+          "RB": 3,
+          "QB": 2
+        },
+        "9": {
+          "RB": 8,
+          "WR": 3,
+          "TE": 2,
+          "QB": 1
+        },
+        "10": {
+          "WR": 6,
+          "RB": 5,
+          "TE": 2,
+          "QB": 1
+        },
+        "11": {
+          "RB": 8,
+          "WR": 2,
+          "QB": 1,
+          "TE": 3
+        },
+        "12": {
+          "RB": 8,
+          "WR": 3,
+          "QB": 1,
+          "TE": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 3,
+        "zero_margin_share": 0.017857142857142856,
+        "zero_margin_by_round": {
+          "3": 1,
+          "8": 1,
+          "13": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.54
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 108,
+          "predraft_anchor": 60
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 168
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 164.86,
+            "total_value": 100.19,
+            "bench_value": -64.67,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 125.53,
+            "total_value": 62.29,
+            "bench_value": -63.24,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 134.28,
+            "total_value": 67.34,
+            "bench_value": -66.94,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 128.68,
+            "total_value": 59.26,
+            "bench_value": -69.42,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 138.07,
+            "total_value": 74.35,
+            "bench_value": -63.72,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 140.99,
+            "total_value": 77.39,
+            "bench_value": -63.6,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 140.77,
+            "total_value": 72.82,
+            "bench_value": -67.95,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 133.3,
+            "total_value": 71.69,
+            "bench_value": -61.61,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 131.34,
+            "total_value": 68.19,
+            "bench_value": -63.15,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 138.0,
+            "total_value": 74.36,
+            "bench_value": -63.64,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 139.8,
+            "total_value": 77.45,
+            "bench_value": -62.35,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 130.43,
+            "total_value": 68.97,
+            "bench_value": -61.46,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 125.53,
+        "starter_value_median": 138.0,
+        "starter_value_max": 164.86,
+        "starter_value_spread": 39.33
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 453.4
+    },
+    {
+      "label": "12T_ppr_TEP_redraft",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 3,
+          "RB": 8,
+          "TE": 2,
+          "QB": 1
+        },
+        "2": {
+          "TE": 2,
+          "RB": 6,
+          "WR": 5,
+          "QB": 1
+        },
+        "3": {
+          "TE": 2,
+          "WR": 5,
+          "RB": 6,
+          "QB": 1
+        },
+        "4": {
+          "RB": 4,
+          "WR": 6,
+          "TE": 2,
+          "QB": 2
+        },
+        "5": {
+          "WR": 7,
+          "TE": 2,
+          "RB": 4,
+          "QB": 1
+        },
+        "6": {
+          "WR": 7,
+          "TE": 2,
+          "RB": 4,
+          "QB": 1
+        },
+        "7": {
+          "WR": 6,
+          "RB": 6,
+          "TE": 1,
+          "QB": 1
+        },
+        "8": {
+          "QB": 2,
+          "WR": 7,
+          "RB": 3,
+          "TE": 2
+        },
+        "9": {
+          "RB": 8,
+          "WR": 3,
+          "TE": 2,
+          "QB": 1
+        },
+        "10": {
+          "WR": 5,
+          "RB": 5,
+          "TE": 2,
+          "QB": 2
+        },
+        "11": {
+          "RB": 5,
+          "TE": 5,
+          "WR": 3,
+          "QB": 1
+        },
+        "12": {
+          "RB": 7,
+          "WR": 3,
+          "TE": 3,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 4,
+        "zero_margin_share": 0.023809523809523808,
+        "zero_margin_by_round": {
+          "4": 1,
+          "8": 1,
+          "10": 1,
+          "13": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.6
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 118,
+          "predraft_anchor": 50
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 166,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 176.49,
+            "total_value": 117.16,
+            "bench_value": -59.33,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 135.26,
+            "total_value": 74.13,
+            "bench_value": -61.13,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 134.74,
+            "total_value": 55.31,
+            "bench_value": -79.43,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 132.01,
+            "total_value": 72.19,
+            "bench_value": -59.82,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 154.08,
+            "total_value": 104.6,
+            "bench_value": -49.48,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 167.37,
+            "total_value": 109.2,
+            "bench_value": -58.17,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 147.11,
+            "total_value": 79.73,
+            "bench_value": -67.38,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 149.0,
+            "total_value": 86.86,
+            "bench_value": -62.14,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 150.64,
+            "total_value": 72.66,
+            "bench_value": -77.98,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 146.11,
+            "total_value": 85.68,
+            "bench_value": -60.43,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 144.04,
+            "total_value": 64.14,
+            "bench_value": -79.9,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 136.91,
+            "total_value": 70.25,
+            "bench_value": -66.66,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 132.01,
+        "starter_value_median": 147.11,
+        "starter_value_max": 176.49,
+        "starter_value_spread": 44.48
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 451.6
+    },
+    {
+      "label": "4WR_TE_PREMIUM",
+      "picks": 192,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "TE": 5,
+          "WR": 5,
+          "RB": 4,
+          "QB": 2
+        },
+        "2": {
+          "TE": 3,
+          "RB": 6,
+          "WR": 6,
+          "QB": 1
+        },
+        "3": {
+          "WR": 7,
+          "TE": 2,
+          "RB": 6,
+          "QB": 1
+        },
+        "4": {
+          "WR": 9,
+          "TE": 3,
+          "RB": 3,
+          "QB": 1
+        },
+        "5": {
+          "WR": 7,
+          "TE": 3,
+          "RB": 5,
+          "QB": 1
+        },
+        "6": {
+          "WR": 6,
+          "TE": 4,
+          "RB": 5,
+          "QB": 1
+        },
+        "7": {
+          "TE": 3,
+          "WR": 7,
+          "RB": 4,
+          "QB": 2
+        },
+        "8": {
+          "WR": 7,
+          "TE": 3,
+          "RB": 4,
+          "QB": 2
+        },
+        "9": {
+          "TE": 3,
+          "WR": 7,
+          "RB": 5,
+          "QB": 1
+        },
+        "10": {
+          "WR": 6,
+          "TE": 3,
+          "QB": 2,
+          "RB": 5
+        },
+        "11": {
+          "QB": 1,
+          "TE": 4,
+          "WR": 5,
+          "RB": 6
+        },
+        "12": {
+          "TE": 3,
+          "RB": 7,
+          "WR": 5,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 192,
+        "zero_margin_picks": 3,
+        "zero_margin_share": 0.015625,
+        "zero_margin_by_round": {
+          "6": 1,
+          "10": 2
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12,
+          "15": 12,
+          "16": 12
+        },
+        "median_margin": 0.51
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 160,
+          "predraft_anchor": 32
+        },
+        "picks_with_growth_measured": 23,
+        "picks_with_growth_above_zero": 1,
+        "max_growth": 79.8
+      },
+      "regimes": {
+        "contested": 188,
+        "decisive": 4
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 234.64,
+            "total_value": 125.11,
+            "bench_value": -109.53,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 179.86,
+            "total_value": 84.21,
+            "bench_value": -95.65,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 183.54,
+            "total_value": 89.68,
+            "bench_value": -93.86,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 179.19,
+            "total_value": 81.74,
+            "bench_value": -97.45,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 232.99,
+            "total_value": 121.73,
+            "bench_value": -111.26,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 222.62,
+            "total_value": 119.63,
+            "bench_value": -102.99,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 194.27,
+            "total_value": 41.53,
+            "bench_value": -152.74,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 197.3,
+            "total_value": 76.8,
+            "bench_value": -120.5,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 189.9,
+            "total_value": 77.29,
+            "bench_value": -112.61,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 191.26,
+            "total_value": 87.52,
+            "bench_value": -103.74,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 181.3,
+            "total_value": 73.64,
+            "bench_value": -107.66,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 178.08,
+            "total_value": 71.55,
+            "bench_value": -106.53,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 178.08,
+        "starter_value_median": 191.26,
+        "starter_value_max": 234.64,
+        "starter_value_spread": 56.56
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 192,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 16,
+      "seconds": 500.4
+    },
+    {
+      "label": "HEAVY_IDP",
+      "picks": 216,
+      "rosters": 12,
+      "findings": [
+        {
+          "audit": "unpriced_picks",
+          "pick": "17.07",
+          "player": "Nate Ebner",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "17.10",
+          "player": "Tavon Wilson",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "17.11",
+          "player": "Nolan Smith",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.01",
+          "player": "Myles Murphy",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.02",
+          "player": "Deonte Banks",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.03",
+          "player": "Mazi Smith",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.04",
+          "player": "Calijah Kancey",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.05",
+          "player": "Lukas Van Ness",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.06",
+          "player": "Jalen Carter",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.07",
+          "player": "Tyree Wilson",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.08",
+          "player": "Gervon Dexter",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.09",
+          "player": "Keion White",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.10",
+          "player": "Isaiah Foskey",
+          "reason": "chosen with tav=None"
+        },
+        {
+          "audit": "unpriced_picks",
+          "pick": "18.11",
+          "player": "Byron Young",
+          "reason": "chosen with tav=None"
+        }
+      ],
+      "shape": {
+        "1": {
+          "WR": 4,
+          "RB": 5,
+          "LB": 3,
+          "DB": 2,
+          "QB": 1,
+          "DL": 1,
+          "TE": 2
+        },
+        "2": {
+          "WR": 4,
+          "DL": 2,
+          "RB": 5,
+          "LB": 2,
+          "DB": 2,
+          "QB": 1,
+          "TE": 2
+        },
+        "3": {
+          "WR": 5,
+          "RB": 3,
+          "DL": 2,
+          "LB": 3,
+          "QB": 1,
+          "DB": 2,
+          "TE": 2
+        },
+        "4": {
+          "QB": 1,
+          "WR": 4,
+          "RB": 4,
+          "LB": 4,
+          "DB": 2,
+          "TE": 2,
+          "DL": 1
+        },
+        "5": {
+          "WR": 5,
+          "RB": 3,
+          "LB": 4,
+          "QB": 1,
+          "DB": 2,
+          "TE": 2,
+          "DL": 1
+        },
+        "6": {
+          "RB": 3,
+          "WR": 7,
+          "LB": 4,
+          "DB": 2,
+          "TE": 1,
+          "QB": 1
+        },
+        "7": {
+          "TE": 3,
+          "LB": 3,
+          "WR": 5,
+          "DB": 2,
+          "QB": 2,
+          "RB": 2,
+          "DL": 1
+        },
+        "8": {
+          "TE": 2,
+          "RB": 5,
+          "WR": 2,
+          "LB": 2,
+          "DB": 3,
+          "DL": 2,
+          "QB": 2
+        },
+        "9": {
+          "LB": 3,
+          "WR": 5,
+          "DB": 2,
+          "RB": 4,
+          "TE": 2,
+          "QB": 1,
+          "DL": 1
+        },
+        "10": {
+          "RB": 6,
+          "LB": 3,
+          "WR": 2,
+          "TE": 2,
+          "DB": 2,
+          "QB": 2,
+          "DL": 1
+        },
+        "11": {
+          "WR": 5,
+          "LB": 3,
+          "DB": 2,
+          "RB": 3,
+          "DL": 1,
+          "QB": 2,
+          "TE": 2
+        },
+        "12": {
+          "LB": 3,
+          "RB": 3,
+          "WR": 4,
+          "DB": 2,
+          "TE": 4,
+          "QB": 1,
+          "DL": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 216,
+        "zero_margin_picks": 30,
+        "zero_margin_share": 0.1388888888888889,
+        "zero_margin_by_round": {
+          "3": 5,
+          "4": 3,
+          "5": 6,
+          "6": 3,
+          "7": 1,
+          "9": 3,
+          "10": 1,
+          "12": 2,
+          "15": 6
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12,
+          "15": 12,
+          "16": 12,
+          "17": 12,
+          "18": 12
+        },
+        "median_margin": 0.39
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "None": 14,
+          "live_starter_demand": 180,
+          "predraft_anchor": 22
+        },
+        "picks_with_growth_measured": 47,
+        "picks_with_growth_above_zero": 1,
+        "max_growth": 7.8
+      },
+      "regimes": {
+        "contested": 212,
+        "decisive": 4
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 164.11,
+            "total_value": 89.15,
+            "bench_value": -74.96,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 154.35,
+            "total_value": 88.17,
+            "bench_value": -66.18,
+            "unpriced_players": 2
+          },
+          "11": {
+            "starter_value": 146.8,
+            "total_value": 75.42,
+            "bench_value": -71.38,
+            "unpriced_players": 2
+          },
+          "12": {
+            "starter_value": 127.81,
+            "total_value": 61.43,
+            "bench_value": -66.38,
+            "unpriced_players": 1
+          },
+          "2": {
+            "starter_value": 146.99,
+            "total_value": 85.58,
+            "bench_value": -61.41,
+            "unpriced_players": 1
+          },
+          "3": {
+            "starter_value": 150.66,
+            "total_value": 79.52,
+            "bench_value": -71.14,
+            "unpriced_players": 1
+          },
+          "4": {
+            "starter_value": 150.53,
+            "total_value": 91.82,
+            "bench_value": -58.71,
+            "unpriced_players": 1
+          },
+          "5": {
+            "starter_value": 147.6,
+            "total_value": 89.92,
+            "bench_value": -57.68,
+            "unpriced_players": 1
+          },
+          "6": {
+            "starter_value": 142.97,
+            "total_value": 74.76,
+            "bench_value": -68.21,
+            "unpriced_players": 1
+          },
+          "7": {
+            "starter_value": 157.92,
+            "total_value": 114.62,
+            "bench_value": -43.3,
+            "unpriced_players": 2
+          },
+          "8": {
+            "starter_value": 148.23,
+            "total_value": 88.55,
+            "bench_value": -59.68,
+            "unpriced_players": 1
+          },
+          "9": {
+            "starter_value": 140.96,
+            "total_value": 85.64,
+            "bench_value": -55.32,
+            "unpriced_players": 1
+          }
+        },
+        "starter_value_min": 127.81,
+        "starter_value_median": 148.23,
+        "starter_value_max": 164.11,
+        "starter_value_spread": 36.3
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 216,
+        "picks_with_an_unpriced_candidate": 189,
+        "picks_that_took_an_unpriced_candidate": 14,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 18,
+      "seconds": 883.0
+    },
+    {
+      "label": "LIGHT_IDP",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 3,
+          "TE": 3,
+          "RB": 2,
+          "QB": 1,
+          "DB": 3,
+          "LB": 2
+        },
+        "2": {
+          "WR": 5,
+          "RB": 3,
+          "TE": 2,
+          "LB": 1,
+          "QB": 1,
+          "DB": 2
+        },
+        "3": {
+          "WR": 4,
+          "RB": 4,
+          "QB": 1,
+          "LB": 4,
+          "TE": 1
+        },
+        "4": {
+          "QB": 1,
+          "RB": 4,
+          "WR": 2,
+          "TE": 2,
+          "LB": 4,
+          "DB": 1
+        },
+        "5": {
+          "WR": 3,
+          "RB": 5,
+          "QB": 1,
+          "TE": 1,
+          "LB": 3,
+          "DB": 1
+        },
+        "6": {
+          "RB": 3,
+          "WR": 3,
+          "QB": 2,
+          "TE": 1,
+          "LB": 4,
+          "DB": 1
+        },
+        "7": {
+          "TE": 4,
+          "WR": 4,
+          "RB": 2,
+          "QB": 1,
+          "LB": 2,
+          "DB": 1
+        },
+        "8": {
+          "TE": 3,
+          "RB": 5,
+          "WR": 3,
+          "DB": 1,
+          "QB": 1,
+          "DL": 1
+        },
+        "9": {
+          "RB": 6,
+          "WR": 3,
+          "TE": 1,
+          "LB": 3,
+          "QB": 1
+        },
+        "10": {
+          "WR": 6,
+          "RB": 3,
+          "QB": 1,
+          "TE": 1,
+          "LB": 2,
+          "DL": 1
+        },
+        "11": {
+          "RB": 7,
+          "WR": 3,
+          "QB": 1,
+          "TE": 1,
+          "DL": 1,
+          "LB": 1
+        },
+        "12": {
+          "WR": 3,
+          "RB": 6,
+          "TE": 1,
+          "QB": 1,
+          "DL": 1,
+          "DB": 1,
+          "LB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 18,
+        "zero_margin_share": 0.10714285714285714,
+        "zero_margin_by_round": {
+          "6": 3,
+          "7": 1,
+          "8": 8,
+          "10": 2,
+          "11": 2,
+          "12": 1,
+          "13": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.49
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 165,
+          "predraft_anchor": 3
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 167,
+        "decisive": 1
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 123.15,
+            "total_value": 73.63,
+            "bench_value": -49.52,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 81.49,
+            "total_value": -4.11,
+            "bench_value": -85.6,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 81.9,
+            "total_value": -8.17,
+            "bench_value": -90.07,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 80.25,
+            "total_value": -5.08,
+            "bench_value": -85.33,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 90.41,
+            "total_value": 41.87,
+            "bench_value": -48.54,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 90.23,
+            "total_value": 18.55,
+            "bench_value": -71.68,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 92.92,
+            "total_value": 14.22,
+            "bench_value": -78.7,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 93.28,
+            "total_value": 18.14,
+            "bench_value": -75.14,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 87.92,
+            "total_value": 8.2,
+            "bench_value": -79.72,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 89.79,
+            "total_value": 28.75,
+            "bench_value": -61.04,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 95.68,
+            "total_value": 25.88,
+            "bench_value": -69.8,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 90.77,
+            "total_value": 8.78,
+            "bench_value": -81.99,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 80.25,
+        "starter_value_median": 90.41,
+        "starter_value_max": 123.15,
+        "starter_value_spread": 42.9
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 772.6
+    },
+    {
+      "label": "12T_ppr_mode_balanced",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 5,
+          "TE": 5,
+          "RB": 3,
+          "QB": 1
+        },
+        "2": {
+          "WR": 7,
+          "TE": 4,
+          "RB": 2,
+          "QB": 1
+        },
+        "3": {
+          "WR": 6,
+          "RB": 3,
+          "TE": 4,
+          "QB": 1
+        },
+        "4": {
+          "RB": 4,
+          "WR": 5,
+          "QB": 2,
+          "TE": 3
+        },
+        "5": {
+          "WR": 4,
+          "RB": 5,
+          "TE": 4,
+          "QB": 1
+        },
+        "6": {
+          "TE": 4,
+          "RB": 6,
+          "WR": 3,
+          "QB": 1
+        },
+        "7": {
+          "QB": 2,
+          "RB": 7,
+          "WR": 3,
+          "TE": 2
+        },
+        "8": {
+          "TE": 3,
+          "WR": 3,
+          "RB": 6,
+          "QB": 2
+        },
+        "9": {
+          "RB": 6,
+          "WR": 5,
+          "QB": 1,
+          "TE": 2
+        },
+        "10": {
+          "WR": 8,
+          "RB": 3,
+          "QB": 2,
+          "TE": 1
+        },
+        "11": {
+          "RB": 5,
+          "WR": 6,
+          "QB": 1,
+          "TE": 2
+        },
+        "12": {
+          "RB": 6,
+          "WR": 5,
+          "TE": 2,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 2,
+        "zero_margin_share": 0.011904761904761904,
+        "zero_margin_by_round": {
+          "10": 1,
+          "13": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.59
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 133,
+          "predraft_anchor": 35
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 166,
+        "decisive": 2
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 134.77,
+            "total_value": 32.04,
+            "bench_value": -102.73,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 102.88,
+            "total_value": 23.72,
+            "bench_value": -79.16,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 105.47,
+            "total_value": 16.13,
+            "bench_value": -89.34,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 103.78,
+            "total_value": 17.28,
+            "bench_value": -86.5,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 111.03,
+            "total_value": 18.32,
+            "bench_value": -92.71,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 108.61,
+            "total_value": 12.45,
+            "bench_value": -96.16,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 114.45,
+            "total_value": 15.43,
+            "bench_value": -99.02,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 111.72,
+            "total_value": 12.89,
+            "bench_value": -98.83,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 110.17,
+            "total_value": 4.35,
+            "bench_value": -105.82,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 115.57,
+            "total_value": 21.93,
+            "bench_value": -93.64,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 109.57,
+            "total_value": 16.28,
+            "bench_value": -93.29,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 109.78,
+            "total_value": 20.91,
+            "bench_value": -88.87,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 102.88,
+        "starter_value_median": 110.17,
+        "starter_value_max": 134.77,
+        "starter_value_spread": 31.89
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 461.4
+    },
+    {
+      "label": "12T_ppr_mode_upside",
+      "picks": 168,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 4,
+          "TE": 5,
+          "RB": 4,
+          "QB": 1
+        },
+        "2": {
+          "WR": 7,
+          "RB": 4,
+          "TE": 2,
+          "QB": 1
+        },
+        "3": {
+          "WR": 7,
+          "RB": 4,
+          "TE": 1,
+          "QB": 2
+        },
+        "4": {
+          "RB": 5,
+          "WR": 5,
+          "TE": 1,
+          "QB": 3
+        },
+        "5": {
+          "QB": 4,
+          "RB": 3,
+          "WR": 5,
+          "TE": 2
+        },
+        "6": {
+          "TE": 1,
+          "RB": 3,
+          "WR": 5,
+          "QB": 5
+        },
+        "7": {
+          "TE": 3,
+          "RB": 5,
+          "QB": 4,
+          "WR": 2
+        },
+        "8": {
+          "WR": 4,
+          "TE": 4,
+          "RB": 3,
+          "QB": 3
+        },
+        "9": {
+          "RB": 5,
+          "WR": 4,
+          "QB": 3,
+          "TE": 2
+        },
+        "10": {
+          "WR": 2,
+          "RB": 3,
+          "TE": 6,
+          "QB": 3
+        },
+        "11": {
+          "RB": 2,
+          "WR": 3,
+          "QB": 4,
+          "TE": 5
+        },
+        "12": {
+          "RB": 3,
+          "QB": 5,
+          "TE": 4,
+          "WR": 2
+        }
+      },
+      "margins": {
+        "picks_measured": 168,
+        "zero_margin_picks": 5,
+        "zero_margin_share": 0.02976190476190476,
+        "zero_margin_by_round": {
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "14": 1
+        },
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12,
+          "10": 12,
+          "11": 12,
+          "12": 12,
+          "13": 12,
+          "14": 12
+        },
+        "median_margin": 0.53
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 168
+        },
+        "picks_with_growth_measured": 168,
+        "picks_with_growth_above_zero": 24,
+        "max_growth": 48.8
+      },
+      "regimes": {
+        "contested": 159,
+        "decisive": 9
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": -152.99,
+            "total_value": -220.53,
+            "bench_value": -67.54,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 66.67,
+            "total_value": -293.65,
+            "bench_value": -360.32,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 70.69,
+            "total_value": -187.2,
+            "bench_value": -257.89,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 64.4,
+            "total_value": -188.38,
+            "bench_value": -252.78,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": -205.4,
+            "total_value": -257.87,
+            "bench_value": -52.47,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 91.15,
+            "total_value": -252.52,
+            "bench_value": -343.67,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 104.35,
+            "total_value": -251.08,
+            "bench_value": -355.43,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 127.46,
+            "total_value": -248.51,
+            "bench_value": -375.97,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 110.87,
+            "total_value": -262.47,
+            "bench_value": -373.34,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 121.44,
+            "total_value": -225.29,
+            "bench_value": -346.73,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 89.71,
+            "total_value": -239.03,
+            "bench_value": -328.74,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 93.07,
+            "total_value": -221.66,
+            "bench_value": -314.73,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": -205.4,
+        "starter_value_median": 91.15,
+        "starter_value_max": 127.46,
+        "starter_value_spread": 332.86
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 168,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 14,
+      "seconds": 149.8
+    },
+    {
+      "label": "12T_ppr_SHORT_DRAFT",
+      "picks": 96,
+      "rosters": 12,
+      "findings": [],
+      "shape": {
+        "1": {
+          "WR": 3,
+          "TE": 2,
+          "RB": 2,
+          "QB": 1
+        },
+        "2": {
+          "WR": 3,
+          "TE": 2,
+          "RB": 2,
+          "QB": 1
+        },
+        "3": {
+          "WR": 2,
+          "RB": 3,
+          "TE": 2,
+          "QB": 1
+        },
+        "4": {
+          "RB": 3,
+          "WR": 3,
+          "QB": 1,
+          "TE": 1
+        },
+        "5": {
+          "WR": 2,
+          "RB": 3,
+          "TE": 2,
+          "QB": 1
+        },
+        "6": {
+          "TE": 2,
+          "RB": 2,
+          "WR": 3,
+          "QB": 1
+        },
+        "7": {
+          "QB": 1,
+          "RB": 3,
+          "WR": 3,
+          "TE": 1
+        },
+        "8": {
+          "TE": 1,
+          "WR": 3,
+          "RB": 3,
+          "QB": 1
+        },
+        "9": {
+          "RB": 3,
+          "WR": 3,
+          "QB": 1,
+          "TE": 1
+        },
+        "10": {
+          "WR": 4,
+          "RB": 2,
+          "QB": 1,
+          "TE": 1
+        },
+        "11": {
+          "RB": 2,
+          "WR": 4,
+          "QB": 1,
+          "TE": 1
+        },
+        "12": {
+          "RB": 2,
+          "WR": 3,
+          "TE": 2,
+          "QB": 1
+        }
+      },
+      "margins": {
+        "picks_measured": 96,
+        "zero_margin_picks": 0,
+        "zero_margin_share": 0.0,
+        "zero_margin_by_round": {},
+        "picks_by_round": {
+          "1": 12,
+          "2": 12,
+          "3": 12,
+          "4": 12,
+          "5": 12,
+          "6": 12,
+          "7": 12,
+          "8": 12
+        },
+        "median_margin": 0.6
+      },
+      "qualifiers": {
+        "replacement_basis": {
+          "live_starter_demand": 96
+        },
+        "picks_with_growth_measured": 0,
+        "picks_with_growth_above_zero": 0,
+        "max_growth": null
+      },
+      "regimes": {
+        "contested": 95,
+        "decisive": 1
+      },
+      "strength": {
+        "per_roster": {
+          "1": {
+            "starter_value": 134.77,
+            "total_value": 134.77,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "10": {
+            "starter_value": 102.88,
+            "total_value": 102.88,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "11": {
+            "starter_value": 105.47,
+            "total_value": 105.47,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "12": {
+            "starter_value": 103.78,
+            "total_value": 103.78,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "2": {
+            "starter_value": 111.03,
+            "total_value": 111.03,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "3": {
+            "starter_value": 108.61,
+            "total_value": 108.61,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "4": {
+            "starter_value": 114.45,
+            "total_value": 114.45,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "5": {
+            "starter_value": 111.72,
+            "total_value": 111.72,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "6": {
+            "starter_value": 110.17,
+            "total_value": 110.17,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "7": {
+            "starter_value": 114.17,
+            "total_value": 114.17,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "8": {
+            "starter_value": 109.57,
+            "total_value": 109.57,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          },
+          "9": {
+            "starter_value": 109.78,
+            "total_value": 109.78,
+            "bench_value": 0.0,
+            "unpriced_players": 0
+          }
+        },
+        "starter_value_min": 102.88,
+        "starter_value_median": 110.17,
+        "starter_value_max": 134.77,
+        "starter_value_spread": 31.89
+      },
+      "unpriced_at_decision": {
+        "picks_examined": 96,
+        "picks_with_an_unpriced_candidate": 0,
+        "picks_that_took_an_unpriced_candidate": 0,
+        "candidate_rows_missing_the_uv_key": 0
+      },
+      "teams": 12,
+      "rounds": 8,
+      "seconds": 248.1
+    }
+  ]
+}

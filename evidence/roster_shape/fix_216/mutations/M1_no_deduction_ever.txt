@@ -1,0 +1,42 @@
+---------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 398, in test_1QB_the_roster_terms_can_span_the_positional_bias
+    self._assert_reaches(False)
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 390, in _assert_reaches
+    self.assertGreaterEqual(
+AssertionError: 4.950000000000001 not greater than or equal to 58.47 : Sam LaPorta TE proj 230.85 uv 68.14 final 71.86 vs Davante Adams WR proj 230.5 uv 12.31 final 20.98: roster-term separation 4.95 against bias level_WR - level_TE = 58.47; levels {'RB': (185.64, 185.64, 126), 'WR': (216.25, 216.25, 198), 'TE': (157.78, 157.78, 110), 'QB': (328.6, 328.6, 42)}
+
+======================================================================
+FAIL: test_superflex_the_roster_terms_can_span_the_positional_bias (test_216_value_board_falsification.C_MagnitudeTests.test_superflex_the_roster_terms_can_span_the_positional_bias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 401, in test_superflex_the_roster_terms_can_span_the_positional_bias
+    self._assert_reaches(True)
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 390, in _assert_reaches
+    self.assertGreaterEqual(
+AssertionError: 8.72 not greater than or equal to 63.610000000000014 : Sam LaPorta TE proj 230.85 uv 74.44 final 74.44 vs Davante Adams WR proj 230.5 uv 13.47 final 22.19: roster-term separation 8.72 against bias level_WR - level_TE = 63.61; levels {'RB': (176.98, 176.98, 126), 'WR': (215.05, 215.05, 198), 'QB': (207.5, 207.5, 42), 'TE': (151.44, 151.44, 110)}
+
+======================================================================
+FAIL: test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection (test_216_value_board_falsification.D_SamePointsPairTests.test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 430, in test_1QB_a_receiver_at_an_empty_slot_outranks_a_benched_tight_end_of_equal_projection
+    self.assertEqual(losses, [], f"{len(losses)} of {len(pairs)} pairs: " + "; ".join(losses))
+AssertionError: Lists differ: ['Sam LaPorta TE 230.85 -> 71.86 outranks [404 chars]5.3'] != []
+
+First list contains 6 additional elements.
+First extra element 0:
+'Sam LaPorta TE 230.85 -> 71.86 outranks Davante Adams WR 230.5 -> 20.98'
+
++ []
+- ['Sam LaPorta TE 230.85 -> 71.86 outranks Davante Adams WR 230.5 -> 20.98',
+-  'George Kittle TE 224.49 -> 64.2 outranks Alec Pierce WR 225.49 -> 15.14',
+-  'Travis Kelce TE 226.19 -> 62.87 outranks Alec Pierce WR 225.49 -> 15.14',
+-  'Kyle Pitts TE 216.6 -> 58.47 outranks Emeka Egbuka WR 214.71 -> 7.21',
+-  'Harold Fannin TE 201.22 -> 45.84 outranks Brian Thomas WR 201.64 -> -8.14',
+-  'Mark Andrews TE 196.79 -> 33.81 outranks Xavier Worthy WR 195.02 -> -15.3'] : 6 of 6 pairs: Sam LaPorta TE 230.85 -> 71.86 outranks Davante Adams WR 230.5 -> 20.98; George Kittle TE 224.49 -> 64.2 outranks Alec Pierce WR 225.49 -> 15.14; Travis Kelce TE 226.19 -> 62.87 outranks Alec Pierce WR 225.49 -> 15.14; Kyle Pitts TE 216.6 -> 58.47 outranks Emeka Egbuka WR 214.71 -> 7.21; Harold Fannin TE 201.22 -> 45.84 outranks Brian Thomas WR 201.64 -> -8.14; Mark Andrews TE 196.79 -> 33.81 outranks Xavier Worthy WR 195.02 -> -15.3
+
+----------------------------------------------------------------------
+Ran 24 tests in 94.337s
+
+FAILED (failures=14)

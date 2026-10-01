@@ -1,0 +1,204 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>CDME Engine — Roster Shape Audit (#222)</title>
+<style>
+@page { size: A4; margin: 20mm 18mm 18mm 18mm; }
+:root{
+  --ink:#1a1a18; --paper:#fcfcfa; --mute:#6e6a63; --rule:#d8d4cb;
+  --defect:#8c2f27; --cite:#3a5a6b; --ok:#3f6b45; --wash:#f4f2ec;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:11.2pt/1.55 Charter,"Bitstream Charter",Georgia,"Times New Roman",serif;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.wrap{max-width:none}
+h1{font-size:23pt;line-height:1.15;margin:0 0 2mm;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:13.5pt;margin:9mm 0 2.5mm;padding-bottom:1.2mm;border-bottom:1.5pt solid var(--ink);
+   letter-spacing:.01em;page-break-after:avoid}
+h3{font-size:11.6pt;margin:5.5mm 0 1.5mm;page-break-after:avoid}
+h4{font-size:10.6pt;margin:4mm 0 1mm;color:var(--mute);text-transform:uppercase;
+   letter-spacing:.09em;font-weight:600;page-break-after:avoid}
+p{margin:0 0 2.6mm}
+.lede{font-size:12.4pt;color:#3a3733;margin:0 0 4mm}
+.meta{font:9pt/1.5 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--mute);
+  border-top:.6pt solid var(--rule);border-bottom:.6pt solid var(--rule);padding:2.2mm 0;margin:0 0 6mm}
+.meta b{color:var(--ink);font-weight:600}
+code,.c{font:9.2pt/1.4 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+code{background:var(--wash);padding:.3mm 1mm;border-radius:1.5pt;color:var(--cite)}
+table{border-collapse:collapse;width:100%;margin:3mm 0 4mm;font-size:10pt;page-break-inside:avoid}
+th{text-align:left;font-size:8.6pt;text-transform:uppercase;letter-spacing:.07em;color:var(--mute);
+   font-weight:600;padding:1.4mm 2mm;border-bottom:1pt solid var(--ink)}
+td{padding:1.5mm 2mm;border-bottom:.5pt solid var(--rule);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace;font-size:9.4pt}
+tr.hi td{background:#faf3f2;font-weight:600}
+.bad{color:var(--defect);font-weight:600}
+.good{color:var(--ok);font-weight:600}
+.cite{font:8.4pt/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--cite);
+  margin:1.2mm 0 3.5mm;padding-left:3mm;border-left:1.6pt solid #c3d2d9}
+.box{border:.7pt solid var(--rule);background:var(--wash);padding:3mm 3.5mm;margin:3mm 0 4mm;
+  page-break-inside:avoid;border-radius:2pt}
+.box.warn{border-color:#e0bdb8;background:#fbf4f3}
+.box h4{margin-top:0;color:var(--defect)}
+.tag{display:inline-block;font:7.8pt/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;
+  padding:1.1mm 1.8mm;border-radius:2pt;vertical-align:2px;margin-right:1.5mm}
+.t-block{background:#8c2f27;color:#fff}.t-high{background:#b8763a;color:#fff}
+.t-meth{background:#3a5a6b;color:#fff}.t-ok{background:#3f6b45;color:#fff}
+ol,ul{margin:0 0 3mm;padding-left:5.5mm}li{margin-bottom:1.4mm}
+.ca{margin:0 0 3.5mm;padding:2.5mm 0 0;border-top:.5pt dotted var(--rule)}
+.ca .q{font-weight:600;color:var(--defect)}
+.ca .a{color:#3a3733}
+.foot{margin-top:8mm;padding-top:2.5mm;border-top:.6pt solid var(--rule);
+  font:8.4pt/1.5 ui-monospace,Menlo,monospace;color:var(--mute)}
+.pb{page-break-before:always}
+</style></head><body><div class="wrap">
+
+<h1>Roster Shape Audit — the CDME draft engine against twelve real managers</h1>
+<p class="lede">A complete twelve-chair startup draft run on a real league's real rulebook, compared against the twelve humans who actually drafted it. Two defects found, one of them with a measured mechanism. This document cites its reasoning and argues against itself.</p>
+
+<div class="meta">
+<b>Register item</b> #222 &nbsp;·&nbsp; <b>Branch</b> worktree-agent-ab5e1af412aeb9182 &nbsp;·&nbsp; <b>Head</b> ef15543<br>
+<b>League</b> Fourth and Forever — 12-team dynasty superflex, half PPR, 0.25 TE reception bonus, 26 rounds<br>
+<b>Universe</b> 6,595 Sleeper players · 5,346 season projections scored under this league's own settings<br>
+<b>Engine source changed</b> <span class="good">none</span> — <code>git diff --name-only 1b14e5a..HEAD</code> returns evidence and captures only
+</div>
+
+<h2>1. What was measured, and how</h2>
+<p>Three complete 312-pick drafts were run with the production engine driving all twelve chairs, then compared against the same league's real startup board, transcribed pick by pick from the owner's own screenshots.</p>
+<div class="cite">draft: <b>evidence/roster_shape/ff_rulebook/run_ff_draft.py</b> → <b>ff_draft.json</b>, <b>ff_draft.txt</b><br>
+humans: <b>evidence/roster_shape/real_drafts/fourth_and_forever.py</b> (310 picks, 12 seats, verified to reproduce their own tallies)<br>
+rulebook: <b>data/league_captures/fourth_and_forever.json</b> — commit <b>474118b</b>, roster added <b>9318f3d</b><br>
+selection path: <code>draft_simulation.simulate_full_draft</code> (draft_simulation.py:87) — every chair uses the real production engine, never a simulation heuristic</div>
+
+<p>The fixture follows the corrected recipe: <code>build_players_db_from_capture</code> for the real universe (#201) and <code>season_projections_from_capture</code> with <code>SLEEPER_BASIS_SEASON_SUM</code> for scoring-aware pricing (#204). An earlier pass in this same session used the superseded <code>build_players_db</code> and had to be withdrawn — see §5.</p>
+
+<h2>2. The result</h2>
+<table>
+<tr><th>Population</th><th class="n">QB</th><th class="n">RB</th><th class="n">WR</th><th class="n">TE</th></tr>
+<tr><td>Twelve real managers, this league</td><td class="n">20.0%</td><td class="n">27.4%</td><td class="n">37.1%</td><td class="n">15.5%</td></tr>
+<tr class="hi"><td>The engine, same league, same universe</td><td class="n bad">10.3%</td><td class="n good">26.9%</td><td class="n">30.4%</td><td class="n bad">32.4%</td></tr>
+<tr><td>The priced pool available to both</td><td class="n">13.9%</td><td class="n">22.9%</td><td class="n">40.4%</td><td class="n">22.9%</td></tr>
+</table>
+
+<p>The engine drafts <b>101 tight ends in 312 picks</b>. Every seat finishes with between five and twelve; the humans took three to six. It drafts <b>32 quarterbacks</b> where the humans took 62, and <b>nine of twelve seats finish on exactly two</b> — in a superflex league where QB and SUPER_FLEX both start every week.</p>
+
+<h4>Drift by quarter</h4>
+<table>
+<tr><th>Picks</th><th class="n">QB</th><th class="n">RB</th><th class="n">WR</th><th class="n">TE</th></tr>
+<tr><td>1–78</td><td class="n">30.8%</td><td class="n">29.5%</td><td class="n">25.6%</td><td class="n">14.1%</td></tr>
+<tr><td>79–156</td><td class="n">7.7%</td><td class="n">21.8%</td><td class="n">52.6%</td><td class="n">17.9%</td></tr>
+<tr class="hi"><td>157–234</td><td class="n">2.6%</td><td class="n">28.2%</td><td class="n">19.2%</td><td class="n">50.0%</td></tr>
+<tr class="hi"><td>235–312</td><td class="n">0.0%</td><td class="n">28.2%</td><td class="n">24.4%</td><td class="n">47.4%</td></tr>
+</table>
+<p>The first quarter is a sane opening shape. The back half is half tight ends.</p>
+
+<h4>Replication</h4>
+<p>A third-round-reversal draft — a genuinely different pick sequence, since 3RR gives turn seats back-to-back pairs where a snake does not — produced <b>identical totals</b>: QB 32, RB 84, WR 95, TE 101. The quarter breakdown shifts (Q1 RB 30.8% against 29.5%), confirming the order really changed while the composition did not.</p>
+<div class="cite">evidence/roster_shape/ff_rulebook/<b>ff_draft_3rr.txt</b> — commit <b>ef15543</b></div>
+
+<h2>3. What fits — the control</h2>
+<p>These were measured and came back correct. They are the control group for any repair: a fix that moves them has broken something.</p>
+<table>
+<tr><th>Behaviour</th><th>Evidence</th></tr>
+<tr><td><span class="tag t-ok">OK</span> Running-back allocation</td><td class="n">26.9% engine vs 27.4% human — a 0.5-point gap</td></tr>
+<tr><td><span class="tag t-ok">OK</span> The opening of the draft</td><td>Picks 1–78: QB 30.8 / RB 29.5 / WR 25.6 / TE 14.1</td></tr>
+<tr><td><span class="tag t-ok">OK</span> Scoring propagation</td><td>Every offensive category in this rulebook has stat data behind it, including <code>pass_cmp</code>, <code>rush_fd</code>, <code>rec_fd</code> — three mechanics no battery format exercises</td></tr>
+<tr><td><span class="tag t-ok">OK</span> Displacement, in its working range</td><td>Deduction climbs −51.7 → −55.9 → −91.9 → −119.4 → −120.4 as a seat goes 2→6 tight ends</td></tr>
+<tr><td><span class="tag t-ok">OK</span> Determinism</td><td>Identical inputs reproduce identical drafts byte for byte</td></tr>
+</table>
+
+<h2 class="pb">4. What is broken</h2>
+
+<h3><span class="tag t-block">BLOCKER</span> B1 — the saturation brake releases exactly when it is needed</h3>
+<p><code>displacement_adjustments</code> exists to remove the credit the league replacement anchor gives a player for a slot this roster cannot offer. It works — until it doesn't. Measured on the real draft, the deduction charged to the <i>next</i> tight end, by how many that seat already holds:</p>
+<table>
+<tr><th>Tight ends already held</th><th class="n">2</th><th class="n">3</th><th class="n">4</th><th class="n">5</th><th class="n">6</th><th class="n">7</th><th class="n">8</th></tr>
+<tr><td><code>displacement_adj</code></td><td class="n">−51.7</td><td class="n">−55.9</td><td class="n">−91.9</td><td class="n">−119.4</td><td class="n">−120.4</td><td class="n bad">−51.7</td><td class="n bad">−51.7</td></tr>
+<tr><td>TE replacement level at that board state</td><td class="n">80.5</td><td class="n">—</td><td class="n">—</td><td class="n">43.0</td><td class="n">—</td><td class="n">29.3</td><td class="n">16.6</td></tr>
+</table>
+<p>The value <b>−51.73</b> recurs identically — to the hundredth — at two, seven and eight tight ends held, across board states where the TE replacement level was <b>80.5, 29.3 and 16.6</b>. A term whose every input has moved by a factor of five cannot legitimately return the same number.</p>
+<div class="cite">probe: <b>evidence/roster_shape/ff_rulebook/saturation_probe.py</b>, <b>reset_probe.py</b> — commit <b>ef15543</b><br>
+code under suspicion: <code>lineup_optimizer.displacement_level</code> (lineup_optimizer.py:354) and its non-positive rule; <code>draft_room.displacement_adjustments</code> (draft_room.py:2488)<br>
+ruled out: <b>caching</b> — reproduced identically in fresh processes with pick 205 evaluated first</div>
+
+<h3><span class="tag t-block">BLOCKER</span> B2 — the engine cannot value a backup quarterback</h3>
+<p>Nine of twelve seats finish with exactly two quarterbacks, in a format where two is the starting requirement and zero is the backup count. This was predicted analytically before it was observed: with one slot of that kind, a third body can never be promoted by an absence, so it is never worth a pick.</p>
+<p><b>B1 and B2 are one defect with two faces.</b> A body that cannot improve <i>today's</i> optimal lineup is priced at nothing. That takes too few quarterbacks — a third can never start — and too many tight ends, because the term that should stop the eighth one releases.</p>
+
+<h3><span class="tag t-high">HIGH</span> B3 — the bench phase is decided in the noise</h3>
+<p>At the round-15 board, the top three rows were <b>−85.3, −85.3, −85.4</b> — three different positions, with component terms ranging from <code>bpa</code> +33.7 to −86.6 and <code>displacement_adj</code> 0.0 to −113.3, all landing within 0.1 of each other. That is the league anchor cancelling correctly and leaving projection behind. It also means most of the back half of the draft is resolved at the tiebreak level.</p>
+<div class="cite">probe: <b>evidence/roster_shape/ff_rulebook/why_te_probe.py</b> — pick 170, seat 2</div>
+
+<h3><span class="tag t-meth">METHOD</span> B4 — board rank is not pick order</h3>
+<p><code>simulate_full_draft</code> selects through <code>pick_synthesis.build_snapshot</code> and takes <code>candidates[0]</code>, which re-sorts through its own key. The <code>final_score</code> ordering visible on the board is <b>not</b> what gets picked. Several probe readings in this session implicitly assumed it was.</p>
+
+<h3><span class="tag t-meth">METHOD</span> B5 — the measurement recipe in the skill is stale</h3>
+<p>The engine-measurement skill's five-line fixture still names <code>rdb.build_players_db</code> — the 764-row vendor reconstruction — which #201 superseded. A probe following the documented recipe measures the wrong population and returns plausible numbers about it. This is the sixth fixture error of that class in this repository, and one of them happened last night.</p>
+
+<h2 class="pb">5. Where this reasoning is weak</h2>
+<p>Everything above is a claim about one league, measured over one night, by someone who withdrew thirteen findings in the same session. The following are the arguments I would make against it.</p>
+
+<div class="box warn">
+<h4>The strongest objection: I inferred the mechanism instead of reading it</h4>
+<p>The −51.73 recurrence is <i>arithmetic</i>, not <i>diagnosis</i>. I computed <code>displacement_adj</code> and observed it repeat; I never read <code>displaced</code> — the value the probe actually evicted — out of <code>displacement_level</code>. There is a benign explanation I cannot currently exclude: the documented non-positive rule caps the deduction when a reachable slot is held by someone <i>below</i> the league alternative, and at seven tight ends held with a collapsed TE level, that cap may bind at a value that happens to track the level. If so, −51.73 is a correct floor, not a released brake, and B1's severity is wrong even though the drafting behaviour is still anomalous.<br><br>
+<b>This is why Phase 1 of the plan forbids any repair until the mechanism is read out directly.</b></p>
+</div>
+
+<div class="ca"><p class="q">Counterargument 1 — the humans may simply be wrong.</p>
+<p class="a">15.5% tight end is twelve people's revealed preference, not an optimum. This is a TE-premium league (0.75 points per reception effective) where deep tight ends genuinely out-project deep receivers, and the engine's own board says so. <b>No outcome data exists</b> — no season was played with these rosters — so nothing here demonstrates the engine's rosters score fewer points. The entire comparison is about <i>shape</i>, not <i>performance</i>. It is possible the engine has found a real edge and twelve money-league players are leaving points on the table.<br>
+<b>Why I still think it is a defect:</b> not because 32.4% differs from 15.5%, but because <b>B1's deduction is non-monotonic</b>. A term that gets stronger from two to six and then weaker at seven is not expressing a strategy; that shape has no defensible reading.</p></div>
+
+<div class="ca"><p class="q">Counterargument 2 — I am using as a yardstick the very thing I forbade calibrating to.</p>
+<p class="a">The register's own #56 says constants must be derived, never fitted to a sample, and I have leaned on the twelve managers as a reference standard throughout. That is a real tension. The defence is that the humans are used only as a <i>falsifier</i> — "no seat at this table produced this shape" — and never as a target. The plan states the success criterion for the repair as <b>the deduction becoming monotonic</b>, explicitly not the tight-end share reaching any number. If a future change quietly adopts 15.5% as a goal, this objection becomes correct.</p></div>
+
+<div class="ca"><p class="q">Counterargument 3 — n = 1 rulebook, and an unusual one.</p>
+<p class="a">Twenty-six rounds with sixteen bench and taxi slots is deep; most leagues are shorter. Superflex plus a TE premium is a specific combination. The defect may be confined to deep-roster TEP formats and be invisible elsewhere. The 3RR replication rules out the <i>draw</i> as an explanation but says nothing about other rulebooks. <b>Phase 4 exists entirely to answer this and has not run.</b></p></div>
+
+<div class="ca"><p class="q">Counterargument 4 — B3 may not be a defect at all.</p>
+<p class="a">Three candidates within 0.1 points may be a correct statement that they are worth the same, in which case picking any of them is fine and "decided in the noise" is a complaint about nothing. The claim only bites if the ordering carries information that the tie discards — which I have not shown.</p></div>
+
+<div class="ca"><p class="q">Counterargument 5 — B4 undercuts some of my own readings.</p>
+<p class="a">Because selection re-sorts, the board rankings I read at picks 170 and 200 are not proof of what the engine chose there. B1's ladder is unaffected — <code>displacement_adj</code> is a per-position quantity, not a rank — but B3's interpretation and my earlier "the top of the board is not WR-heavy" observation both rest on rank and should be treated as provisional.</p></div>
+
+<div class="ca"><p class="q">Counterargument 6 — the human/engine comparison mixes roster classes.</p>
+<p class="a">The humans' 20% quarterback share includes taxi-squad developmental stashes. The engine's picks are not separated into active roster versus taxi. A fair comparison would split them, and the true gap on the active roster is probably smaller than 20.0 versus 10.3.</p></div>
+
+<div class="ca"><p class="q">Counterargument 7 — both populations deviate from the pool, in opposite directions.</p>
+<p class="a">Against the real priced pool (TE 22.9%), the engine over-drafts tight ends by 9.5 points and the humans <i>under</i>-draft them by 7.4. Neither tracks supply. The framing "the engine deviates" is only half true; what is true is that they deviate oppositely and the engine's deviation is larger.</p></div>
+
+<h4>What would falsify this</h4>
+<p>Stated in advance so the repair cannot be graded on a moving target:</p>
+<ul>
+<li>Reading <code>displaced</code> out of <code>displacement_level</code> shows the −51.73 floor is the documented non-positive rule binding correctly → <b>B1 is downgraded</b> from a bug to a modelling limit, and the drafting anomaly needs a different explanation.</li>
+<li>The battery on the corrected universe shows tight-end share within a few points of the pool in non-TEP formats → <b>B1 is scoped</b> to TE-premium leagues, not general.</li>
+<li>Separating taxi from active roster closes most of the quarterback gap → <b>B2 shrinks</b> to a stashing-behaviour difference rather than a valuation defect.</li>
+<li>An outcome measure (simulated seasons over these rosters) shows the engine's teams scoring at or above the humans' → <b>the whole framing inverts</b>, and shape is the wrong thing to have been measuring.</li>
+</ul>
+
+<h2>6. The plan</h2>
+<p>Five phases, each gated so it can fail cheaply and stop the next. The standing order applies: evidence before repair, repair before freeze, freeze before blind audit.</p>
+<table>
+<tr><th>Phase</th><th>Work</th><th>Gate</th></tr>
+<tr><td><b>0</b><br>½ day</td><td>Make the instrument trustworthy. Update the skill's fixture to the #201/#204 recipe; add an assertion that fails loudly if a board is built from the vendor reconstruction while a capture exists; register B4.</td><td>The documented recipe reproduces this draft exactly.</td></tr>
+<tr><td><b>1</b><br>1 day</td><td>Isolate B1. Instrument <code>displacement_level</code> to <i>report</i> what it displaced and from which slot — as an observable, per #55 — then re-run the ladder at 2…10 held.</td><td class="bad">A one-sentence mechanical account of why −51.73 recurs. No repair without it.</td></tr>
+<tr><td><b>2</b><br>1–2 days</td><td>Repair whatever Phase 1 names. Derived, no constants. Mutation-test before believing it. Re-run the 12×26.</td><td>Deduction monotonic in bodies held; suite green; §3 control unchanged.</td></tr>
+<tr><td><b>3</b><br>2–3 days</td><td>B2 — whether absence-weighted lineup value becomes an input or stays observable.</td><td class="bad">Owner ruling first. This is a modelling decision, not a bug fix.</td></tr>
+<tr><td><b>4</b><br>1 day</td><td>Re-run the 33-format battery on the corrected universe; add both real rulebooks as formats — they share identical starter demand and differ only in scoring and depth.</td><td>B1/B2 either reproduce across formats or are scoped to where they do.</td></tr>
+<tr><td><b>5</b></td><td>#150 final gate → #52 blind adversarial pass → #53 reconciliation.</td><td>—</td></tr>
+</table>
+
+<h4>Explicitly forbidden</h4>
+<ul>
+<li><b>No tight-end penalty.</b> It would paper over B1 rather than fix it, and #56 forbids fitting to twelve people.</li>
+<li><b>No cap tuning.</b> The measured bias is 50–120 points; the entire reachable need bonus is 8.67. A cap cannot span it, and reaching for one is how the magic-number failure mode starts.</li>
+<li><b>Do not touch the running-back path or the first quarter.</b> They are the control.</li>
+<li><b>Do not trust any battery number</b> produced before Phase 4.</li>
+</ul>
+
+<div class="foot">
+Sources — all under evidence/roster_shape/ff_rulebook/ unless noted<br>
+PLAN_222.md · FINDING_05_it_is_tight_ends.md · CORRECTION_wrong_universe.md · HANDOFF.md<br>
+ff_draft.json / .txt · ff_draft_3rr.txt · ff_draft_revseat.txt (null) · saturation_probe.py · reset_probe.py · why_te_probe.py · displacement_probe.py · cancellation_probe.py · drain_probe.py · build_ff_board.py<br>
+evidence/roster_shape/real_drafts/ · data/league_captures/fourth_and_forever.json · evidence/real_drafts/boards/ (108 boards)<br>
+Withdrawn in place, marked, not deleted: FINDING_01–04 (wrong player universe, see CORRECTION).<br>
+Commits c770102 … ef15543 · No engine source modified.
+</div>
+</div></body></html>

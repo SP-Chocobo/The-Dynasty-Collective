@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C5 · Clock — Draft Room mockup</title>
+<style>
+
+:root {
+  --bg: #15120b;
+  --surface: #1f1a11;
+  --surface-2: #1a1610;
+  --line: #2c2517;
+  --line-2: #3f3522;
+  --ink: #ece3d2;
+  --muted: #a79a83;
+  --dim: #776d5a;
+  --emerald: #1a9e4b;
+  --emerald-b: #4ee08c;
+  --gold: #d4a017;
+  --gold-b: #f7cf4a;
+  --violet: #9457d4;
+  --violet-b: #c9a4f0;
+  --crimson: #b0193c;
+  --crimson-b: #ff6b85;
+  --sky: #1466c4;
+  --sky-b: #6fb2f7;
+  --amber: #e07b0a;
+  --amber-b: #f9a828;
+  --cliff: #0d9488;
+  --cliff-b: #3ad9c8;
+  --block: #c2410c;
+  --block-b: #f9a05c;
+  --pure: #e2d8c3;
+  --tie: #7b7059;
+  --tie-b: #a99d84;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+.mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+.display { font-family: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif; letter-spacing: .06em; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: -1px; }
+.badge-necessity-must-take { background: rgba(148,87,212,0.18); color: #c9a4f0; border: 1px solid #9457d4; box-shadow: 0 0 0 1px rgba(201,164,240,0.35), 0 0 8px rgba(148,87,212,0.45); }
+.badge-necessity-strong { background: rgba(20,102,196,0.18); color: #6fb2f7; border: 1px solid #1466c4; }
+.badge-necessity-preferred { background: rgba(26,158,75,0.18); color: #4ee08c; border: 1px solid #1a9e4b; }
+.badge-necessity-close-call { background: rgba(224,123,10,0.18); color: #f9a828; border: 1px solid #e07b0a; }
+.badge-necessity-low { background: rgba(176,25,60,0.18); color: #ff6b85; border: 1px solid #b0193c; }
+.pill-QB { background: rgba(143,134,240,0.18); color: #8f86f0; }
+.pill-RB { background: rgba(23,191,160,0.18); color: #17bfa0; }
+.pill-WR { background: rgba(74,168,239,0.18); color: #4aa8ef; }
+.pill-TE { background: rgba(232,104,63,0.18); color: #e8683f; }
+.pill-K { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DEF { background: rgba(239,127,192,0.18); color: #ef7fc0; }
+.pill-DL { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-LB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill-DB { background: rgba(160,148,128,0.18); color: #a09480; }
+.pill { display: inline-block; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; letter-spacing: .04em; }
+.necessity-pill { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; font-weight: 700; padding: .16rem .5rem; border-radius: 4px; letter-spacing: .03em; white-space: nowrap; }
+.unit { color: var(--muted); font-size: .68em; letter-spacing: .02em; margin-left: .2em; }
+/* ABSENCE. One mark, everywhere: muted, hatched, with a title. It can never be mistaken for a
+   small number, an empty cell, or a zero-length bar. */
+.absent {
+  color: var(--muted); font-weight: 500; cursor: help; border-radius: 3px; padding: 0 .3em;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--line-2) 75%, transparent) 3px 4px);
+}
+.state-word { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .64rem; letter-spacing: .05em; text-transform: uppercase; padding: .08rem .4rem; border-radius: 3px; border: 1px solid var(--line-2); color: var(--muted); }
+.state-word.measured { color: var(--muted); }
+.state-word.imputed { color: var(--amber-b); border-color: var(--amber); }
+.state-word.unavailable { color: var(--muted); border-style: dashed; }
+
+/* The spec card: what this variant asserts and what it gives up, and the fixture note. */
+.spec {
+  margin: 0 0 1.1rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2); font-size: .82rem; color: var(--muted); display: grid;
+  grid-template-columns: auto 1fr; gap: .25rem .9rem; align-items: baseline;
+}
+.spec b { color: var(--ink); }
+.spec .k { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.spec .controls { grid-column: 1 / -1; display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .3rem; }
+.spec button {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--line-2); border-radius: 6px;
+  padding: .3rem .7rem; cursor: pointer;
+}
+.spec button[aria-pressed="true"] { color: var(--ink); border-color: var(--gold); box-shadow: inset 0 -2px 0 var(--gold); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
+
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+.page { max-width: 1180px; margin: 0 auto; padding: 1.2rem 1.2rem 4rem; }
+
+.hero { display: grid; grid-template-columns: 1fr auto; gap: 1.2rem; align-items: end; padding: 1.2rem 1.4rem; border-radius: 12px; margin-bottom: .8rem;
+  border: 1px solid var(--line); border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 75%, transparent), color-mix(in srgb, var(--surface-2) 95%, transparent)); backdrop-filter: blur(8px); }
+.hero .eyebrow { font-family: "JetBrains Mono", monospace; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hero h2 { margin: .1rem 0; font-size: 1.9rem; letter-spacing: .05em; display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
+.hero .why { font-size: .95rem; max-width: 70ch; }
+.hero .why p { margin: .2rem 0; }
+.hero .val { text-align: right; font-family: "JetBrains Mono", monospace; }
+.hero .val .n { font-size: 3rem; font-weight: 700; line-height: 1; }
+.hero .val .n.neg { color: var(--crimson-b); }
+.hero .val .u { display: block; font-size: .64rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .3rem; }
+.strip { position: sticky; top: 0; z-index: 2; margin: .2rem 0 .6rem; padding: .5rem .8rem .3rem; border-radius: 8px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--line); }
+.strip .lbl { font-family: "JetBrains Mono", monospace; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+.axis { position: relative; height: 1.4rem; margin: .2rem 0; }
+.axis .line { position: absolute; left: 0; right: 0; top: .65rem; height: 1px; background: var(--line-2); }
+.axis .p { position: absolute; top: .35rem; width: 1px; height: .6rem; background: var(--line-2); }
+.axis .p::after { content: attr(data-n); position: absolute; top: .7rem; left: -.5rem; font-family: "JetBrains Mono", monospace; font-size: .52rem; color: var(--muted); }
+.axis .me { position: absolute; right: -1px; top: .15rem; width: 2px; height: 1rem; background: var(--gold); }
+.row { display: grid; grid-template-columns: 2rem 12rem 1fr 5rem 5.2rem; gap: .8rem; align-items: center; padding: .38rem .8rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.row.decide { padding: .6rem .8rem; }
+.row.decide .name { font-size: 1.02rem; font-weight: 700; }
+.row.context .name { font-weight: 600; font-size: .92rem; }
+.row.tail { padding: .2rem .8rem; }
+.row.tail .name { font-weight: 400; font-size: .82rem; }
+.row.tail .track { opacity: 1; }
+.rank { font-family: "JetBrains Mono", monospace; font-size: .7rem; color: var(--muted); }
+.name { display: flex; gap: .4rem; align-items: baseline; flex-wrap: wrap; min-width: 0; }
+.track { position: relative; height: 1.2rem; }
+.track .base { position: absolute; left: 0; right: 0; top: .58rem; height: 1px; background: color-mix(in srgb, var(--line-2) 60%, transparent); }
+.track .dot { position: absolute; top: .18rem; width: .85rem; height: .85rem; border-radius: 50%; border: 2px solid var(--sky-b); background: var(--bg); transform: translateX(-50%); }
+.track .dot.gone { border-color: var(--crimson-b); background: var(--crimson-b); }
+.track .dot.safe { border-color: var(--emerald-b); }
+.track .lab { position: absolute; top: -.05rem; font-family: "JetBrains Mono", monospace; font-size: .62rem; color: var(--muted); transform: translateX(.6rem); white-space: nowrap; }
+.track .none { position: absolute; left: 0; right: 0; top: .1rem; text-align: center; font-family: "JetBrains Mono", monospace; font-size: .62rem; }
+.val { text-align: right; font-family: "JetBrains Mono", monospace; font-weight: 700; font-variant-numeric: tabular-nums; }
+.val.neg { color: var(--crimson-b); }
+.row.decide .val { font-size: 1.15rem; }
+.f { display: flex; gap: .3rem; justify-content: flex-end; }
+.f .tick { cursor: help; font-family: "JetBrains Mono", monospace; }
+.tick[data-force="tie"] { color: var(--tie-b); } .tick[data-force="cliff"] { color: var(--cliff-b); } .tick[data-force="block"] { color: var(--block-b); } .tick[data-force="pure"] { color: var(--pure); }
+.nec { font-family: "JetBrains Mono", monospace; font-size: .56rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.fixture { font-family: "JetBrains Mono", monospace; font-size: .56rem; letter-spacing: .08em; color: var(--muted); border: 1px dashed var(--line-2); padding: 0 .3rem; border-radius: 3px; cursor: help; }
+.head { display: grid; grid-template-columns: 2rem 12rem 1fr 5rem 5.2rem; gap: .8rem; padding: .2rem .8rem; font-family: "JetBrains Mono", monospace; font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.head .r { text-align: right; }
+
+</style></head>
+<body>
+<div class="page">
+
+<div class="spec">
+  <span class="k">Variant</span><span><b>C5 · Clock</b> — time leads: survival is a marker on a strip of the picks between now and your next turn</span>
+  <span class="k">Asserts</span><span>The one quantity a drafter cannot recover from -- will he still be here -- is the widest column, drawn as a marker on the actual intervening picks (16 of them, from the snapshot), colour-coded gone / coin-flip / safe with a percentage beside it. The leader is a hero with its reasons; rows stay in the engine's order and grow with relevance. An unestimable survival is a word in the lane, not a marker at zero.</span>
+  <span class="k">Sacrifices</span><span>Value is a narrow column on the right; the forces are glyphs only. A drafter who thinks in value first has to read across. The strip is a probability marker, not a timeline of who picks when -- it must not be read as 'he goes at pick 9'.</span>
+  <span class="k">Data</span><span>Real snapshot: 12-team superflex dynasty, on the clock at 3.03, 16 picks to the next turn; two real IDP rows from an IDP-flex league (horizon <i>unavailable</i>); one real negative-value kicker priced against the pre-draft anchor. Two rows are <b>constructed fixtures</b> and are marked on screen: an unpriced position-best with every Optional null, and a row of measured zeros.</span>
+  <div class="controls">
+    <button id="btn-leader" aria-pressed="false" onclick="toggleLeader(this)">Unpriced row as leader</button>
+    <button id="btn-motion" aria-pressed="false" onclick="toggleMotion(this)">Simulate reduced motion</button>
+    <span class="state-word" style="align-self:center">gates G1–G7 · 4-row fixture</span>
+  </div>
+</div>
+
+<div id="hero"></div><div class="strip" id="strip"></div><div class="head"><span>#</span><span>candidate</span><span>survival to your next turn, across the picks between</span><span class="r">acq · UV pts</span><span class="r">forces</span></div><div id="rows"></div>
+</div>
+<script>
+const PAYLOAD = {"pickHeader": "ON THE CLOCK \u2014 3.03", "league": "12-team \u00b7 Superflex \u00b7 Dynasty", "intervening": 16, "decisionRegime": "decisive", "valueUnit": "universal-value points", "valueUnitShort": "UV pts", "contract": {"universal_value": {"label": "Universal Value (UV pts)", "unit": "universal-value points", "help": "How good he is for ANY roster: value over the replacement player at his position (in projected season points, scaled against the largest gap left in the pool), plus dynasty-horizon and injury-risk adjustments. Universal-value points are signed and unbounded and are NOT fantasy points."}, "projected_points": {"label": "Projected Points (season)", "unit": "season fantasy points", "help": "Projected season fantasy points under this league's scoring. Never negative -- a different unit from the value cards beside it."}, "team_acquisition_value": {"label": "Your Acquisition Value (UV pts)", "unit": "universal-value points", "help": "Universal value plus what he is worth to YOUR roster specifically: the unfilled-need, lineup-flexibility and depth-insurance terms. Same universal-value points as the Universal Value card; the difference between the two is roster context."}, "survival_probability": {"label": "Survival to Next Pick (%)", "unit": "percent", "help": "Chance he is still on the board at your next turn, compounded across every intervening pick from those rosters' own boards."}, "positional_cliff": {"label": "Positional Cliff (tier)", "unit": "tier", "help": "How steep the drop-off in best-player-available value is behind him at his position, relative to that position's typical gap: HIGH, MEDIUM or LOW. A dash means no cliff could be measured for him."}, "position_run": {"label": "Run (recent picks)", "unit": "detected / none", "help": "Whether the last few picks show a run on his position. NONE is a measured no-run, not a missing value."}, "opportunity_cost": {"label": "Opportunity Cost of Waiting (UV pts)", "unit": "universal-value points", "help": "Acquisition value you expect to lose by passing: your acquisition value times the chance he does NOT survive to your next pick. Universal-value points, by your next turn -- not the whole-draft deferral cost the board states in season points per week."}, "expected_value_of_waiting": {"label": "Expected Value If You Wait (UV pts)", "unit": "universal-value points", "help": "Universal value times his chance of surviving to your next pick: what you can expect to still have available if you pass now. Universal-value points."}, "denial_value": {"label": "Denial Value (UV pts)", "unit": "universal-value points", "help": "The best acquisition value an intervening rival would have gotten from him, weighted by how likely that rival was to take him -- what your pick keeps from someone else. Universal-value points; a measured 0 means no rival was positioned to gain."}}, "weeksFactor": 17, "candidates": [{"id": "27", "name": "M Stafford", "pos": "QB", "team": "LAR", "uv": 101.83, "tav": 106.68, "proj": 302.0, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.002, "intervening": 16, "cliffTier": "LOW", "cliffGap": 2.0, "cliffTypical": 12.0, "forfeit": 34.88, "rivalPremium": 0.85, "denialTeam": "6", "needBonus": 4.85, "eligBonus": 0.0, "forces": [], "contextGap": null, "waitNote": {"tone": "steep", "label": "17.76 pts/wk", "title": "Waiting is expensive. Deferring QB costs 17.76 season points per week: M Stafford projects 302 season points against 0 for the best QB expected to still be undrafted when the draft ends. That floor is an estimate: QB's remaining pool is too thin to measure its own depth decay, so the average of the positions that still can be measured is assumed for it."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 302.0, "horizon_floor": 0.0, "horizon_basis": "imputed", "horizon_sensitivity": 56.0, "depth_exposure": 0.0, "pick_necessity": 83.4, "opportunity_cost": 106.47, "expected_value_of_waiting": 0.2, "denial_value": 56.47, "positional_forfeit": 34.88, "consensus_rank": 101, "consensus_tier": 15, "reach_label": "SIGNIFICANT REACH", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "230", "name": "T Mcbride", "pos": "TE", "team": "ARI", "uv": 98.2, "tav": 102.58, "proj": 253.0, "necessity": "STRONG ACTION", "necClass": "badge-necessity-strong", "survival": 0.004, "intervening": 16, "cliffTier": "HIGH", "cliffGap": 12.0, "cliffTypical": 3.0, "forfeit": 60.86, "rivalPremium": 4.38, "denialTeam": "6", "needBonus": 4.38, "eligBonus": 0.0, "forces": ["cliff"], "contextGap": null, "waitNote": {"tone": "steep", "label": "11.35 pts/wk", "title": "Waiting is expensive. Deferring TE costs 11.35 season points per week: T Mcbride projects 253 season points against 60 for the best TE expected to still be undrafted when the draft ends."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 193.0, "horizon_floor": 60.0, "horizon_basis": "measured", "horizon_sensitivity": 56.0, "depth_exposure": 0.0, "pick_necessity": 95.2, "opportunity_cost": 102.17, "expected_value_of_waiting": 0.39, "denial_value": 32.83, "positional_forfeit": 60.86, "consensus_rank": 18, "consensus_tier": 4, "reach_label": "WITHIN CONSENSUS BAND", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "124", "name": "C Lamb", "pos": "WR", "team": "DAL", "uv": 92.07, "tav": 100.45, "proj": 301.0, "necessity": "STRONG ACTION", "necClass": "badge-necessity-strong", "survival": 0.18, "intervening": 16, "cliffTier": "HIGH", "cliffGap": 9.0, "cliffTypical": 2.0, "forfeit": 24.33, "rivalPremium": 8.38, "denialTeam": "6", "needBonus": 8.38, "eligBonus": 0.0, "forces": ["cliff", "block"], "contextGap": null, "waitNote": {"tone": "steep", "label": "7.29 pts/wk", "title": "Waiting is expensive. Deferring WR costs 7.29 season points per week: C Lamb projects 301 season points against 177 for the best WR expected to still be undrafted when the draft ends."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 124.0, "horizon_floor": 177.0, "horizon_basis": "measured", "horizon_sensitivity": 23.0, "depth_exposure": 0.0, "pick_necessity": 94.5, "opportunity_cost": 82.37, "expected_value_of_waiting": 16.57, "denial_value": 18.08, "positional_forfeit": 24.33, "consensus_rank": 19, "consensus_tier": 5, "reach_label": "WITHIN CONSENSUS BAND", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "19", "name": "B Mayfield", "pos": "QB", "team": "TB", "uv": 94.77, "tav": 99.62, "proj": 295.0, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.724, "intervening": 16, "cliffTier": "MEDIUM", "cliffGap": 14.0, "cliffTypical": 7.0, "forfeit": 34.88, "rivalPremium": 0.85, "denialTeam": "5", "needBonus": 4.85, "eligBonus": 0.0, "forces": ["cliff"], "contextGap": null, "waitNote": {"tone": "steep", "label": "17.35 pts/wk", "title": "Waiting is expensive. Deferring QB costs 17.35 season points per week: B Mayfield projects 295 season points against 0 for the best QB expected to still be undrafted when the draft ends. That floor is an estimate: QB's remaining pool is too thin to measure its own depth decay, so the average of the positions that still can be measured is assumed for it."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 295.0, "horizon_floor": 0.0, "horizon_basis": "imputed", "horizon_sensitivity": 56.0, "depth_exposure": 0.0, "pick_necessity": 69.6, "opportunity_cost": 27.5, "expected_value_of_waiting": 68.61, "denial_value": 1.91, "positional_forfeit": 34.88, "consensus_rank": 81, "consensus_tier": 11, "reach_label": "SIGNIFICANT REACH", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "45", "name": "D Achane", "pos": "RB", "team": "MIA", "uv": 95.17, "tav": 95.55, "proj": 272.0, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.0, "intervening": 16, "cliffTier": "LOW", "cliffGap": 2.0, "cliffTypical": 3.0, "forfeit": 29.61, "rivalPremium": 8.38, "denialTeam": "5", "needBonus": 0.38, "eligBonus": 0.0, "forces": ["block"], "contextGap": null, "waitNote": {"tone": "steep", "label": "13.41 pts/wk", "title": "Waiting is expensive. Deferring RB costs 13.41 season points per week: D Achane projects 272 season points against 44 for the best RB expected to still be undrafted when the draft ends."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 228.0, "horizon_floor": 44.0, "horizon_basis": "measured", "horizon_sensitivity": 24.0, "depth_exposure": 0.0, "pick_necessity": 80.2, "opportunity_cost": 95.55, "expected_value_of_waiting": 0.0, "denial_value": 56.95, "positional_forfeit": 29.61, "consensus_rank": 20, "consensus_tier": 6, "reach_label": "WITHIN CONSENSUS BAND", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "125", "name": "J Jefferson", "pos": "WR", "team": "MIN", "uv": 83.18, "tav": 91.56, "proj": 292.0, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.724, "intervening": 16, "cliffTier": "HIGH", "cliffGap": 13.0, "cliffTypical": 2.0, "forfeit": 24.33, "rivalPremium": 8.38, "denialTeam": "6", "needBonus": 8.38, "eligBonus": 0.0, "forces": ["cliff"], "contextGap": null, "waitNote": {"tone": "steep", "label": "6.76 pts/wk", "title": "Waiting is expensive. Deferring WR costs 6.76 season points per week: J Jefferson projects 292 season points against 177 for the best WR expected to still be undrafted when the draft ends."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 115.0, "horizon_floor": 177.0, "horizon_basis": "measured", "horizon_sensitivity": 23.0, "depth_exposure": 0.0, "pick_necessity": 83.6, "opportunity_cost": 25.27, "expected_value_of_waiting": 60.22, "denial_value": 1.83, "positional_forfeit": 24.33, "consensus_rank": 13, "consensus_tier": 4, "reach_label": "WITHIN CONSENSUS BAND", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "49", "name": "K Walker", "pos": "RB", "team": "KC", "uv": 90.94, "tav": 91.32, "proj": 270.0, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.439, "intervening": 16, "cliffTier": "LOW", "cliffGap": 1.0, "cliffTypical": 3.0, "forfeit": 29.61, "rivalPremium": 8.38, "denialTeam": "5", "needBonus": 0.38, "eligBonus": 0.0, "forces": [], "contextGap": null, "waitNote": {"tone": "steep", "label": "13.29 pts/wk", "title": "Waiting is expensive. Deferring RB costs 13.29 season points per week: K Walker projects 270 season points against 44 for the best RB expected to still be undrafted when the draft ends."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 226.0, "horizon_floor": 44.0, "horizon_basis": "measured", "horizon_sensitivity": 24.0, "depth_exposure": 0.0, "pick_necessity": 71.5, "opportunity_cost": 51.23, "expected_value_of_waiting": 39.92, "denial_value": 5.96, "positional_forfeit": 29.61, "consensus_rank": 42, "consensus_tier": 9, "reach_label": "SIGNIFICANT REACH", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "231", "name": "C Loveland", "pos": "TE", "team": "CHI", "uv": 85.31, "tav": 89.69, "proj": 241.0, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.724, "intervening": 16, "cliffTier": "HIGH", "cliffGap": 17.0, "cliffTypical": 3.0, "forfeit": 60.86, "rivalPremium": 4.38, "denialTeam": "5", "needBonus": 4.38, "eligBonus": 0.0, "forces": ["cliff"], "contextGap": null, "waitNote": {"tone": "steep", "label": "10.65 pts/wk", "title": "Waiting is expensive. Deferring TE costs 10.65 season points per week: C Loveland projects 241 season points against 60 for the best TE expected to still be undrafted when the draft ends."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 181.0, "horizon_floor": 60.0, "horizon_basis": "measured", "horizon_sensitivity": 56.0, "depth_exposure": 0.0, "pick_necessity": 80.8, "opportunity_cost": 24.75, "expected_value_of_waiting": 61.76, "denial_value": 1.79, "positional_forfeit": 60.86, "consensus_rank": 29, "consensus_tier": 7, "reach_label": "WITHIN CONSENSUS BAND", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "28", "name": "D Jones", "pos": "QB", "team": "IND", "uv": 79.98, "tav": 84.83, "proj": 281.0, "necessity": "CLOSE CALL", "necClass": "badge-necessity-close-call", "survival": 0.724, "intervening": 16, "cliffTier": "LOW", "cliffGap": 2.0, "cliffTypical": 12.0, "forfeit": 34.88, "rivalPremium": 0.85, "denialTeam": "5", "needBonus": 4.85, "eligBonus": 0.0, "forces": [], "contextGap": null, "waitNote": {"tone": "steep", "label": "16.53 pts/wk", "title": "Waiting is expensive. Deferring QB costs 16.53 season points per week: D Jones projects 281 season points against 0 for the best QB expected to still be undrafted when the draft ends. That floor is an estimate: QB's remaining pool is too thin to measure its own depth decay, so the average of the positions that still can be measured is assumed for it."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 281.0, "horizon_floor": 0.0, "horizon_basis": "imputed", "horizon_sensitivity": 56.0, "depth_exposure": 0.0, "pick_necessity": 63.6, "opportunity_cost": 23.41, "expected_value_of_waiting": 57.91, "denial_value": 1.62, "positional_forfeit": 34.88, "consensus_rank": 108, "consensus_tier": 15, "reach_label": "SIGNIFICANT REACH", "bpa_source": "season projection", "confidence": 80.0, "source": "real"}, {"id": "fx-unpriced", "name": "H Butker", "pos": "K", "team": "KC", "uv": null, "tav": null, "proj": null, "necessity": "CLOSE CALL", "necClass": "badge-necessity-close-call", "survival": null, "intervening": null, "cliffTier": null, "cliffGap": null, "cliffTypical": null, "forfeit": null, "rivalPremium": null, "denialTeam": null, "needBonus": null, "eligBonus": null, "forces": ["cliff", "pure"], "contextGap": "elevated", "waitNote": null, "replacementBasis": null, "growthSignal": null, "fillsRequiredSlot": true, "flagged": false, "waiting_cost": null, "horizon_floor": null, "horizon_basis": "unavailable", "horizon_sensitivity": null, "depth_exposure": null, "pick_necessity": 50.0, "opportunity_cost": null, "expected_value_of_waiting": null, "denial_value": null, "positional_forfeit": null, "consensus_rank": null, "consensus_tier": null, "reach_label": null, "bpa_source": null, "confidence": null, "source": "fixture: unpriced position-best, every Optional field absent, promoted by the feasibility backstop"}, {"id": "521", "name": "C Schwesinger", "pos": "LB", "team": "CLE", "uv": 11.0, "tav": 11.33, "proj": null, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.785, "intervening": 12, "cliffTier": "HIGH", "cliffGap": 4.0, "cliffTypical": 1.0, "forfeit": 0.0, "rivalPremium": 0.33, "denialTeam": "6", "needBonus": 0.33, "eligBonus": 0.0, "forces": ["cliff"], "contextGap": null, "waitNote": null, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": null, "horizon_floor": null, "horizon_basis": "unavailable", "horizon_sensitivity": null, "depth_exposure": 0.0, "pick_necessity": 66.8, "opportunity_cost": 2.44, "expected_value_of_waiting": 8.63, "denial_value": 0.23, "positional_forfeit": 0.0, "consensus_rank": null, "consensus_tier": null, "reach_label": null, "bpa_source": "trade value, position-relative", "confidence": 35.0, "source": "real"}, {"id": "350", "name": "M Garrett", "pos": "DL", "team": "LAR", "uv": 10.0, "tav": 10.33, "proj": null, "necessity": "PREFERRED", "necClass": "badge-necessity-preferred", "survival": 0.785, "intervening": 12, "cliffTier": "HIGH", "cliffGap": 6.0, "cliffTypical": 1.0, "forfeit": 0.0, "rivalPremium": 0.33, "denialTeam": "6", "needBonus": 0.33, "eligBonus": 0.0, "forces": ["cliff"], "contextGap": null, "waitNote": null, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": null, "horizon_floor": null, "horizon_basis": "unavailable", "horizon_sensitivity": null, "depth_exposure": 0.0, "pick_necessity": 66.8, "opportunity_cost": 2.22, "expected_value_of_waiting": 7.85, "denial_value": 0.21, "positional_forfeit": 0.0, "consensus_rank": null, "consensus_tier": null, "reach_label": null, "bpa_source": "trade value, position-relative", "confidence": 35.0, "source": "real"}, {"id": "296", "name": "T Bass", "pos": "K", "team": "BUF", "uv": -2.0, "tav": -2.0, "proj": 103.0, "necessity": "CLOSE CALL", "necClass": "badge-necessity-close-call", "survival": 0.817, "intervening": 10, "cliffTier": "LOW", "cliffGap": 2.0, "cliffTypical": 3.0, "forfeit": 0.0, "rivalPremium": 0.0, "denialTeam": null, "needBonus": 0.0, "eligBonus": 0.0, "forces": [], "contextGap": null, "waitNote": {"tone": "moderate", "label": "0.71 pts/wk", "title": "Waiting costs a little. Deferring K costs 0.71 season points per week: T Bass projects 103 season points against 91 for the best K expected to still be undrafted when the draft ends."}, "replacementBasis": "predraft_anchor", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 12.0, "horizon_floor": 91.0, "horizon_basis": "measured", "horizon_sensitivity": 25.0, "depth_exposure": 0.0, "pick_necessity": 53.7, "opportunity_cost": -0.37, "expected_value_of_waiting": -1.63, "denial_value": 0.0, "positional_forfeit": 0.0, "consensus_rank": null, "consensus_tier": null, "reach_label": null, "bpa_source": "weekly projection, seeded", "confidence": 50.0, "source": "real"}, {"id": "fx-zeros", "name": "C Boswell", "pos": "K", "team": "PIT", "uv": 0.0, "tav": 0.0, "proj": 0.0, "necessity": "LOW URGENCY", "necClass": "badge-necessity-low", "survival": 0.0, "intervening": 16, "cliffTier": "LOW", "cliffGap": 0.0, "cliffTypical": 0.0, "forfeit": 0.0, "rivalPremium": 0.0, "denialTeam": null, "needBonus": 0.0, "eligBonus": 0.0, "forces": [], "contextGap": null, "waitNote": {"tone": "cheap", "label": "free", "title": "Waiting is better than free here. The best K expected to go undrafted projects 0 season points, ahead of C Boswell's 0 -- this pick buys nothing you won't have anyway."}, "replacementBasis": "live_starter_demand", "growthSignal": null, "fillsRequiredSlot": false, "flagged": false, "waiting_cost": 0.0, "horizon_floor": 0.0, "horizon_basis": "measured", "horizon_sensitivity": 0.0, "depth_exposure": 0.0, "pick_necessity": 0.0, "opportunity_cost": 0.0, "expected_value_of_waiting": 0.0, "denial_value": 0.0, "positional_forfeit": 0.0, "consensus_rank": null, "consensus_tier": null, "reach_label": null, "bpa_source": "weekly projection, seeded", "confidence": 50.0, "source": "fixture: every quantity a measured 0.0 -- each must render as a number"}], "nextPicks": ["Roster 5", "Roster 6", "Roster 7", "Roster 8", "Roster 9", "Roster 10", "Roster 11", "Roster 12", "Roster 12", "Roster 11", "Roster 10", "Roster 9", "Roster 8", "Roster 7", "Roster 6", "Roster 5"]};
+
+const ABSENT = "—";
+function num(x) { return typeof x === "number" && Number.isFinite(x); }
+function fmt(x, d, unit) {
+  if (!num(x)) return `<span class="absent" title="Not measured. This quantity was never computed for him; it is not zero.">${ABSENT}</span>`;
+  return `${x.toFixed(d)}${unit ? `<span class="unit">${unit}</span>` : ""}`;
+}
+function pct(x) { return num(x) ? `${Math.round(x * 100)}%` : `<span class="absent" title="Survival to your next turn was not estimable.">${ABSENT}</span>`; }
+function signed(x, d) { return num(x) ? (x > 0 ? "+" : "") + x.toFixed(d) : ABSENT; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+
+// The three-state horizon, as WORDS. `measured` / `imputed` / `unavailable` are the engine's
+// own vocabulary (pick_synthesis.HORIZON_BASIS_*); a fourth state -- the field not carried at
+// all -- renders as nothing rather than as a guess.
+function horizon(c) {
+  if (c.horizon_basis === "measured") return { word: "measured", cls: "measured",
+    text: `Draft-end floor for ${c.pos} is measured from ${c.pos}'s own remaining depth.` };
+  if (c.horizon_basis === "imputed") return { word: "estimated", cls: "imputed",
+    text: `Draft-end floor for ${c.pos} is an estimate: ${c.pos}'s remaining pool is too thin to measure its own depth decay, so the average of the positions that still can be measured is assumed.` };
+  if (c.horizon_basis === "unavailable") return { word: "not measurable", cls: "unavailable",
+    text: `The cost of deferring ${c.pos} to the end of the draft is not measurable: the loaded pool for ${c.pos} ends before the draft does, so no draft-end floor exists.` };
+  return null;
+}
+// depth_exposure: the snapshot carries the NUMBER but not its basis (depth_basis is dropped at
+// the snapshot boundary), and the engine writes 0.0 for both "measured, no exposure" and "not
+// measured" -- so a 0.0 here is rendered as a number with that caveat, never as "safe".
+function depth(c) {
+  if (!num(c.depth_exposure)) return { text: "Depth insurance: not measured.", val: null };
+  if (c.depth_exposure > 0) return { text: `Depth insurance: +${c.depth_exposure.toFixed(1)} UV pts — what one backup at ${c.pos} is worth to your lineup.`, val: c.depth_exposure };
+  return { text: "Depth insurance: 0.0 UV pts (the snapshot does not say whether this was measured as zero or not measured at all).", val: 0 };
+}
+function coverage(cands) {
+  const n = cands.filter(c => !num(c.tav)).length;
+  if (n === 0) return `every candidate priced`;
+  return `${n} of ${cands.length} candidates unpriced — no replacement level at their position; ordered last, not scored`;
+}
+function forceTitle(f) {
+  return { tie: "Near-tie: inside the measured noise band of the board leader",
+           cliff: "Cliff protection: the position thins sharply behind him",
+           block: "Block opportunity: a rival with a real hole here was positioned to take him",
+           pure: "Pure value: his raw universal value is the best in this field" }[f];
+}
+const GLYPH = { tie: "≈", cliff: "◣", block: "⊘", pure: "◆" };
+
+let candidates = PAYLOAD.candidates.slice();
+function toggleLeader(btn) {
+  const on = btn.getAttribute("aria-pressed") !== "true";
+  btn.setAttribute("aria-pressed", on);
+  const fx = PAYLOAD.candidates.find(c => c.id === "fx-unpriced");
+  candidates = on ? [fx, ...PAYLOAD.candidates.filter(c => c.id !== "fx-unpriced")] : PAYLOAD.candidates.slice();
+  render();
+}
+function toggleMotion(btn) {
+  const on = btn.getAttribute("aria-pressed") !== "true";
+  btn.setAttribute("aria-pressed", on);
+  document.documentElement.classList.toggle("reduced-motion", on);
+}
+
+
+function tier(c, i) {
+  if (i === 0) return "decide";
+  if (["MUST TAKE", "STRONG ACTION", "PREFERRED"].includes(c.necessity) || c.forces.includes("tie")) return "decide";
+  if (c.necessity === "CLOSE CALL") return "context";
+  return "tail";
+}
+function pillPos(c) { return `<span class="pill pill-${c.pos}">${c.pos}</span>`; }
+function ticks(c) {
+  return c.forces.map(f => `<span class="tick mono" data-force="${f}" title="${forceTitle(f)}">${GLYPH[f]}</span>`).join("");
+}
+// denial_team arrives as Sleeper's roster id; a person reads "Roster 6", not "6".
+function rival(c) { return c.denialTeam ? (/^\d+$/.test(String(c.denialTeam)) ? `Roster ${c.denialTeam}` : c.denialTeam) : null; }
+function fixtureTag(c) {
+  return c.source === "real" ? "" : `<span class="fixture" title="${esc(c.source)}">FIXTURE</span>`;
+}
+function reasons(c, leader) {
+  const s = [];
+  const h = horizon(c);
+  if (c.forces.includes("cliff")) s.push(`${num(c.forfeit) ? `Waiting costs about <b>${c.forfeit.toFixed(1)} ${PAYLOAD.valueUnitShort}</b> by your next turn` : `Waiting has a cost this board could not measure`} — ${c.cliffTier ? `a ${c.cliffTier} positional cliff` : `a positional cliff`}${num(c.cliffGap) ? ` (${c.cliffGap.toFixed(1)} ${PAYLOAD.valueUnitShort} of drop-off to the next best ${c.pos}${num(c.cliffTypical) ? `, typical ${c.cliffTypical.toFixed(1)}` : ""})` : ""}.`);
+  if (c.forces.includes("block")) s.push(`<b>${rival(c) || "A rival"}</b> has a real hole here${num(c.rivalPremium) ? ` — a rival premium of ${c.rivalPremium.toFixed(1)} ${PAYLOAD.valueUnitShort}` : ""}. Value and denial at once.`);
+  if (c.forces.includes("pure")) s.push(`His raw universal value${num(c.uv) ? ` (<b>${c.uv.toFixed(1)} ${PAYLOAD.valueUnitShort}</b>)` : ""} is the best in this field — context, not quality, holds his acquisition rank down.`);
+  if (c.forces.includes("tie") && !leader) s.push(`${num(leader) ? "" : ""}Inside the measured noise band of the leader${num(candidates[0].tav) && num(c.tav) ? ` — <b>${(candidates[0].tav - c.tav).toFixed(1)} ${PAYLOAD.valueUnitShort}</b> off` : ""}; preference is a legitimate tiebreaker.`);
+  if (c.waitNote) s.push(`${esc(c.waitNote.title)}`);
+  else if (h && h.cls === "unavailable") s.push(h.text);
+  if (h && h.cls === "imputed" && !c.waitNote) s.push(h.text);
+  if (c.fillsRequiredSlot) s.push(`<b>Fills a required slot.</b> Ranked above higher-scoring candidates because your roster cannot otherwise still be filled legally.`);
+  if (!num(c.tav)) s.push(`<b>Unpriced.</b> His position has no replacement level left to price against, so no acquisition value exists for him. That is an absence, not a zero.`);
+  return s;
+}
+
+function render() {
+  const L = candidates[0], N = PAYLOAD.intervening;
+  document.getElementById("hero").innerHTML = `<div class="hero"><div>
+    <div class="eyebrow">${PAYLOAD.pickHeader} · ${PAYLOAD.league} · ${N} picks before you choose again · ${coverage(candidates)}</div>
+    <h2 class="display">${L.name} ${pillPos(L)}${fixtureTag(L)}</h2>
+    <div class="why">${(reasons(L, true).length ? reasons(L, true) : ["The board's leader on value alone."]).slice(0, 3).map(r => `<p>${r}</p>`).join("")}</div>
+    </div><div class="val"><span class="n ${num(L.tav) && L.tav < 0 ? "neg" : ""}">${num(L.tav) ? L.tav.toFixed(0) : `<span class="absent" title="Unpriced: no replacement level at his position. An absence, not a zero.">${ABSENT}</span>`}</span><span class="u">acquisition value · ${PAYLOAD.valueUnitShort}</span><span class="u">${L.necessity} · survive ${pct(L.survival)}</span></div></div>`;
+  document.getElementById("strip").innerHTML = `<div class="lbl"><span>now</span><span>${N} intervening picks</span><span>your next turn</span></div><div class="axis"><div class="line"></div>${PAYLOAD.nextPicks.slice(0, N).map((r, k) => `<span class="p" style="left:${(k + 1) / (N + 1) * 100}%" data-n="${k + 1}" title="${r}"></span>`).join("")}<span class="me" title="your next turn"></span></div>`;
+  document.getElementById("rows").innerHTML = candidates.map((c, i) => {
+    const t = tier(c, i);
+    // Survival is a MARKER on the strip: its x is the probability, read against the picks it
+    // spans. It is not a bar -- nothing is filled from zero -- and absence is a word in the lane.
+    const marker = num(c.survival)
+      ? `<div class="base"></div><span class="dot ${c.survival <= 0.05 ? "gone" : c.survival >= 0.6 ? "safe" : ""}" style="left:${c.survival * 100}%" title="${Math.round(c.survival * 100)}% chance he is still here at your next turn"></span><span class="lab" style="left:${c.survival * 100}%">${Math.round(c.survival * 100)}%</span>`
+      : `<span class="none"><span class="absent" title="Survival to your next turn was not estimable for him.">not estimable</span></span>`;
+    return `<div class="row ${t}"><span class="rank">${i + 1}</span><span class="name">${c.name} ${pillPos(c)}${fixtureTag(c)}<span class="nec">${t === "tail" ? "" : c.necessity}</span></span><div class="track">${marker}</div><span class="val ${num(c.tav) && c.tav < 0 ? "neg" : ""}" title="${PAYLOAD.valueUnit}">${num(c.tav) ? c.tav.toFixed(0) : `<span class="absent" title="Unpriced">${ABSENT}</span>`}</span><span class="f">${c.forces.map(f => `<span class="tick" data-force="${f}" title="${forceTitle(f)}">${GLYPH[f]}</span>`).join("")}</span></div>`;
+  }).join("");
+}
+
+render();
+</script>
+</body></html>

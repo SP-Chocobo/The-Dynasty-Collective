@@ -1,0 +1,118 @@
+﻿{
+    "measured_utc":  "2026-09-14T00:37:43.6029523Z",
+    "checked":  12,
+    "headshot_returned_200":  12,
+    "no_headshot_for_that_player":  0,
+    "fetch_errored":  0,
+    "verdict":  "headshots ARE available at this pattern",
+    "results":  [
+                    {
+                        "player_id":  "96",
+                        "kind":  "full",
+                        "url":  "https://sleepercdn.com/content/nfl/players/96.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "65228"
+                    },
+                    {
+                        "player_id":  "96",
+                        "kind":  "thumb",
+                        "url":  "https://sleepercdn.com/content/nfl/players/thumb/96.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "46018"
+                    },
+                    {
+                        "player_id":  "138",
+                        "kind":  "full",
+                        "url":  "https://sleepercdn.com/content/nfl/players/138.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "49256"
+                    },
+                    {
+                        "player_id":  "138",
+                        "kind":  "thumb",
+                        "url":  "https://sleepercdn.com/content/nfl/players/thumb/138.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "34227"
+                    },
+                    {
+                        "player_id":  "19",
+                        "kind":  "full",
+                        "url":  "https://sleepercdn.com/content/nfl/players/19.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "74146"
+                    },
+                    {
+                        "player_id":  "19",
+                        "kind":  "thumb",
+                        "url":  "https://sleepercdn.com/content/nfl/players/thumb/19.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "51867"
+                    },
+                    {
+                        "player_id":  "260",
+                        "kind":  "full",
+                        "url":  "https://sleepercdn.com/content/nfl/players/260.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "64856"
+                    },
+                    {
+                        "player_id":  "260",
+                        "kind":  "thumb",
+                        "url":  "https://sleepercdn.com/content/nfl/players/thumb/260.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "47035"
+                    },
+                    {
+                        "player_id":  "421",
+                        "kind":  "full",
+                        "url":  "https://sleepercdn.com/content/nfl/players/421.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "23994"
+                    },
+                    {
+                        "player_id":  "421",
+                        "kind":  "thumb",
+                        "url":  "https://sleepercdn.com/content/nfl/players/thumb/421.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "23994"
+                    },
+                    {
+                        "player_id":  "827",
+                        "kind":  "full",
+                        "url":  "https://sleepercdn.com/content/nfl/players/827.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "54286"
+                    },
+                    {
+                        "player_id":  "827",
+                        "kind":  "thumb",
+                        "url":  "https://sleepercdn.com/content/nfl/players/thumb/827.jpg",
+                        "outcome":  "http",
+                        "status":  200,
+                        "content_type":  "image/jpeg",
+                        "bytes":  "40114"
+                    }
+                ]
+}

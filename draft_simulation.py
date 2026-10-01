@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import draft_board_ui
+import draft_room as dr
 import pick_synthesis
 from data_merger import DataMerger
 
@@ -51,6 +52,18 @@ class PickRecord:
     chosen_player_id: str
     decision_regime: str
     snapshot: dict
+    # #138. Read off the chosen candidate, not re-derived: the two qualifiers that say what
+    # KIND of number won this pick. chosen_replacement_basis distinguishes a price resting on
+    # live starter demand from one resting on the pre-draft anchor; chosen_growth_signal is
+    # the trajectory term that decides late upside-mode picks (measured: it changes the argmax
+    # by round 15). Both default so trajectories recorded before this field still construct.
+    #
+    # These are DECOMPOSITIONS of a decision this record already stores, which is exactly what
+    # makes them worth storing: without them the record answers "who was taken" but not "on
+    # what kind of evidence", and #150 reads these records to judge whether a draft is
+    # defensible rather than merely deterministic.
+    chosen_replacement_basis: Optional[str] = None
+    chosen_growth_signal: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -71,9 +84,68 @@ class DraftTrajectory:
         return rosters
 
 
+def _picks_by_mode(mode: str, total_picks: int, num_teams: int,
+                   upside_rule: str = dr.UPSIDE_RULE_ROUND) -> Optional[dict[str, int]]:
+    """How many picks of this trajectory each valuation actually produced (#222), or None when
+    that cannot be known.
+
+    Reported rather than assumed: mode="auto" flips at UPSIDE_MODE_DEFAULT_ROUND, which is a
+    fixed ROUND INDEX, so the same setting buys a different FRACTION of every draft -- 26% of a
+    19-round draft and 46% of a 26-round one. A reader of the artifact should not have to
+    recompute that from a constant to know what they are comparing.
+
+    NONE UNDER THE CROSSING RULE, AND THAT IS THE REPAIR. This computed the split from
+    UPSIDE_MODE_DEFAULT_ROUND regardless of `upside_rule`, and it was never passed the rule at
+    all. Under UPSIDE_RULE_CROSSING the board flips wherever `_vor` is exhausted -- a property of
+    the pool at that pick, not of any constant -- so the VDS `crossing` arm's trajectory stated
+    `upside_from_round: 15` and a round-15 split while the real flip happened somewhere else
+    entirely. Nothing records the effective mode per pick (checked: neither the PickRecord nor the
+    serialized snapshot carries one), so the honest answer is that this is UNKNOWN, and `#187`
+    says an unknown crosses as None rather than as a plausible number.
+
+    The nearest available proxy is `qualifier_profile.picks_with_growth_measured`, which happens
+    to equal the true upside count -- but nothing guarantees the two agree, so it is not
+    substituted here.
+    """
+    if mode == "upside":
+        return {"balanced": 0, "upside": total_picks}
+    if mode != "auto":
+        return {"balanced": total_picks, "upside": 0}
+    if upside_rule != dr.UPSIDE_RULE_ROUND:
+        return None
+    balanced = min(max((dr.UPSIDE_MODE_DEFAULT_ROUND - 1) * num_teams, 0), total_picks)
+    return {"balanced": balanced, "upside": total_picks - balanced}
+
+
 def simulate_full_draft(
     merger: DataMerger, players_db: dict[str, dict], league: dict, pick_order: list,
     *, mode: str = "auto", pool_scope: str = "all", config_label: str = "",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = dr.SLEEPER_BASIS_WEEKLY,
+    #: #261. Which question decides upside mode -- the calendar or the board. Forwarded to
+    #: build_snapshot and interpreted only by compute_draft_board. Defaulted to the shipped
+    #: rule so every existing caller drafts exactly as before.
+    upside_rule: str = dr.UPSIDE_RULE_ROUND,
+    #: #30. The per-week projection lines behind `sleeper_projections`, from the same capture.
+    #: Forwarded to build_snapshot and interpreted only by compute_draft_board, exactly as
+    #: `upside_rule` is. Same #204 reasoning as `sleeper_projections` itself: production passes
+    #: it, so a simulated draft that omits it is not drafting from the production pricing path
+    #: -- K and DEF come back without their streaming floor and the whole of #30 is inert.
+    weekly_projections: Optional[dict] = None,
+    #: #263b. HOW WELL THE RIVALS DRAFT. None (default) = every seat takes its own top
+    #: candidate, which is the MAXIMALLY EFFICIENT drain and therefore a LOWER BOUND on when
+    #: any board-exhaustion signal can fire. A dict {"top_k": int, "seed": int,
+    #: "sharp_seats": [ids]} makes every seat NOT in sharp_seats choose uniformly from its own
+    #: top_k candidates instead of its best.
+    #:
+    #: SEEDED, AND THE SEED IS CARRIED IN THE TRAJECTORY CONFIG. This module's docstring
+    #: forbids substituting a random seed for what should vary between trials -- draft slot
+    #: order and league format. That prohibition is about faking FORMAT variation with
+    #: randomness, and is not relaxed here: opponent skill is an orthogonal axis, format and
+    #: order still vary by their own mechanisms, and a recorded seed reproduces a run exactly.
+    #: top_k is NOT a derived constant and must be swept and reported across, never chosen
+    #: (#56).
+    opponent_noise: Optional[dict] = None,
 ) -> DraftTrajectory:
     """Run one complete draft, every chair using the real production engine -- never a
     simulation-specific valuation or decision heuristic.
@@ -93,6 +165,15 @@ def simulate_full_draft(
     picks: list[dict] = []
     records: list[PickRecord] = []
     num_teams = len(set(str(r) for r in pick_order))
+    # #263b. Bound once, outside the loop, so the seeded stream is a property of the DRAFT and
+    # not of any single pick -- a generator re-seeded per pick would make every rival make the
+    # same mistake, which is a different experiment than the one this models.
+    _noise = _sharp = _top_k = None
+    if opponent_noise:
+        import random as _random
+        _top_k = int(opponent_noise["top_k"])
+        _noise = _random.Random(int(opponent_noise["seed"]))
+        _sharp = {str(r) for r in opponent_noise.get("sharp_seats", [])}
 
     for idx in range(len(pick_order)):
         roster_id = str(pick_order[idx])
@@ -101,19 +182,64 @@ def simulate_full_draft(
         snap = pick_synthesis.build_snapshot(
             merger, players_db, picks, pick_order, idx, roster_id, league,
             pick_label=pick_label, mode=mode, pool_scope=pool_scope,
+            upside_rule=upside_rule, weekly_projections=weekly_projections,
+            # #204: production (app.py's Draft Room) passes BOTH of these, so a simulated
+            # draft that omits them is not drafting from the production pricing path -- every
+            # row comes back with sleeper_points/sleeper_basis/availability_basis all None,
+            # and the scoring-aware path (#180/#192) plus the availability haircut (#191/#202)
+            # are silently inert. Defaulted to None/WEEKLY so every existing caller keeps its
+            # exact previous behaviour; the battery is what supplies them.
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
         )
         if not snap.candidates:
             break
         chosen = snap.candidates[0]
+        if _noise is not None and roster_id not in _sharp:
+            # #263b. Uniform over this seat's OWN top_k, so a "mistake" is still a plausible
+            # pick rather than an arbitrary name -- a rival who takes his 4th-rated player is
+            # modelling a reach, not a coin flip over the whole pool. The draw happens inside
+            # the REAL draft loop: #221 was withdrawn because a fixture-shaped picks list
+            # faked the drain, and synthesising picks here would repeat that exactly.
+            chosen = snap.candidates[_noise.randrange(min(_top_k, len(snap.candidates)))]
         picks.append({"pick_no": idx + 1, "round": round_no, "roster_id": roster_id, "player_id": chosen.player_id})
         records.append(PickRecord(
             pick_no=idx + 1, round=round_no, roster_id=roster_id, pick_label=pick_label,
             chosen_player_id=chosen.player_id, decision_regime=snap.decision_regime,
             snapshot=draft_board_ui.serialize_snapshot(snap, pick_header=pick_label, state_tags=[]),
+            chosen_replacement_basis=chosen.replacement_basis,
+            chosen_growth_signal=chosen.growth_signal,
         ))
 
     return DraftTrajectory(
-        config={"pick_order": [str(r) for r in pick_order], "mode": mode, "pool_scope": pool_scope, "label": config_label},
+        config={"pick_order": [str(r) for r in pick_order], "mode": mode, "pool_scope": pool_scope,
+                "label": config_label,
+                # #263b. Carried WITH the trajectory for the same reason priced_from is: two
+                # drafts run against different opponent quality are not comparable, and without
+                # this the difference is invisible in the record. None means every seat sharp.
+                "opponent_noise": (dict(opponent_noise) if opponent_noise else None),
+                # WHICH PRICING PATH produced this trajectory, carried with it. Two trajectories
+                # drafted off different point sources are not comparable, and without this the
+                # difference is invisible in the record (#204).
+                "sleeper_basis": (sleeper_basis if sleeper_projections else None),
+                "priced_from": ("vendor+sleeper" if sleeper_projections else "vendor_only"),
+                # WHICH VALUATION produced each pick, for the same reason priced_from exists
+                # (#222). mode="auto" is not one valuation: compute_draft_board's upside branch
+                # zeroes every team-specific term, so a trajectory can be half roster-aware and
+                # half roster-blind with nothing in the record saying so. Measured on a 26-round
+                # startup, that split is 168 balanced picks and 144 upside ones -- 46% of the
+                # draft -- and two trajectories drafted under different splits are no more
+                # comparable than two drafted off different point sources. Derived from the
+                # rounds actually run, never from an assumed draft length.
+                # RECORDED, because it was not -- and its absence is why the two fields below
+                # were false on every crossing arm. A config that omits the rule cannot be used
+                # to tell two trajectories apart on the axis the rule controls.
+                "upside_rule": upside_rule,
+                "upside_from_round": (
+                    (dr.UPSIDE_MODE_DEFAULT_ROUND
+                     if (mode == "auto" and upside_rule == dr.UPSIDE_RULE_ROUND) else None)
+                    if mode != "upside" else 1),
+                "picks_by_mode": _picks_by_mode(mode, len(pick_order), num_teams,
+                                                upside_rule=upside_rule)},
         picks=tuple(records),
     )
 
@@ -131,6 +257,8 @@ def run_trials(
             merger, players_db, cfg["league"], cfg["pick_order"],
             mode=cfg.get("mode", "auto"), pool_scope=cfg.get("pool_scope", "all"),
             config_label=cfg.get("label", ""),
+            sleeper_projections=cfg.get("sleeper_projections"),
+            sleeper_basis=cfg.get("sleeper_basis", dr.SLEEPER_BASIS_WEEKLY),
         )
         for cfg in configs
     ]

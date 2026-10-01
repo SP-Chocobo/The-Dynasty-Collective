@@ -1,0 +1,57 @@
+{
+ "league": "CAPTURE_fourth_and_forever",
+ "teams": 12,
+ "rounds": 26,
+ "seat": "1",
+ "turn_index": 0,
+ "next_turn_index": 23,
+ "universe": 6595,
+ "target_player_id": "9221",
+ "survival_reported": 0.0,
+ "survival_unrounded": 2.347876792391798e-08,
+ "intervening_picks": 22,
+ "risk_rows": 22,
+ "boards_ranking_him_inside_the_table": 22,
+ "distinct_take_probabilities": [
+  0.55
+ ],
+ "one_board_mass": {
+  "priced_rows": 481,
+  "head": 1.21,
+  "tail": 9.52,
+  "total": 10.73
+ },
+ "mass_by_pool_size": {
+  "50": 2.11,
+  "128": 3.67,
+  "256": 6.23,
+  "481": 10.73,
+  "500": 11.11
+ },
+ "survival_if_mass_normalised": 0.3142,
+ "survival_by_agreement_count": {
+  "0": 0.6412,
+  "1": 0.2944,
+  "2": 0.1352,
+  "3": 0.0621,
+  "4": 0.0285,
+  "5": 0.0131,
+  "6": 0.006,
+  "7": 0.0028,
+  "8": 0.0013,
+  "9": 0.0006,
+  "10": 0.0003,
+  "11": 0.0001,
+  "12": 0.0001,
+  "13": 0.0,
+  "14": 0.0,
+  "15": 0.0,
+  "16": 0.0,
+  "17": 0.0,
+  "18": 0.0,
+  "19": 0.0,
+  "20": 0.0,
+  "21": 0.0,
+  "22": 0.0
+ }
+}

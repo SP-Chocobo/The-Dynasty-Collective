@@ -1,0 +1,30 @@
+.F...F.
+======================================================================
+FAIL: test_the_payload_carries_every_term (test_216_room_integrity.EveryTermOfTheIdentityReachesTheRoomTests.test_the_payload_carries_every_term)
+FAILS on f580c11: depth_exposure (and its basis) never reach the JS. Distinct,
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_room_integrity.py", line 249, in test_the_payload_carries_every_term
+    self.assertEqual(missing, [], f"serialize_candidate drops identity terms: {missing}; "
+AssertionError: Lists differ: ['displacement_adj=-7.75'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'displacement_adj=-7.75'
+
+- ['displacement_adj=-7.75']
++ [] : serialize_candidate drops identity terms: ['displacement_adj=-7.75']; payload keys ['cliffGap', 'cliffTier', 'cliffTypical', 'contextGap', 'denialTeam', 'depthBasis', 'depthExposure', 'displacementAdj', 'displacementBasis', 'eligBonus', 'fillsRequiredSlot', 'flagged', 'forces', 'forfeit', 'growthSignal', 'id', 'intervening', 'name', 'necClass', 'necessity', 'needBonus', 'pos', 'proj', 'replacementBasis', 'rivalPremium', 'survival', 'tav', 'team', 'uv', 'waitNote']
+
+======================================================================
+FAIL: test_the_rendered_panel_states_a_displacement_deduction_with_its_words (test_216_room_integrity.EveryTermOfTheIdentityReachesTheRoomTests.test_the_rendered_panel_states_a_displacement_deduction_with_its_words)
+#216, executed. A candidate whose whole context is a displacement deduction: the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_room_integrity.py", line 275, in test_the_rendered_panel_states_a_displacement_deduction_with_its_words
+    self.assertIn(lo.DISPLACEMENT_BASIS_LABELS[lo.DISPLACEMENT_MEASURED], focus)
+AssertionError: 'measured against your own starters' not found in 'This is a strong action pick — 31% survival to your next turn across 11 intervening pick(s).Roster context deducts 12.5 UV pts here beyond any term named above: his acquisition value sits below his universal value.\n        \n          UV 50UV pts\n          ACQ 38UV pts\n          PROJ 250season pts\n          SURV 31%\n          CLIFF HIGH\n          PRICED VS live starter demand\n          \n        \n      '
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.002s
+
+FAILED (failures=2)

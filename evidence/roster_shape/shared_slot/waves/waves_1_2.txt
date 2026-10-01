@@ -1,0 +1,37 @@
+format                 seat  SELF comp                      br    d   ord | SHARED comp                    br    d   ord |  lineup d
+10T_half_ppr              1  QB2/RB2/WR7/TE3                 2    3  fail | QB2/RB4/WR6/TE2                 0    0  PASS |      59.8
+10T_ppr_SF                1  QB2/RB3/WR7/TE3                 4    4  PASS | QB2/RB4/WR7/TE2                 2    2  PASS |      31.8
+12T_half_ppr_SF           1  QB2/RB5/WR4/TE4                 3    4  fail | QB2/RB2/WR10/TE1                3    7  PASS |      -9.2
+12T_ppr                   1  QB2/RB2/WR7/TE3                 1    2  fail | QB2/RB4/WR7/TE1                 0    0  PASS |      35.7
+12T_ppr                  12  QB1/RB4/WR8/TE1                 1    1  PASS | QB1/RB3/WR8/TE2                 2    2  PASS |      11.4
+12T_ppr                   4  QB1/RB2/WR8/TE3                 2    4  fail | QB1/RB2/WR10/TE1                2    5  PASS |     -11.6
+12T_ppr                   8  QB1/RB2/WR8/TE3                 2    3  fail | QB1/RB4/WR7/TE2                 0    0  PASS |      -3.5
+12T_ppr_SF                1  QB2/RB3/WR8/TE2                 3    4  PASS | QB2/RB2/WR10/TE1                3    7  PASS |     -42.9
+12T_ppr_SF               12  QB2/RB4/WR7/TE2                 2    2  PASS | QB3/RB4/WR6/TE2                 0    0  PASS |      -1.8
+12T_ppr_SF                4  QB2/RB3/WR8/TE2                 3    4  PASS | QB2/RB2/WR10/TE1                3    7  PASS |     -34.6
+12T_ppr_SF                8  QB2/RB3/WR8/TE2                 3    4  PASS | QB2/RB4/WR7/TE2                 2    2  PASS |     -25.0
+12T_ppr_SHORT_DRAFT       1  QB2/RB2/WR7/TE3                 1    2  fail | QB2/RB4/WR7/TE1                 0    0  PASS |      35.7
+12T_standard              1  QB1/RB2/WR8/TE3                 2    4  fail | QB2/RB3/WR7/TE2                 2    2  PASS |      23.0
+14T_ppr                   1  QB2/RB2/WR7/TE3                 2    3  fail | QB2/RB4/WR7/TE1                 1    1  PASS |     -11.7
+14T_standard_SF           1  QB2/RB2/WR7/TE4                 4    6  fail | QB2/RB4/WR7/TE2                 2    2  PASS |     -25.2
+4WR_TE_PREMIUM            1  QB2/RB3/WR8/TE3                 1    1  PASS | QB2/RB3/WR7/TE4                 1    1  fail |      29.6  <== REGRESSION
+4WR_TE_PREMIUM           12  QB1/RB7/WR5/TE3                 2    3  fail | QB1/RB6/WR5/TE4                 2    3  fail |      -3.6
+4WR_TE_PREMIUM            4  QB2/RB5/WR6/TE3                 2    2  PASS | QB2/RB5/WR6/TE3                 1    1  PASS |      24.8
+4WR_TE_PREMIUM            8  QB1/RB6/WR6/TE3                 2    3  PASS | QB1/RB5/WR6/TE4                 2    2  PASS |       2.2
+8T_ppr_SF                 1  QB2/RB5/WR5/TE3                 1    1  PASS | QB2/RB4/WR7/TE2                 2    2  PASS |      33.7
+8T_standard               1  QB1/RB3/WR7/TE3                 3    5  PASS | QB2/RB4/WR7/TE1                 2    3  PASS |      61.5
+HEAVY_IDP                 1  QB1/RB2/WR3/TE2                 3    5  PASS | QB1/RB2/WR5/TE1                 4    5  PASS |      -3.0
+HEAVY_IDP                12  QB1/RB2/WR5/TE2                 4    4  PASS | QB1/RB2/WR6/TE1                 4    5  PASS |      17.2
+HEAVY_IDP                 4  QB1/RB2/WR4/TE2                 3    4  PASS | QB1/RB2/WR5/TE1                 4    5  PASS |       0.3
+HEAVY_IDP                 8  QB1/RB2/WR5/TE2                 4    4  PASS | QB1/RB2/WR6/TE1                 4    5  PASS |     -38.6
+LIGHT_IDP                 1  QB1/RB2/WR4/TE2                 2    3  PASS | QB1/RB3/WR5/TE1                 1    1  PASS |      21.7
+OWNER_3RR_SF_noTE         1  QB2/RB6/WR6/TE0                 3    4  PASS | QB3/RB6/WR4/TE1                 2    3  fail |      -1.7  <== REGRESSION
+OWNER_3RR_SF_noTE        12  QB2/RB6/WR6/TE0                 3    4  PASS | QB2/RB6/WR5/TE1                 2    3  PASS |     -16.8
+OWNER_3RR_SF_noTE         4  QB2/RB6/WR6/TE0                 3    4  PASS | QB2/RB5/WR4/TE3                 4    4  PASS |       7.9
+OWNER_3RR_SF_noTE         8  QB2/RB6/WR6/TE0                 3    4  PASS | QB2/RB4/WR7/TE1                 3    3  PASS |      15.8
+
+n = 30 format/seat pairs
+  SELF    band breaches   74   band distance   101.0   ordering passes  20/30
+  SHARED  band breaches   60   band distance    83.0   ordering passes  27/30
+  ordering: 9 fail->PASS, 2 PASS->fail
+  illegal or forced rosters: 2 of 60 -- 12T_ppr_SHORT_DRAFT/1/SELF; 12T_ppr_SHORT_DRAFT/1/SHARED

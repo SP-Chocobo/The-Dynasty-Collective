@@ -90,9 +90,28 @@ class ItReachesTheBoardInBothModesTests(unittest.TestCase):
         cls.merger = dm.DataMerger()
         cls.players_db = _players_db(cls.merger)
 
-    def _board(self, mode):
-        return dr.compute_draft_board(self.merger, self.players_db, [], my_roster_id="1",
-                                      league=STANDARD_LEAGUE, mode=mode)
+    def _board(self, mode, players_db=None):
+        return dr.compute_draft_board(self.merger,
+                                      players_db if players_db is not None else self.players_db,
+                                      [], my_roster_id="1", league=STANDARD_LEAGUE, mode=mode)
+
+    #: MANDATE 2.3: A DELIBERATE SUBJECT, because the accidental one was the bug itself.
+    #: The rows that used to lack provenance were BOTH `("K Williams", "RB")` -- one player split
+    #: into two canonical records by an identity hint stamped per file. 2.3 collapsed the split, the
+    #: surviving row resolves cleanly, and the population this test needed went to zero. Three
+    #: separate tests were unknowingly pinned to that one broken row; this is one of them.
+    #:
+    #: So the absent state gets a subject that exists on purpose: a real, currently relevant player
+    #: no vendor table carries, whose provenance therefore cannot be established.
+    def _db_with_an_unresolvable_player(self):
+        db = dict(self.players_db)
+        db["_no_provenance_for_2_3"] = {
+            "player_id": "_no_provenance_for_2_3",
+            "full_name": "Zzz Unmatchedman",
+            "position": "WR", "fantasy_positions": ["WR"], "team": "SF",
+            "status": "Active", "years_exp": 3,
+        }
+        return db
 
     def test_every_row_carries_identity_basis_in_balanced_mode(self):
         board = self._board("balanced")
@@ -114,6 +133,54 @@ class ItReachesTheBoardInBothModesTests(unittest.TestCase):
         self.assertTrue(seen - {None}, "identity_basis is uniformly absent -- the column is dead")
         self.assertEqual(seen - {None, dr.IDENTITY_USER_OVERRIDE, dr.IDENTITY_MATCHED,
                                  dr.IDENTITY_AMBIGUOUS}, set())
+
+    def test_the_fourth_state_arrives_as_None_and_not_as_a_float(self):
+        """#52 phase 6. identity_basis returns a real None for a row whose provenance was never
+        recorded -- deliberately, as its own docstring insists -- and the COLUMN handed that None
+        back as nan, so the fourth state reached every consumer as a float that `is None` misses.
+
+        The cause was a hand-list: _records_with_normalized_nan took the columns to normalize as
+        arguments, and the two callers between them selected 29 columns while naming 11.
+        identity_basis was one of the eighteen left out, as were displacement_adj and
+        time_horizon_adj. A hand-maintained list of "the columns that can be absent" is a second
+        claim about which quantities are optional, consulted by nobody and updated by no one;
+        absence is a property of the value, so it is now read off the value.
+
+        Measured on the committed baseline when this was written: 6 of 160 rows.
+        """
+        for mode in ("balanced", "upside"):
+            with self.subTest(mode=mode):
+                board = self._board(mode, players_db=self._db_with_an_unresolvable_player())
+                self.assertTrue(board)
+                absent = [r for r in board if r["identity_basis"] is None]
+                self.assertTrue(absent, "no row lacks provenance -- this assertion is vacuous "
+                                        "here and the state it pins is untested")
+                for row in board:
+                    value = row["identity_basis"]
+                    self.assertFalse(isinstance(value, float),
+                                     f"{row['name']}: absence arrived as {value!r}, not None")
+
+    def test_the_ordinary_board_now_resolves_EVERY_row(self):
+        """MANDATE 2.3, stated positively: the population the test above used to borrow. The two
+        rows that lacked provenance were one player split in two, and with the split closed every
+        row on an ordinary board carries a basis. If this regresses, the test above keeps passing on
+        its synthetic subject while production quietly stops resolving real players."""
+        for mode in ("balanced", "upside"):
+            with self.subTest(mode=mode):
+                board = self._board(mode)
+                unresolved = [(r["name"], r["position"]) for r in board
+                              if r["identity_basis"] is None]
+                self.assertEqual(unresolved, [], f"{len(unresolved)} row(s) lack provenance")
+
+    def test_no_emitted_value_on_the_board_is_a_nan(self):
+        """The general form, since identity_basis was only the column that happened to be
+        caught. Every quantity added since the hand-list was written inherited the same gap."""
+        for mode in ("balanced", "upside"):
+            with self.subTest(mode=mode):
+                board = self._board(mode)
+                nan_cells = [(r.get("name"), k) for r in board for k, v in r.items()
+                             if isinstance(v, float) and v != v]
+                self.assertEqual(nan_cells[:10], [], f"{len(nan_cells)} NaN cells reached a caller")
 
 
 class AnAliasIsVisibleOnTheBoardItMovedTests(unittest.TestCase):

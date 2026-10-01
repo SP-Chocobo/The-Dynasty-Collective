@@ -1,0 +1,46 @@
+h_the_fourth_term_on_every_priced_row)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_displacement.py", line 190, in test_the_identity_closes_with_the_fourth_term_on_every_priced_row
+    self.assertLessEqual(r["displacement_adj"], 0.0, r["name"])
+AssertionError: 107.45 not less than or equal to 0.0 : Tucker Kraft
+
+======================================================================
+FAIL: test_the_term_is_a_per_position_constant_at_a_board_state (test_216_displacement.WiringOnTheRealRulebookTests.test_the_term_is_a_per_position_constant_at_a_board_state)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_displacement.py", line 200, in test_the_term_is_a_per_position_constant_at_a_board_state
+    self.assertLess(min(by_position["TE"]), -50.0, "four tight ends owned and no deduction at TE")
+AssertionError: 107.45 not less than -50.0 : four tight ends owned and no deduction at TE
+
+======================================================================
+FAIL: test_1QB_owning_four_tight_ends_makes_the_fifth_worth_LESS_to_me_than_owning_one (test_216_value_board_falsification.B_FeedbackDirectionTests.test_1QB_owning_four_tight_ends_makes_the_fifth_worth_LESS_to_me_than_owning_one)
+Measured on f580c11: FAILS. Next TE (Sam LaPorta, 230.85 proj): state A final 68.81
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 309, in test_1QB_owning_four_tight_ends_makes_the_fifth_worth_LESS_to_me_than_owning_one
+    self.assertLess(
+AssertionError: 179.31 not less than 68.81 : Sam LaPorta: own-one final 68.81 (need 0.67, depth 0.0/no_surplus) vs own-four final 179.31 (need 0.0, depth 3.72/measured); universal_value identical at 68.14 over 1114 rows
+
+======================================================================
+FAIL: test_superflex_owning_four_tight_ends_makes_the_fifth_worth_less_to_me_than_owning_one (test_216_value_board_falsification.B_FeedbackDirectionTests.test_superflex_owning_four_tight_ends_makes_the_fifth_worth_less_to_me_than_owning_one)
+Measured on f580c11: PASSES, by 0.72 -- the flex-share need that drops off. Kept as
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 321, in test_superflex_owning_four_tight_ends_makes_the_fifth_worth_less_to_me_than_owning_one
+    self.assertLess(rb_["final_score"], ra["final_score"],
+AssertionError: 168.07 not less than 75.16 : Sam LaPorta: own-one 75.16 vs own-four 168.07
+
+======================================================================
+FAIL: test_the_same_tight_end_is_not_worth_more_to_me_after_i_hoard_six (test_216_value_board_falsification.B_FeedbackDirectionTests.test_the_same_tight_end_is_not_worth_more_to_me_after_i_hoard_six)
+A FIXED player across two of my roster states, no rival picks: TE#7 by projection
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/The-Dynasty-Collective/.claude/worktrees/agent-ab5e1af412aeb9182/test_216_value_board_falsification.py", line 339, in test_the_same_tight_end_is_not_worth_more_to_me_after_i_hoard_six
+    self.assertLessEqual(
+AssertionError: 188.99 not less than or equal to 48.94 : Travis Kelce: empty roster uv 44.27 need 4.67 final 48.94; owning six TEs uv 68.48 need 0.0 depth 3.72 final 188.99
+
+----------------------------------------------------------------------
+Ran 21 tests in 66.048s
+
+FAILED (failures=15)

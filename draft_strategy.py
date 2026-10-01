@@ -55,7 +55,7 @@ from collections import Counter
 from typing import Optional
 
 from data_merger import DataMerger
-from draft_room import compute_draft_board
+from draft_room import SLEEPER_BASIS_WEEKLY, compute_draft_board
 from player_universe import player_position
 
 # How likely a team is to take the player sitting at a given rank on THEIR OWN board (not the
@@ -181,6 +181,73 @@ def expected_position_pace(position: str, picks_made: int, roster_positions: lis
     return None
 
 
+def position_pace_probability(position: str, picks_made_now: int, picks: list[dict],
+                              players_db: dict[str, dict],
+                              roster_positions: list[str],
+                              #: MANDATE 1.3. How many of this position are expected to have
+                              #: gone ALREADY inside a hypothetical gap the caller is walking.
+                              #: 0.0 for the single-next-pick caller, which is why that one is
+                              #: unchanged: there is no gap to have consumed anything yet.
+                              expected_taken_in_gap: float = 0.0) -> Optional[float]:
+    """P(the NEXT pick goes to this position at all), from the documented market convention.
+
+    Step 1 of `_pace_based_take_probability`, lifted out because it has a SECOND consumer and
+    was reachable from only one (#126). It is a position-level probability -- "some QB gets
+    taken" -- before that function narrows it to "THIS QB gets taken" by dividing through the
+    player's rank among remaining players at his position.
+
+    WHY THE SECOND CONSUMER NEEDS IT (#52 phase 8). `positional_forfeits` asks exactly the
+    position-level question this answers, and was computing it by summing per-row rank
+    probabilities -- the estimate `_pace_based_take_probability`'s own docstring says
+    "structurally cannot handle" an elite QB, because he "can rank outside
+    RANK_TAKE_PROBABILITY's top-5 keys on EVERY intervening team's own board" and the estimate
+    then "floors out at RANK_TAKE_PROBABILITY_FLOOR (0.02) regardless of position".
+
+    Measured before this was wired: in a superflex league with league-wide QB starter demand of
+    18.5 and TEN quarterbacks already gone in the first twenty picks, `expected_taken` for QB
+    across eighteen intervening picks came back **0.84** -- fewer than one -- against RB 2.75
+    and WR 3.20. The rank model had already been corrected for precisely this case; only
+    `estimate_survival` was told.
+
+    None whenever no convention is documented for this position/format, or once `picks_made_now`
+    is past the last documented anchor -- the same domain the rest of this pace machinery keeps,
+    and the reason a caller must treat absence as "no convention here", never as zero.
+
+    THE DEFICIT CLOSES (mandate 1.3), and `expected_taken_in_gap` is how. A caller walking a gap
+    advances `picks_made_now` one hypothetical pick at a time, so `expected_now` climbs the
+    convention's cumulative curve -- while `actual_now` is counted off a FIXED list of picks that
+    have really been made. Nothing subtracted what the walk itself had already consumed, so the
+    same deficit was charged again at every step of the gap, and the sum of a per-pick hazard was
+    then reported as an expected COUNT. Measured on a real superflex board:
+
+        state   gap   QB expected_taken   the convention's own increment   actually taken
+        1.01     22              15.54                             8.92                5
+        2.12     14              10.28                             5.67                6
+
+    and the all-position totals were 26.15 across 22 picks and 16.76 across 14 -- more players
+    taken than there were picks to take them, which `#206` had already repaired once from the
+    other direction and listed in this module as the arithmetic impossibility it fixed.
+
+    `positional_forfeits`' own comment beside the call said the deficit "closes as picks are
+    made" and that holding it fixed "would charge the whole catch-up to every pick in it". That
+    was the right reasoning about the wrong variable: it recomputed `expected_now` per pick and
+    left `actual_now` frozen, which charges the catch-up exactly as it warned.
+
+    NOT A CAP, which `#56` would forbid. No number is introduced and no bound is chosen: the
+    quantity subtracted is the caller's own running expectation, and the convention supplies its
+    own ceiling -- once the walk has consumed the deficit, this returns 0.0 by arithmetic."""
+    expected_now = expected_position_pace(position, picks_made_now, roster_positions)
+    if expected_now is None:
+        return None
+    if picks_made_now >= SUPERFLEX_QB_PACE_ANCHORS[-1][0]:
+        return None
+    actual_now = sum(
+        1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
+    )
+    deficit = expected_now - actual_now - expected_taken_in_gap
+    return min(max(deficit, 0.0) / PACE_CATCH_UP_WINDOW, 1.0)
+
+
 def _pace_based_take_probability(
     position: str, target_player_id: str, board: dict, picks_made_now: int,
     picks: list[dict], players_db: dict[str, dict], roster_positions: list[str],
@@ -220,16 +287,10 @@ def _pace_based_take_probability(
 
     None whenever no convention is documented for this position/format, or once picks_made_now
     is past the last documented anchor (no real convention to extrapolate a rate from)."""
-    expected_now = expected_position_pace(position, picks_made_now, roster_positions)
-    if expected_now is None:
+    any_pick_probability = position_pace_probability(
+        position, picks_made_now, picks, players_db, roster_positions)
+    if any_pick_probability is None:
         return None
-    if picks_made_now >= SUPERFLEX_QB_PACE_ANCHORS[-1][0]:
-        return None
-    actual_now = sum(
-        1 for p in picks if player_position(players_db.get(str(p.get("player_id")), {})) == position
-    )
-    deficit_now = max(expected_now - actual_now, 0.0)
-    any_pick_probability = min(deficit_now / PACE_CATCH_UP_WINDOW, 1.0)
 
     # Priced rows only, for the same reason rank_by_id is built that way (see
     # _build_opponent_boards): this rank is a VALUATION ordinal -- it narrows "some QB gets
@@ -253,15 +314,78 @@ def _pace_based_take_probability(
     return any_pick_probability / target_rank
 
 
-# positional_forfeits: how many of an opponent's top-N board ranks are consulted when
-# estimating "will this opponent's next pick go to position P" -- matches
-# RANK_TAKE_PROBABILITY's own depth (ranks past it carry only the floor probability, which
-# would add noise, not signal, to a position-level estimate).
-FORFEIT_OPPONENT_BOARD_DEPTH = 5
+# FORFEIT_OPPONENT_BOARD_DEPTH WAS HERE AND IS DELETED (#52 phase 7.2), rather than left
+# unreferenced. It bounded how many of an opponent's top ranks positional_forfeits consulted,
+# on the reasoning that "ranks past it carry only the floor probability, which would add noise,
+# not signal". That was true of the RAW table and false of the normalised one: `#206` measured
+# the five named keys at 1.21 of a 23.49 board total, so the tail IS the signal. Keeping the
+# cut under normalisation reports 1.19 expected takes across 22 picks. A constant nothing reads
+# is a claim nothing checks, and this repository has already paid for carrying one.
+
+
+def _curve_at(curve: list[float], taken: float) -> float:
+    """The value of a position's curve after `taken` players have gone, read at a FRACTIONAL
+    index instead of a rounded one (#86).
+
+    WHAT THIS REPLACES, AND WHY IT IS NOT A CALIBRATION. The previous form was
+    `curve[min(round(expected_taken), len(curve) - 1)]`. `expected_taken` is continuous -- a sum
+    of per-opponent probabilities -- so rounding quantised it to a whole player and two
+    indistinguishable inputs named different players. Measured on Fourth and Forever's own board
+    (evidence/forfeit_knife_edge/): at WR, `expected_taken` of 0.48 reported a forfeit of 0.00
+    and 0.60 reported 9.44. Interpolating INTRODUCES NO CONSTANT -- it removes the arbitrary
+    choice already present (why round-half-even, rather than floor or ceil?) -- so #56's bar is
+    not engaged. A bound is not a threshold, and this is neither.
+
+    THE DEFECT IT ACTUALLY FIXES IS AN ABSENCE-CONTRACT ONE, not an aesthetic one. Rounding down
+    manufactured a forfeit of exactly 0.00 for a position the model expected to lose a fraction
+    of a player. 0.00 in this engine reads as "measured, and the cost is nothing", so that is
+    the `#187` defect class, reached by arithmetic rather than by a substituted default. It has
+    a named downstream victim: `pick_debate` renders an exactly-zero forfeit as the STRONGEST
+    EVIDENCE FOR WAITING, so the manufactured zero was handed to the debate as an affirmative
+    claim.
+
+    THREE CORRECTIONS TO THE EVIDENCE THIS DOCSTRING USED TO CITE (2026-09-16, after an
+    independent review):
+
+      * "4 of 44 measured observations" is ONE pre-draft board state read at 11 gap lengths,
+        not 44 independent observations. Every nonzero `expected_taken` on it is 0.06n or 0.9n,
+        so "4 of 44, all WR" is arithmetic (0.06n < 0.5 for n <= 8). The claim is true; its
+        evidentiary weight was overstated.
+      * "the true statement was about 4.5 points" is NOT the true statement. Interpolation reads
+        the curve at the MEAN count, curve[E[N]]; the honest expectation is E[curve[N]], and on a
+        non-linear curve those differ. Exact Poisson-binomial on the same fixture: 5.48 against
+        the shipped 4.53, max divergence 3.55 across 44 rows, P(no WR taken) = 0.61. This is a
+        better approximation than 0.00, not the truth. The exact expectation is equally
+        constant-free and remains available if the approximation ever needs to go.
+      * Interpolation is CHOSEN, not forced. Ceil would also remove every manufactured zero
+        without adding a constant, and so would the exact expectation. What the contract forces
+        is that a fractional expectation must not report a measured zero; which of the three
+        satisfies that is a modelling choice, and this one was made for monotonicity and for
+        not inventing a player who was not expected to go.
+
+    Clamped to the curve's own ends: a position cannot lose more players than it has, and the
+    last entry is the worst player actually priced there. No extrapolation past the data."""
+    if not curve:
+        return 0.0
+    last = len(curve) - 1
+    t = max(0.0, min(float(taken), float(last)))
+    lo = int(math.floor(t))
+    hi = min(lo + 1, last)
+    return curve[lo] + (curve[hi] - curve[lo]) * (t - lo)
 
 
 def positional_forfeits(
     position_curves: dict[str, list[float]], opponent_boards: dict, intervening: list,
+    run_position: Optional[str] = None,
+    #: #52 phase 8. What the PACE convention says, where one is documented -- the correction
+    #: `_pace_based_take_probability` already applies inside estimate_survival, reaching this
+    #: consumer at last. All four are optional together and default to the previous behaviour
+    #: exactly, so a caller that cannot supply them (every test fixture, and any caller outside
+    #: pick_analysis) drafts as before rather than silently losing the rank model.
+    picks: Optional[list[dict]] = None,
+    players_db: Optional[dict[str, dict]] = None,
+    roster_positions: Optional[list[str]] = None,
+    picks_made_now: Optional[int] = None,
 ) -> dict[str, dict]:
     """Per position: the expected POSITION-LEVEL cost of delaying that position entirely
     until the user's next pick -- {"expected_taken", "forfeit", "best_now"} -- the one
@@ -276,58 +400,361 @@ def positional_forfeits(
 
     Two steps per position P, both from data this module already computes:
       1. expected_taken: for each intervening pick, the probability it goes to position P at
-         all -- the sum of RANK_TAKE_PROBABILITY over the P-players in that opponent's own
-         top FORFEIT_OPPONENT_BOARD_DEPTH board ranks (their board, their needs -- same
-         principle as estimate_survival), capped at RUN_TAKE_PROBABILITY_CAP per pick;
-         summed across every intervening pick.
+         all -- the sum of the NORMALISED take probability over that opponent's own priced
+         P-players (their board, their needs -- the same model estimate_survival uses, through
+         the same seam); summed across every intervening pick.
+
+    ONE NORMALISED MODEL, ONE CONSUMER SET (#52 phase 7.2; found independently as J-03 and
+    K-02). `#206` established that a team makes ONE pick, so their take probabilities are
+    mutually exclusive and must sum to <= 1.0 across their board -- an arithmetic constraint,
+    not a calibration, which is why `#56` is not engaged. It normalised the model and applied
+    it to `estimate_survival`. THIS CONSUMER WAS NOT CONVERTED, and went on summing the RAW
+    table over each opponent's top five, capped per position per pick.
+
+    Capping PER POSITION does not conserve anything: four positions each capped at 0.90 permit
+    3.6 players from one pick. Measured on a real superflex board across five consecutive
+    turns, expected_taken summed against the picks available:
+
+        turn 0   22.00 / 22      turn 1   22.80 / 20      turn 2   21.78 / 18
+        turn 3   19.36 / 16      turn 4   16.94 / 14
+
+    Four of five are arithmetically impossible, and turn 0 conserves by coincidence -- RB
+    saturating the cap at 0.90 x 22 = 19.80. The same run assigned TE **0.00 on every turn**
+    and QB 0.00 on two, in a SUPERFLEX league; `pick_debate` renders that to the chairs as
+    "Cost of delaying QB entirely: measured 0 -- the best remaining QB at your next pick is
+    expected to be no worse than now", while survival (which says those QBs are gone) is
+    withheld. A number that cannot be right was the strongest evidence for waiting.
+
+    WHY ALL PRICED ROWS AND NOT THE TOP FIVE. The depth cut existed because the raw table's
+    tail carried "only the floor probability, which would add noise, not signal". Under
+    normalisation the tail is real mass, and most of it: `#206` measured the named five keys at
+    1.21 of a 23.49 total. Keeping the cut and normalising gives **1.19 expected takes across
+    22 picks** -- the same defect inverted. Measured, the four variants:
+
+        A raw, top-5, capped        22.00 / 22   QB 0.00  RB 19.80  WR 2.20  TE 0.00
+        B normalised, top-5          1.19 / 22   QB 0.00  RB  1.09  WR 0.10  TE 0.00
+        C normalised, all priced    10.52 / 22   QB 0.82  RB  3.48  WR 3.96  TE 2.26
+        D normalised, all + unpriced 22.00 / 22  QB 2.90  RB  5.68  WR 8.59  TE 4.83
+
+    C is what ships, and D is why: D conserves with equality because it counts every take, but
+    over half a board's mass sits on rows the engine could not price, and step 2 walks the
+    PRICED curve. Counting an unpriced take against a priced curve claims a priced player was
+    removed when none was. C counts what the curve can actually lose, and the shortfall from
+    the pick count IS the expected number of unpriced takes -- which is information, not error.
       2. forfeit: walk position P's own remaining curve (universal_value, deliberately
          team-agnostic -- this measures the POSITION's market decay, not the user's fit)
-         down by round(expected_taken) players: best-now minus expected-best-at-next-turn.
+         down by expected_taken players -- read at a FRACTIONAL index, see _curve_at -- and
+         report best-now minus expected-best-at-next-turn.
 
-    SURFACED SIGNAL ONLY -- deliberately NOT an input to pick_necessity: expected_taken is
-    built from the same per-opponent take tendencies that drive survival_probability, and
-    summing it into necessity would recreate exactly the double-count class the rival_premium
-    split just removed (see pick_analysis's own comment there). The debate layer gets it as
-    labeled evidence; nothing deterministic re-ranks on it.
+    WHERE THIS NUMBER ACTUALLY GOES (corrected 2026-09-16 -- this paragraph used to say
+    "deliberately NOT an input to pick_necessity", and that has been FALSE since `7655fb1`).
+
+    It IS a pick_necessity input. `pick_analysis` emits it, `build_snapshot` carries it, and
+    `compute_pick_necessity` reads `positional_forfeit` and folds `forfeit_component` into
+    `raw_score` (weight 10 of a 100-point scale). From there it reaches `necessity_label`, the
+    Draft Room display, and the debate prompt, where an exactly-zero forfeit is rendered as the
+    STRONGEST EVIDENCE FOR WAITING. `quantity_readers.scan()` has been reporting this correctly
+    the whole time -- verdict `decision`, `scoring_readers=['pick_synthesis.py']` -- while this
+    docstring said the opposite. The original double-count concern is real and is handled where
+    it belongs (necessity's denial component, `#M3`); it was never a reason this quantity did
+    not reach necessity.
+
+    WHAT REMAINS TRUE, and is the part that matters: it has NO SELECTION AUTHORITY. The pick is
+    `_board_order`, which sorts on `(fills_required_slot, final_score, player_id)` only, and
+    `final_score` is computed by `compute_draft_board` BEFORE forfeits exist. `#55` ruled
+    necessity observable. So this changes what the app SAYS and what the LLM is told -- not
+    which player the engine picks.
+
+    THAT SENTENCE WAS FALSE FOR ONE INTERVAL AND IS TRUE AGAIN (#22). Between `4640f25` and the
+    revert, `build_snapshot` sorted candidates on `acting_now_value` -- this number, walked down
+    the `final_score` curve instead of the `universal_value` one -- and it therefore held ALL
+    cross-position selection authority. Recorded here rather than deleted, because the interval
+    is what measured the cost: against a fixed field across six formats that ordering lost
+    6.090% of starting-lineup points, winning 10 of 68 seats where the value order won 56.
+
+    The cause is structural and is the reason this paragraph should be hard to overturn a second
+    time. `acting_now(i) = F(i) - F(i + expected_taken)` is a NUMERICAL DERIVATIVE: it carries a
+    curve's local SLOPE and discards its HEIGHT, so at depth 30 of a real board a quarterback
+    worth -208.35 outranked a running back worth +4.68. Fixing the take model cannot repair that
+    -- `expected_taken` is the STEP LENGTH, so it moves where the slope is sampled and never puts
+    height back in the key. And because `SUPER_FLEX_QB_SHARE` reaches the board through
+    `replacement_levels`, superflex is a LEVEL shift (+127.14 per quarterback, +0.08 of slope),
+    which an order reading only differences cannot see at all. See
+    `evidence/smoke_seats/V2_MECHANISM.md`.
 
     Empty dict when there are no intervening picks (back-to-back turn, or no next pick at
     all) -- a forfeit of 0 everywhere is real information the caller can state, but per-pick
     probabilities against zero picks are not."""
     if not intervening:
         return {}
+
+    # MANDATE 1.3, SECOND HALF (owner-ruled: the convention wins and the others scale down).
+    #
+    # THE LOOP IS INSIDE OUT FROM WHAT IT WAS, and that is the repair rather than a tidy-up. It
+    # used to walk positions on the outside and intervening picks on the inside, so at the moment
+    # the pace convention raised QB above its normalised share, no other position's share was in
+    # scope to take the difference out of. `#206` normalised the rank model so one opponent's take
+    # probabilities sum to <= 1.0 across their whole board; the convention then raised one position
+    # above its share with nothing removing it from the others, and the cross-position total could
+    # exceed the picks in the gap -- 29.02 across 22 on a board where one position saturates its
+    # own mass.
+    #
+    # Now each intervening pick is resolved ONCE, with every position's share visible at the same
+    # time, so the constraint that makes it a probability -- a team makes one pick -- can actually
+    # be applied. Per pick:
+    #
+    #   1. the rank model's share for EVERY position on that board, including positions no curve
+    #      was asked for (their mass is real and has to be counted or the scaling over-allocates);
+    #   2. the documented convention, where it is higher, replacing that position's share;
+    #   3. if the total now exceeds 1.0, the positions the convention did NOT raise are scaled to
+    #      fit in what is left. THE CONVENTION IS WHAT YIELDS LAST, which is the owner's ruling:
+    #      the market convention outranks this board's own valuation where the two disagree, and
+    #      that is a valuation claim rather than an arithmetic one, so it was not mine to make.
+    #
+    # If the raised positions alone exceed 1.0 they are scaled among themselves and everything
+    # else goes to zero -- the same rule applied to the only mass left.
     results: dict[str, dict] = {}
-    for position, curve in position_curves.items():
-        if not curve:
+    curves = {position: curve for position, curve in position_curves.items() if curve}
+    running: dict[str, float] = {position: 0.0 for position in curves}
+
+    for offset, roster_id in enumerate(intervening):
+        board = opponent_boards.get(str(roster_id))
+        if not board:
             continue
-        expected_taken = 0.0
-        for roster_id in intervening:
-            board = opponent_boards.get(str(roster_id))
-            if not board:
+        rank_by_id = board["rank_by_id"]
+        by_id = board["by_id"]
+        # The normaliser is a property of the whole board and is cached on it, so this is
+        # the same object estimate_survival reads -- one model, computed once.
+        total_weight = _board_take_mass_cached(board, run_position)["total_weight"]
+        rank_share: dict[str, float] = {}
+        for player_id, rank in rank_by_id.items():
+            row = by_id.get(player_id)
+            if row is None:
                 continue
-            rank_by_id = board["rank_by_id"]
-            by_id = board["by_id"]
-            p_position = 0.0
-            for player_id, rank in rank_by_id.items():
-                if rank > FORFEIT_OPPONENT_BOARD_DEPTH:
-                    continue
-                row = by_id.get(player_id)
-                if row is not None and row.get("position") == position:
-                    p_position += RANK_TAKE_PROBABILITY.get(rank, 0.0)
-            expected_taken += min(p_position, RUN_TAKE_PROBABILITY_CAP)
-        drop = min(round(expected_taken), len(curve) - 1)
+            position = row.get("position")
+            if not position:
+                continue
+            is_run = bool(run_position and position == run_position)
+            rank_share[position] = rank_share.get(position, 0.0) + _take_probability(
+                rank, is_run, total_weight)
+
+        # THE PACE CONVENTION WINS WHERE IT IS HIGHER, exactly as estimate_survival resolves the
+        # same disagreement (`pace_driven = pace_p_take > rank_based_p_take`). Not an average and
+        # not a replacement: the rank model is a real estimate that is merely BLIND to a position
+        # the market takes on convention rather than on this board's valuation.
+        #
+        # Where no convention is documented -- every position but superflex QB today -- this is
+        # None and the rank model stands untouched, which is why the convention changes nothing
+        # outside the case it was built for.
+        raised: dict[str, float] = {}
+        for position in curves:
+            if None in (picks, players_db, roster_positions, picks_made_now):
+                continue
+            #: The deficit closes as the walk consumes it (mandate 1.3's first half): `running`
+            #: is what this gap is already expected to have taken at this position, which is the
+            #: same event the convention counts, whichever model supplied each step.
+            pace_p = position_pace_probability(
+                position, picks_made_now + offset, picks, players_db, roster_positions,
+                expected_taken_in_gap=running[position])
+            if pace_p is not None and pace_p > rank_share.get(position, 0.0):
+                raised[position] = pace_p
+
+        shares = dict(rank_share)
+        shares.update(raised)
+        raised_mass = sum(raised.values())
+        other_mass = sum(v for k, v in shares.items() if k not in raised)
+        if raised_mass >= 1.0:
+            # Nothing left for anyone else, and the raised set itself is scaled to one pick.
+            scale = 1.0 / raised_mass
+            shares = {k: (v * scale if k in raised else 0.0) for k, v in shares.items()}
+        elif raised_mass + other_mass > 1.0 and other_mass > 0.0:
+            scale = (1.0 - raised_mass) / other_mass
+            shares = {k: (v if k in raised else v * scale) for k, v in shares.items()}
+
+        for position in curves:
+            running[position] += shares.get(position, 0.0)
+
+    for position, curve in curves.items():
+        expected_taken = running[position]
         results[position] = {
             "expected_taken": round(expected_taken, 2),
-            "forfeit": round(curve[0] - curve[drop], 2),
+            "forfeit": round(curve[0] - _curve_at(curve, expected_taken), 2),
             "best_now": round(curve[0], 2),
         }
     return results
 
 
-def _take_probability(rank: int, is_run_position: bool) -> float:
-    p = RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR)
+def _take_weight(rank: Optional[int], is_run_position: bool) -> float:
+    """The RELATIVE weight of one board row, before normalisation. `rank=None` is an unpriced
+    row, which carries the floor and no run boost -- the boost is a rank-relative notion and
+    there is no rank to relate it to."""
+    if rank is None:
+        return RANK_TAKE_PROBABILITY_FLOOR
+    w = RANK_TAKE_PROBABILITY.get(rank, RANK_TAKE_PROBABILITY_FLOOR)
     if is_run_position:
-        p = min(p * RUN_TAKE_PROBABILITY_BOOST, RUN_TAKE_PROBABILITY_CAP)
-    return p
+        w = min(w * RUN_TAKE_PROBABILITY_BOOST, RUN_TAKE_PROBABILITY_CAP)
+    return w
+
+
+def board_take_mass(board: dict, run_position: Optional[str] = None) -> dict:
+    """The total take-weight of one opponent board, and where that weight sits (`#206`).
+
+    WHY NORMALISATION IS REQUIRED, AND WHY IT IS NOT A CALIBRATION. `estimate_survival` asks,
+    per intervening opponent, "what is the chance THIS team takes THIS player at their next
+    pick?" A team makes exactly ONE pick, so across their board the events are MUTUALLY
+    EXCLUSIVE and the probabilities must sum to <= 1.0. That needs no league data to state,
+    which is why `#56` is not engaged: the constraint is arithmetic, not a tuned number.
+
+    MEASURED BEFORE REPAIR (`evidence/take_mass/`): on Fourth and Forever's real captured
+    universe the total was **23.49**, against a constraint of 1.0 -- the model said one opponent
+    takes 23 players with one pick. `#244` reached the same defect from the other end. And 95%
+    of it was the FLOOR, not the five named keys: named 1.21, tail 9.52, unpriced 12.76. So
+    renormalising the five keys -- the obvious reading of "make them sum to 1" -- would have
+    moved 1.21 to 1.00 and left 22.28 in place.
+
+    THE RUN BOOST IS APPLIED TO THE WEIGHT, BEFORE NORMALISING, and that is forced rather than
+    chosen: boosting an already-normalised probability would re-break the mass it was just made
+    to respect. Applied here it REDISTRIBUTES mass toward the running position, which is what a
+    run means -- rivals are likelier to take that position and correspondingly less likely to
+    take anything else.
+
+    THE UNPRICED SHARE IS REPORTED, not silently folded in (owner ruling 2026-09-16). Unpriced
+    rows keep the floor weight rather than dropping to zero, because zeroing them would assert
+    "unpriced means safe" and the real-draft measurement refutes that: 31 of 301 resolved picks
+    took a player who was not on the picking team's priced board at all. Substituting a number
+    for an absence is the `#187` breach this engine forbids everywhere else. But over half the
+    mass then sits on rows the engine could not value, so a consumer is told how much."""
+    priced = board.get("rank_by_id") or {}
+    by_id = board.get("by_id") or {}
+    unpriced_ids = board.get("unpriced_ids") or ()
+
+    priced_weight = 0.0
+    for player_id, rank in priced.items():
+        row = by_id.get(player_id)
+        is_run = bool(run_position and row is not None and row.get("position") == run_position)
+        priced_weight += _take_weight(rank, is_run)
+    unpriced_weight = len(unpriced_ids) * RANK_TAKE_PROBABILITY_FLOOR
+    total = priced_weight + unpriced_weight
+    return {
+        "total_weight": total,
+        "priced_weight": priced_weight,
+        "unpriced_weight": unpriced_weight,
+        "unpriced_share": (unpriced_weight / total) if total > 0 else None,
+        "priced_rows": len(priced),
+        "unpriced_rows": len(unpriced_ids),
+    }
+
+
+#: The take model's shape is a VALUE SHARE over the opponent's own board, not a lookup on the
+#: candidate's ordinal. `#206` measured why: the rank table cannot express the difference
+#: between an opponent scoring their top two 265.11 / 262.54 (a coin flip) and 265.11 / 199.00
+#: (a lock), because both are "rank 1 and rank 2". Calibration showed the consequence -- across
+#: the whole board-rank range the model moved 0.84 -> 0.96 while reality moved 0.09 -> 0.91.
+#: Sign right everywhere, magnitude wrong everywhere.
+#:
+#: The opponent's own `final_score` already carries what the owner asked this to represent:
+#: their roster's needs (measured -- an RB-loaded seat marks every RB down by 9.00 while a
+#: WR-loaded seat marks WRs down by the same, on boards that are otherwise identical), and pool
+#: depletion, since the board is rebuilt off the live pool. None of it reached survival before,
+#: because `estimate_survival` read `rank_by_id` and discarded the valuations that produced it.
+
+
+def board_contention_scale(board: dict, contention_size: int) -> Optional[float]:
+    """The value distance at which two rows on THIS board are meaningfully different, derived
+    from the board being read rather than imported from elsewhere.
+
+    WHY THIS IS NOT `NEAR_TIE_BAND`, WHICH IS THE OBVIOUS THING TO REACH FOR. That constant is
+    2.0, derived from adjacent `team_acquisition_value` gaps in the top 40 of ONE board, and
+    `#160` already caught it being applied to populations it was never measured on -- its own
+    comment records that working on them "was, until #160, luck this comment was claiming as
+    design". An opponent's full board in `final_score` units is a FIFTH population. Importing
+    2.0 here would repeat the documented mistake rather than learn from it.
+
+    WHY A RUNTIME STATISTIC AND NOT A CONSTANT (`#56`, and the capture's LIMITS). Concentration
+    differs by format, by round and by board -- a fresh superflex board and a round-14 board are
+    not the same distribution. A single number could only be right for one of them, and picking
+    the one that makes calibration look best against a single league is exactly what the LIMITS
+    forbid. Derived per board, this introduces no constant at all.
+
+    THE STATISTIC, CHOSEN A PRIORI AND THEN MEASURED -- never searched for. The scale is the
+    dispersion among the players actually IN CONTENTION for the next pick, and "in contention"
+    is one round's worth of picks: `contention_size`, the league's team count. That is a league
+    fact, not a tuned number. Standard deviation over that set answers "how far apart are the
+    players who could plausibly go next", which is precisely the question a concentration scale
+    asks. It was fixed before any calibration was run against it, and `#206`'s harness measures
+    it rather than tuning it -- if it calibrates badly, that is reported, not adjusted away.
+
+    None -- not a substituted default -- when the board cannot support the statistic: fewer than
+    two priced rows in contention leaves nothing to measure a spread over, and a zero spread
+    (every contender identical) has no scale either. `#187`: absence is not zero."""
+    priced = board.get("rank_by_id") or {}
+    by_id = board.get("by_id") or {}
+    if contention_size < 2:
+        return None
+    scores = []
+    for player_id, rank in priced.items():
+        if rank <= contention_size:
+            row = by_id.get(player_id)
+            if row is not None and not _is_absent(row.get("final_score")):
+                scores.append(float(row["final_score"]))
+    if len(scores) < 2:
+        return None
+    mean = sum(scores) / len(scores)
+    var = sum((x - mean) ** 2 for x in scores) / (len(scores) - 1)
+    scale = var ** 0.5
+    return scale if scale > 0 else None
+
+
+def _value_take_weight(score: Optional[float], leader: float, scale: float,
+                       is_run_position: bool) -> float:
+    """One priced row's UNNORMALISED take weight, from its value distance behind the leader.
+
+    exp((score - leader) / scale): the leader weighs 1.0, a row one scale behind weighs 1/e, and
+    rows inside a scale of each other are near-equals -- which is the owner's own statement of
+    the case this exists to get right ("if there are 3 equally valued players going into a curve
+    and you're in seat 11, then at worst all 3 should have a 1/3 chance"). Three rows inside one
+    scale split the mass roughly evenly; a leader a long way clear takes nearly all of it. The
+    rank table could express neither.
+
+    The run boost multiplies the WEIGHT, before normalisation, for the reason
+    `board_take_mass` already records: boosting an already-normalised probability would
+    re-break the mass it was just made to respect."""
+    if score is None:
+        return RANK_TAKE_PROBABILITY_FLOOR
+    w = math.exp((float(score) - leader) / scale)
+    if is_run_position:
+        w = w * RUN_TAKE_PROBABILITY_BOOST
+    return w
+
+
+def _board_take_mass_cached(board: dict, run_position: Optional[str]) -> dict:
+    """`board_take_mass` memoised ON THE BOARD ITSELF, keyed by run position.
+
+    The normaliser is a property of the whole board, so computing it per candidate would turn
+    survival from a handful of dict lookups into a full pass over ~1,100 rows per opponent per
+    candidate. `_build_opponent_boards` already builds each board exactly once per analysis and
+    the same dict is passed to every `estimate_survival` call, so caching here is computed once
+    per (board, run position) and dies with the analysis -- no module-level state to invalidate,
+    and a fresh board is a fresh dict."""
+    cache = board.setdefault("_take_mass_by_run", {})
+    key = run_position or ""
+    if key not in cache:
+        cache[key] = board_take_mass(board, run_position)
+    return cache[key]
+
+
+def _take_probability(rank: Optional[int], is_run_position: bool,
+                      total_weight: Optional[float] = None) -> float:
+    """P(this opponent takes the row at `rank` with their single next pick).
+
+    With `total_weight` this is a genuine probability from a distribution that sums to 1.0 over
+    the board. Without it -- the pre-`#206` form, kept only so a caller that has no board still
+    gets the raw shape -- it returns an unnormalised WEIGHT, which is what made the mass 23.49.
+    Production passes the total; nothing should call this without one."""
+    w = _take_weight(rank, is_run_position)
+    if total_weight is None or total_weight <= 0:
+        return w
+    return w / total_weight
 
 
 def _is_absent(value) -> bool:
@@ -336,9 +763,43 @@ def _is_absent(value) -> bool:
     return value is None or (isinstance(value, float) and math.isnan(value))
 
 
+def _board_take_probability(board: dict, target_key: str, rank: Optional[int],
+                            unpriced: bool, is_run: bool,
+                            run_position: Optional[str]) -> tuple:
+    """P(this opponent takes THIS row with their single next pick), and the board's unpriced
+    mass share. Returns `(p_take, unpriced_share)`.
+
+    THIS IS A SEAM, NOT A SWITCH, and the distinction is the whole reason it exists. There is
+    exactly ONE take model in production and this is its only home (`#126`) -- the body below
+    is what `estimate_survival` did inline before, moved without a behaviour change. What the
+    seam buys is that an ALTERNATIVE model can be substituted for the duration of one
+    measurement process, so a calibration arm scores the real `estimate_survival` against a
+    different take model instead of re-implementing survival beside it. The engine-measurement
+    rule is that both arms must run the same code and toggle one thing; without a seam the
+    only toggle available was a hundred-line copy of this function, which is a second source
+    of truth for what survival means.
+
+    A substitution that OUTLIVES a measurement process is the defect this docstring exists to
+    forbid. Nothing in production may patch it, and nothing may read a module flag to decide
+    which model to be -- when a model wins, it REPLACES this body rather than joining it."""
+    mass = _board_take_mass_cached(board, run_position)
+    total_weight = mass["total_weight"]
+    if unpriced:
+        return _take_probability(None, False, total_weight), mass["unpriced_share"]
+    return _take_probability(rank, is_run, total_weight), mass["unpriced_share"]
+
+
 def _build_opponent_boards(
     merger: DataMerger, players_db: dict[str, dict], picks: list[dict], league: dict,
     roster_ids: list, *, mode: str = "auto", pool_scope: str = "all",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    #: #30. Forwarded to every board this builds, for the reason #214/F2 states above: a rival
+    #: board priced differently from my own makes survival, denial and rival_premium answers
+    #: about a different set of prices than the universal_value they sit beside. The streaming
+    #: floor moves K and DEF by ~38 points, so leaving it out here would reintroduce exactly
+    #: that split at exactly the positions #30 exists for.
+    weekly_projections: Optional[dict] = None,
 ) -> dict:
     """One compute_draft_board call per UNIQUE roster_id, off the actual current pool -- see
     module docstring's PERFORMANCE section for why this replaced per-pick-position,
@@ -346,9 +807,14 @@ def _build_opponent_boards(
     pass, never recomputed twice for the same roster."""
     boards = {}
     for roster_id in set(str(r) for r in roster_ids):
+        # #214/F2: PRICED THE SAME WAY MY OWN BOARD IS. A rival board built vendor-only while
+        # the snapshot beside it is scoring-aware makes survival, denial and rival_premium
+        # answers about a different set of prices than the universal_value they sit next to.
         board_list = compute_draft_board(
             merger, players_db, picks, my_roster_id=roster_id, league=league,
             mode=mode, pool_scope=pool_scope,
+            sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+            weekly_projections=weekly_projections,
         )
         # rank_by_id is a VALUATION ordinal and is built over priced rows only. Both consumers
         # of it -- estimate_survival and expected_positional_forfeit -- read the number through
@@ -409,14 +875,40 @@ def estimate_survival(
     a low-ranked QB shares the pace probability across many peers). Worth fixing with a real
     tier detector later; not pretending it's already handled.
 
-    Returns {"survival_probability", "intervening_picks", "risk_by_team": [...]}. An empty
-    risk_by_team with survival_probability=1.0 means either no one picks before the user's
-    next turn (back-to-back picks) or the user has no more picks left to wait for."""
+    Returns {"survival_probability", "survival_basis", "intervening_picks", "risk_by_team"}.
+
+    THREE STATES, and they used to be two (owner's ruling, 2026-09-16). This docstring
+    previously said an empty risk_by_team with survival_probability=1.0 meant "either no one
+    picks before the user's next turn (back-to-back picks) or the user has no more picks left
+    to wait for" -- two different facts sharing one number, which is the #187 breach. Now:
+
+      None  + SURVIVAL_NO_NEXT_PICK         no further pick exists, so the question does not
+                                            arise. NOT 1.0: a forced 1.0 made opportunity_cost
+                                            render 0.00, "waiting costs you nothing", at the
+                                            one moment waiting costs you the player forever.
+      1.0   + SURVIVAL_NO_INTERVENING_PICKS back-to-back; survives by arithmetic, not estimate.
+      p     + SURVIVAL_MEASURED             estimated against every intervening rival's board.
+
+    `intervening_picks` is None in the first state for the same reason -- there is no gap to
+    count. Consumers already guarded it as Optional; the producer was the only thing here
+    manufacturing certainty."""
     my_next_index = find_next_pick_index(pick_order, my_roster_id, current_index)
+    #: NO NEXT SELECTION IS NOT CERTAINTY. Owner's ruling, 2026-09-16: when there is physically
+    #: no further pick, saying so is the valid answer -- not a probability. None, with a basis,
+    #: exactly as every other unmeasurable quantity in this engine (#187).
+    if my_next_index is None:
+        return {"survival_probability": None,
+                "survival_basis": SURVIVAL_NO_NEXT_PICK,
+                "intervening_picks": None, "risk_by_team": [],
+                "unevidenced_picks": 0, "unpriced_mass_share": None}
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     if not intervening:
-        return {"survival_probability": 1.0, "intervening_picks": 0, "risk_by_team": [],
-                "unevidenced_picks": 0}
+        # A REAL 1.0, and the only one: this seat picks again with nobody in between, so every
+        # candidate survives by arithmetic rather than by estimate.
+        return {"survival_probability": 1.0,
+                "survival_basis": SURVIVAL_NO_INTERVENING_PICKS,
+                "intervening_picks": 0, "risk_by_team": [],
+                "unevidenced_picks": 0, "unpriced_mass_share": None}
 
     run_position = detect_positional_run(picks, players_db)
     info = players_db.get(str(target_player_id))
@@ -424,6 +916,10 @@ def estimate_survival(
 
     survival = 1.0
     risk_by_team: list[dict] = []
+    #: How much of each consulted board's take-mass sits on rows the engine could not price.
+    #: Reported rather than folded in silently -- see board_take_mass's docstring for why the
+    #: floor is kept at all (owner ruling 2026-09-16).
+    unpriced_shares: list = []
     for i, roster_id in enumerate(intervening):
         board = opponent_boards.get(str(roster_id))
         if not board:
@@ -446,15 +942,23 @@ def estimate_survival(
         if rank is None and not unpriced:
             continue  # not even in this team's usable-position pool -- no risk from them
         is_run = bool(run_position and target_position == run_position)
+        # #206: NORMALISE OVER THE BOARD. A team makes one pick, so their take probabilities
+        # are mutually exclusive and must sum to <= 1.0 across the board. Unnormalised they
+        # summed to 23.49 on a real board. Computed once per (board, run position) and cached
+        # on the board -- see _board_take_mass_cached for why that is safe here.
+        p_seam, unpriced_share = _board_take_probability(
+            board, target_key, rank, unpriced, is_run, run_position)
+        unpriced_shares.append(unpriced_share)
         if unpriced:
-            survival *= (1 - RANK_TAKE_PROBABILITY_FLOOR)
+            p_unpriced = p_seam
+            survival *= (1 - p_unpriced)
             risk_by_team.append({
                 "roster_id": roster_id, "rank_on_their_board": None,
-                "take_probability": RANK_TAKE_PROBABILITY_FLOOR, "run_boosted": is_run,
+                "take_probability": round(p_unpriced, 6), "run_boosted": is_run,
                 "pace_driven": False, "evidenced": False,
             })
             continue
-        rank_based_p_take = _take_probability(rank, is_run)
+        rank_based_p_take = p_seam
 
         # i (this pick's position within THIS survival computation, not the real, current pick
         # count alone) is what makes hazard rise the deeper we go without a resolution: the
@@ -483,11 +987,17 @@ def estimate_survival(
             "pace_driven": pace_driven, "evidenced": True,
         })
 
+    measured_shares = [s for s in unpriced_shares if s is not None]
     return {
         "survival_probability": round(survival, 3),
+        "survival_basis": SURVIVAL_MEASURED,
         "intervening_picks": len(intervening),
         "risk_by_team": risk_by_team,
         "unevidenced_picks": sum(1 for r in risk_by_team if not r["evidenced"]),
+        # #206 disclosure: how much of the take-mass this answer rests on sat on rows the
+        # engine could not price. None when no board was consulted -- absent, not zero.
+        "unpriced_mass_share": (round(sum(measured_shares) / len(measured_shares), 4)
+                                if measured_shares else None),
     }
 
 
@@ -508,10 +1018,25 @@ def _position_curves(my_board: dict) -> dict[str, list[float]]:
     A position with nothing priced left gets no key at all rather than an empty list, which is
     the same absence-not-zero rule the board itself follows: positional_forfeits already skips
     a position it has no curve for."""
+    return _curves_on(my_board, "universal_value")
+
+
+def _curves_on(my_board: dict, value_col: str) -> dict[str, list[float]]:
+    """_position_curves' body, over a NAMED value column.
+
+    Two curves are read off the same board for two different questions, and they must be built
+    by one function or they will drift (#126). `universal_value` answers "how fast does this
+    POSITION decay" -- team-agnostic on purpose, because a forfeit shown to a person is a fact
+    about the market, not about their roster. `final_score` answers "what would I actually get
+    here next turn" -- team-relative on purpose, because the alternative I am weighed against
+    lands on MY roster and carries the same team-specific terms I do.
+
+    Same absence rule in both: an unpriced row has no value and is excluded, and a position
+    with nothing priced left gets no key rather than an empty list."""
     curves: dict[str, list[float]] = {}
     for row in my_board.values():
         position = row.get("position")
-        value = row.get("universal_value")
+        value = row.get(value_col)
         if not position or value is None:
             continue
         curves.setdefault(position, []).append(value)
@@ -540,6 +1065,53 @@ def _opportunity_cost_order(row: dict) -> tuple:
     return (cost is None, -cost if cost is not None else 0.0, str(row.get("player_id")))
 
 
+#: WHY survival_probability is what it is -- the vocabulary, with one home (#187/#126).
+#:
+#: `estimate_survival` returned 1.0 for TWO DIFFERENT FACTS, and its own docstring said so:
+#: "either no one picks before the user's next turn (back-to-back picks) OR the user has no
+#: more picks left to wait for". The first genuinely is 1.0. The second has NO ANSWER -- the
+#: question "does he make it back to my next selection" does not arise when there is no next
+#: selection -- and 1.0 is the most wrong value available for it, because every consumer reads
+#: it as "certain to be there".
+#:
+#: The downstream reading INVERTS: opportunity_cost is team_acquisition_value * (1 - survival),
+#: so a forced 1.0 renders 0.00 -- "waiting costs you nothing" -- at the one moment waiting
+#: costs you the player permanently.
+#:
+#: NOT A RARE EDGE. Measured on the real Greatest Show on Paper 2 board: every team reaches it
+#: at its own final pick (12 turns minimum), and a team that trades its late picks away reaches
+#: it far earlier -- TAmedic27 stops picking at 308 of 360, so 52 picks of falsely-free waiting.
+#: Traded picks are what make it common, which is why it surfaced when the owner asked whether
+#: nonstandard orders and traded picks still compute the gap correctly.
+SURVIVAL_NO_NEXT_PICK = "no_next_pick"
+SURVIVAL_NO_INTERVENING_PICKS = "no_intervening_picks"
+SURVIVAL_MEASURED = "measured"
+
+#: token -> the words a person reads. Every return from estimate_survival carries one.
+SURVIVAL_BASIS_LABELS = {
+    SURVIVAL_NO_NEXT_PICK: ("you have no further pick in this draft, so there is no next "
+                            "selection for him to survive to"),
+    SURVIVAL_NO_INTERVENING_PICKS: "you pick again immediately -- nobody picks in between",
+    SURVIVAL_MEASURED: "measured against every rival board that picks before your next turn",
+}
+
+
+#: WHY denial_value is what it is -- the vocabulary, with one home (#187). The UI used to
+#: promise "a measured 0 means no rival was positioned to gain" for every zero it saw, which
+#: was true of one of these three states and false of another.
+DENIAL_NO_INTERVENING_RIVAL = "no_intervening_rival"
+DENIAL_NO_RIVAL_PRICED = "no_rival_priced"
+DENIAL_MEASURED = "measured"
+
+#: token -> the words a person reads. Absence of the BASIS itself is not a key: every candidate
+#: that reaches pick_analysis gets one of the three.
+DENIAL_BASIS_LABELS = {
+    DENIAL_NO_INTERVENING_RIVAL: "no rival had a pick before your next turn",
+    DENIAL_NO_RIVAL_PRICED: "no rival's board could price him, so nothing was measured",
+    DENIAL_MEASURED: "measured against every rival board that could price him",
+}
+
+
 def pick_analysis(
     merger: DataMerger,
     players_db: dict[str, dict],
@@ -552,6 +1124,14 @@ def pick_analysis(
     *,
     mode: str = "auto",
     pool_scope: str = "all",
+    sleeper_projections: Optional[dict[str, dict]] = None,
+    sleeper_basis: str = SLEEPER_BASIS_WEEKLY,
+    #: #30. Forwarded to every board this builds, for the reason #214/F2 states above: a rival
+    #: board priced differently from my own makes survival, denial and rival_premium answers
+    #: about a different set of prices than the universal_value they sit beside. The streaming
+    #: floor moves K and DEF by ~38 points, so leaving it out here would reintroduce exactly
+    #: that split at exactly the positions #30 exists for.
+    weekly_projections: Optional[dict] = None,
 ) -> list[dict]:
     """The actual "should I take him now" answer for a shortlist of candidates (typically the
     top few from draft_room.compute_draft_board) -- team_acquisition_value plus the three
@@ -578,13 +1158,24 @@ def pick_analysis(
     Every opponent board needed is computed exactly once (see _build_opponent_boards) and
     shared across every candidate here, not recomputed per candidate -- see module docstring's
     PERFORMANCE section for the real slowdown this replaced."""
+    # #214/F2: THE SAME PRICES THE CALLER'S OWN BOARD USED. build_snapshot computes a
+    # scoring-aware board and then called this function, which rebuilt one vendor-only and
+    # returned strategic numbers derived from it -- the snapshot then presented both as one
+    # decomposition of a single candidate. Measured before the repair, 47 of 48 round-one
+    # candidates carried a different team_acquisition_value inside this function than the one
+    # displayed beside it, and 35 of 48 a different bpa_source.
     my_board = {r["player_id"]: r for r in compute_draft_board(
-        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode, pool_scope=pool_scope,
+        merger, players_db, picks, my_roster_id=my_roster_id, league=league, mode=mode,
+        pool_scope=pool_scope,
+        sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
+        weekly_projections=weekly_projections,
     )}
     my_next_index = find_next_pick_index(pick_order, my_roster_id, current_index)
     intervening = intervening_roster_ids(pick_order, current_index, my_next_index)
     opponent_boards = _build_opponent_boards(
         merger, players_db, picks, league, intervening, mode=mode, pool_scope=pool_scope,
+        weekly_projections=weekly_projections,
+        sleeper_projections=sleeper_projections, sleeper_basis=sleeper_basis,
     )
 
     # Position-level cost of delaying each position entirely (see positional_forfeits' own
@@ -600,7 +1191,36 @@ def pick_analysis(
     # signal, so the existing behavior is preserved here explicitly and left open rather than
     # changed as a side effect of a crash fix.
     position_curves = {} if mode == "upside" else _position_curves(my_board)
-    forfeits = positional_forfeits(position_curves, opponent_boards, intervening)
+    # The same run position estimate_survival derives, computed once here and passed to both, so
+    # the two consumers of the take model cannot disagree about which board they are reading.
+    forfeits = positional_forfeits(position_curves, opponent_boards, intervening,
+                                   detect_positional_run(picks, players_db),
+                                   picks=picks, players_db=players_db,
+                                   roster_positions=(league.get("roster_positions") or []),
+                                   picks_made_now=len(picks))
+
+    # WHAT THIS POSITION IS EXPECTED TO STILL OFFER ME AT MY NEXT TURN, in the units a pick is
+    # actually decided in. Same walk as forfeit's second step -- the same expected_taken, read
+    # at the same fractional index through the same _curve_at -- but down the final_score curve
+    # rather than the universal_value one.
+    #
+    # WHY A SECOND CURVE RATHER THAN REUSING forfeit's. "Take him now, or take this position
+    # next turn" is a difference of two things that both land on MY roster, so every
+    # team-specific term the candidate carries is carried by his replacement too and must
+    # CANCEL. Subtracting a team-agnostic curve from a team-relative candidate does not cancel
+    # them, it adds them: measured on a real round-9 board, that left every kicker and defense
+    # holding a flat +4.00 need_bonus for a slot that would still be empty next turn -- the
+    # identical slot, credited once and never debited. The two curves keep forfeit reporting
+    # the market fact a person should read while the ORDER reads the roster-relative one.
+    #
+    # Skipped in upside mode for exactly the reason position_curves above is, and through the
+    # same condition rather than a second reading of it.
+    next_turn_curves = {} if mode == "upside" else _curves_on(my_board, "final_score")
+    next_turn_values = {
+        position: round(_curve_at(curve, (forfeits.get(position) or {}).get("expected_taken", 0.0)), 2)
+        for position, curve in next_turn_curves.items()
+        if position in forfeits
+    }
 
     results = []
     for player_id in candidate_player_ids:
@@ -617,9 +1237,24 @@ def pick_analysis(
 
         denial_value = 0.0
         denial_team = None
-        rival_premium = 0.0
+        # #207: rival_premium starts ABSENT, not at zero. It is the same quantity-with-no-
+        # evidence that denial_value was: if no intervening rival exists, or no rival board
+        # could price him, nothing was measured -- and 0.0 asserts "no rival wants him more",
+        # which is the strongest of the three readings off the weakest evidence. #187 repaired
+        # denial_value and left its sibling in the SAME LOOP untouched. It matters more here
+        # than there, because rival_premium FEEDS pick_necessity.
+        rival_premium = None
         rival_premium_take_probability = None
+        # MANDATE 3.4: THE RANK, which is what the credible-path bar was always stated in.
+        rival_premium_take_rank = None
+        # #187. THREE different facts used to leave denial_value at exactly 0.0, and the UI
+        # promised, verbatim, that "a measured 0 means no rival was positioned to gain".
+        # Counted here, where the difference is knowable, instead of being reconstructed
+        # downstream from a number that no longer carries it.
+        rivals_considered = 0
+        rivals_priced = 0
         for risk in survival["risk_by_team"]:
+            rivals_considered += 1
             opp_board = opponent_boards.get(str(risk["roster_id"]), {})
             opp_row = opp_board.get("by_id", {}).get(str(player_id))
             if opp_row is None:
@@ -630,13 +1265,25 @@ def pick_analysis(
             # not a claim that the player is worthless to them.
             if opp_row.get("final_score") is None or opp_row.get("universal_value") is None:
                 continue
+            rivals_priced += 1
             weighted = opp_row["final_score"] * risk["take_probability"]
             if weighted > denial_value:
                 denial_value = weighted
                 denial_team = risk["roster_id"]
             # rival_premium: how much MORE this player is worth to the best-positioned
             # intervening rival than his team-agnostic universal_value -- their own
-            # need/eligibility premium, with NO take-probability in it. This exists as a
+            # roster-fit premium, with NO take-probability in it. Whatever team-specific terms
+            # compute_draft_board layers on, this subtraction picks up automatically, by
+            # construction: since #139 that is three terms (need_bonus, eligibility_bonus,
+            # depth_exposure) rather than two, which is correct here -- a rival's depth hole is
+            # as real a reason for them to take this player as an empty starting slot is.
+            #
+            # ONE CONSEQUENCE, DOWNSTREAM, that this comment exists to make findable: the
+            # necessity denial term normalizes this number by draft_room.NEED_BONUS_MAX, which
+            # is the cap on ONE of those three terms. That divisor was never exceeded when the
+            # gap had two terms (max 8.33). Measured 2026-09-03 with three: max 16.21, and
+            # 21.9% of sampled candidates now clip at the divisor. See pick_synthesis's
+            # denial_component and test_threshold_reachability. This exists as a
             # separate number specifically for pick_necessity's denial term: denial_value
             # above is (opponent value x p_take), and that same p_take already compounds
             # into survival_probability, so a necessity score using both counted the
@@ -651,7 +1298,7 @@ def pick_analysis(
             # missing one. rival_premium stays 0.0 either way, so dropping the old
             # `if "universal_value" in opp_row` guard changes no behavior.
             premium = opp_row["final_score"] - opp_row["universal_value"]
-            if premium > rival_premium:
+            if rival_premium is None or premium > rival_premium:
                 rival_premium = premium
                 # THIS specific rival's own real take_probability -- kept alongside the
                 # premium (not folded into it) so a downstream human-facing "denies a rival"
@@ -660,6 +1307,35 @@ def pick_analysis(
                 # pick_synthesis.decision_path_flags' block_opportunity, the one consumer of
                 # this field.
                 rival_premium_take_probability = risk["take_probability"]
+                # MANDATE 3.4. The probability alone cannot carry the bar any more. `#206`
+                # normalised this model so one opponent's take probabilities sum to <= 1 across
+                # their whole board, and `CREDIBLE_RIVAL_PATH_THRESHOLD` was 0.10 -- a number
+                # lifted from the RAW rank table, where 0.10 is the rank-4 entry. Measured after
+                # normalisation: the largest take_probability reaching that gate is 0.028, so the
+                # bar sat above every value it could ever be handed and `block_opportunity` was
+                # False on every candidate. The rank is the unit the bar was stated in and the one
+                # that cannot drift when the probability model is renormalised again.
+                rival_premium_take_rank = risk.get("rank_on_their_board")
+
+        # WHICH OF THE THREE (#187), and the absence made real where there was no measurement.
+        #
+        #   no_intervening_rival -- nobody had a pick between now and my next turn, so "no
+        #       rival was positioned to gain" is TRUE and 0.0 is a measurement.
+        #   measured             -- at least one opponent board priced him. 0.0 here means the
+        #       best weighted value was <= 0, which is also a real finding: you cannot deny
+        #       someone value they would not have got. The floor at 0.0 is deliberate and
+        #       stays -- denial is a quantity of value KEPT FROM a rival, and a rival who
+        #       values him negatively loses nothing when you take him.
+        #   no_rival_priced      -- rivals existed and not one of their boards could price
+        #       him. Nothing was measured, so there is no number, and 0.0 would assert the
+        #       strongest of the three claims off the weakest evidence.
+        if not rivals_considered:
+            denial_basis = DENIAL_NO_INTERVENING_RIVAL
+        elif not rivals_priced:
+            denial_basis = DENIAL_NO_RIVAL_PRICED
+            denial_value = None
+        else:
+            denial_basis = DENIAL_MEASURED
 
         results.append({
             "player_id": player_id,
@@ -667,14 +1343,30 @@ def pick_analysis(
             "position": my_row.get("position"),
             "team_acquisition_value": team_acquisition_value,
             "survival_probability": survival["survival_probability"],
+            "survival_basis": survival["survival_basis"],
             "intervening_picks": survival["intervening_picks"],
             "opportunity_cost": opportunity_cost,
-            "denial_value": round(denial_value, 2),
+            "denial_value": (None if denial_value is None else round(denial_value, 2)),
+            # The companion that says WHICH of the three produced that number, or its absence.
+            # Read it before reading the value: 0.0 means "measured, nothing to keep from
+            # anyone", never "not checked" (#187).
+            "denial_basis": denial_basis,
             "denial_team": denial_team,
-            "rival_premium": round(rival_premium, 2),
+            "rival_premium": None if rival_premium is None else round(rival_premium, 2),
+            # The companion, same vocabulary denial_basis uses -- a reader can tell "no rival
+            # wanted him more" from "nobody was there to want him".
+            "rival_premium_basis": denial_basis,
             "rival_premium_take_probability": rival_premium_take_probability,
+            "rival_premium_take_rank": rival_premium_take_rank,
             "positional_forfeit": (forfeits.get(my_row.get("position")) or {}).get("forfeit"),
             "position_expected_taken": (forfeits.get(my_row.get("position")) or {}).get("expected_taken"),
+            "position_best_now": (forfeits.get(my_row.get("position")) or {}).get("best_now"),
+            #: THE ALTERNATIVE THIS CANDIDATE IS WEIGHED AGAINST: what his position is expected
+            #: to still offer ME at my next turn, in final_score's own units so the team terms
+            #: cancel against his. Absent, never 0.0, wherever forfeits are (upside mode, a
+            #: back-to-back turn, a position with nothing priced left) -- 0.0 would read as
+            #: "measured, and nothing will be left", the strongest possible case for acting now.
+            "position_next_turn_value": next_turn_values.get(my_row.get("position")),
         })
     results.sort(key=_opportunity_cost_order)
     return results
