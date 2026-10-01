@@ -127,7 +127,7 @@ precondition the harness enforces itself; its result is recorded below.
 
 | # | Invariant | Sites | Verdict | Runtime |
 |---|---|---|---|---|
-| — | `test_invariant_confirmation_anchors` (clean-tree precondition) | — | pending | pending |
+| — | `test_invariant_confirmation_anchors` (clean-tree precondition) | — | **passes** | 52.5s |
 | — | **baseline** (scored modules, clean tree) | — | pending | pending |
 | 1 | feasibility_first never binds | 2 | pending | pending |
 | 2 | board order ignores feasibility | 1 | pending | pending |
