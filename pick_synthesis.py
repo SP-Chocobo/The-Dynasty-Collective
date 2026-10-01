@@ -207,6 +207,16 @@ DISPLACEMENT_ROSTER_PARTIAL = lo.DISPLACEMENT_ROSTER_PARTIAL
 ABSENCE_KINDS = dr.ABSENCE_KINDS
 ABSENCE_KIND_LABELS = dr.ABSENCE_KIND_LABELS
 
+#: THE HEALTH BASIS VOCABULARY, RE-EXPORTED THE SAME WAY AND FOR THE SAME REASON. `pick_debate`
+#: must not import `draft_room` -- it could reach `compute_draft_board` and re-price a candidate,
+#: which `test_pick_debate_does_not_import_draft_room` enforces and which the first version of the
+#: `risk_basis` repair broke. These are the SAME OBJECTS, never copies, so a value added in
+#: `draft_room` cannot be missing here (`#126`).
+HEALTH_BASIS_IN_PROJECTION = dr.HEALTH_BASIS_IN_PROJECTION
+HEALTH_BASIS_UNPRICED = dr.HEALTH_BASIS_UNPRICED
+HEALTH_BASIS_NO_PROJECTION = dr.HEALTH_BASIS_NO_PROJECTION
+HEALTH_BASIS_CHARGED = dr.HEALTH_BASIS_CHARGED
+
 # Position-view depth ceiling (see narrow_candidates' own docstring): the board's real,
 # league-aware replacement rank per position (draft_room.replacement_ranks) is the right
 # SOURCE for how much positional depth exists, but replacement rank alone can run to 30+ at

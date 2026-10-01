@@ -645,8 +645,20 @@ class TheScaleIsNotAPointsTotalTests(unittest.TestCase):
         #     card says, and a manager learns the same fact by finding him in the LB view. If a
         #     card ever shows eligibility it should read as one line of prose ("can start at LB"),
         #     which is a UI decision and is not made here.
+        # 56 -> 57 (R3): risk_basis. CONFIRMED AGAINST BOTH HALVES:
+        #   SCALE -- it is not a quantity. One of four label strings naming WHICH of
+        #     `health_penalty`'s paths produced `risk_adj`, so it carries no units and cannot be
+        #     misread as universal-value points. It is the `#166` companion to a number the board
+        #     already emitted: `risk_adj == 0.0` arrives from four causes, and only one of them
+        #     means the designation is unpriced.
+        #   RENDER -- NOT AS ITS OWN ROW, and the card does not show it. Its consumer is
+        #     `pick_debate`, which turns it into one sentence of prose for the chair; a raw
+        #     `designation_not_priced` on a card would be jargon, and the sentence it produces is
+        #     already shown beside the designation. The reason this field exists at all is that
+        #     the chair was being told the WRONG one of the four, so the fix belongs in the
+        #     sentence rather than in a new row.
         self.assertEqual(
-            len(dataclasses.fields(ps.CandidateSnapshot)), 56,
+            len(dataclasses.fields(ps.CandidateSnapshot)), 57,
             "CandidateSnapshot's field count changed. That is fine and often correct -- but "
             "confirm the new field does not imply a scale the card cannot support, decide "
             "whether the card should render it, then update this number.")

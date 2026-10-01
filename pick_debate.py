@@ -63,7 +63,6 @@ from llm_engine import (
     UNAVAILABLE_REPORT, _report_for_handoff, is_failed_call,
 )
 import pick_synthesis as ps
-import draft_room as dr
 import player_universe as pu
 from pick_synthesis import (ABSENCE_KIND_LABELS,
                             CandidateSnapshot, PickSnapshot, DENIAL_BASIS_LABELS,
@@ -442,16 +441,16 @@ def _format_candidate(candidate: CandidateSnapshot, user_selected_player_id: Opt
         #: reconstructing one (`#166`). A missing basis falls through to saying nothing about the
         #: designation beyond naming it -- silence, never a guess.
         _basis = getattr(candidate, "risk_basis", None)
-        if _basis == dr.HEALTH_BASIS_IN_PROJECTION or candidate.availability_basis == pu.RULE_FLOOR:
+        if _basis == ps.HEALTH_BASIS_IN_PROJECTION or candidate.availability_basis == pu.RULE_FLOOR:
             _health = ("the games this designation is known to cost are ALREADY REMOVED from his "
                        "projection, so no further discount was applied on top")
-        elif _basis == dr.HEALTH_BASIS_CHARGED:
+        elif _basis == ps.HEALTH_BASIS_CHARGED:
             _health = "a health discount is already inside the universal value below"
-        elif _basis == dr.HEALTH_BASIS_NO_PROJECTION:
+        elif _basis == ps.HEALTH_BASIS_NO_PROJECTION:
             _health = ("this engine DOES price this designation, but his row is priced off trade "
                        "value with no projection for the discount to be a share of, so no "
                        "discount appears in the value below")
-        elif _basis == dr.HEALTH_BASIS_UNPRICED:
+        elif _basis == ps.HEALTH_BASIS_UNPRICED:
             _health = ("NO discount was applied for it -- this engine does not price this "
                        "designation, so his value below is the value of a fully fit player")
         else:

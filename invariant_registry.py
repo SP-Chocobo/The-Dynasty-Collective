@@ -341,9 +341,19 @@ REGISTRY: tuple[Invariant, ...] = (
                    "tests caught it -- overwriting the basis made `predraft_anchor` unreachable, "
                    "since a position that gets the anchor is very nearly the same population whose "
                    "anchor the pool has drained past. Which authority selected a level and whether "
-                   "it was then corrected are two facts; one token carries one.",
+                   "it was then corrected are two facts; one token carries one. "
+                   "31 -> 32 with `risk_basis` (R3), the health term's companion "
+                   "(draft_room.health_basis): WHICH of health_penalty's four paths "
+                   "produced `risk_adj`. Unlike the two flags above this one IS ABSENT "
+                   "on an unpriced row -- None exactly where `risk_adj` is NaN -- so it "
+                   "does not merely widen the population, it adds a member the claim is "
+                   "ABOUT. That is the point: an unpriced row has no health verdict "
+                   "either, and a string there would assert a measurement never taken "
+                   "(#187). Signed for here rather than absorbed by a --write, for the "
+                   "reason above. The repair it belongs to: `risk_adj == 0.0` has four "
+                   "causes and the chair was told the wrong one of the four.",
         members=_board_emitted_columns,
-        census=31,
+        census=32,
         pinned_by=(
             "test_identity_provenance.ItReachesTheBoardInBothModesTests"
             ".test_no_emitted_value_on_the_board_is_a_nan",

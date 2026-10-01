@@ -82,8 +82,16 @@ class TheChairsAreToldTheCauseOfTheDiscount(unittest.TestCase):
         #: it -- so the test passed while the code branched on `availability_basis`, a neighbouring
         #: quantity's basis. Ten of 48 real candidates were being told a discount existed when
         #: `risk_adj` was 0.0. The fixture now supplies the charge the sentence claims.
+        #: `risk_basis` NOW CARRIES THE CAUSE, and the fixture ASKS THE AUTHORITY for it rather
+        #: than naming a band. `risk_adj == 0.0` has four causes and only one means unpriced, so
+        #: the formatter reads the basis the board stamped instead of inferring one (`#166`). A
+        #: literal here would let this fixture and a wrong branch agree.
+        basis = dr.health_basis("Out", pu.NO_DESIGNATION, 100.0)
+        self.assertEqual(dr.HEALTH_BASIS_CHARGED, basis,
+                         "non-vacuity: these inputs must really be the charged case")
         text = pd._format_candidate(
-            _with(injury_status="Out", availability_basis=pu.NO_DESIGNATION, risk_adj=-10.0), None)
+            _with(injury_status="Out", availability_basis=pu.NO_DESIGNATION, risk_adj=-10.0,
+                  risk_basis=basis), None)
         self.assertIn("Out", text)
         self.assertIn("health discount is already inside", text)
 
@@ -92,11 +100,39 @@ class TheChairsAreToldTheCauseOfTheDiscount(unittest.TestCase):
         `health_penalty` returns exactly 0.0 for it, so telling a chair a discount is "already
         inside the universal value" is a fabricated claim -- to the one consumer instructed never
         to recompute, whose job is to pressure-test health."""
+        basis = dr.health_basis("Questionable", pu.IMMATERIAL, 100.0)
+        self.assertEqual(dr.HEALTH_BASIS_UNPRICED, basis,
+                         "non-vacuity: `Questionable` must really have no rate, or this arm is "
+                         "not about the unpriced case at all")
         text = pd._format_candidate(
-            _with(injury_status="Questionable", availability_basis=pu.IMMATERIAL, risk_adj=0.0),
+            _with(injury_status="Questionable", availability_basis=pu.IMMATERIAL, risk_adj=0.0,
+                  risk_basis=basis),
             None)
         self.assertIn("Questionable", text)
         self.assertIn("NO discount was applied", text)
+        self.assertNotIn("already inside", text)
+
+    def test_a_priced_designation_with_no_projection_is_not_called_unpriced(self):
+        """THE FOURTH STATE, and the one two repairs together got wrong (R3).
+
+        A row priced on the trade-value fallback has a real `bpa` and no projection, so
+        `health_penalty` returns 0.0 -- and the old three-way branch read that as "this engine
+        does not price this designation" about a designation it discounts 23.5%."""
+        basis = dr.health_basis("IR", pu.NO_DESIGNATION, float("nan"))
+        self.assertEqual(dr.HEALTH_BASIS_NO_PROJECTION, basis)
+        text = pd._format_candidate(
+            _with(injury_status="IR", availability_basis=pu.NO_DESIGNATION, risk_adj=0.0,
+                  risk_basis=basis), None)
+        self.assertIn("DOES price this designation", text)
+        self.assertNotIn("does not price this designation", text)
+
+    def test_a_snapshot_with_no_basis_recorded_says_nothing_rather_than_guessing(self):
+        """An older stored board carries `risk_adj` and no `risk_basis`. It gets LESS information,
+        never a reconstructed one -- absence is absence (`#187`)."""
+        text = pd._format_candidate(
+            _with(injury_status="IR", availability_basis=pu.NO_DESIGNATION, risk_adj=0.0), None)
+        self.assertIn("IR", text)
+        self.assertNotIn("does not price this designation", text)
         self.assertNotIn("already inside", text)
 
     def test_the_two_regimes_do_not_read_the_same(self):
