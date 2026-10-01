@@ -144,19 +144,16 @@ class NoConstantIsQuotedWrongly(unittest.TestCase):
     def test_a_wrong_value_is_actually_detected(self):
         """Planted through the real prose walk: move every constant and the quotations must go
         red. Without this, a QUOTED_VALUE pattern that matched nothing would pass forever."""
-        def quotations_checked():
-            names = set(prose_names.numeric_constants())
-            n = 0
-            for _, _, text in (tuple(prose_names.prose_blocks())
-                               + tuple(prose_names.markdown_blocks())):
-                if prose_names.is_history(text):
-                    continue
-                for m in prose_names.QUOTED_VALUE.finditer(text):
-                    if (m.group(1) or m.group(3)) in names:
-                        n += 1
-            return n
-
-        baseline = quotations_checked()
+        # ASKS THE CHECKER WHICH QUOTATIONS IT EXAMINES; does not re-derive the answer. This
+        # oracle used to walk the corpus itself and apply the history shield at BLOCK scope. When
+        # `I2` moved the checker to paragraph scope the oracle disagreed by 4 quotations and this
+        # test went red -- reporting a real repair as a regression, the one failure mode a
+        # mutation test must not have. A test that re-expresses the rule it is testing is a
+        # second home for that rule (`#126`), and the mutation below is what makes reading the
+        # population from the module honest rather than circular: the baseline says WHICH
+        # quotations are live, the mutation proves every one of them is actually compared.
+        baseline = sum(1 for *_r, shielded in prose_names.quoted_constant_sites()
+                       if not shielded)
         self.assertGreater(baseline, 0, "non-vacuity: the pattern must match something")
         real = prose_names.numeric_constants
         prose_names.numeric_constants = lambda: {k: v + 1 for k, v in real().items()}

@@ -528,38 +528,53 @@ def misquoted_constants() -> list[tuple[str, str, float, float]]:
     known constant to check, the markdown offers 40 over 14 distinct constants. Checking the
     smaller population and skipping the larger one was the gap, not a choice."""
     real = numeric_constants()
-    out = []
+    return [(site, name, real[name], quoted)
+            for site, name, quoted, shielded in quoted_constant_sites()
+            if not shielded and name in real and abs(real[name] - quoted) > 1e-12]
+
+
+def quoted_constant_sites() -> list[tuple[str, str, float, bool]]:
+    """(site, name, quoted value, whether the history shield suppresses it) for every quotation
+    of a single-homed constant anywhere in this repository's prose or markdown.
+
+    ONE HOME FOR "WHICH QUOTATIONS ARE EXAMINED" (`#126`). This walk had three readers --
+    `misquoted_constants`, the census under it, and the mutation test's own oracle -- and `I2`
+    found two of them still at block scope after the third moved to paragraph scope. A census
+    that re-derives the scope rule is a second definition of it, and the mutation test's copy
+    was worse than that: an oracle that disagrees with the checker reports a real repair as a
+    regression, which is exactly how it failed. The shield is reported rather than applied here
+    so the census can count what it suppressed without walking a second time.
+
+    PARAGRAPH SCOPE, NOT BLOCK SCOPE. `D-F2` moved `dead_names`' shield to paragraph scope and
+    this neighbour kept the block-wide test, so one marker anywhere in a long docstring exempted
+    every quotation in it. Measured over the real corpus: 4 quotations were shielded by a marker
+    NOT in their own paragraph -- `SUPER_FLEX_QB_SHARE`, `D_MIN_SCALE`, `FLEX_GROUP_DEPTH_FACTOR`,
+    `SPAN`, none of them actually misquoted. The markdown half was already clean at paragraph
+    scope (75 of 75 shielded in their own paragraph), so this costs nothing there."""
+    real = numeric_constants()
+    sites = []
     for path, line, text in tuple(prose_blocks()) + tuple(markdown_blocks()):
-        if is_history(text):
-            continue                       # a value quoted as history is not a claim about now
+        multiline = len(text.splitlines()) > 1
         for match in QUOTED_VALUE.finditer(text):
             name = match.group(1) or match.group(3)
-            quoted = float(match.group(2) or match.group(4))
-            if name in real and abs(real[name] - quoted) > 1e-12:
-                at = line + (text[:match.start()].count("\n") if len(text.splitlines()) > 1 else 0)
-                out.append((f"{path}:{at}", name, real[name], quoted))
-    return out
+            if name not in real:
+                continue
+            at = line + (text[:match.start()].count("\n") if multiline else 0)
+            sites.append((f"{path}:{at}", name,
+                          float(match.group(2) or match.group(4)),
+                          is_history(_paragraph_around(text, match.start()))))
+    return sites
 
 
 def _quotation_census() -> tuple[int, int]:
     """(quotations of a single-homed constant, how many the history shield suppressed).
 
     What `misquoted_constants` actually EXAMINED, which is the only honest denominator for its
-    verdict. Derived by walking the same blocks with the same matcher, so it cannot drift from
-    the check it describes -- a census computed a second way is a second definition (`#126`).
-    """
-    real = numeric_constants()
-    checkable = shielded = 0
-    for blocks in (prose_blocks(), markdown_blocks()):
-        for _path, _line, text in blocks:
-            for match in QUOTED_VALUE.finditer(text):
-                name = match.group(1) or match.group(3)
-                if name not in real:
-                    continue
-                checkable += 1
-                if is_history(text):
-                    shielded += 1
-    return checkable, shielded
+    verdict. Reads the SAME list the check reads, so it cannot drift from the check it describes
+    -- an earlier version said that while walking the corpus a second time, and `I2` caught the
+    two walks disagreeing about the shield's scope (`#126`, `#133`)."""
+    sites = quoted_constant_sites()
+    return len(sites), sum(1 for *_rest, shielded in sites if shielded)
 
 
 def main() -> int:

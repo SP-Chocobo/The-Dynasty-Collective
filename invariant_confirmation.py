@@ -378,7 +378,13 @@ def main():
     # names. The emitted mode is printed below so the reader can see which board they got.
     parts = ref_fp.split()
     boards = [parts[i:i + 4] for i in range(0, len(parts), 4)]
-    for branch, (_digest, feas, total, unfield) in zip(("balanced", "upside"), boards):
+    #: NAMED PER BRANCH, because the loop below used to leak its variables into the summary line
+    #: and that line then printed the LAST iteration's digest under the label "reference board".
+    #: No number was wrong -- the censuses are identical on both branches by construction -- but
+    #: the label was, and a reader checking "did the fixture bind" would have been reading the
+    #: upside board while being told it was the reference. Found by the gate's own re-run.
+    by_branch = dict(zip(("balanced", "upside"), boards))
+    for branch, (_d, feas, total, unfield) in by_branch.items():
         for label, count in (("feasibility (fills_required_slot)", feas),
                              ("fieldability (cannot_be_fielded)", unfield)):
             if not 0 < int(count) < int(total):
@@ -386,8 +392,9 @@ def main():
                       f"{count} of {total} rows. That backstop is a no-op there, so no mutation "
                       f"of it can be judged. Re-derive the roster state; do not relax this check.")
                 return 2
-    print(f"reference board: {_digest[:16]}  feasibility binds on {feas} of {total} rows, "
-          f"fieldability on {unfield}")
+    balanced_digest, b_feas, b_total, b_unfield = by_branch["balanced"]
+    print(f"reference board (balanced): {balanced_digest[:16]}  feasibility binds on {b_feas} "
+          f"of {b_total} rows, fieldability on {b_unfield}")
     # The digests, because they are what the second board is for -- identical digests would mean
     # the upside arms are back to mutating a branch the fixture never built.
     print(f"  branch digests: {' '.join(b[0][:16] for b in boards)}"
