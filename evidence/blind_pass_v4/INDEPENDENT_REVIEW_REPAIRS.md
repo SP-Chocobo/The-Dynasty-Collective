@@ -835,6 +835,78 @@ The picks draining the board are built in production's shape
 (`{pick_no, round, roster_id, player_id}`) so round detection and mode resolution are not silently
 changed by the input, and `mode` is passed explicitly rather than left to `auto`.
 
+### 19. HIGH — four of the twelve repairs are defended by no test at all: reverting each one leaves the suite green
+
+**Method.** In a separate `git worktree` at `7984b1d`, revert exactly one repair, run the test
+modules that ought to notice, restore with `git checkout --`, assert the tracked tree is clean,
+repeat. Every arm under `PYTHONDONTWRITEBYTECODE=1` with `__pycache__` cleared first, because a
+length-preserving edit inside one mtime second otherwise serves the previous bytecode. Control arm
+(clean tree, the union of every module named below): **OK**, so a FAILED in an arm is attributable
+to the revert. Probe:
+`evidence/blind_pass_v4/probes/probe_mutation_do_tests_defend_the_repairs.py`; raw output:
+`evidence/blind_pass_v4/probes/mutation_pass_output.txt`.
+
+| repair | reverted in | verdict |
+|---|---|---|
+| `A-F2` `health_penalty` returns 0.0 for an absent projection | `draft_room.py` | **DEFENDED** (2 failures) |
+| `B-F4` `feasibility_first` reads eligibility on the candidate side | `draft_room.py` | **DEFENDED** (1) |
+| `B-F6` a rosterless pick creates no phantom roster | `draft_room.py` | **DEFENDED** (2 + 1 error) |
+| `C-F3` `filter_candidates_by_view` filters on eligibility | `draft_board_ui.py` | **DEFENDED** (2) |
+| **`C-F3` `eligible_positions` is POPULATED by `build_snapshot`** | `pick_synthesis.py` | **UNDEFENDED — OK** |
+| `E-F5` a failed season fetch returns a refusal string | `sleeper_client.py` | **DEFENDED** (1) |
+| **`A-F5` the Draft Room puts the draft's seats on the league dict** | `app.py` | **UNDEFENDED — OK** |
+| **`A-F1` `presentable_text` checks absence before withholding** | `pick_synthesis.py` | **UNDEFENDED — OK** |
+| `D10` `ambiguities` splits the alarm into three bands | `league_config.py` | **DEFENDED** (3) |
+| **`D-F2` the history shield is paragraph-scoped, not block-scoped** | `prose_names.py` | **UNDEFENDED — OK** |
+| `D-F4` the per-method floor key is qualified `Class.method` | `assertion_floors.py` | **DEFENDED** (4) |
+| `A-F5` `_round_being_decided` routes through `team_count`/`round_of` | `pick_synthesis.py` | **DEFENDED** (2) |
+
+**The four undefended ones, and why each matters more than a missing test usually does.**
+
+**(a) `C-F3`: nothing checks that `build_snapshot` populates `eligible_positions`.** Replacing
+`_eligibility`'s body with `frozenset()` leaves `test_one_eligibility_vocabulary_everywhere`,
+`test_pick_synthesis`, `test_snapshot_identity_boundary` and `test_draft_board_ui` all green. The
+UI half **is** defended — the view filter's tests fail when it is reverted — because
+`EligibilityCrossesTheSnapshotBoundaryTests` builds its `CandidateSnapshot`s **by hand** with
+`eligible_positions=frozenset({"DL", "LB"})`. So the suite pins "a view filters on the field" and
+never "production fills the field", which is the finding C-F3 actually was: *"eligibility never
+crosses the snapshot boundary"*. Reverted, every board silently returns to showing a dual-eligible
+man in exactly one view, and the test named `test_the_snapshot_carries_eligibility_at_all` still
+passes, because it checks `dataclasses.fields` — that the field **exists**, not that it is filled.
+
+**(b) `A-F5`: nothing checks that the Draft Room puts the seats on the league dict.** Deleting the
+single line `league_config.PICK_ORDER_KEY: round_1_order,` from `app.py` leaves
+`test_one_league_one_team_count`, `test_ui_source`, `test_three_derivations_of_one_number`,
+`test_mock_draft_wiring` and `test_live_board_pricing` green. `PICK_ORDER_KEY` appears in `app.py`
+exactly once, at that line. The new module's tests all call `lc.team_count` with a hand-built
+league carrying the key — they prove the function reads it, never that the one production caller
+writes it. The module's own docstring says the whole point is "THE SEATS NOW TRAVEL ON THE LEAGUE
+DICT … rather than through four call layers, because every layer that has to forward them is a
+layer that can forget to"; the layer that must not forget is the only one unpinned. And the idiom
+was in hand: the very next test in the same class checks the UI through `ui_source.text()`.
+
+**(c) `A-F1`: nothing checks the new absence-before-withholding order.** Removing
+`if rendered is None or rendered == ABSENT_FIGURE: return rendered` leaves
+`test_withheld_propagation`, `test_survival_absence_contract`, `test_absence_survives_consumers`,
+`test_pick_synthesis` and `test_dock_absence_contract` green. The assertion that looks like the
+guard is `assertEqual("—", ps.presentable_text("universal_value", "—"))` — and `universal_value` is
+**not** in `withheld_fields()` (`{expected_value_of_waiting, opportunity_cost,
+survival_probability}`), so that line never reaches the withheld branch and passes either way. The
+repair's own measured case — a **withheld** field holding an absent value, 48 of 48 candidates at
+the user's last pick — has no assertion anywhere. This is the mandate's third defect class exactly:
+a literal expectation that the fixture and the defect both satisfy.
+
+**(d) `D-F2`: nothing checks that the history shield is paragraph-scoped.** Putting
+`is_history(text)` back in place of `is_history(_paragraph_around(text, match.start()))` leaves
+`test_prose_names` and `test_source_scan` green. So the scope repair — the thing `TRIAGE_V4` says
+blocks the freeze, because "the instrument certifies '0 dead names' at the freeze … and it is
+wrong" — can be undone without a word. Read with finding 5 (`dead_names()` now reports 0 anyway),
+the Tier 0 instrument's repair is both unprotected and back at the number it was raised against.
+
+**Three of the four are the same shape:** the test exercises the consumer against a hand-built
+input and never the producer that fills it. That is the shape `engine-measurement` names as the
+dominant fixture error in this repository, applied to tests rather than to probes.
+
 ---
 
 *(review in progress — a mutation pass over the repairs is still running; its results and the summary are appended below)*
