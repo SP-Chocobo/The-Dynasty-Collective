@@ -105,3 +105,86 @@ all 20 PNGs after the final build. What I saw and shipped: v1 `late` draws 4 of 
 the affordance (the three below the fold are all on the table above); v3's comparison pane scrolls
 by one or two "only where they differ" rows in every state; v2's `late` fold is still mostly dark
 and now says *the board: 7 names* so it reads as a short board rather than a failed render.
+
+---
+
+# Polish pass (owner feedback, OWNER_FEEDBACK_R2)
+
+Three variants touched: `v4_doors` (primary), `v1_ledger` (rail-less; the rail version is kept
+beside it as `v1_ledger_rail.html` for the one-variable comparison), `v2_lanes`. `v3_trio` is cut
+and untouched. All three states of each were rendered, probed (text overflow, occlusion, cut-off,
+scroll affordances, counts, 12px floor) and looked at.
+
+## v4_doors — changed, in his order
+
+1. **Door-order line: cut.** It announced a disagreement with no consequence (a conditional that
+   resolved the same way in every state, `#254`). The one actionable thing it carried — which
+   position is dearest to wait on — is now one amber line on that door only (*The dearest position
+   to wait on right now.*), inside the sentence that tells you what waiting costs, where it can
+   change a decision. The doors keep following the board; nothing else says so. The rank tag on
+   each door now reads *1 · first on the board … 4 · fourth on the board* so the 1·2·3·4 he liked
+   runs across doors as well as within them.
+2. **Card wording.** *"If you wait, the best receiver left at #54 is worth about 47.0 — 5.5 less
+   than taking one now."* Who you get, when, what it costs, in that order; the dash is a clause
+   break, not an operator. The cost cells are relabelled **now · at #54 · both picks**.
+3. **Clock/roster bar reworked.** One line: clock · YOU ARE UP · *Next turn 5.06 (#54) · 10 picks
+   away* + ticks · *next up: Roster 5 · last taken: J. Warren (Roster 7)*. The lineup chips moved
+   to their own line with the pool count beside them. No two-row stack, no left-floating label.
+4. **Bottom doors sized to content.** Doors are `align-items:start` in the grid and the open
+   door's cards are content-sized; empty space is left honest below rather than padded. At `late`
+   the two cards fit without a scroller.
+5. **Rosters button.** The sheet it opens is rebuilt: every roster as a lineup grid (the same slot
+   grid as the drafter's own), the rosters that pick before your next turn lit and captioned with
+   their pick numbers, and each roster's route for the open door's position (*WR slot open* /
+   *FLEX only for a WR* / *no slot for a WR*) in amber. The button itself is unchanged, as asked.
+
+## The §14 tank — built, and my verdict is **keep it**, with one cost named
+
+Built as ruled: one tank per offensive position, spanning the position's whole priced pool,
+self-normalised to its own opening count, the starter line drawn inside, **no bands**. It is
+vertical (his "horizontal makes them counterintuitive"), 18px wide, and it is the left edge of
+each door rather than a separate strip (his "too large"). The hatched zone above the gold line is
+the starter supply; the fill is green while starters remain and grey once the pool has drained
+below the line. Its caption is one line: *pool 74% left as of #120 · starters gone → bench*.
+
+**Data honesty.** The engine samples the pool every 20 picks (`frame.json` history). The rail
+reproduces those samples exactly through #80 and diverges after (#100: TE −2, WR +2), so the tank
+renders the **engine's latest sample at or before the pick and says "as of #N"**; the client never
+drains it by the rail. The build asserts this and prints where the rail matches.
+
+**Why it earns its place.** At `late` all four tanks sit below their starter line and the caption
+says *starters gone → bench* beside a −34.6 whose amber sentence says *−33.7 of it is filled-slot
+displacement*: the same fact at two scales, and the negative board stops looking broken. At `mid`
+the tank is the only thing that says WR is 92% full while RB is 85% — context the bare wait cost
+cannot carry. **What came out to pay for it:** the door-order line (a whole row) and the
+two-row clock bar; the net screen is one row shorter than before the tank went in.
+`v4_doors.html?notank` renders the same screen without it, both in `_shots/`.
+
+**Refused.** Re-draining the engine sample by the rail (would be an estimate presented as a
+measurement). Any band or "meh" grouping. Making the order condition smarter.
+
+## v1_ledger — rail removed, nothing else
+
+`v1_ledger.html` has no rail; the clock line carries *On the clock: you (Roster 6) · next up:
+Roster 5 · last taken: J. Warren by Roster 7* (§1's guarantee). The side column already carried
+the wait sentence. `v1_ledger_rail.html` is the identical build with the rail, for comparison.
+The board strip gains the rail's 85px: 9 rows visible at `mid` instead of 6, all 7 at `late`
+minus one. No other change.
+
+## v2_lanes — the better-than relation
+
+Within a lane: every name now leads with its board rank (`#1`, `#3`, `#7`…) in gold mono, lead
+and rows alike, and the lead's sentence says *#3 on the board — instead of #1 McMillan*. Across
+lanes: one line under the lineup, *Who is ahead of whom: #1 McMillan WR 52.5 · #2 Judkins RB −2.7
+· #3 Allen QB −4.6 · #4 McLaurin WR −4.6 — the board's order by value now; the # on every name is
+his place in it*. The lanes stay in lineup order; the resizing and the side-by-side table are
+untouched. **Refused:** re-sorting the lanes (they exist to hold positions apart).
+
+## Verification
+
+`node --check` ×5; 15 renders green (v1, v1_rail, v2, v4, v4?notank × 3 states): no errors, no
+page scroll, no clipping, no text overflow, no occlusion, nothing cut off, every scroller
+captioned, counts match, 12.0px minimum; interaction pass (door open, re-sort across states,
+sheets, rosters sheet, numbers) error-free; rendered-text scan of all 12 touched states: no
+"priced"/"UV"/field names/"tie"/"disagree". All 27 PNGs in `_shots/` looked at after the final
+build. v3 untouched.

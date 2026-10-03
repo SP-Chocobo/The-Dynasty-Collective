@@ -40,7 +40,7 @@ PROBE = """() => {
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path=exe)
     for f in files:
-        for state in ("early", "mid", "late"):
+        for state in (("early", "mid", "late", "early-notank", "mid-notank", "late-notank") if "v4" in f else ("early", "mid", "late")):
             pg = b.new_page(viewport={"width": 1440, "height": 900})
             errs = []
             pg.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))

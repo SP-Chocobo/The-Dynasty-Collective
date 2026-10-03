@@ -212,12 +212,34 @@ function twoTurnText(subjId, altId){
   if (!r.measured) return `One of the two positions has no measured value at #${M.NEXT} on this board.`;
   return `<b>${A}</b> now + ${r.b.pos} at #${M.NEXT} ≈ <b>${f1(r.aTotal)}</b> · <b>${B}</b> now + ${r.a.pos} at #${M.NEXT} ≈ <b>${f1(r.bTotal)}</b>`;
 }
+/* the sentence a reader would otherwise assemble from the two figures */
+function twoTurnSentence(subjId, altId){
+  const r = compare(subjId, altId), A = short(r.a.name), B = short(r.b.name);
+  if (r.same) return r.adjacent ? `${f1(Math.abs(r.dv))} ${r.dv >= 0 ? "behind" : "ahead of"} ${A} today · neighbours in the measured order, <b>${TIER_WORD[r.dropBetween.tier]}</b> (${f1(r.dropBetween.gap)}) between them.` : `${f1(Math.abs(r.dv))} ${r.dv >= 0 ? "behind" : "ahead of"} ${A} today · ${short(r.measuredAhead.name)} is ${r.places} places ahead in the measured order.`;
+  if (!r.measured) return `No measured value for one of the two positions at #${M.NEXT} on this board, so the two-pick total is not known.`;
+  const lead = r.dTotal >= 0 ? A : B, vl = short(r.valueLeader.name);
+  return `Two picks: <b>${B}</b> now + a ${POS[r.a.pos]} at #${M.NEXT} ≈ ${f1(r.bTotal)} · <b>${A}</b> now + a ${POS[r.b.pos]} ≈ ${f1(r.aTotal)} → <b>${lead}</b> first by ${f1(Math.abs(r.dTotal))}; today ${vl === lead ? "also " + vl : vl} by ${f1(Math.abs(r.dv))}.`;
+}
 function alternatives(id, n){
   const c = M.byId[id], out = [];
   M.C.filter(x => x.pos !== c.pos && M.posBest(x.pos).id === x.id).forEach(x => out.push(x));
   const nxt = M.atPos(c.pos).find(x => x.rank > c.rank) || M.atPos(c.pos).find(x => x.id !== c.id); if (nxt) out.push(nxt);
   out.sort((x, y) => y.tav - x.tav);
   return n ? out.slice(0, n) : out;
+}
+/* ---- §14 tank, vertical, one per offensive position: full at its own opening count, drained by the
+        picks on the rail (a coordinate), the replacement bar as a marker inside. No bands, no counts. ---- */
+const GAUGE = D.gauge || null;
+function tankState(pos){
+  if (!GAUGE || !GAUGE.opening[pos]) return null;
+  const opening = GAUGE.opening[pos], taken = Math.min(opening, M.takenBy[pos] || 0), left = opening - taken;
+  const starter = GAUGE.starterRank[pos];                                  // where the position stops producing starters
+  return {opening, left, frac: left / opening, starterFrac: starter == null ? null : 1 - starter / opening, belowLine: starter != null && taken >= starter, startersLeft: starter == null ? null : Math.max(0, starter - taken)};
+}
+function tankHTML(pos){
+  const t = tankState(pos); if (!t) return "";
+  const words = t.belowLine ? `past its starter line — a ${POS[pos]} taken now is a bench piece` : `still above its starter line`;
+  return `<span class="tank ${t.belowLine ? "bench" : ""}" title="${pos}: ${Math.round(t.frac * 100)}% of its rated pool left, drained by the picks on the rail; the line is where the position stops producing starters. ${cap(words)}."><i class="fill" style="height:${(t.frac * 100).toFixed(1)}%;background:${pc(pos)}"></i>${t.starterFrac != null ? `<i class="bar" style="bottom:${(t.starterFrac * 100).toFixed(1)}%"></i>` : ""}</span>`;
 }
 /* ---- atoms ---- */
 function face(c, size){
@@ -231,7 +253,7 @@ const billed = (id, label) => `<button class="btn billed" data-sheet="${id}" ari
 const copyBtn = (c, brief) => `<button class="copy" data-copy="${c.name}" title="Copies “${c.name}”. You make the pick in Sleeper; this room reads it back. Nothing here spends a pick.">copy “${brief ? short(c.name) : c.name}”</button>`;
 function waitText(){ return `<b>${M.S.intervening} picks</b> until you choose again · your next turn is <i>#${M.NEXT}</i>`; }
 function sinceText(){ const o = M.sinceBy, ks = Object.keys(o).sort((a, b) => o[b] - o[a]);
-  return M.PREVP ? `since your last turn (#${M.PREVP.no}): ${ks.map(k => `${o[k]} ${k}`).join(" · ")} left the board` : `before your first turn: ${ks.map(k => `${o[k]} ${k}`).join(" · ")} went`; }
+  return M.PREVP ? `gone since your last turn: ${ks.map(k => `${o[k]} ${k}`).join(" · ")}` : `gone before your first turn: ${ks.map(k => `${o[k]} ${k}`).join(" · ")}`; }
 /* every measured quantity, with its basis in the engine's words; nothing gated, nothing zeroed */
 function workingHTML(c){
   const k = M.CTX[c.id];
@@ -355,11 +377,13 @@ function fillChrome(){
   const ar = document.getElementById("allRosters"); if (ar) ar.innerHTML = allRostersHTML();
   const db = document.getElementById("dbHost"); if (db) db.innerHTML = boardGridHTML();
 }
+let FLAGS = new Set();
 function setState(key, first){
+  const parts = (key || "").split("-"); key = parts[0]; FLAGS = new Set(parts.slice(1));
   if (!STATES[key]) key = "mid";
   M = model(key);
   document.querySelectorAll("[data-state]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.state === key)));
-  if (!first && location.hash !== "#" + key) history.replaceState(null, "", "#" + key);
+  const h = "#" + [key, ...FLAGS].join("-"); if (!first && location.hash !== h) history.replaceState(null, "", h);
   fillChrome();
   if (typeof render === "function") render(true);
 }

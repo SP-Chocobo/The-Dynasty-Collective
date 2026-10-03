@@ -40,7 +40,7 @@
       <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate</button>
       <button class="btn" title="Settings">⚙</button></span></header>
   <div class="railA" id="rail"></div>
-  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="right" id="clkRight"></span></div>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span id="clkWho"></span><span class="right" id="clkRight"></span></div>
   <div class="body">
     <aside class="side"><span class="k">Your lineup</span><div class="rcol" id="roster"></div><div class="wait" id="wait"></div></aside>
     <main class="main">
@@ -100,13 +100,17 @@ function draw(){
 function load(key){
   M = buildModel(key); sel = null; filter = "ALL"; posOpen = false;
   fillCommon(M);
-  document.getElementById("rail").innerHTML = M.railA();
+  const rail = document.getElementById("rail");
+  if (WITH_RAIL) { rail.innerHTML = M.railA(); requestAnimationFrame(() => { const past = rail.querySelector(".past"); const one = past && past.querySelector(".pk"); if (one) past.style.height = one.offsetHeight + "px"; }); }
+  else if (rail) rail.remove();
+  /* §1: with or without the rail, who is on the clock is named */
+  document.getElementById("clkWho").innerHTML = WITH_RAIL ? "" : M.clockText();
   /* the named past is one row of whole boxes: as many as fit, newest nearest the clock */
-  requestAnimationFrame(() => { const now = document.querySelector("#rail .pk.now"), past = document.querySelector("#rail .past"); const one = past && past.querySelector(".pk"); if (one) past.style.height = one.offsetHeight + "px"; });
+
   document.getElementById("clkRight").innerHTML = `<span>open: <b>${M.STARTERS.filter(r => !r.p).map(r => r.slot).join(", ") || "none"}</b> · bench ${M.benchFilled} of ${M.benchTotal}</span>`;
   draw();
 }
-const ui = wireChrome({tag:"v1 · LEDGER", sub:"position layer summoned · pool below · click a name · named past + marked span", hypothesis:`<b>Hypothesis.</b> The owner called Ledger B's delivery the strongest of the eight and its density jarring, so the ledger is cut to four things — <b>who</b> (name, the slot he fills, lit on your lineup), <b>why</b> (his own slot and drop, then two sentences against the board's next name with the two-pick plan computed from value now and what each position leaves at your next turn), <b>what else</b> (the best at each other position and the next at his own, each with <b>its cost</b> against him: now · next turn · plan) — and everything else is a gesture away: the numbers behind him, the position table, rosters, the board. The rail shows named past picks, one marked span for the wait, and your next turn; nothing blank. Any name on the strip can take the ledger.`, onState:load});
+const ui = wireChrome({tag:WITH_RAIL ? "v1 · LEDGER (rail)" : "v1 · LEDGER", sub:WITH_RAIL ? "position layer summoned · pool below · click a name · named past + marked span" : "position layer summoned · pool below · click a name · NO RAIL — the clock line names the drafter", hypothesis:`<b>Hypothesis.</b> The owner called Ledger B's delivery the strongest of the eight and its density jarring, so the ledger is cut to four things — <b>who</b> (name, the slot he fills, lit on your lineup), <b>why</b> (his own slot and drop, then two sentences against the board's next name with the two-pick plan computed from value now and what each position leaves at your next turn), <b>what else</b> (the best at each other position and the next at his own, each with <b>its cost</b> against him: now · next turn · plan) — and everything else is a gesture away: the numbers behind him, the position table, rosters, the board. The rail shows named past picks, one marked span for the wait, and your next turn; nothing blank. Any name on the strip can take the ledger.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
   if (e.target.closest("#posBtn")) { posOpen = !posOpen; draw(); return; }

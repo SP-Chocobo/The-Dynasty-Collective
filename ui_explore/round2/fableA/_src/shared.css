@@ -136,7 +136,7 @@ small{font-size:max(12px,.85em)}
 .sheet[data-open="1"]{transform:none}
 .rosterGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .rcard{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:9px 12px}
-.rcard h4{margin:0 0 6px;font-size:.86rem;font-weight:700;display:flex;gap:7px;align-items:center} .rcard h4 .note{margin-left:auto}
+.rcard h4{margin:0 0 6px;font-size:.86rem;font-weight:700;display:flex;gap:7px;align-items:baseline;white-space:nowrap} .rcard h4 .note{margin-left:auto;white-space:normal;text-align:right}
 .rcard.me h4{color:var(--gold-b)}
 .rcard .ln{font-size:.82rem;display:flex;gap:7px;padding:2px 0;align-items:center} .rcard .ln .n{min-width:0}
 .rcard.soon{border-color:var(--line-2);background:var(--surface)}
@@ -208,3 +208,14 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .sub{font-size:.84rem;color:var(--muted);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .big{font-family:var(--f-m);font-size:1.5rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
 .u{display:block;font-size:.75rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:3px;white-space:nowrap}
+
+/* §14 tank — vertical, one per door, spans the position's whole priced pool, starter line inside,
+   no bands. Width is the door's height so every priced player resolves to at least a pixel. */
+.tank{position:relative;width:12px;border:1px solid var(--line-2);border-radius:2px;background:var(--surface-2);overflow:hidden;flex:0 0 auto;align-self:stretch}
+.tank .fill{position:absolute;left:0;right:0;bottom:0;background:var(--dim)}
+.tank .fill.st{background:var(--emerald)}
+.tank .mark{position:absolute;left:-1px;right:-1px;height:2px;background:var(--ink);z-index:2}
+.tankcap{font-size:.75rem;color:var(--dim);line-height:1.3}
+.tankcap b{color:var(--muted);font-weight:600}
+.tankcap .gone{color:var(--amber-b)}
+.lineup{display:flex;align-items:center;gap:10px;padding:6px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--surface-2)}

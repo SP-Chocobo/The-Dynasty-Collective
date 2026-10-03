@@ -9,6 +9,19 @@
    lane · NO RAIL — the wait is a sentence in the clock line. */
 .lineup{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--surface-2)}
 .lanes{flex:1 1 auto;min-height:0;display:grid;grid-template-rows:minmax(0,1fr);gap:0;transition:grid-template-columns .25s ease}
+/* one cross-lane statement: the board's order, read across the lanes */
+.order{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line-2);background:var(--surface);font-size:.88rem;color:var(--muted);flex:0 0 auto;flex-wrap:wrap}
+.order .k{flex:0 0 auto}
+.order .seq{display:inline-flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.order .seq span{display:inline-flex;gap:6px;align-items:baseline;white-space:nowrap}
+.order .seq i{font-style:normal;font-family:var(--f-m);font-weight:700;color:var(--gold-b)}
+.order .seq b{color:var(--ink)} .order .seq .d{font-family:var(--f-m);color:var(--dim)}
+.order .rule{color:var(--muted)}
+/* within a lane: the board rank is the first thing on every row */
+.rank{font-family:var(--f-m);font-weight:700;color:var(--gold-b);font-size:.95rem;flex:0 0 auto}
+.rank.dim{color:var(--muted)}
+.lead1 .who .rank{font-size:1.15rem;min-width:30px}
+.rr .nm .rank{display:inline-block;min-width:28px;font-size:.84rem}
 .lane{min-width:0;min-height:0;display:flex;flex-direction:column;border-right:1px solid var(--line);cursor:pointer}
 .lane:last-child{border-right:none}
 .lane.focus{cursor:default;background:linear-gradient(180deg,rgba(212,160,23,.06),transparent 30%)}
@@ -66,6 +79,7 @@
       <button class="btn" title="Settings">⚙</button></span></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span id="wait" style="line-height:1.4"></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div><span class="note" id="firstNote" style="margin-left:auto"></span></div>
+  <div class="order" id="order"></div>
   <div class="lanes" id="lanes"></div>
   <div class="scrim"></div>
   <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
@@ -105,19 +119,21 @@ function laneHTML(pos){
   if (!lead) body = `<div class="empty">No ${POS[pos]} in the board's top ${M.C.length}.${held.length ? ` You hold ${held.map(p => M.short(p.name)).join(", ")}.` : " You hold none."}</div>`;
   else {
     const L = M.LEADER, isFirst = lead.player_id === L.player_id;
-    const vs = isFirst ? (M.C[1] ? `First on the board, ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}) now.` : "First on the board.")
-      : `Instead of ${M.short(L.name)}:`;
+    const vs = isFirst ? (M.C[1] ? `<b>First on the board</b>, ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of #${M.C[1].rank} ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>")
+      : `<b>#${lead.rank} on the board</b> — instead of #1 ${M.short(L.name)}:`;
     const rest = list.slice(isFocus ? Math.min(3, list.length) : 1);
-    body = `<div class="lead1"><div class="who">${M.face(lead)}<span style="min-width:0"><div class="nm">${lead.name}</div><div class="sub">${lead.team} · ${Math.round(lead.projected_points)} pts · ${M.slotShort(lead)}${lead.injury_status ? ` · <i class="inj">${lead.injury_status}</i>` : ""}</div></span></div><div class="valrow"><span class="big">${f1(lead.team_acquisition_value)}</span><span class="u">to your roster</span></div>
+    body = `<div class="lead1"><div class="who"><span class="rank ${isFirst ? "" : "dim"}" title="rank ${lead.rank} on the board">#${lead.rank}</span>${M.face(lead)}<span style="min-width:0"><div class="nm">${lead.name}</div><div class="sub">${lead.team} · ${Math.round(lead.projected_points)} pts · ${M.slotShort(lead)}${lead.injury_status ? ` · <i class="inj">${lead.injury_status}</i>` : ""}</div></span></div><div class="valrow"><span class="big">${f1(lead.team_acquisition_value)}</span><span class="u">to your roster</span></div>
         ${M.displaced(lead) ? M.dispShort(lead) : ""}
         <p class="vs">${vs}${isFirst ? "" : ` <span class="cost" style="display:inline-flex">${M.costHTML(lead, L)}</span>`}</p></div>
       ${isFocus ? trioHTML(pos) : ""}
-      <div class="rest fade" data-list="${pos}">${rest.map(c => `<div class="rr" data-row data-id="${c.player_id}" role="button" tabindex="0"><span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="cue">${sgn(c.team_acquisition_value - lead.team_acquisition_value)} vs ${M.short(lead.name)} · ${M.tierWord(c)} behind (${f1(c.positional_cliff.gap)})${c.injury_status ? ` · ${M.avail(c)}` : ""}</span></div>`).join("")}</div>
+      <div class="rest fade" data-list="${pos}">${rest.map(c => `<div class="rr" data-row data-id="${c.player_id}" role="button" tabindex="0"><span class="nm"><span class="rank dim">#${c.rank}</span>${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="cue">${sgn(c.team_acquisition_value - lead.team_acquisition_value)} vs ${M.short(lead.name)} · ${M.tierWord(c)} behind (${f1(c.positional_cliff.gap)})${c.injury_status ? ` · ${M.avail(c)}` : ""}</span></div>`).join("")}</div>
       <div class="foot">${M.copyBtn(lead)}<button class="btn sm" data-work="${lead.player_id}">numbers</button>${isFocus ? "" : `<span class="note" style="margin-left:auto">click to open ${pos}</span>`}</div>`;
   }
   return `<section class="lane ${isFocus ? "focus" : ""} ${lead ? "" : "none"}" data-lane="${pos}"><div class="lh"><div class="top"><span class="pos" style="color:${pc(pos)}">${pos}</span><span class="st ${held.length === 0 ? "need" : ""}">${st}</span>${lead && lead.player_id === M.LEADER.player_id ? `<span class="first">board's first</span>` : ""}</div><div class="cost">${cost}</div></div>${body}</section>`;
 }
 function draw(){
+  const top = M.C.slice(0, 4);
+  document.getElementById("order").innerHTML = `<span class="k">Who is ahead of whom</span><span class="seq">${top.map((c, i) => `<span><i>#${c.rank}</i><b>${M.short(c.name)}</b> ${c.position} <span class="d">${i ? sgn(c.team_acquisition_value - top[0].team_acquisition_value) : f1(c.team_acquisition_value)}</span></span>`).join("")}</span><span class="rule">— the board's order by value now; the # on every name is his place in it</span>`;
   const el = document.getElementById("lanes");
   el.style.gridTemplateColumns = M.LINEUP_ORDER.map(p => p === focus ? "1.9fr" : M.best(p) ? "1fr" : ".55fr").join(" ");
   el.innerHTML = M.LINEUP_ORDER.map(laneHTML).join("");

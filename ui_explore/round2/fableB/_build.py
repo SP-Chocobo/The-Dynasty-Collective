@@ -2,7 +2,10 @@
 Markers: /*__CSS__*/ -> _core.css · /*__DATA__*/ -> const D = states.json (verbatim) · /*__CORE__*/ -> _core.js"""
 import json, pathlib, re, subprocess, sys
 HERE = pathlib.Path(__file__).parent
-DATA = "const D=" + json.dumps(json.load(open(HERE.parent.parent / "states.json")), separators=(",", ":")) + ";"
+STATES = json.load(open(HERE.parent.parent / "states.json"))
+G = json.load(open(HERE.parent.parent / "frame.json"))["gauge"]          # same draft (rail identical); opening pool + starter rank per position
+STATES["gauge"] = {"opening": {p: sum(G["opening"][p].values()) for p in G["opening"]}, "starterRank": G["starterRank"], "coverage": G["coverage"], "arm": G["arm"]}
+DATA = "const D=" + json.dumps(STATES, separators=(",", ":")) + ";"
 CSS = (HERE / "_core.css").read_text(); JS = (HERE / "_core.js").read_text()
 ok = True
 for src in sorted(HERE.glob("v*_src.html")):

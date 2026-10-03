@@ -92,6 +92,7 @@ function buildModel(key){
   M.waitShort = () => `Next turn <b>${M.nextLabel}</b> (#${M.NEXT_NO}) · <b>${S.intervening} picks</b> away`;
   M.waitText = () => `You pick again at <b>${M.nextLabel}</b> (#${M.NEXT_NO}), after <b>${S.intervening} picks</b> — ${M.seatsText()}.`;
   /* §1: who is on the clock is never ambiguous, with or without a rail */
+  M.clockShort = () => `next up: <b>Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}</b>${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> (Roster ${M.LAST.seat})` : ""}`;
   M.clockText = () => `On the clock: <b>you</b> (Roster ${S.seat}) · next up: Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> by Roster ${M.LAST.seat}` : " · first pick of the draft"}`;
 
   /* ---- names: the family name is the collision key ("Brown" for Amon-Ra St. Brown, A.J. Brown
@@ -177,6 +178,14 @@ function buildModel(key){
     return `<span class="disp"><b>${f1(c.displacement_adj)}</b> of this is the displacement of a starting slot you have already filled — measured against your own starters. The player himself: <b>${f1(rest)}</b>.</span>`; };
   M.dispShort = c => M.displaced(c) ? `<span class="disp">${f1(c.displacement_adj)} of it is filled-slot displacement (measured); himself ${f1(c.team_acquisition_value - c.displacement_adj)}</span>` : "";
   /* availability: the engine carried the designation and did not charge it */
+  /* §14 tank, per state: the engine's latest sample at or before this pick, shown as of that pick
+     (the rail reproduces the engine's drain only through #80, so the client never drains it). No bands. */
+  const G = DATA.gauge || null;
+  M.tank = pos => { if (!G || !num(G.opening[pos])) return null;
+    const base = G.history.filter(h => h.at <= S.consumed).sort((a, b) => b.at - a.at)[0];
+    const N = G.opening[pos], left = base.left[pos], starters = G.starterRank[pos];
+    const startersLeft = Math.max(0, left - (N - starters));
+    return {N, left, starters, startersLeft, pctLeft: Math.round(100 * left / N), sampleAt: base.at, coverage: G.coverage[pos], rows: G.rowsOnBoard[pos]}; };
   /* waiting on a position: who you get, when, what it costs — in that order */
   M.waitLine = pos => num(M.FORFEIT[pos]) ? `If you wait, the best ${POS[pos]} left at <b>#${M.NEXT_NO}</b> is worth about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${POS[pos]}s on this board.`;
   M.DEAREST = M.POS_BY_COST[0] || null;

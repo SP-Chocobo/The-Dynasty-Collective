@@ -12,7 +12,7 @@ import sys, glob, pathlib, json
 from playwright.sync_api import sync_playwright
 HERE = pathlib.Path(__file__).resolve().parent
 SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
-files = sys.argv[1:] or sorted(str(p) for p in HERE.glob("v*.html"))
+files = sys.argv[1:] or (sorted(str(p) for p in HERE.glob("v*.html") if "v3_" not in p.name) + [str(HERE / "v4_doors.html?notank")])
 STATES = ["mid", "early", "late"]
 PROBE = """() => {
   const r = {};
@@ -33,7 +33,7 @@ PROBE = """() => {
     return clipped && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 2) && !el.closest('.past') && !el.classList.contains('face'); }).map(el => tag(el) + ': ' + el.textContent.trim().slice(0, 30)).slice(0, 12);
   // occlusion: centre of a text element resolves to an unrelated element
   r.occluded = all.filter(el => { if (!vis(el)) return false; const hasText = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); if (!hasText) return false;
-    const b = el.getBoundingClientRect(); const x = Math.min(innerWidth - 1, Math.max(0, b.left + Math.min(b.width, 40) / 2)), y = Math.min(innerHeight - 1, Math.max(0, b.top + b.height / 2));
+    const rects = el.getClientRects(); const b = rects.length ? rects[0] : el.getBoundingClientRect(); const x = Math.min(innerWidth - 1, Math.max(0, b.left + Math.min(b.width, 40) / 2)), y = Math.min(innerHeight - 1, Math.max(0, b.top + b.height / 2));
     const hit = document.elementFromPoint(x, y); if (!hit) return false; return !(hit === el || el.contains(hit) || hit.contains(el)) && !hit.classList.contains('scrim') && !hit.closest('.sheet'); }).map(el => tag(el) + ': ' + el.textContent.trim().slice(0, 30)).slice(0, 12);
   // cut off by the viewport: a text element not inside any scroller/clipper whose box runs past the fold
   const clippedByAncestor = el => { let a = el.parentElement; while (a && a !== document.body) { const acs = getComputedStyle(a); if (acs.overflow !== 'visible' || acs.overflowY !== 'visible') return a; a = a.parentElement; } return null; };
@@ -58,9 +58,10 @@ with sync_playwright() as p:
             errs = []
             pg.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))
             pg.on("console", lambda m: errs.append(m.type + ": " + m.text) if m.type in ("error", "warning") else None)
-            pg.goto("file://" + str(pathlib.Path(f).resolve()) + "#" + st, wait_until="load")
+            fpath, _, q = f.partition("?")
+            pg.goto("file://" + str(pathlib.Path(fpath).resolve()) + ("?" + q if q else "") + "#" + st, wait_until="load")
             pg.wait_for_timeout(600)
-            out = SHOTS / f"{pathlib.Path(f).stem}_{st}.png"
+            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}_{st}.png"
             pg.screenshot(path=str(out), full_page=False)
             r = pg.evaluate(PROBE)
             problems = []
@@ -75,7 +76,7 @@ with sync_playwright() as p:
             if r["minFont"][0] < 12: problems.append("minFont " + json.dumps(r["minFont"]))
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
             bad += bool(problems)
-            print(("!! " if problems else "ok ") + f"{pathlib.Path(f).name} [{st}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
+            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{st}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
             for pr in problems: print("     ", pr)
             pg.close()
     b.close()

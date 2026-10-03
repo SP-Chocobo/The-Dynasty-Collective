@@ -67,7 +67,7 @@ the board tab. Both defects R2 §10 named inside the exploration are fixed: the 
 
 ---
 
-## v1 · `v1_ledger.html` — the ledger, cut
+## v1 · `v1_ledger.html` — the ledger, cut (now rail-less; `v1_ledger_rail.html` keeps the rail for comparison)
 
 1. **Hypothesis.** Ledger B's delivery, cut to who / why / what else / at what cost, with
    everything else a gesture away, keeps what the owner liked and removes the density.
@@ -114,7 +114,7 @@ the board tab. Both defects R2 §10 named inside the exploration are fixed: the 
 9. **Reusable.** The side-by-side within-position table; the clock sentence that names the
    drafter. Prototype-only: four columns at 1440.
 
-## v3 · `v3_trio.html` — three slots
+## v3 · `v3_trio.html` — three slots (CUT by the owner; file left as-is)
 
 1. **Hypothesis.** A three-slot comparison, defaulting to one name per position, in which the
    board's order is one boxed row and every later row ranks nothing, answers "compare three" and
@@ -135,21 +135,24 @@ the board tab. Both defects R2 §10 named inside the exploration are fixed: the 
 9. **Reusable.** The "one row ranks" discipline; one-name-per-position default; the slim-token
    rail. Prototype-only: slot letters.
 
-## v4 · `v4_doors.html` — doors in the board's order
+## v4 · `v4_doors.html` — doors in the board's order (polished; see REVISION.md › Polish pass)
 
 1. **Hypothesis.** Doors that each do one thing — the position's best, his cost instead of the
    first name, what waiting leaves — sorted by the board's own value order and visibly re-sorted
    when it changes, with the next-turn order stated beside it in words.
 2. **Primary / secondary / hidden.** Primary: the order line (both orders, agree/disagree in
    body ink); four doors; the open door's cards (only what differs; shared facts said once).
-   Secondary: lineup chips lit for the open door's best; the pool size in the clock line. Hidden:
-   every name (two-line sheet), numbers, rosters, draft board, debate.
+   Secondary: lineup chips lit for the open door's best; the pool size beside them; each door's
+   §14 tank (whole priced pool, starter line, no bands, engine sample as of #N). Hidden: every
+   name (two-line sheet), numbers, rosters as lineups with each roster's route for the open
+   position, draft board, debate.
 3. **Decision.** The first door is the board's first; every other door's best is costed inline
-   (now · next turn · plan); the next-turn order is a sentence, never geometry.
+   (now · at #N · both picks); the dearest position to wait on is one amber line on that door.
 4. **Structural difference.** Persistent, re-sorted position layer; pool summoned; comparison by
    opening a door; rail reduced to ticks.
 5. **Roster / pool.** Chips in the clock line; the pool is a sheet with its count stated.
-6. **Rail.** A marked span only: *Next turn 5.06 (#54) · 10 picks away* and ticks; no boxes.
+6. **Rail.** A marked span only: *Next turn 5.06 (#54) · 10 picks away* and ticks; the clock
+   line names who is next up and what was last taken.
 7. **LLM.** Debate the open door against the board's first name.
 8. **API.** Nothing new; `seat.display_name` for the tick tooltips.
 9. **Reusable.** The order line; the FLIP re-sort; the within-door cards that suppress shared

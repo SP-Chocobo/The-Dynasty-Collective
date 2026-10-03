@@ -242,3 +242,88 @@ column ratio (V2); client-side `slotRoster` (the lineup optimiser owns it).
    are asserted now and both failed on the first run of the new probe.
 4. Seven names in two columns need exactly four whole rows; the list snaps to whole rows and says
    "all 7", and at `late` no list scrolls in any variant.
+
+---
+
+# Polish pass — Four Cells only (owner: "super-polish these into submission")
+
+`v1_ledger`, `v2_doors` and `v3_trio` are cut and were not touched; they still build from the shared
+core so the directory stays consistent. Everything below is `v4_cells.html`.
+
+Verified: six renders (`#early` / `#mid` / `#late`, each with and without tanks via `-notank`) pass
+every assertion — no page scroll, no clipping, no console errors, min font 12.0px, **zero text
+overflow, zero occlusion**, no list scroll at `late` — plus the interaction pass. All six PNGs read.
+
+## What changed, on my judgement — so he can push back on taste
+
+1. **Each cell answers one question, and only that.**
+   - WHO: name, team, points, the board's read, value, margin to the next name, the `late`
+     displacement sentence, the slot he fills, copy / Insight / the working. *Removed:* the rival
+     line (it is WHY's sentence, said once) and the "since your last turn" fragment (moved to the
+     clock bar, which is about the draft's time).
+   - WHY: only what separates him from the others at his position (rank, the measured drop and
+     its neighbour, the named rival, designation, depth where measured). *Removed:* the position's
+     wait-cost line — it is the strip's number, and saying it twice was the owner's "volume".
+   - INSTEAD AT HIS POSITION: his two nearest neighbours by value, each with **one sentence**
+     ("4.6 behind T. McMillan today · neighbours in the measured order, a sharp drop (3.2) between
+     them"). *Removed:* the two-figure edge line that said the same thing in symbols.
+   - INSTEAD AT ANOTHER POSITION: each position's best, each with **one sentence that performs
+     the arithmetic the reader was holding in their head**: "Two picks: Q. Judkins now + a receiver
+     at #54 ≈ 96.7 · T. McMillan now + a running back ≈ 94.4 → Q. Judkins first by 2.2; today
+     T. McMillan by 2.7." Both magnitudes, both totals, no verdict word, nothing to net.
+2. **The position strip carries the value bright and the wait quiet:** "J. Allen 47.9 · slot open ·
+   46.2 at #54 · wait: −1.7". The strip is the only place the position's wait cost lives.
+3. **The clock bar carries the whole of the draft's time:** pick, who is up (lit), the wait, the
+   next turn, and "gone since your last turn: 5 WR · 5 RB · 2 TE". Shortened until it fits at
+   `late` without wrapping or truncating (the probe refuses ellipsis).
+4. Hover text and footers that explained the design are gone; the only resident explanations
+   are the two cell sub-captions ("his neighbours by value · same wait cost", "two picks: now +
+   #54").
+
+## What I refused
+- Adding a fifth region or any resident list: the owner asked for clean dissemination, not more.
+- Re-basing the `late` scale or softening the negative numbers: the displacement sentence is the
+  honest explanation and it stays, bright, beside the number.
+- Collapsing the two-pick sentence to one number: ADJ-R2 §2 — the totals are the information.
+
+## The gas tank — tried on Four Cells, verdict: keep it, small, as a state marker; it is not a gauge at this size
+
+**Built:** one vertical tank per offensive position, 16×42px, inside each position cell of the
+strip, between the position letter and the name. Full at the position's own opening count
+(`frame.json` gauge: QB 42 · RB 126 · TE 115 · WR 198 — the same draft, rail identical), drained
+by the picks on the rail (a coordinate; the fill is `1 − drafted/opening`), with the **replacement
+bar as a line inside** at `starterRank/opening` from the top (QB 12 · RB 32 · TE 20 · WR 32). No
+bands, no counts, no percentage on screen (the hover gives the percentage and the sentence).
+When the fill is below the bar the fill dims and the bar turns amber: *this position is past its
+starter line; a player taken here is a bench piece.* Toggle in the top bar (`#late-notank`)
+shows the screen both ways; `_shots/v4_cells_{state}.png` and `_shots/v4_cells_{state}-notank.png`.
+
+**What it displaces:** nothing — it takes 22px of width in each strip cell, paid for by shortening
+the cell's status text ("slot open", "RB2 open", "bench") and the wait figure ("wait: −5.5").
+
+**What it says that the sentence cannot:** at `late` three of four tanks are below their line
+(WR 72% left vs a line at 84%; RB 73% vs 75%; QB 62% vs 71%; TE 83% at its line), so the screen
+shows *why* every candidate is a bench piece before the reader reaches the displacement sentence.
+At `mid` all four are above their lines (QB untouched at 100%), and at `early` all four are full.
+The two facts — my starters are set (roster), the league's pool is past its starter line (tank) —
+are now both visible, and they are the same fact as `displacement_adj` at two scales.
+
+**What it cannot do at this size, said plainly (§14):** §14 derives that per-pick checkability
+holds only while the tank spans at least one unit per player; at 42px the WR tank moves 0.2px per
+pick and RB 0.3px. It reads as a level and a state (above / at / below the line), not as a gauge a
+drafter can verify pick by pick. A §14-faithful gauge (≥198px for WR) would need its own region;
+the only honest candidate is the empty lower half of WHY, which is the wrong question for it. I did
+not build that; the small marker is what earns its place on this layout.
+
+**Two approximations, disclosed:** (a) the drain counts every drafted player at the position as a
+departure from the rated pool; on this draft that is exact through pick 80 (verified against the
+gauge history) and may overstate the drain by a few players later, which can only move a tank
+*toward* "below the line" — at `late` the three below-line tanks are below by 12, 2 and 9 players,
+so the WR and QB readings are safe and RB is the marginal one; (b) with no bands the tank makes the
+ordering claim `#282b`'s per-band draining avoided (that the players who left came off the top);
+for an engine-made draft that is true by construction, for a human draft it is approximate. Both
+go away when the API ships §14's per-state gauge (`left` per band, as the `frame.json` gauge
+already does at pick 40).
+
+**Owner's three critiques, answered:** too large → 16×42px; horizontal is counterintuitive →
+vertical, full at the top, drains down; "do we need meh?" → no bands at all, only the starter bar.

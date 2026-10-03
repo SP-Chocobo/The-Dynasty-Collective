@@ -52,6 +52,12 @@ small{font-size:max(12px,.85em)}          /* 12px floor for every resident word,
 .tags{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
 .lock{font-size:.75rem;color:var(--muted);border:1px dashed var(--line-2);border-radius:var(--r);padding:.2rem .5rem;white-space:nowrap;cursor:help}
 .lock b{color:var(--amber-b);font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:.75rem}
+/* §14 tank: vertical, small; the fill drains from the top, the starter bar sits inside */
+.tank{position:relative;display:inline-block;width:16px;height:42px;border:1px solid var(--line-2);border-radius:3px;background:var(--bg);flex:0 0 auto;overflow:hidden;cursor:help}
+.tank .fill{position:absolute;left:0;right:0;bottom:0;display:block;opacity:.55}
+.tank.bench .fill{opacity:.22}
+.tank .bar{position:absolute;left:-1px;right:-1px;height:2px;background:var(--ink);display:block}
+.tank.bench .bar{background:var(--amber-b)}
 /* atoms */
 .k{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:700}
 .ph{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:700;display:flex;align-items:center;gap:9px;margin-bottom:6px;flex:0 0 auto}
