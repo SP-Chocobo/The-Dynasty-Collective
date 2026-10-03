@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm — Doors</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/*__CSS__*/
+/* V2 DOORS (rev 2) — four doors in the lineup's own order, never re-sorted; doors are as tall as the
+   open one needs and no taller. The open door shows its names side by side; closed doors show
+   their best and the next names, every gap against the open door's best (one baseline, said once).
+   Under the doors, the two-turn totals against the open door's best. The pool is a strip below.
+   No rail: the clock bar names the drafter and the wait; the past is one sentence. */
+.strip{display:flex;align-items:center;gap:12px;padding:6px 16px;border-bottom:1px solid var(--line);background:var(--surface);flex:0 0 auto}
+.body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:8px 16px 6px;gap:6px}
+.doors{display:grid;gap:8px;flex:0 0 auto;align-items:stretch;max-height:430px}
+.door{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);display:flex;flex-direction:column;min-width:0;min-height:0;cursor:pointer;overflow:hidden}
+.door:hover{border-color:var(--dim)}
+.door.open{border-color:var(--gold);cursor:default;background:linear-gradient(180deg,rgba(212,160,23,.07),transparent 40%)}
+.door.first{box-shadow:inset 0 3px 0 var(--gold-b)}
+.frame{padding:8px 12px 7px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.frame .top{display:flex;align-items:baseline;gap:8px}
+.frame .pos{font-family:var(--f-d);font-size:1.15rem;font-weight:700}
+.frame .st{font-size:.8rem;color:var(--muted);min-width:0;white-space:nowrap}
+.frame .st.need{color:var(--amber-b)}
+.frame .first{margin-left:auto;font-family:var(--f-m);font-size:.75rem;font-weight:700;letter-spacing:.06em;color:var(--gold-b);white-space:nowrap}
+.frame .opn{margin-left:auto;font-size:.75rem;color:var(--dim);border:1px solid var(--line-2);border-radius:2px;padding:0 .35rem;white-space:nowrap}
+.door:hover .frame .opn{color:var(--gold-b);border-color:var(--gold)}
+.frame .cost{font-size:.8rem;color:var(--muted);margin-top:3px}
+.frame .cost b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.frame .pf{font-size:.8rem;color:var(--muted);margin-top:2px;line-height:1.35}
+.one{padding:9px 12px 10px;display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-height:0}
+.one .who{display:flex;align-items:center;gap:9px}
+.one .nm{font-weight:700;font-size:1rem;line-height:1.15;min-width:0}
+.one .sub{font-size:.78rem;color:var(--dim)}
+.one .v{margin-left:auto;font-family:var(--f-m);font-weight:700;font-size:1.05rem}
+.one .vs{font-size:.78rem;color:var(--muted)} .one .vs b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.one .say{font-size:.84rem;margin:0;display:block}
+.one .nxt{border-top:1px solid var(--line);padding-top:5px;display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.one .nr{display:flex;align-items:center;gap:7px;font-size:.84rem;color:var(--muted)}
+.one .nr .v{margin-left:auto;font-family:var(--f-m);font-weight:600;color:var(--ink);font-size:.84rem}
+.one .nr small{color:var(--dim);font-size:.75rem}
+.trio{display:grid;gap:0;flex:1 1 auto;min-height:0}
+.tc{padding:8px 11px 9px;border-right:1px solid var(--line);min-width:0;display:flex;flex-direction:column;gap:4px}
+.tc:last-child{border-right:none}
+.tc .who{display:flex;align-items:center;gap:8px}
+.tc .nm{font-weight:700;font-size:1.02rem;line-height:1.15;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc .nm.sel{color:var(--gold-b)}
+.tc .sub{font-size:.78rem;color:var(--dim)}
+.tc .big{font-family:var(--f-m);font-weight:700;font-size:1.2rem;line-height:1.1}
+.tc .big small{display:block;font-weight:400;color:var(--dim);font-size:.78rem;margin:1px 0 0;font-family:var(--f-s)}
+.tc .read{white-space:normal;display:inline-block;line-height:1.3}
+.tc .say{font-size:.82rem;margin:0;display:block}
+.tc .acts{margin-top:auto;display:flex;gap:6px;align-items:center;padding-top:4px}
+.tc .acts .copy{font-size:.75rem;padding:.14rem .45rem}
+.door .disp{margin:0 12px 6px;font-size:.82rem;padding:2px 0 2px 9px}
+.between{display:flex;gap:6px 16px;padding:5px 12px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted);flex-wrap:wrap;flex:0 0 auto}
+.between b{font-family:var(--f-m);color:var(--ink);font-weight:600} .between i{font-style:normal;color:var(--cliff-b)}
+.across{display:grid;gap:8px;flex:0 0 auto}
+.ac{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:7px 11px;font-size:.8rem;color:var(--muted);line-height:1.45;min-width:0}
+.ac b{color:var(--ink);font-weight:600} .ac .n{font-family:var(--f-m);color:var(--ink);font-weight:700}
+.ac.me{border-color:var(--gold)}
+.pool{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-top:1px solid var(--line);padding-top:6px}
+.pool .list{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin;display:grid;grid-template-columns:1fr 1fr;column-gap:24px;align-content:start}
+.pool .crow{height:31px}
+.pool .cap{font-size:.75rem;color:var(--dim);padding-top:1px;flex:0 0 auto}
+@media (max-width:1000px){.screen{height:auto;max-height:none}.doors,.across{grid-template-columns:1fr 1fr!important}.pool .list{grid-template-columns:1fr;overflow:visible}}
+</style></head><body>
+<div class="app">
+  <div class="topbar"><span class="vt">V2 · Doors</span><span class="hyp"><b>Hypothesis:</b> across positions the honest 3-way is the position layer, so keep it resident in stable lineup order, open one door to its names, and let the wait be a count instead of a rail.</span><span class="states" id="states"></span></div>
+  <div class="screen" id="screen">
+    <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+      <span class="r">
+        <button class="btn" data-sheet="shRosters" aria-expanded="false">▤ All rosters</button>
+        <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+        <span id="billedBtn"></span>
+        <button class="btn" title="Settings — freeze timer, providers">⚙</button></span></header>
+    <div class="clk"><span class="timer"><small>league clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="wait" id="wait"></span><span class="tags" id="tags"></span></div>
+    <div class="strip"><span class="k" style="white-space:nowrap">Your roster</span><div class="slots" id="slots"></div><span class="note" style="margin-left:auto;white-space:nowrap">each door's best, on the slot he would fill</span></div>
+    <div class="body">
+      <div class="doors" id="doors"></div>
+      <div class="across" id="across"></div>
+      <div class="pool"><div class="ph">The board, by value to your roster <span class="note" style="letter-spacing:0;text-transform:none;font-weight:400">· gap vs the open door's best · click a name to open his door</span><span class="note" id="since" style="letter-spacing:0;text-transform:none;font-weight:400;margin-left:auto"></span><span class="filter" id="filter" style="margin-left:14px"></span></div><div class="list" id="list"></div><div class="cap" id="cap"></div></div>
+    </div>
+    <div class="scrim"></div>
+    <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+    <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+    <section class="sheet right" id="shSquad" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="squad"></div></section>
+  </div>
+</div>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+let open = null, sel = null, filter = "ALL";
+const root = document.getElementById("screen"); wireSheets(root);
+document.getElementById("billedBtn").innerHTML = billed("shSquad", "⚑ Debate");
+const baseline = () => M.PCTX[open].best;        // ONE baseline for every gap on this screen: the open door's best
+
+function trioFor(pos){
+  const l = M.atPos(pos).slice(0, 3); const s = M.byId[sel];
+  if (s && s.pos === pos && !l.some(x => x.id === s.id)) l[2] = s;
+  return l;
+}
+function frameHTML(pos){
+  const P = M.PCTX[pos], f = positionFacts(pos), pf = f.find(x => x.kind === "pool" || x.kind === "run");
+  const held = M.heldAt(pos).map(h => short(h.name)).join(", ");
+  const st = P.slot.kind === "vacant" ? "slot open" : P.slot.kind === "second" ? `${P.slot.slot} open` : P.slot.kind === "flex" ? "FLEX only" : "bench";
+  return `<div class="frame"><div class="top"><span class="pos" style="color:${pc(pos)}">${pos}</span><span class="st ${P.slot.kind === "vacant" ? "need" : ""}">${st}</span>${P.best && P.best.id === M.C[0].id ? `<span class="first">BOARD'S FIRST</span>` : pos !== open && P.best ? `<span class="opn">open ▸</span>` : ""}</div>
+    ${num(P.forfeit) ? `<div class="cost">wait: about <b>${f1(P.forfeit)}</b> less at #${M.NEXT}</div>` : ""}
+    ${pf ? `<div class="pf">${pf.text}</div>` : ""}</div>`;
+}
+function closedHTML(pos){
+  const b = M.PCTX[pos].best, B = baseline();
+  if (!b) { const held = M.heldAt(pos); return `<div class="one"><p class="empty" style="padding:0">No ${POS[pos]} among the ${M.C.length} this board rates here${held.length ? `; ${held.map(h => short(h.name)).join(", ")} hold${held.length === 1 ? "s" : ""} the slot` : ""}.</p></div>`; }
+  const k = M.CTX[b.id], rest = M.atPos(pos).slice(1, 3);
+  const cl = k.cliffNext ? `${cap(TIER_SHORT[k.tier])} behind him: ${short(k.cliffNext.name)} is <b>${f1(k.gap)}</b> lower.` : `No ${POS[pos]} behind him in the measured order${k.ahead.length ? ` (${k.ahead.map(a => short(a.name)).join(", ")} ahead of him there)` : ""}.`;
+  return `<div class="one"><div class="who">${face(b)}<span style="min-width:0"><div class="nm" title="${b.name}">${short(b.name)}</div><div class="sub">${b.team} · ${Math.round(b.proj)} pts</div></span><span class="v">${f1(b.tav)}</span></div>
+    ${B && B.id !== b.id ? `<div class="vs"><b>${sgn(b.tav - B.tav)}</b> vs ${short(B.name)}</div>` : ""}
+    <p class="say">${cl}</p>
+    ${rest.length ? `<div class="nxt">${rest.map(x => `<div class="nr">${pill(x.pos)}<span>${short(x.name)}</span><span class="v">${f1(x.tav)}${B ? `<small> ${sgn(x.tav - B.tav)}</small>` : ""}</span></div>`).join("")}</div>` : `<div class="nxt"><span class="note">the only ${POS[pos]} this board rates here</span></div>`}</div>`;
+}
+function openHTML(pos){
+  const t = trioFor(pos); if (!t.length) return closedHTML(pos);
+  const B = baseline();
+  const cols = t.map(c => { const k = M.CTX[c.id], fs = playerFactsCompact(c.id);
+    return `<div class="tc"><div class="who">${face(c)}<span style="min-width:0"><div class="nm ${c.id === sel ? "sel" : ""}" title="${c.name}">${short(c.name)}</div><div class="sub">${c.team} · ${Math.round(c.proj)} pts</div></span></div>
+      <div class="big">${f1(c.tav)}<small>${c.id === B.id ? "value to your roster" : sgn(c.tav - B.tav) + " vs " + short(B.name)}</small></div>
+      <div class="sub"><span class="read" title="the board's necessity label, as given"><b>${necWord(c)}</b></span></div>
+      ${fs.map(f => `<p class="say">${f}</p>`).join("")}
+      <div class="acts">${copyBtn(c, true)}</div></div>`; }).join("");
+  const steps = [];
+  for (let i = 0; i < t.length - 1; i++) { const r = compare(t[i].id, t[i + 1].id);
+    steps.push(r.adjacent ? `${short(t[i].name)} → ${short(t[i + 1].name)}: <i>${TIER_SHORT[r.dropBetween.tier]}</i> <b>${f1(r.dropBetween.gap)}</b>, measured` : `${short(t[i].name)} → ${short(t[i + 1].name)}: <b>${r.places}</b> places apart in the measured order`); }
+  return `<div class="trio" style="grid-template-columns:repeat(${t.length},minmax(0,1fr))">${cols}</div>${displacementHTML(B)}${t.length > 1 ? `<div class="between"><span class="k">between them</span>${steps.map(s => `<span>${s}</span>`).join("")}<span>· same position: waiting costs the same for ${t.length === 2 ? "both" : "all three"}</span></div>` : ""}`;
+}
+function acrossHTML(){
+  const F = baseline();
+  return LINEUP_ORDER.map(pos => { const O = M.PCTX[pos].best;
+    if (pos === open) return `<div class="ac me">${F ? `<b>${short(F.name)}</b> is this door's best${F.id === M.C[0].id ? " and the board's first by value" : `; the board's first by value is ${short(M.C[0].name)} (${M.C[0].pos})`}. Beside: him now plus each other position at #${M.NEXT}, against the reverse.` : "no name here"}</div>`;
+    if (!F || !O) return `<div class="ac">—</div>`;
+    const r = compare(F.id, O.id);
+    if (!r.measured) return `<div class="ac"><b>${short(O.name)}</b>: no measured value for one position at #${M.NEXT}.</div>`;
+    return `<div class="ac"><b>${short(F.name)}</b> now + ${pos} at #${M.NEXT} ≈ <span class="n">${f1(r.aTotal)}</span><br><b>${short(O.name)}</b> now + ${open} at #${M.NEXT} ≈ <span class="n">${f1(r.bTotal)}</span><br>now: ${short(r.valueLeader.name)} by ${f1(Math.abs(r.dv))} · two turns: ${r.dTotal >= 0 ? short(F.name) : short(O.name)} by ${f1(Math.abs(r.dTotal))}</div>`; }).join("");
+}
+function render(reset){
+  if (reset || !M.byId[sel]) { sel = M.C[0].id; open = M.C[0].pos; filter = "ALL"; }
+  document.getElementById("since").innerHTML = sinceText();
+  const marks = LINEUP_ORDER.map(p => M.PCTX[p].best).filter(Boolean).map(b => ({c: b, tag: b.pos === open ? "" : b.pos, color: pc(b.pos)}));
+  document.getElementById("slots").innerHTML = rosterStripHTML(marks);
+  const cols = LINEUP_ORDER.map(p => p === open ? "2.6fr" : "1fr").join(" ");
+  const doors = document.getElementById("doors"); doors.style.gridTemplateColumns = cols;
+  doors.innerHTML = LINEUP_ORDER.map(pos => `<div class="door ${pos === open ? "open" : ""} ${M.PCTX[pos].best && M.PCTX[pos].best.id === M.C[0].id ? "first" : ""}" data-door="${pos}">${frameHTML(pos)}${pos === open ? openHTML(pos) : closedHTML(pos)}</div>`).join("");
+  const across = document.getElementById("across"); across.style.gridTemplateColumns = cols; across.innerHTML = acrossHTML();
+  document.getElementById("filter").innerHTML = ["ALL", ...LINEUP_ORDER].map(p => `<button data-p="${p}" aria-pressed="${p === filter}" ${p !== "ALL" && !M.PRESENT.includes(p) ? "disabled" : ""}>${p}</button>`).join("");
+  const list = filter === "ALL" ? M.C : M.C.filter(c => c.pos === filter), B = baseline();
+  const L = document.getElementById("list"); L.innerHTML = list.map(c => crowHTML(c, B)).join("");
+  document.getElementById("cap").textContent = listCaption(snapList(L, 2), list.length);
+  document.getElementById("squad").innerHTML = squadHTML(`filling ${open} now against putting it off`);
+}
+root.addEventListener("click", e => {
+  const cp = e.target.closest("[data-copy]"); if (cp) { copyName(cp.dataset.copy, cp); return; }
+  if (e.target.closest("[data-sheet]")) return;
+  const row = e.target.closest("[data-id]"); if (row) { sel = row.dataset.id; open = M.byId[sel].pos; render(); return; }
+  const p = e.target.closest("[data-p]"); if (p && !p.disabled) { filter = p.dataset.p; render(); return; }
+  const d = e.target.closest("[data-door]"); if (d && d.dataset.door !== open && M.PCTX[d.dataset.door].best) { open = d.dataset.door; sel = M.PCTX[open].best.id; render(); }
+});
+root.addEventListener("keydown", e => { const t = e.target.closest && e.target.closest("[data-id]"); if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); t.click(); } });
+boot();
+</script>
+</body></html>

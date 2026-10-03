@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm — Four Cells</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/*__CSS__*/
+/* V4 FOUR CELLS (rev 2) — WHO · WHY · INSTEAD AT HIS POSITION · INSTEAD AT ANOTHER POSITION, each
+   alternative with value now and the two-turn totals. A persistent position strip (lineup order,
+   value bright, wait cost quiet) and the roster strip with the subject's slot lit and the other
+   positions' bests on theirs. No rail: the clock bar names the drafter and the wait; the past is
+   one sentence. Everything else is summoned. */
+.posstrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px 16px 6px;background:var(--surface);flex:0 0 auto}
+.pcell{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:var(--r);padding:5px 10px;min-width:0;background:var(--surface-2);cursor:pointer}
+.pcell:hover{border-color:var(--dim)} .pcell.lit{border-color:var(--gold);background:rgba(212,160,23,.07);cursor:default}
+.pcell .pos{font-family:var(--f-d);font-weight:700;font-size:1rem;flex:0 0 auto}
+.pcell .mid{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.pcell .mid .b{font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcell .mid .b small{font-family:var(--f-m);color:var(--ink);font-weight:700;font-size:.86rem;margin-left:6px}
+.pcell .mid .st{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .pcell .mid .st.need{color:var(--amber-b)}
+.pcell .cost{margin-left:auto;text-align:right;font-size:.75rem;color:var(--dim);line-height:1.3;flex:0 0 auto;white-space:nowrap}
+.pcell .cost b{display:block;font-family:var(--f-m);font-size:.82rem;color:var(--muted);font-weight:600}
+.strip{display:flex;align-items:center;gap:12px;padding:0 16px 7px;border-bottom:1px solid var(--line-2);background:var(--surface);flex:0 0 auto}
+.cells{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr);gap:6px;padding:6px 16px 6px}
+.cell{border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);padding:10px 16px;min-width:0;min-height:0;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.cell .ch{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:2px;white-space:nowrap}
+.cell .ch .note{letter-spacing:0;text-transform:none;font-weight:400;margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cell.who .ch{color:var(--gold-b)} .cell.why .ch{color:var(--emerald-b)} .cell.same .ch{color:var(--sky-b)} .cell.other .ch{color:var(--amber-b)}
+.who .id{display:flex;align-items:center;gap:14px}
+.who .nm{font-family:var(--f-d);font-size:1.6rem;font-weight:700;line-height:1.1;white-space:nowrap}
+.who .sub{font-size:.9rem;color:var(--muted);display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap}
+.who .sub i{font-style:normal;color:var(--amber-b)}
+.who .read{white-space:normal}
+.who .valbox{margin-left:auto;text-align:right}
+.who .valbox .big{font-family:var(--f-m);font-size:1.7rem;font-weight:700;line-height:1}
+.who .valbox .u{display:block;font-size:.75rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.who .valbox .d{font-family:var(--f-m);font-size:.78rem;white-space:normal;display:block;max-width:250px;line-height:1.3}
+.who .valbox{flex:0 0 auto}
+.who .line{display:flex;align-items:baseline;gap:10px;font-size:.92rem;padding:3px 0;border-bottom:1px solid var(--line)}
+.who .line .l{color:var(--muted);flex:1 1 auto} .who .line .v{font-family:var(--f-m);font-weight:600} .who .line .v.txt{font-family:var(--f-s);font-weight:500}
+.who .acts{margin-top:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.why .say{font-size:.95rem;margin-top:6px;line-height:1.45;display:block}
+.why .tail{margin-top:auto;padding-top:6px;border-top:1px solid var(--line);font-size:.88rem;color:var(--muted)} .why .tail b{color:var(--ink)}
+.alt{display:grid;grid-template-columns:30px auto 1fr auto;gap:9px;align-items:center;padding:3px 0 1px;cursor:pointer}
+.alt:hover .n{color:var(--gold-b)}
+.alt .n{font-size:.95rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.alt .n small{color:var(--dim);font-weight:400;font-size:.78rem;margin-left:6px}
+.alt .v{font-family:var(--f-m);font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums}
+.altcost{padding:0 0 4px 39px;display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;font-size:.84rem}
+.altcost .edge{font-size:.84rem}
+.altsay{padding:0 0 3px 39px;border-bottom:1px solid var(--line);font-size:.8rem;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.alt,.altcost{flex:0 0 auto}
+.altsay b{color:var(--ink);font-weight:600}
+.cell .how{margin-top:auto;font-size:.78rem;color:var(--dim);line-height:1.4;padding-top:4px;flex:0 0 auto}
+.poolsheet .list{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+@media (max-width:1000px){.screen{height:auto;max-height:none}.cells{grid-template-columns:1fr;grid-template-rows:auto}.posstrip{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<div class="app">
+  <div class="topbar"><span class="vt">V4 · Four cells</span><span class="hyp"><b>Hypothesis:</b> the owner's four words are the whole layout — who · why · instead at his position · instead at another position, each with its cost — and nothing else needs to be resident.</span><span class="states" id="states"></span></div>
+  <div class="screen" id="screen">
+    <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+      <span class="r">
+        <button class="btn" data-sheet="shPool" aria-expanded="false" id="poolBtn">▥ The board</button>
+        <button class="btn" data-sheet="shRosters" aria-expanded="false">▤ All rosters</button>
+        <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+        <span id="billedBtn"></span>
+        <button class="btn" title="Settings — freeze timer, providers">⚙</button></span></header>
+    <div class="clk"><span class="timer"><small>league clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="wait" id="wait"></span><span class="wait" id="since" style="color:var(--dim)"></span><span class="tags" id="tags"></span></div>
+    <div class="posstrip" id="posstrip"></div>
+    <div class="strip"><span class="k" style="white-space:nowrap">Your roster</span><div class="slots" id="slots"></div><span class="note" style="margin-left:auto;white-space:nowrap">the subject on his slot · each other position's best on its own</span></div>
+    <div class="cells" id="cells"></div>
+    <div class="scrim"></div>
+    <section class="sheet bottom poolsheet" id="shPool" aria-hidden="true"><div class="sh"><span class="t">The board</span><span class="note">by value to your roster · gap vs the subject · click a name to make him the subject</span><span class="filter" id="filter" style="margin-left:auto"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="list" id="list"></div></div></section>
+    <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+    <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+    <section class="sheet right" id="shSquad" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="squad"></div></section>
+  </div>
+</div>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+let sel = null, filter = "ALL";
+const root = document.getElementById("screen"); const sheets = wireSheets(root);
+document.getElementById("billedBtn").innerHTML = billed("shSquad", "⚑ Debate");
+
+function posStripHTML(c){
+  return LINEUP_ORDER.map(pos => { const P = M.PCTX[pos], b = P.best;
+    const st = P.slot.kind === "vacant" ? "slot open — none held" : P.slot.kind === "second" ? `${P.slot.slot} open` : P.slot.kind === "flex" ? "FLEX route only" : "starters set · bench";
+    return `<div class="pcell ${pos === c.pos ? "lit" : ""}" ${b ? `data-id="${b.id}" role="button" tabindex="0"` : ""}><span class="pos" style="color:${pc(pos)}">${pos}</span>
+      <span class="mid"><span class="b">${b ? `${short(b.name)}<small>${f1(b.tav)}</small>` : `<span class="empty">none rated here</span>`}</span><span class="st ${P.slot.kind === "vacant" ? "need" : ""}">${st}</span></span>
+      <span class="cost" title="what this position gives at #${M.NEXT} if you wait on it">${num(P.forfeit) ? `<b>≈ ${f1(P.nextTurn)} at #${M.NEXT}</b>${f1(P.forfeit)} less if you wait` : `<b>—</b>no wait cost measured`}</span></div>`; }).join("");
+}
+function altBlock(c, a, within, rel){
+  const r = compare(c.id, a.id); let say;
+  if (within) say = r.adjacent ? `Neighbours in the measured order; the drop between them is <b>${TIER_WORD[r.dropBetween.tier]}</b> (${f1(r.dropBetween.gap)}).` : `${short(r.measuredAhead.name)} is ${r.places} places ahead in the measured order.`;
+  else say = twoTurnText(c.id, a.id);
+  return `<div class="alt" data-id="${a.id}" role="button" tabindex="0">${face(a, "sm")}${pill(a.pos)}<span class="n">${a.name}<small>${rel ? rel + " · " : ""}${Math.round(a.proj)} pts · ${M.CTX[a.id].slot.label}</small></span><span class="v">${f1(a.tav)}</span></div>
+    <div class="altcost">${edgeHTML(c.id, a.id)}</div><div class="altsay">${say}</div>`;
+}
+function cellsHTML(c){
+  const k = M.CTX[c.id];
+  const facts = playerFacts(c.id).slice(0, 4), pf = positionFacts(c.pos).find(f => f.kind === "wait");
+  const same = M.atPos(c.pos), si = same.findIndex(x => x.id === c.id);
+  const nbrs = [same[si + 1] ? {a: same[si + 1], rel: "next below him"} : null, same[si - 1] ? {a: same[si - 1], rel: "just above him"} : null].filter(Boolean);
+  const other = LINEUP_ORDER.filter(p => p !== c.pos).map(p => M.PCTX[p].best).filter(Boolean).sort((x, y) => y.tav - x.tav).slice(0, 3);
+  return `<div class="cell who"><div class="ch">Who <span class="note">${sinceText()}</span></div>
+      <div class="id">${face(c, "xl")}<span style="min-width:0"><div class="nm">${c.name}</div><div class="sub">${pill(c.pos)}<span>${c.team}</span><span>·</span><span>${Math.round(c.proj)} season pts</span>${c.injury ? `<span>·</span><i>${c.injury}</i>` : ""}</div><div class="sub">${readChip(c)}</div></span>
+        <span class="valbox"><span class="big">${f1(c.tav)}</span><span class="u">value to your roster</span>${marginHTML(c)}</span></div>
+      ${displacementHTML(c)}
+      <div class="line"><span class="l">Lineup slot</span><span class="v txt">${k.slot.label}</span></div>
+      <div class="line"><span class="l">Rival named for him, before #${M.NEXT}</span><span class="v txt">${c.denialTeam ? `Roster ${c.denialTeam} · ${takeText(c.takeProb)}` : "none"}</span></div>
+      <div class="acts">${copyBtn(c)}${billed("shSquad", "◉ Insight")}${workingHTML(c)}</div></div>
+    <div class="cell why"><div class="ch">Why</div>
+      ${facts.map(f => `<p class="say">${f.text}</p>`).join("")}
+      ${pf ? `<div class="tail"><span class="k">At ${c.pos}</span> · ${pf.text}</div>` : ""}</div>
+    <div class="cell same"><div class="ch">Instead, at ${c.pos} <span class="note">neighbours by value · same wait cost · drop measured within ${c.pos}</span></div>
+      ${nbrs.length ? nbrs.map(n => altBlock(c, n.a, true, n.rel)).join("") : `<p class="empty">No other ${POS[c.pos]} among the ${M.C.length} this board rates here.</p>`}
+</div>
+    <div class="cell other"><div class="ch">Instead, at another position <span class="note">two turns = him now + the other position at #${M.NEXT}</span></div>
+      ${other.length ? other.map(a => altBlock(c, a, false, "best " + a.pos)).join("") : `<p class="empty">No other position has a rated name here.</p>`}
+</div>`;
+}
+function render(reset){
+  if (reset || !M.byId[sel]) { sel = M.C[0].id; filter = "ALL"; }
+  const c = M.byId[sel];
+  document.getElementById("since").innerHTML = "";
+  document.getElementById("posstrip").innerHTML = posStripHTML(c);
+  const marks = [{c}, ...LINEUP_ORDER.filter(p => p !== c.pos).map(p => M.PCTX[p].best).filter(Boolean).map(b => ({c: b, tag: b.pos, color: pc(b.pos)}))];
+  document.getElementById("slots").innerHTML = rosterStripHTML(marks);
+  document.getElementById("cells").innerHTML = cellsHTML(c);
+  document.getElementById("filter").innerHTML = ["ALL", ...LINEUP_ORDER].map(p => `<button data-p="${p}" aria-pressed="${p === filter}" ${p !== "ALL" && !M.PRESENT.includes(p) ? "disabled" : ""}>${p}</button>`).join("");
+  const list = filter === "ALL" ? M.C : M.C.filter(x => x.pos === filter);
+  document.getElementById("list").innerHTML = list.map(x => crowHTML(x, c)).join("");
+  document.getElementById("poolBtn").textContent = `▥ The board · ${M.C.length} names`;
+  document.getElementById("squad").innerHTML = squadHTML(c.name + " against this board");
+}
+root.addEventListener("click", e => {
+  const cp = e.target.closest("[data-copy]"); if (cp) { copyName(cp.dataset.copy, cp); return; }
+  if (e.target.closest("[data-sheet]")) return;
+  const p = e.target.closest("[data-p]"); if (p && !p.disabled) { filter = p.dataset.p; render(); return; }
+  const a = e.target.closest("[data-id]"); if (a) { sel = a.dataset.id; render(); if (e.target.closest("#shPool")) sheets.closeAll(); }
+});
+root.addEventListener("keydown", e => { const t = e.target.closest && e.target.closest("[data-id]"); if (t && (e.key === "Enter" || e.key === " ") && !e.target.closest("button")) { e.preventDefault(); t.click(); } });
+boot();
+</script>
+</body></html>

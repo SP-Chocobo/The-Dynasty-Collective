@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lanes Draft Room</title>
+<meta name="description" content="Round 2, v2 — four position lanes in the lineup's fixed order, the focused lane widened into a three-name comparison, and no rail at all: the wait is one sentence.">
+<style>
+/*__CSS__*/
+/* v2 — LANES, no rail. Position layer PERSISTENT in STABLE lineup order (contents change, columns
+   never move) · the lanes ARE the pool · within-position comparison ALWAYS ON inside the focused
+   lane · NO RAIL — the wait is a sentence in the clock line. */
+.lineup{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--surface-2)}
+.lanes{flex:1 1 auto;min-height:0;display:grid;grid-template-rows:minmax(0,1fr);gap:0;transition:grid-template-columns .25s ease}
+.lane{min-width:0;min-height:0;display:flex;flex-direction:column;border-right:1px solid var(--line);cursor:pointer}
+.lane:last-child{border-right:none}
+.lane.focus{cursor:default;background:linear-gradient(180deg,rgba(212,160,23,.06),transparent 30%)}
+.lh{padding:9px 14px 8px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.lh .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lh .pos{font-family:var(--f-d);font-size:1.1rem;font-weight:700}
+.lh .st{font-size:.8rem;color:var(--muted)} .lh .st.need{color:var(--amber-b)}
+.lh .first{margin-left:auto;font-family:var(--f-m);font-size:.75rem;font-weight:700;letter-spacing:.06em;color:var(--gold-b);border:1px solid var(--gold);border-radius:var(--r);padding:.08rem .4rem;white-space:nowrap}
+.lh .cost{font-size:.8rem;color:var(--muted);margin-top:4px;line-height:1.4}
+.lh .cost b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.lh .cost .w{color:var(--dim)}
+.lead1{padding:9px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.lead1 .who{display:flex;align-items:center;gap:10px}
+.lead1 .nm{font-weight:700;font-size:1.05rem;line-height:1.15}
+.lead1 .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
+.lead1 .valrow{display:flex;align-items:baseline;gap:8px;margin-top:5px}
+.lead1 .valrow .big{font-size:1.2rem}
+.lead1 .valrow .u{margin:0}
+.lead1 .vs{margin:7px 0 0;font-size:.84rem;color:var(--muted);line-height:1.45} .lead1 .vs b{color:var(--ink)}
+.lead1 .vs .fav{color:var(--amber-b)}
+.lead1 .cost{display:flex;gap:12px;margin-top:6px;flex-wrap:wrap}
+.rest{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin}
+.lane .more{border-top:1px solid var(--line);padding:4px 14px}
+.lane.none{flex:0 0 auto}
+.rr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--line);font-size:.86rem;cursor:pointer}
+.rr:hover{background:var(--surface)}
+.rr .nm{min-width:0;font-weight:600;line-height:1.3}
+.rr .nm small{color:var(--dim);font-weight:400;font-size:.78rem;margin-left:5px}
+.rr .v{font-family:var(--f-m);font-weight:600;font-variant-numeric:tabular-nums}
+.rr .cue{grid-column:1/-1;font-size:.78rem;color:var(--dim)}
+.rr[aria-selected="true"]{box-shadow:inset 2px 0 0 var(--gold-b)}
+.empty{padding:12px 14px;color:var(--dim);font-size:.86rem;line-height:1.5}
+/* the focused lane's always-on comparison: columns are names, rows are what differs */
+.trio{flex:0 0 auto;border-bottom:1px solid var(--line);padding:8px 14px 10px}
+.trio .k{display:block;margin-bottom:6px;white-space:normal}
+.trio .k .note{text-transform:none;letter-spacing:0;font-weight:400}
+.tg{display:grid;gap:0 10px;font-size:.84rem}
+.tg .hd{display:flex;align-items:center;gap:8px;padding:0 0 6px;min-width:0;border-bottom:1px solid var(--line-2)}
+.tg .hd .nm{font-weight:700;min-width:0;font-size:.9rem;line-height:1.2}
+.tg .hd .nm small{display:block;color:var(--dim);font-weight:400;font-size:.75rem}
+.tg .rl{color:var(--dim);font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;padding:5px 0 3px;border-bottom:1px solid var(--line);white-space:normal;line-height:1.3}
+.tg .cell{padding:5px 0 3px;border-bottom:1px solid var(--line);min-width:0;color:var(--muted);line-height:1.35}
+.tg .cell b{color:var(--ink)} .tg .cell .mono{color:var(--ink)}
+.tg .cell.lead{color:var(--ink)}
+.tg .cell .swap{font-size:.75rem;color:var(--dim);border:1px solid var(--line-2);border-radius:2px;padding:0 .35rem;margin-left:4px}
+.tg .cell .swap:hover{color:var(--ink)}
+.lane .foot{display:flex;gap:6px;align-items:center;padding:6px 14px;border-top:1px solid var(--line);flex:0 0 auto}
+</style></head><body>
+<div class="room">
+  <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
+  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+    <span class="r"><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate</button>
+      <button class="btn" title="Settings">⚙</button></span></header>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span id="wait" style="line-height:1.4"></span></div>
+  <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div><span class="note" id="firstNote" style="margin-left:auto"></span></div>
+  <div class="lanes" id="lanes"></div>
+  <div class="scrim"></div>
+  <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
+  <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+  <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+  <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+</div>
+<script>
+/*__DATA__*/
+/*__SHARED__*/
+let M, focus = null, third = {};
+function trioHTML(pos){
+  const list = M.atPos(pos); if (!list.length) return "";
+  const picked = list.slice(0, 2); const t = M.get(third[pos]); if (t && t.position === pos && !picked.some(x => x.player_id === t.player_id)) picked.push(t); else if (list[2]) picked.push(list[2]);
+  const n = picked.length; if (n < 2) return `<div class="trio"><span class="k">Only one ${POS[pos]} on this board<span class="note"> · nothing to set beside him; his own facts are above</span></span></div>`;
+  const cols = `grid-template-columns:96px repeat(${n},minmax(0,1fr))`;
+  const row = (label, fn) => `<div class="rl">${label}</div>` + picked.map((c, i) => `<div class="cell ${i === 0 ? "lead" : ""}">${fn(c, i)}</div>`).join("");
+  const anyH = picked.some(c => f1(c.time_horizon_adj) !== f1(picked[0].time_horizon_adj));
+  const anyI = picked.some(c => c.injury_status), anyD = picked.some(c => M.depth(c).n);
+  return `<div class="trio"><span class="k">The ${n === 2 ? "two" : "three"} at ${pos}, side by side<span class="note"> · the next-turn value is identical within a position, so this is value, the measured drop and what else differs; identical rows are not shown</span></span>
+    <div class="tg" style="${cols}"><div></div>${picked.map((c, i) => `<div class="hd">${M.face(c, "sm")}<span class="nm">${M.short(c.name)}<small>${c.team} · #${c.rank}${i === 2 && list.length > 3 ? ` <button class="swap" data-swapinfo="1" title="Click any name lower in the lane to put him here">swap ↓</button>` : ""}</small></span></div>`).join("")}
+      ${row("value now", (c, i) => `<span class="mono">${f1(c.team_acquisition_value)}</span>${i ? ` <span class="note">${sgn(c.team_acquisition_value - picked[0].team_acquisition_value)}</span>` : ""}${M.displaced(c) ? `<div class="note">${f1(c.displacement_adj)} displacement · himself ${f1(c.team_acquisition_value - c.displacement_adj)}</div>` : ""}`)}
+      ${row("proj. pts", c => `<span class="mono">${Math.round(c.projected_points)}</span>`)}
+      ${row("drop behind", c => `${M.tierWord(c)} <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}`)}
+      ${anyH ? row("horizon", c => `<span class="mono">${sgn(c.time_horizon_adj)}</span>`) : ""}
+      ${anyI ? row("designation", c => c.injury_status ? M.avail(c) : "none") : ""}
+      ${anyD ? row("depth insurance", c => M.depth(c).n ? `<span class="mono">${M.depth(c).n}</span> <span class="note">measured</span>` : `<span class="note">${M.depth(c).why}</span>`) : ""}
+    </div></div>`;
+}
+function laneHTML(pos){
+  const list = M.atPos(pos), lead = list[0], held = M.heldAt(pos), isFocus = pos === focus;
+  const open = M.openAt(pos), want = M.STARTERS.filter(r => r.slot === pos).length;
+  const st = held.length === 0 ? `none held — slot open` : open ? `${held.map(p => M.short(p.name)).join(", ")} · ${open} slot open` : `${held.map(p => M.short(p.name)).join(", ")}${M.openFlex && FLEXIBLE.has(pos) ? " · next → FLEX" : " · next → bench"}`;
+  const f = M.FORFEIT[pos];
+  const cost = num(f) ? `best left at #${M.NEXT_NO} if you wait: <b>${f1(M.NEXTV[pos])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(pos) ? ` <span class="w">· ${M.costWord(pos)}</span>` : ""}` : `<span class="w">no next-turn value measured — no ${POS[pos]} in the board's top ${M.C.length}</span>`;
+  let body;
+  if (!lead) body = `<div class="empty">No ${POS[pos]} in the board's top ${M.C.length}.${held.length ? ` You hold ${held.map(p => M.short(p.name)).join(", ")}.` : " You hold none."}</div>`;
+  else {
+    const L = M.LEADER, isFirst = lead.player_id === L.player_id;
+    const vs = isFirst ? (M.C[1] ? `First on the board, ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}) now.` : "First on the board.")
+      : `Instead of ${M.short(L.name)}:`;
+    const rest = list.slice(isFocus ? Math.min(3, list.length) : 1);
+    body = `<div class="lead1"><div class="who">${M.face(lead)}<span style="min-width:0"><div class="nm">${lead.name}</div><div class="sub">${lead.team} · ${Math.round(lead.projected_points)} pts · ${M.slotShort(lead)}${lead.injury_status ? ` · <i class="inj">${lead.injury_status}</i>` : ""}</div></span></div><div class="valrow"><span class="big">${f1(lead.team_acquisition_value)}</span><span class="u">to your roster</span></div>
+        ${M.displaced(lead) ? M.dispShort(lead) : ""}
+        <p class="vs">${vs}${isFirst ? "" : ` <span class="cost" style="display:inline-flex">${M.costHTML(lead, L)}</span>`}</p></div>
+      ${isFocus ? trioHTML(pos) : ""}
+      <div class="rest fade" data-list="${pos}">${rest.map(c => `<div class="rr" data-row data-id="${c.player_id}" role="button" tabindex="0"><span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="cue">${sgn(c.team_acquisition_value - lead.team_acquisition_value)} vs ${M.short(lead.name)} · ${M.tierWord(c)} behind (${f1(c.positional_cliff.gap)})${c.injury_status ? ` · ${M.avail(c)}` : ""}</span></div>`).join("")}</div>
+      <div class="foot">${M.copyBtn(lead)}<button class="btn sm" data-work="${lead.player_id}">numbers</button>${isFocus ? "" : `<span class="note" style="margin-left:auto">click to open ${pos}</span>`}</div>`;
+  }
+  return `<section class="lane ${isFocus ? "focus" : ""} ${lead ? "" : "none"}" data-lane="${pos}"><div class="lh"><div class="top"><span class="pos" style="color:${pc(pos)}">${pos}</span><span class="st ${held.length === 0 ? "need" : ""}">${st}</span>${lead && lead.player_id === M.LEADER.player_id ? `<span class="first">board's first</span>` : ""}</div><div class="cost">${cost}</div></div>${body}</section>`;
+}
+function draw(){
+  const el = document.getElementById("lanes");
+  el.style.gridTemplateColumns = M.LINEUP_ORDER.map(p => p === focus ? "1.9fr" : M.best(p) ? "1fr" : ".55fr").join(" ");
+  el.innerHTML = M.LINEUP_ORDER.map(laneHTML).join("");
+  const fb = M.best(focus) || M.LEADER;
+  document.getElementById("slots").innerHTML = M.rosterStrip(fb, false);
+  document.getElementById("firstNote").innerHTML = `lit: the slot ${M.short(fb.name)} would fill · <b>the board: ${M.C.length} names</b>`;
+  requestAnimationFrame(markScrollers);
+  document.getElementById("debate").innerHTML = M.squad(`the ${focus} lane against the board's first name`);
+}
+function load(key){
+  M = buildModel(key); third = {}; focus = M.LEADER.position;
+  fillCommon(M);
+  document.getElementById("wait").innerHTML = `${M.clockText()}<br>${M.waitText()}`;
+  draw();
+}
+const ui = wireChrome({tag:"v2 · LANES", sub:"position layer persistent, fixed order · lanes are the pool · within-position always on in the focused lane · NO RAIL", hypothesis:`<b>Hypothesis.</b> The owner found Lanes clean and asked whether the room needs a rail at all, so this is lanes with no rail: the clock line names who is on the clock, who is next and what was last taken, and says when you pick again; the draft board is a tab. The four lanes sit in the lineup's own order — QB · RB · WR · TE — and <b>never reorder</b>; what each position leaves at your next turn changes inside its header instead, so the ordering's instability across the draft becomes changing contents in stable columns. The focused lane widens into the genuinely new thing: the two or three names at that position side by side on the facts that differ within a position. Every other lane's lead carries its cost against the board's first name as now · next turn · plan, so the alternatives are costed, not ranked as errors. This is an explicit §1 change request; the rationale names the cost.`, onState:load});
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
+  if (e.target.closest("button") || e.target.closest(".sheet")) return;
+  const r = e.target.closest("[data-id]"); if (r) { const c = M.get(r.dataset.id); third[c.position] = c.player_id; focus = c.position; draw(); return; }
+  const l = e.target.closest("[data-lane]"); if (l && l.dataset.lane !== focus) { focus = l.dataset.lane; draw(); }
+});
+load(ui.key());
+</script></body></html>

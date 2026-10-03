@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm — Trio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/*__CSS__*/
+/* V3 TRIO (rev 2) — three slots the drafter fills (A · B · C). Rows carry only quantities that are
+   comparable left to right (value now; what each position gives at my next turn; the horizon;
+   depth where measured; the board's read). The drop behind each name is per-position and sits
+   INSIDE each head with its own neighbour, never as a row. Pool strip below with A/B/C buttons;
+   position layer summoned; rail is boxes both ways with the wait compressed to roster ticks. */
+.strip{display:flex;align-items:center;gap:12px;padding:5px 16px;border-bottom:1px solid var(--line);background:var(--surface);flex:0 0 auto}
+.body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:8px 16px 6px;gap:4px}
+.trio{flex:0 0 auto;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r)}
+.heads{display:grid;grid-template-columns:250px repeat(3,minmax(0,1fr));gap:0;border-bottom:1px solid var(--line)}
+.heads .lab{padding:10px 12px;font-size:.8rem;color:var(--dim);line-height:1.45;border-right:1px solid var(--line)}
+.head{display:flex;flex-direction:column;gap:5px;padding:8px 12px 7px;border-right:1px solid var(--line);min-width:0}
+.head:last-child{border-right:none}
+.head .idr{display:flex;align-items:center;gap:10px;min-width:0}
+.head .ab{font-family:var(--f-m);font-size:.9rem;font-weight:700;border-radius:2px;padding:.05rem .4rem;color:#15120b;flex:0 0 auto}
+.head .nm{font-family:var(--f-d);font-size:1.12rem;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head .sub{font-size:.78rem;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:2px;flex-wrap:wrap}
+.head .sub i{font-style:normal;color:var(--amber-b)}
+.head .drop{font-size:.8rem;color:var(--muted);line-height:1.35} .head .drop b{color:var(--ink);font-weight:600} .head .drop i{font-style:normal;color:var(--cliff-b)}
+.head .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.head .acts .copy{font-size:.75rem;padding:.1rem .4rem}
+.head .acts .x{font-size:.75rem;color:var(--dim);border:1px solid var(--line-2);border-radius:2px;padding:0 .3rem;margin-left:auto}
+.row{display:grid;grid-template-columns:250px repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .lab{padding:4px 12px;font-size:.75rem;color:var(--dim);border-right:1px solid var(--line);line-height:1.3;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;cursor:help}
+.row .lab b{color:var(--muted);font-weight:600;font-size:.82rem;white-space:nowrap}
+.row .lab span{overflow:hidden;text-overflow:ellipsis}
+.row .cell{padding:2px 12px;font-size:.88rem;border-right:1px solid var(--line);min-width:0;line-height:1.35;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row .cell:last-child{border-right:none}
+.row .cell .n{font-family:var(--f-m);font-weight:700;font-variant-numeric:tabular-nums}
+.row .cell.lead{background:rgba(212,160,23,.07)} .row .cell.lead .n{color:var(--gold-b)}
+.row .cell .mk{font-size:.75rem;color:var(--gold-b)}
+.row.value .cell{font-size:1rem}
+.row .cell .read{font-size:.78rem;white-space:normal;line-height:1.3}
+.row.dispr .cell .disp{margin:2px 0;font-size:.86rem;flex-basis:100%;padding:2px 0 2px 9px}
+.pairs{display:flex;flex-direction:column;gap:1px;padding:5px 12px 6px;border-top:1px solid var(--line-2);font-size:.82rem;color:var(--muted);line-height:1.35}
+.pairs b{color:var(--ink);font-weight:600} .pairs .k{margin-right:6px}
+.pool{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.pool .list{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin;display:grid;grid-template-columns:1fr 1fr;column-gap:24px;align-content:start}
+.pool .cap{font-size:.75rem;color:var(--dim);padding-top:3px;flex:0 0 auto}
+.crow.abc{grid-template-columns:28px auto 1fr auto auto;height:31px}
+.crow.abc .ab{display:flex;gap:3px}
+.crow.abc .ab button{font-family:var(--f-m);font-size:.75rem;font-weight:700;width:22px;height:20px;border:1px solid var(--line-2);border-radius:2px;color:var(--dim)}
+.crow.abc .ab button:hover{color:var(--ink);border-color:var(--dim)}
+.crow.abc .ab button[aria-pressed="true"]{color:#15120b;border-color:transparent}
+.posrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.door{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:9px 12px;min-width:0}
+.door .top{display:flex;align-items:baseline;gap:8px}
+.door .top .pos{font-family:var(--f-d);font-weight:700;font-size:1.05rem}
+.door .top .st{font-size:.8rem;color:var(--muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .door .top .st.need{color:var(--amber-b)}
+.door .bst{display:flex;align-items:center;gap:7px;margin-top:6px;font-size:.9rem} .door .bst .v{margin-left:auto;font-family:var(--f-m);font-weight:700}
+.door .cost{font-size:.8rem;color:var(--muted);margin-top:4px} .door .cost b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.door .load{display:flex;gap:5px;margin-top:8px}
+.door .load button{font-family:var(--f-m);font-size:.75rem;font-weight:700;padding:.1rem .5rem;border:1px solid var(--line-2);border-radius:2px;color:var(--muted)}
+.door .load button:hover{color:var(--ink);border-color:var(--dim)}
+@media (max-width:1000px){.screen{height:auto;max-height:none}.heads,.row{grid-template-columns:1fr}.pool .list{grid-template-columns:1fr;overflow:visible}.posrow{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<div class="app">
+  <div class="topbar"><span class="vt">V3 · Trio</span><span class="hyp"><b>Hypothesis:</b> the drafter arrives with names in mind and wants three compared, not two — three slots, rows only for what is comparable across them, value as the row the board orders on.</span><span class="states" id="states"></span></div>
+  <div class="screen" id="screen">
+    <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+      <span class="r">
+        <button class="btn" data-sheet="shPos" aria-expanded="false">Which position?</button>
+        <button class="btn" data-sheet="shRosters" aria-expanded="false">▤ All rosters</button>
+        <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+        <span id="billedBtn"></span>
+        <button class="btn" title="Settings — freeze timer, providers">⚙</button></span></header>
+    <div class="railwrap">
+      <div class="railtop"><span class="k">Pick rail</span><span class="n" id="railn"></span><span class="railnav"><button id="rP">◂ my last</button><button id="rC">⟲ now</button></span></div>
+      <div class="railscroll" id="railscroll"><div class="rail" id="rail"></div></div>
+    </div>
+    <div class="clk"><span class="timer"><small>league clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="wait" id="wait"></span><span class="tags" id="tags"></span></div>
+    <div class="strip"><span class="k">Your roster</span><div class="slots" id="slots"></div><span class="note" style="margin-left:auto;white-space:nowrap">letters mark the slot each would fill</span></div>
+    <div class="body">
+      <div class="trio" id="trio"></div>
+      <div class="pool"><div class="ph">The board, by value to your roster <span class="note" style="letter-spacing:0;text-transform:none;font-weight:400">· A / B / C puts a name in a slot</span><span class="note" id="cap" style="letter-spacing:0;text-transform:none;font-weight:400;margin-left:auto"></span><span class="filter" id="filter" style="margin-left:14px"></span></div><div class="list" id="list"></div></div>
+    </div>
+    <div class="scrim"></div>
+    <section class="sheet bottom" id="shPos" aria-hidden="true"><div class="sh"><span class="t">Which position?</span><span class="note">lineup order · what each position gives at your next turn · load a door's best into a slot</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="posrow" id="posrow"></div></div></section>
+    <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+    <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+    <section class="sheet right" id="shSquad" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="squad"></div></section>
+  </div>
+</div>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+const AB = ["A", "B", "C"], ABC = {A: "var(--sky-b)", B: "var(--emerald-b)", C: "var(--violet-b)"};
+let slots = {A: null, B: null, C: null}, filter = "ALL";
+const root = document.getElementById("screen"); const sheets = wireSheets(root);
+document.getElementById("billedBtn").innerHTML = billed("shSquad", "⚑ Debate");
+const rs = document.getElementById("railscroll"), nav = wireRail(rs);
+document.getElementById("rC").onclick = () => nav.recentre(); document.getElementById("rP").onclick = nav.toPrev;
+
+function defaults(){ const seen = new Set(), out = []; M.C.forEach(c => { if (!seen.has(c.pos) && out.length < 3) { seen.add(c.pos); out.push(c.id); } });
+  while (out.length < 3) { const n = M.C.find(c => !out.includes(c.id)); if (!n) break; out.push(n.id); }
+  return {A: out[0] || null, B: out[1] || null, C: out[2] || null}; }
+const filled = () => AB.filter(k => slots[k] && M.byId[slots[k]]).map(k => ({k, c: M.byId[slots[k]]}));
+
+function rowsHTML(T){
+  const cs = T.map(t => t.c), allSame = cs.every(c => c.pos === cs[0].pos), rows = [];
+  const row = (lab, cells, cls) => rows.push(`<div class="row ${cls || ""}"><div class="lab" title="${lab.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}">${lab}</div>${cells.join("")}</div>`);
+  const cell = (html, lead) => `<div class="cell ${lead ? "lead" : ""}">${html}</div>`;
+  const vmax = Math.max(...cs.map(c => c.tav)), vlead = cs.filter(c => c.tav === vmax).length === 1;
+  row(`<b>Value now</b><span>the board's order</span>`, cs.map(c => cell(`<span class="n">${f1(c.tav)}</span>${c.tav !== vmax ? `<span class="note">${sgn(c.tav - vmax)}</span>` : vlead ? `<span class="mk">first of these</span>` : ""}`, c.tav === vmax && vlead)), "value");
+  if (cs.every(c => num(c.disp) && c.disp !== 0 && c.dispBasis === "measured")) rows.push(`<div class="row dispr"><div class="lab"><b>Why below zero</b></div><div class="cell" style="grid-column:2/-1"><p class="disp">Your starters are set, so each would sit — the measured cost of displacing a starter you already have is <b>${cs.map(c => f1(c.disp)).join(" / ")}</b> of these; the rest of each is <b>${cs.map(c => f1(c.tav - c.disp)).join(" / ")}</b>.</p></div></div>`);
+  if (!allSame) row(`<b>His position at #${M.NEXT}</b><span>if you wait</span>`, cs.map(c => { const P = M.PCTX[c.pos]; return cell(num(P.nextTurn) ? `<span class="n">≈ ${f1(P.nextTurn)}</span><span class="note">${f1(P.forfeit)} less than now</span>` : `<span class="note">not measured</span>`, false); }));
+  row(`<b>Rival named</b><span>· kept from rivals</span>`, cs.map(c => cell(`${c.denialTeam ? `Roster ${c.denialTeam} · ${takeText(c.takeProb)}` : "none"} <span class="note">· ${f1(c.denial)} kept</span>`, false)));
+  row(`<b>Dynasty horizon</b><span>in his value</span>`, cs.map(c => cell(`<span class="n">${sgn(c.horizon)}</span>`, false)));
+  if (cs.some(c => c.injury)) row(`<b>Designation</b>`, cs.map(c => cell(c.injury ? `<span style="color:var(--amber-b)">${c.injury}</span>` : `<span class="note">none</span>`, false)));
+  if (cs.some(c => M.CTX[c.id].depth.n)) row(`<b>Depth insurance</b>`, cs.map(c => cell(M.CTX[c.id].depth.n ? `<span class="n">${M.CTX[c.id].depth.n}</span>` : `<span class="note" title="${M.CTX[c.id].depth.why}">${M.CTX[c.id].depth.why.split(" — ")[0].split(", ")[0]}</span>`, false)));
+  row(`<b>The board's read</b><span>its own word</span>`, cs.map(c => cell(`<span class="read"><b>${necWord(c)}</b></span>`, false)));
+  return rows.join("");
+}
+function pairsHTML(T){
+  const out = [];
+  for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) { const a = T[i], b = T[j], r = compare(a.c.id, b.c.id);
+    const tag = `<span class="k"><span style="color:${ABC[a.k]}">${a.k}</span>·<span style="color:${ABC[b.k]}">${b.k}</span></span>`;
+    if (r.same) out.push(`${tag}same position — waiting costs the same either way; ${r.adjacent ? `neighbours in the measured order, <b>${TIER_SHORT[r.dropBetween.tier]}</b> (${f1(r.dropBetween.gap)}) between them` : `${short(r.measuredAhead.name)} is ${r.places} places ahead in the measured order`}.`);
+    else if (!r.measured) out.push(`${tag}one position has no measured value at #${M.NEXT} on this board.`);
+    else out.push(`${tag}${twoTurnText(a.c.id, b.c.id)} — now <b>${short(r.valueLeader.name)}</b> by ${f1(Math.abs(r.dv))}, over two turns <b>${r.dTotal >= 0 ? short(a.c.name) : short(b.c.name)}</b> by ${f1(Math.abs(r.dTotal))}.`); }
+  return out.length ? `<div class="pairs">${out.map(x => `<div>${x}</div>`).join("")}</div>` : "";
+}
+function headHTML(k){
+  const c = slots[k] ? M.byId[slots[k]] : null;
+  if (!c) return `<div class="head"><div class="idr"><span class="ab" style="background:${ABC[k]}">${k}</span><span class="empty">empty — pick a name below</span></div></div>`;
+  const x = M.CTX[c.id];
+  const drop = x.cliffNext ? `Behind him at ${c.pos}: <i>${TIER_SHORT[x.tier]}</i>, <b>${f1(x.gap)}</b> to ${short(x.cliffNext.name)} in the measured order.` : `No ${POS[c.pos]} behind him in the measured order${x.ahead.length ? ` (${x.ahead.map(a => short(a.name)).join(", ")} ahead there)` : ""}.`;
+  return `<div class="head"><div class="idr"><span class="ab" style="background:${ABC[k]}">${k}</span>${face(c)}<span style="min-width:0"><div class="nm" title="${c.name}">${c.name}</div><div class="sub">${pill(c.pos)}<span>${c.team}</span><span>·</span><span>${Math.round(c.proj)} pts</span><span>·</span><span>${x.slot.kind === "bench" ? "bench" : x.slot.label}</span>${c.injury ? `<i>· ${c.injury}</i>` : ""}</div></span></div><div class="drop">${drop}</div><div class="acts">${copyBtn(c)}<button class="x" data-clear="${k}">clear ${k}</button></div></div>`;
+}
+function trioHTML(){
+  const T = filled();
+  return `<div class="heads"><div class="lab">Three names side by side. Each head carries its own drop, measured within its position; the rows carry only what is comparable across the three.</div>${AB.map(headHTML).join("")}</div>${T.length >= 2 ? rowsHTML(T) + pairsHTML(T) : `<p class="empty" style="padding:12px">Put at least two names in the slots.</p>`}`;
+}
+function posSheetHTML(){
+  return LINEUP_ORDER.map(pos => { const P = M.PCTX[pos], b = P.best;
+    return `<div class="door"><div class="top"><span class="pos" style="color:${pc(pos)}">${pos}</span><span class="st ${P.slot.kind === "vacant" ? "need" : ""}">${P.slot.kind === "vacant" ? "slot open — none held" : P.slot.kind === "second" ? `${P.slot.slot} open beside ${short(P.slot.beside.name)}` : P.slot.kind === "flex" ? "FLEX route only" : "starters set · bench"}</span></div>
+      ${b ? `<div class="bst">${face(b, "sm")}<span>${short(b.name)}</span><span class="v">${f1(b.tav)}</span></div>` : `<div class="bst empty">none among the ${M.C.length} rated here</div>`}
+      <div class="cost">${num(P.forfeit) ? `at #${M.NEXT} this position gives ≈ <b>${f1(P.nextTurn)}</b>, about ${f1(P.forfeit)} less than now` : "no wait cost measured on this board"}</div>
+      ${b ? `<div class="load">${AB.map(k => `<button data-slot="${k}" data-id="${b.id}">→ ${k}</button>`).join("")}</div>` : ""}</div>`; }).join("");
+}
+function render(reset){
+  if (reset) { slots = defaults(); filter = "ALL";
+    document.getElementById("rail").innerHTML = railTicksHTML();
+    const rivals = [...new Set(M.C.map(c => c.denialTeam).filter(Boolean))];
+    document.getElementById("railn").innerHTML = `${M.PREVP ? `your last #${M.PREVP.no} → ` : ""}now <b>#${M.ONCLOCK}</b> → your next <b>#${M.NEXT}</b> · one tick per pick between${rivals.length ? ` · rosters named as rivals in orange` : ""}`;
+    requestAnimationFrame(() => nav.recentre(true)); }
+  AB.forEach(k => { if (slots[k] && !M.byId[slots[k]]) slots[k] = null; });
+  document.getElementById("slots").innerHTML = rosterStripHTML(filled().map(t => ({c: t.c, tag: t.k, color: ABC[t.k]})));
+  document.getElementById("trio").innerHTML = trioHTML();
+  document.getElementById("filter").innerHTML = ["ALL", ...LINEUP_ORDER].map(p => `<button data-p="${p}" aria-pressed="${p === filter}" ${p !== "ALL" && !M.PRESENT.includes(p) ? "disabled" : ""}>${p}</button>`).join("");
+  const list = filter === "ALL" ? M.C : M.C.filter(c => c.pos === filter);
+  const L = document.getElementById("list");
+  L.innerHTML = list.map(c => crowHTML(c, null, {cls: "abc", extra: `<span class="ab">${AB.map(k => `<button data-slot="${k}" data-id="${c.id}" aria-pressed="${slots[k] === c.id}" style="${slots[k] === c.id ? "background:" + ABC[k] : ""}">${k}</button>`).join("")}</span>`})).join("");
+  document.getElementById("cap").textContent = listCaption(snapList(L, 2), list.length);
+  document.getElementById("posrow").innerHTML = posSheetHTML();
+  document.getElementById("squad").innerHTML = squadHTML(filled().map(t => short(t.c.name)).join(" against ") || "the trio");
+}
+root.addEventListener("click", e => {
+  const cp = e.target.closest("[data-copy]"); if (cp) { copyName(cp.dataset.copy, cp); return; }
+  if (e.target.closest("[data-sheet]")) return;
+  const s = e.target.closest("[data-slot]"); if (s) { const k = s.dataset.slot, id = s.dataset.id; AB.forEach(x => { if (slots[x] === id) slots[x] = null; }); slots[k] = id; render(); if (e.target.closest("#shPos")) sheets.closeAll(); return; }
+  const x = e.target.closest("[data-clear]"); if (x) { slots[x.dataset.clear] = null; render(); return; }
+  const row = e.target.closest(".crow"); if (row) { const id = row.dataset.id; const empty = AB.find(k => !slots[k]); if (!AB.some(k => slots[k] === id)) { slots[empty || "C"] = id; render(); } return; }
+  const p = e.target.closest("[data-p]"); if (p && !p.disabled) { filter = p.dataset.p; render(); }
+});
+boot();
+</script>
+</body></html>

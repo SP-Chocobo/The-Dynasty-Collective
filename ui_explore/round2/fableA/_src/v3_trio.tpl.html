@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trio Draft Room</title>
+<meta name="description" content="Round 2, v3 — a three-slot comparison the drafter builds from a resident board, one name per position by default; the board's order is one row, the two-pick plan against slot A is the next, and nothing else ranks; the rail keeps boxes both directions.">
+<style>
+/*__CSS__*/
+/* v3 — TRIO. Position layer SUMMONED (group the board by position) · pool BESIDE · within-position
+   by A/B/C SLOTS (click a name to put him in slot C; click a lit letter to remove) · rail = BOXES
+   BOTH DIRECTIONS, slim seat tokens between, now → next in frame with the named past to the left. */
+.body{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(330px,1fr);grid-template-rows:minmax(0,1fr)}
+.trio{min-width:0;min-height:0;display:flex;flex-direction:column;padding:12px 18px 8px}
+.trio .more{padding:4px 0 0}
+.trio .scrollin{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin}
+.heads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.head{display:flex;align-items:center;gap:10px;border:1px solid var(--line-2);border-radius:var(--r);padding:9px 12px;background:var(--surface);min-width:0;position:relative}
+.head.a{border-color:var(--gold)} .head.b{border-color:var(--dim)} .head.c{border-color:var(--crimson)}
+.head .nm{font-family:var(--f-d);font-size:1.02rem;font-weight:700;line-height:1.1}
+.head .sub{font-size:.78rem;color:var(--muted);margin-top:3px}
+.head .ab{position:absolute;top:6px;right:8px;font-family:var(--f-m);font-weight:700;font-size:.9rem;border:1px solid currentColor;border-radius:2px;padding:0 .3rem;cursor:pointer}
+.head.a .ab{color:var(--gold-b)} .head.b .ab{color:var(--pure)} .head.c .ab{color:var(--crimson-b)}
+.head.empty{border-style:dashed;justify-content:center;color:var(--dim);font-size:.84rem}
+.rows{margin-top:10px}
+.drow{display:grid;grid-template-columns:120px repeat(3,minmax(0,1fr));gap:3px 10px;padding:7px 0;border-bottom:1px solid var(--line);align-items:start}
+.drow .lab{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;padding-top:3px;line-height:1.3}
+.drow .cell{font-size:.9rem;line-height:1.4;color:var(--muted);min-width:0}
+.drow .cell b{color:var(--ink)} .drow .cell .mono{color:var(--ink);font-weight:600}
+.drow .cell.lead .mono{color:var(--gold-b)}
+.drow .cell .cc{align-items:flex-start;margin-right:10px}
+.drow .say{grid-column:2/-1;font-size:.9rem;color:var(--ink);line-height:1.45;margin-top:2px}
+.drow .say b{color:var(--gold-b)}
+.drow.order{background:var(--surface);border:1px solid var(--gold);border-radius:var(--r);padding:8px 10px;margin:10px 0 2px}
+.foot{display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap}
+/* the board, resident */
+.pool{min-width:0;min-height:0;border-left:1px solid var(--line);display:flex;flex-direction:column}
+.pool .ph{padding:10px 14px 6px;display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap}
+.pool .ph .filt{margin-left:auto}
+.plist{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin}
+.prow{display:grid;grid-template-columns:22px auto minmax(0,1fr) auto 26px;gap:2px 8px;align-items:center;padding:5px 10px 5px 14px;border-bottom:1px solid var(--line);font-size:.86rem;cursor:pointer}
+.prow:hover{background:var(--surface)}
+.prow.inA{box-shadow:inset 2px 0 0 var(--gold-b)} .prow.inB{box-shadow:inset 2px 0 0 var(--pure)} .prow.inC{box-shadow:inset 2px 0 0 var(--crimson-b)}
+.prow .rk{font-family:var(--f-m);font-size:.75rem;color:var(--dim)}
+.prow .nm{min-width:0;font-weight:600;line-height:1.25}
+.prow .nm small{display:block;color:var(--dim);font-size:.78rem;font-weight:400;line-height:1.3}
+.prow .v{font-family:var(--f-m);font-weight:600;font-variant-numeric:tabular-nums}
+.prow .let{font-family:var(--f-m);font-size:.75rem;font-weight:700;text-align:center;border-radius:2px;padding:0 .3rem}
+.prow .let.A{color:#15120b;background:var(--gold-b)} .prow .let.B{color:#15120b;background:var(--pure)} .prow .let.C{color:#fff;background:var(--crimson)}
+.grp{display:flex;align-items:baseline;gap:10px;padding:8px 14px 4px;font-size:.82rem;color:var(--muted);background:var(--surface-2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1}
+.grp .pos{font-family:var(--f-d);font-weight:700;font-size:.95rem}
+.grp b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.lineup{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--surface-2)}
+.pool .more{padding:4px 14px;border-top:1px solid var(--line)}
+</style></head><body>
+<div class="room">
+  <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
+  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+    <span class="r"><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate the three</button>
+      <button class="btn" title="Settings">⚙</button></span></header>
+  <div class="railB" id="railwrap"><div class="scroll" id="railscroll"><div class="track" id="rail"></div></div></div>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span id="wait"></span><span class="right"><button class="btn sm" id="recentre">⟲ now</button></span></div>
+  <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div><span class="note" id="slotNote" style="margin-left:auto"></span></div>
+  <div class="body">
+    <main class="trio"><div class="scrollin" id="trio" data-list="trio"></div></main>
+    <aside class="pool"><div class="ph"><span class="k">The board</span><span class="note" id="poolNote"></span><span class="filt"><button id="byPos" aria-pressed="false">by position</button></span></div><div class="plist" id="plist" data-list="pool"></div></aside>
+  </div>
+  <div class="scrim"></div>
+  <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
+  <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+  <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+  <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+</div>
+<script>
+/*__DATA__*/
+/*__SHARED__*/
+let M, slots = {A:null, B:null, C:null}, byPos = false;
+const LET = ["A", "B", "C"], CLS = {A:"a", B:"b", C:"c"};
+const picked = () => LET.map(L => M.get(slots[L])).filter(Boolean);
+function trioHTML(){
+  const P = LET.map(L => ({L, c:M.get(slots[L])})), live = P.filter(p => p.c);
+  const heads = P.map(p => p.c ? `<div class="head ${CLS[p.L]}">${M.face(p.c)}<span style="min-width:0"><div class="nm">${p.c.name}</div><div class="sub">${p.c.position} · ${p.c.team} · ${Math.round(p.c.projected_points)} pts · #${p.c.rank} on the board</div></span><button class="ab" data-unslot="${p.L}" title="Remove from slot ${p.L}">${p.L} ✕</button></div>` : `<div class="head empty ${CLS[p.L]}">slot ${p.L} — click a name on the board</div>`).join("");
+  if (live.length < 2) return `<div class="heads">${heads}</div><p class="note" style="margin-top:12px">Put at least two names in the slots to compare them.</p>`;
+  const cs = live.map(p => p.c), A = P[0].c || cs[0];
+  const cell = (fn, leadIdx) => P.map((p, i) => `<div class="cell ${i === leadIdx ? "lead" : ""}">${p.c ? fn(p.c, i) : ""}</div>`).join("");
+  const rows = [];
+  /* 1 — the board's order: the one row that ranks */
+  const byV = cs.slice().sort((a, b) => b.team_acquisition_value - a.team_acquisition_value), leadIdx = P.findIndex(p => p.c === byV[0]);
+  const gaps = byV.slice(1).map(c => `${f1(byV[0].team_acquisition_value - c.team_acquisition_value)} over ${M.short(c.name)}`).join(", ");
+  rows.push(`<div class="drow order" data-row><div class="lab">The board's order<br><small>value to your roster now</small></div>${cell(c => `<span class="mono">${f1(c.team_acquisition_value)}</span>${M.displaced(c) ? `<div class="note" style="color:var(--amber-b)">${f1(c.displacement_adj)} of it is a filled-slot displacement, measured; himself ${f1(c.team_acquisition_value - c.displacement_adj)}</div>` : ""}`, leadIdx)}<div class="say"><b>${M.short(byV[0].name)}</b> first by ${gaps} — this is the one row that ranks.</div></div>`);
+  /* 2 — against slot A: three real quantities, nothing collapsed */
+  const others = P.filter(p => p.c && p.c !== A);
+  const anyCross = others.some(p => p.c.position !== A.position);
+  rows.push(`<div class="drow" data-row><div class="lab">Against ${M.short(A.name)}<br><small>now · next turn · plan</small></div>${cell(c => c === A ? `<span class="note">slot A — the others are costed against him</span>` : M.costHTML(c, A), -1)}
+    <div class="say" style="color:var(--muted)">${anyCross ? M.costKey(A) + "." : `Same position as ${M.short(A.name)}: what is left at your next turn is identical for both, so the second cell is the measured drop between them.`}</div></div>`);
+  /* 3 — what each position leaves at your next turn, as a value, not an order */
+  if (anyCross) rows.push(`<div class="drow" data-row><div class="lab">Best left at #${M.NEXT_NO}<br><small>if you wait on his position</small></div>${cell(c => num(M.NEXTV[c.position]) ? `<span class="mono">${f1(M.NEXTV[c.position])}</span> at ${c.position}${M.costWord(c.position) ? `<div class="note">waiting costs ${f1(M.FORFEIT[c.position])} — ${M.costWord(c.position)}</div>` : `<div class="note">waiting costs ${f1(M.FORFEIT[c.position])}</div>`}` : `<span class="note">not measured at ${c.position}</span>`, -1)}</div>`);
+  /* 4 — where each starts (only when it differs) */
+  if (cs.some(c => M.slotShort(c) !== M.slotShort(cs[0]))) rows.push(`<div class="drow" data-row><div class="lab">Where he starts</div>${cell(c => M.slotPhrase(c), -1)}</div>`);
+  else rows.push(`<div class="drow" data-row><div class="lab">Where he starts</div><div class="say" style="color:var(--muted)">All of them: ${M.slotPhrase(cs[0])}.</div></div>`);
+  /* 5 — the drop behind each, in each position's own measured order */
+  rows.push(`<div class="drow" data-row><div class="lab">Drop behind him<br><small>engine tier · gap at his position</small></div>${cell(c => `<b>${M.tierWord(c)}</b> <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}`, -1)}</div>`);
+  /* 6+ — only where they differ; a measured zero prints when the row is shown */
+  if (cs.some(c => f1(c.time_horizon_adj) !== f1(cs[0].time_horizon_adj))) rows.push(`<div class="drow" data-row><div class="lab">Dynasty horizon<br><small>already inside his value</small></div>${cell(c => `<span class="mono">${sgn(c.time_horizon_adj)}</span>`, -1)}</div>`);
+  if (cs.some(c => c.injury_status)) rows.push(`<div class="drow" data-row><div class="lab">Designation<br><small>carried, not charged</small></div>${cell(c => c.injury_status ? M.avail(c) : "none", -1)}</div>`);
+  if (cs.some(c => M.depth(c).n)) rows.push(`<div class="drow" data-row><div class="lab">Depth insurance</div>${cell(c => M.depth(c).n ? `<span class="mono">${M.depth(c).n}</span> <span class="note">measured</span>` : `<span class="note">${M.depth(c).why}</span>`, -1)}</div>`);
+  return `<div class="heads">${heads}</div><div class="rows">${rows.join("")}</div>
+    <div class="foot">${cs.map(c => M.copyBtn(c)).join("")}<button class="btn sm" data-work="${A.player_id}">numbers · ${M.short(A.name)}</button><span class="note" style="margin-left:auto">how long any of them lasts: <span class="wh">withheld</span></span></div>`;
+}
+function poolHTML(){
+  const row = c => { const inn = LET.find(L => slots[L] === c.player_id);
+    return `<div class="prow ${inn ? "in" + inn : ""}" data-row data-pick="${c.player_id}" role="button" tabindex="0" title="${inn ? "In slot " + inn + " — click to remove" : "Click to put him in slot C"}"><span class="rk">${c.rank}</span>${M.pill(c.position)}<span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts · ${M.slotShort(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""}</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="let ${inn || ""}">${inn || ""}</span></div>`; };
+  if (!byPos) return M.C.map(row).join("");
+  return M.VALUE_ORDER_POS.concat(M.LINEUP_ORDER.filter(p => !M.VALUE_ORDER_POS.includes(p))).map(p => { const l = M.atPos(p), f = M.FORFEIT[p];
+    return `<div class="grp"><span class="pos" style="color:${pc(p)}">${p}</span><span>${num(f) ? `best left at #${M.NEXT_NO} <b>${f1(M.NEXTV[p])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(p) ? ` · ${M.costWord(p)}` : ""}` : `none in the board's top ${M.C.length}`}</span><span class="note" style="margin-left:auto">${M.heldAt(p).length ? `you hold ${M.heldAt(p).map(x => M.short(x.name)).join(", ")}` : "you hold none"}</span></div>${l.map(row).join("")}`; }).join("");
+}
+function draw(){
+  document.getElementById("trio").innerHTML = trioHTML();
+  document.getElementById("plist").innerHTML = poolHTML();
+  document.getElementById("byPos").setAttribute("aria-pressed", String(byPos));
+  const a = M.get(slots.A) || M.LEADER;
+  document.getElementById("slots").innerHTML = M.rosterStrip(a, false);
+  document.getElementById("slotNote").textContent = `lit: the slot ${M.short(a.name)} (A) would fill`;
+  document.getElementById("debate").innerHTML = M.squad(picked().map(c => c.name).join(" · ") || "the board");
+  requestAnimationFrame(markScrollers);
+}
+function recentre(instant){
+  const rs = document.getElementById("railscroll"), now = rs.querySelector(".pk.now"), nxt = rs.querySelector(".pk.next"); if (!now) return;
+  /* now → next in frame; the rest of the width goes to the named past, snapped to a whole box */
+  const right = (nxt || now).offsetLeft + (nxt || now).offsetWidth + 18; let left = Math.max(0, right - rs.clientWidth);
+  const boxes = [...rs.querySelectorAll(".pk")]; const first = boxes.find(b => b.offsetLeft >= left); if (first) left = first.offsetLeft - 1;
+  rs.scrollTo({left, behavior:instant ? "auto" : "smooth"});
+}
+function load(key){
+  M = buildModel(key); byPos = false;
+  /* default: one name per position, in the board's order — the "other valid options" are positions */
+  const firsts = M.VALUE_ORDER_POS.slice(0, 3).map(p => M.best(p));
+  slots = {A:firsts[0] ? firsts[0].player_id : null, B:firsts[1] ? firsts[1].player_id : null, C:firsts[2] ? firsts[2].player_id : null};
+  fillCommon(M);
+  document.getElementById("rail").innerHTML = M.railB();
+  document.getElementById("wait").innerHTML = M.waitText();
+  document.getElementById("poolNote").textContent = `${M.C.length} names · click one for slot C`;
+  draw(); requestAnimationFrame(() => recentre(true));
+}
+const ui = wireChrome({tag:"v3 · TRIO", sub:"position layer summoned · pool beside · A / B / C slots · rail: boxes both directions", hypothesis:`<b>Hypothesis.</b> The owner wanted Duel to compare three, not two, and worried it leans to the higher number. So: three slots, defaulting to <b>one name per position</b> (the best at each of the first three positions on the board) so the trio is the “other valid options” and not rank 1 with its runners-up; the board's order is <b>one row</b>, boxed and labelled as the only row that ranks; the next row costs B and C against A as three real numbers — value now, what each position leaves at your next turn, and the two-pick plan that adds them — so nothing is collapsed and nothing is printed twice; later rows are facts that differ and rank nothing. The position layer is summoned (“by position” groups the board with what each position leaves at your next turn), and the rail keeps boxes in both directions: named where picks have been made, slim seat tokens where they have not, scrolled so your next turn is in frame and the named past fills the left.`, onState:load});
+const rs = document.getElementById("railscroll");
+rs.addEventListener("wheel", e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); rs.scrollLeft += e.deltaY; } }, {passive:false});
+document.getElementById("recentre").onclick = () => recentre(false);
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
+  if (e.target.closest("#byPos")) { byPos = !byPos; draw(); return; }
+  const u = e.target.closest("[data-unslot]"); if (u) { slots[u.dataset.unslot] = null; draw(); return; }
+  const pk = e.target.closest("[data-pick]"); if (pk) { const id = pk.dataset.pick; const inn = LET.find(L => slots[L] === id);
+    if (inn) slots[inn] = null; else { const empty = LET.find(L => !slots[L]); slots[empty || "C"] = id; } draw(); }
+});
+load(ui.key());
+</script></body></html>

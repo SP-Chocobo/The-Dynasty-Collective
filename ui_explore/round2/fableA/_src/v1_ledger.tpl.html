@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ledger Draft Room</title>
+<meta name="description" content="Round 2, v1 — one ledger: who, why, what else is on the table and at what cost; the roster slot he fills lit; the rest of the board as a constant strip below; named past plus a marked span for the wait.">
+<style>
+/*__CSS__*/
+/* v1 — LEDGER, cut. Position layer SUMMONED · pool BELOW · within-position by CLICKING A NAME ·
+   rail = NAMED PAST + MARKED SPAN. */
+.body{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:238px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.side{border-right:1px solid var(--line);padding:10px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden}
+.side .wait{font-size:.84rem;color:var(--muted);line-height:1.45;border-top:1px solid var(--line);padding-top:8px}
+.side .wait b{color:var(--ink)}
+.main{min-width:0;min-height:0;display:flex;flex-direction:column;padding:10px 16px 10px;gap:8px}
+.ledger{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);flex:0 0 auto}
+.lhead{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.lhead .val{margin-left:auto;text-align:right;flex:0 0 auto}
+.lhead .acts{display:flex;gap:6px;margin-left:14px;align-items:center;flex:0 0 auto}
+.why{padding:9px 16px 10px;border-bottom:1px solid var(--line)}
+.why .k{display:block;margin-bottom:3px}
+.else{padding:6px 6px 4px}
+.else .k{display:flex;align-items:center;gap:10px;padding:2px 10px 4px;white-space:normal}
+.else .k .note{text-transform:none;letter-spacing:0;font-weight:400}
+.else .k .posbtn{margin-left:auto;font-size:.78rem;letter-spacing:0;text-transform:none;font-weight:500;border:1px solid var(--line-2);border-radius:var(--r);padding:.1rem .5rem;color:var(--muted)}
+.else .k .posbtn[aria-expanded="true"]{color:var(--gold-b);border-color:var(--gold-b)}
+.posgrid{margin:4px 10px 8px;border:1px dashed var(--line-2);border-radius:var(--r);padding:6px 10px;font-size:.82rem;color:var(--muted)}
+.posgrid .pr{display:grid;grid-template-columns:34px minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1.3fr);gap:10px;padding:3px 0;border-bottom:1px solid var(--line);align-items:center}
+.posgrid .pr:last-child{border:none} .posgrid .pr b{color:var(--ink)} .posgrid .pr .mono{color:var(--ink)}
+.posgrid .ph{display:grid;grid-template-columns:34px minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1.3fr);gap:10px;padding:0 0 3px;color:var(--dim);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em}
+.posgrid .pr .pos{font-family:var(--f-d);font-weight:700}
+.strip{flex:1 1 auto}
+.strip .list{position:relative}
+.dispbar{padding:6px 16px 8px;border-bottom:1px solid var(--line);background:rgba(224,123,10,.07)} .dispbar .disp{margin:0}
+.costkey{margin:5px 10px 2px;font-size:.8rem;color:var(--muted);line-height:1.4} .costkey b{color:var(--ink)}
+</style></head><body>
+<div class="room">
+  <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
+  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+    <span class="r"><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate</button>
+      <button class="btn" title="Settings">⚙</button></span></header>
+  <div class="railA" id="rail"></div>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="right" id="clkRight"></span></div>
+  <div class="body">
+    <aside class="side"><span class="k">Your lineup</span><div class="rcol" id="roster"></div><div class="wait" id="wait"></div></aside>
+    <main class="main">
+      <div class="ledger" id="ledger"></div>
+      <div class="strip" id="strip"></div>
+    </main>
+  </div>
+  <div class="scrim"></div>
+  <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
+  <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+  <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+  <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+</div>
+<script>
+/*__DATA__*/
+/*__SHARED__*/
+let M, sel = null, filter = "ALL", posOpen = false;
+function ledgerHTML(c){
+  const cmp = M.comparatorFor(c), alts = M.alternatives(c, 4);
+  const lead = c.player_id === M.LEADER.player_id;
+  return `<div class="lhead">${M.face(c, "lg")}<span style="min-width:0"><div class="lead-name">${c.name}</div><div class="sub">${M.whoSub(c)}</div></span>
+      <span class="val"><span class="big">${f1(c.team_acquisition_value)}</span><span class="u">value to your roster</span><span class="note">${lead ? "first on the board" : `${f1(c.team_acquisition_value - M.LEADER.team_acquisition_value)} vs ${M.short(M.LEADER.name)}, first on the board`}</span></span>
+      <span class="acts">${M.copyBtn(c)}<button class="btn sm" data-work="${c.player_id}">numbers</button></span></div>
+    ${M.displaced(c) ? `<div class="dispbar">${M.dispSentence(c)}</div>` : ""}
+    <div class="why"><span class="k">Why ${M.short(c.name)}${cmp ? ` · against ${M.short(cmp.name)}${cmp.position !== c.position ? ` (${cmp.position})` : ""}` : ""}</span>
+      <p class="say">${M.ownLine(c)}</p>
+      ${cmp ? M.whyLines(c, cmp).map(t => `<p class="say">${t}</p>`).join("") : `<p class="say">He is the only name on the board.</p>`}</div>
+    <div class="else"><span class="k">Also on the table<span class="note">taking one of them is a choice, not an error</span><button class="posbtn" id="posBtn" aria-expanded="${posOpen}">which position?</button></span>
+      ${posOpen ? posGrid(c) : ""}
+      <div class="alts">${alts.map(a => `<div class="alt" data-id="${a.player_id}" role="button" tabindex="0">${M.face(a, "sm")}${M.pill(a.position)}<span class="nm">${a.name}<small>${a.team} · ${Math.round(a.projected_points)} pts · ${M.slotShort(a)}${a.injury_status ? ` · ${M.avail(a)}` : ""}</small></span><span class="cost">${M.costHTML(a, c)}</span></div>`).join("")}
+      ${alts.length === 0 ? `<p class="note" style="padding:6px 10px">No other name on the board.</p>` : ""}
+      <p class="costkey">${M.costKey(c)}.</p></div>`;
+}
+function posGrid(c){
+  return `<div class="posgrid"><div class="ph"><span></span><span>your slot</span><span>best left · value</span><span>cost of waiting on it</span></div>
+    ${M.LINEUP_ORDER.map(p => { const b = M.best(p), f = M.FORFEIT[p], held = M.heldAt(p);
+      const slot = M.openAt(p) > 0 ? (held.length ? `${p}${held.length + 1} open` : `<b>${p} open — none held</b>`) : (M.openFlex && FLEXIBLE.has(p) ? "FLEX only" : "bench");
+      return `<div class="pr"><span class="pos" style="color:${pc(p)}">${p}</span><span>${slot}</span><span>${b ? `<b>${M.short(b.name)}</b> <span class="mono">${f1(b.team_acquisition_value)}</span>` : `<span class="note">none in the board's top ${M.C.length}</span>`}</span><span>${num(f) ? `<span class="mono">${f1(f)}</span> by #${M.NEXT_NO}${M.costWord(p) ? ` · ${M.costWord(p)}` : ""}` : `<span class="note">not measured</span>`}</span></div>`; }).join("")}
+    <div class="costkey" style="margin:6px 0 0">The cost of waiting is the best now minus the best left at #${M.NEXT_NO}. It compares positions, not players, and sits beside the board's order as an aid.</div></div>`;
+}
+function stripHTML(c){
+  const list = (filter === "ALL" ? M.C : M.C.filter(x => x.position === filter));
+  return `<div class="sh2"><span class="k">The board · ${M.C.length} names</span><span class="note">click a name to put him in the ledger</span><span class="filt">${["ALL", ...M.POSITIONS].map(p => `<button data-f="${p}" aria-pressed="${p === filter}">${p}</button>`).join("")}</span></div>
+    <div class="list" data-list="board">${list.map(x => { const own = x.position === c.position;
+      const tk = `${own ? "" : M.slotShort(x) + " · "}${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}${own ? ", " + M.cliffTo(x).replace(", in the order the drop was measured", " in measured order") : ""})`;
+      return `<div class="row" data-row data-id="${x.player_id}" role="button" tabindex="0" aria-selected="${x.player_id === c.player_id}"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="nm">${x.name}<small>${x.team} · ${Math.round(x.projected_points)} pts${x.injury_status ? ` · ${M.avail(x)}` : ""}</small></span><span class="tk">${tk}</span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === c.player_id ? "in the ledger" : sgn(x.team_acquisition_value - c.team_acquisition_value)}</small></span><span></span></div>`; }).join("")}</div>`;
+}
+function draw(){
+  const c = M.get(sel) || M.LEADER; sel = c.player_id;
+  document.getElementById("ledger").innerHTML = ledgerHTML(c);
+  document.getElementById("strip").innerHTML = stripHTML(c);
+  requestAnimationFrame(markScrollers);
+  document.getElementById("roster").innerHTML = M.rosterStrip(c, true);
+  document.getElementById("wait").innerHTML = M.waitText();
+  document.getElementById("debate").innerHTML = M.squad(`${c.name} against ${M.comparatorFor(c) ? M.comparatorFor(c).name : "the board"}`);
+}
+function load(key){
+  M = buildModel(key); sel = null; filter = "ALL"; posOpen = false;
+  fillCommon(M);
+  document.getElementById("rail").innerHTML = M.railA();
+  /* the named past is one row of whole boxes: as many as fit, newest nearest the clock */
+  requestAnimationFrame(() => { const now = document.querySelector("#rail .pk.now"), past = document.querySelector("#rail .past"); const one = past && past.querySelector(".pk"); if (one) past.style.height = one.offsetHeight + "px"; });
+  document.getElementById("clkRight").innerHTML = `<span>open: <b>${M.STARTERS.filter(r => !r.p).map(r => r.slot).join(", ") || "none"}</b> · bench ${M.benchFilled} of ${M.benchTotal}</span>`;
+  draw();
+}
+const ui = wireChrome({tag:"v1 · LEDGER", sub:"position layer summoned · pool below · click a name · named past + marked span", hypothesis:`<b>Hypothesis.</b> The owner called Ledger B's delivery the strongest of the eight and its density jarring, so the ledger is cut to four things — <b>who</b> (name, the slot he fills, lit on your lineup), <b>why</b> (his own slot and drop, then two sentences against the board's next name with the two-pick plan computed from value now and what each position leaves at your next turn), <b>what else</b> (the best at each other position and the next at his own, each with <b>its cost</b> against him: now · next turn · plan) — and everything else is a gesture away: the numbers behind him, the position table, rosters, the board. The rail shows named past picks, one marked span for the wait, and your next turn; nothing blank. Any name on the strip can take the ledger.`, onState:load});
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
+  if (e.target.closest("#posBtn")) { posOpen = !posOpen; draw(); return; }
+  const f = e.target.closest("[data-f]"); if (f) { filter = f.dataset.f; draw(); return; }
+  const a = e.target.closest("[data-id]"); if (a && !e.target.closest("button")) { sel = a.dataset.id; draw(); }
+});
+load(ui.key());
+</script></body></html>

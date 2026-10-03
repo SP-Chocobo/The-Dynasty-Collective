@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm — Ledger</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/*__CSS__*/
+/* V1 LEDGER, CUT (rev 2) — who · why · instead (three, each with value-now and the two-turn total) ·
+   if you wait. Roster beside it with the subject's slot lit and the alternatives' slots lettered;
+   the position layer summoned; the rail is named past picks plus ONE marked span for the wait. */
+.body{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:310px 1fr}
+.side{border-right:1px solid var(--line);padding:10px 14px 8px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.side .rest{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-top:1px solid var(--line);padding-top:6px;margin-top:4px}
+.side .list{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin;padding-right:2px}
+.side .crow{grid-template-columns:24px auto 1fr auto;gap:7px;height:29px}
+.side .crow .n{font-size:.88rem}
+.side .cap{font-size:.75rem;color:var(--dim);padding:3px 4px 0;border-top:1px solid var(--line);margin-top:2px}
+.main{min-width:0;min-height:0;display:flex;flex-direction:column;padding:10px 16px;gap:8px;overflow:hidden}
+.ledger{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);flex:0 0 auto}
+.lhead{display:flex;align-items:center;gap:14px;padding:10px 16px 9px;border-bottom:1px solid var(--line)}
+.lhead .nm{font-family:var(--f-d);font-size:1.6rem;font-weight:700;line-height:1.1}
+.lhead .sub{font-size:.84rem;color:var(--muted);display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap}
+.lhead .sub i{font-style:normal;color:var(--amber-b)}
+.lhead .valbox{margin-left:auto;text-align:right}
+.lhead .valbox .big{font-family:var(--f-m);font-size:1.55rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.lhead .valbox .u{display:block;font-size:.75rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.lhead .valbox .d{font-family:var(--f-m);font-size:.78rem;white-space:nowrap}
+.lhead .acts{display:flex;gap:8px;margin-left:14px;align-items:center}
+.ledger .disp{margin:0 16px 8px}
+.cols{display:grid;grid-template-columns:1fr 1.3fr 1fr}
+.col{padding:10px 16px 12px;border-right:1px solid var(--line);min-width:0}
+.col:last-child{border-right:none}
+.col .ch{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.col.why .ch{color:var(--emerald-b)} .col.or .ch{color:var(--gold-b)} .col.wait .ch{color:var(--sky-b)}
+.line{display:flex;align-items:baseline;gap:8px;font-size:.9rem;padding:4px 0;border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:none}
+.line .l{color:var(--muted);flex:1 1 auto;min-width:0}
+.line .v{font-family:var(--f-m);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.line .v.txt{font-family:var(--f-s);font-weight:500}
+.ledger .say{font-size:.92rem;margin-top:6px;display:block}
+.ledger .say.pos{color:var(--muted);border-top:1px solid var(--line);padding-top:6px;margin-top:8px}
+.ledger .say.pos b{color:var(--ink)}
+.alt{display:grid;grid-template-columns:22px 26px auto 1fr auto;gap:8px;align-items:center;padding:5px 0 3px;cursor:pointer}
+.alt:hover .n{color:var(--gold-b)}
+.alt .ab{font-family:var(--f-m);font-size:.75rem;font-weight:700;border-radius:2px;padding:0 .25rem;color:#15120b;text-align:center}
+.alt .n{font-size:.94rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.alt .n small{color:var(--dim);font-weight:400;font-size:.75rem;margin-left:5px}
+.alt .v{font-family:var(--f-m);font-size:.9rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.altcost{padding:1px 0 7px 56px;border-bottom:1px solid var(--line);display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;font-size:.84rem}
+.altcost:last-of-type{border-bottom:none}
+.or .how{font-size:.78rem;color:var(--dim);margin-top:9px;line-height:1.45}
+.behind{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.9rem;border-bottom:1px solid var(--line)}
+.behind .n{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.behind .n.none{white-space:normal;line-height:1.35}
+.behind .n:hover{color:var(--gold-b)}
+.behind .g{font-family:var(--f-m);font-size:.78rem;color:var(--muted)}
+.behind .m{font-size:.75rem;color:var(--cliff-b);border:1px solid var(--cliff);border-radius:2px;padding:0 .3rem;white-space:nowrap}
+.behind .m.low{color:var(--muted);border-color:var(--line-2)}
+.foot{display:flex;align-items:center;gap:14px;padding:7px 16px;border-top:1px solid var(--line);font-size:.8rem;color:var(--dim);flex-wrap:wrap}
+.foot details.work{margin:0} .foot details.work[open]{flex-basis:100%}
+.foot .toggle{font-size:.8rem;padding:.2rem .5rem}
+.foot .fw{min-width:0;line-height:1.4;margin-left:auto}
+.posrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;flex:0 0 auto}
+.door{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:7px 11px;min-width:0}
+.door.lit{border-color:var(--gold)}
+.door .top{display:flex;align-items:baseline;gap:8px}
+.door .top .pos{font-family:var(--f-d);font-weight:700;font-size:1rem}
+.door .top .st{font-size:.78rem;color:var(--muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.door .top .st.need{color:var(--amber-b)}
+.door .bst{display:flex;align-items:center;gap:7px;margin-top:4px;font-size:.86rem;cursor:pointer}
+.door .bst:hover{color:var(--gold-b)}
+.door .bst .v{margin-left:auto;font-family:var(--f-m);font-weight:700}
+.door .cost{font-size:.78rem;color:var(--muted);margin-top:3px} .door .cost b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+@media (max-width:1000px){.screen{height:auto;max-height:none}.body{grid-template-columns:1fr}.side{border-right:none;border-bottom:1px solid var(--line)}.cols{grid-template-columns:1fr}.col{border-right:none;border-bottom:1px solid var(--line)}.side .list{overflow:visible}.posrow{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<div class="app">
+  <div class="topbar"><span class="vt">V1 · Ledger, cut</span><span class="hyp"><b>Hypothesis:</b> the round-1 Ledger's delivery survives being cut to who · why · three alternatives, each with its cost · if you wait — and the position layer only needs to appear when asked.</span><span class="states" id="states"></span></div>
+  <div class="screen" id="screen">
+    <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+      <span class="r">
+        <button class="btn" data-sheet="shRosters" aria-expanded="false">▤ All rosters</button>
+        <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+        <span id="billedBtn"></span>
+        <button class="btn" title="Settings — freeze timer, providers">⚙</button></span></header>
+    <div class="railwrap">
+      <div class="railtop"><span class="k">Pick rail</span><span class="n" id="railn"></span>
+        <span class="railnav"><button id="rP">◂ my last</button><button id="rC">⟲ now</button></span></div>
+      <div class="railscroll" id="railscroll"><div class="rail" id="rail"></div></div>
+      <div class="railctx" id="railctx" hidden></div>
+    </div>
+    <div class="clk"><span class="timer"><small>league clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="wait" id="wait"></span><span class="tags" id="tags"></span></div>
+    <div class="body">
+      <aside class="side">
+        <div class="ph">Your roster <span class="note" style="letter-spacing:0;text-transform:none;font-weight:400;margin-left:auto">1·2·3 = the alternatives</span></div><div id="roster"></div>
+        <div class="rest"><div class="ph">The board <span class="note" style="letter-spacing:0;text-transform:none;font-weight:400">· gap vs him</span><span class="filter" id="filter" style="margin-left:auto"></span></div><div class="list" id="alts"></div><div class="cap" id="cap"></div></div>
+      </aside>
+      <main class="main">
+        <div id="ledger"></div>
+        <div class="posrow" id="posrow" hidden></div>
+      </main>
+    </div>
+    <div class="scrim"></div>
+    <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">All rosters</span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+    <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">the rail, grown</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+    <section class="sheet right" id="shSquad" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="squad"></div></section>
+  </div>
+</div>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+let sel = null, filter = "ALL", posOpen = false, railSel = null;
+const ALTC = ["var(--sky-b)", "var(--emerald-b)", "var(--violet-b)"];
+const root = document.getElementById("screen"); wireSheets(root);
+document.getElementById("billedBtn").innerHTML = billed("shSquad", "⚑ Debate");
+const rs = document.getElementById("railscroll"), nav = wireRail(rs);
+document.getElementById("rC").onclick = () => nav.recentre(); document.getElementById("rP").onclick = nav.toPrev;
+function drawRailCtx(){ const box = document.getElementById("railctx"); root.querySelectorAll(".pk[aria-selected]").forEach(x => x.removeAttribute("aria-selected"));
+  if (railSel) { box.hidden = false; box.innerHTML = pickDetailHTML(railSel); const el = root.querySelector(`.pk[data-no="${railSel}"]`); if (el) el.setAttribute("aria-selected", "true"); } else box.hidden = true; }
+
+function ledgerHTML(c, alts){
+  const k = M.CTX[c.id];
+  const facts = playerFacts(c.id).filter(f => f.kind !== "rank" || k.rank > 0).slice(0, 3);
+  const pf = positionFacts(c.pos).find(f => f.kind === "wait");
+  const behind = M.atPosBpa(c.pos), bi = behind.findIndex(x => x.id === c.id), after = behind.slice(bi + 1, bi + 3);
+  return `<div class="ledger">
+    <div class="lhead">${face(c, "lg")}
+      <span style="min-width:0"><span class="nm">${c.name}</span><div class="sub">${pill(c.pos)}<span>${c.team}</span><span>·</span><span>${Math.round(c.proj)} season pts</span>${c.injury ? `<span>·</span><i>${c.injury}</i>` : ""}<span>·</span>${readChip(c)}</div></span>
+      <span class="valbox"><span class="big">${f1(c.tav)}</span><span class="u">value to your roster</span>${marginHTML(c)}</span>
+      <span class="acts">${copyBtn(c)}</span></div>
+    ${displacementHTML(c)}
+    <div class="cols">
+      <div class="col why"><div class="ch">Why</div>
+        <div class="line"><span class="l">Lineup slot</span><span class="v txt">${k.slot.label}</span></div>
+        ${facts.map(f => `<p class="say">${f.text}</p>`).join("")}
+        ${pf ? `<p class="say pos"><span class="k">At ${c.pos}</span> · ${pf.text}</p>` : ""}
+      </div>
+      <div class="col or"><div class="ch">Instead — the next names, at what cost</div>
+        ${alts.map((a, i) => `<div class="alt" data-id="${a.id}" role="button" tabindex="0"><span class="ab" style="background:${ALTC[i]}">${i + 1}</span>${face(a, "sm")}${pill(a.pos)}<span class="n">${short(a.name)}<small>${a.pos === c.pos ? "next " + a.pos : "best " + a.pos} · ${Math.round(a.proj)} pts</small></span><span class="v">${f1(a.tav)}</span></div>
+          <div class="altcost">${edgeHTML(c.id, a.id)}</div>`).join("")}
+        <p class="how">Now = value to your roster, the board's order. Over two turns = him now plus the other position at #${M.NEXT}; hover for the two totals.</p>
+      </div>
+      <div class="col wait"><div class="ch">If you wait</div>
+        <div class="k" style="margin-bottom:2px">behind him at ${c.pos}, in the order the drop was measured</div>
+        ${after.length ? after.map((b, i) => `<div class="behind">${pill(b.pos)}<span class="n" data-id="${b.id}" role="button" tabindex="0">${short(b.name)}</span>${i === 0 && k.cliffNext && k.cliffNext.id === b.id ? `<span class="m ${k.tier === "HIGH" ? "" : "low"}">${TIER_SHORT[k.tier]} · ${f1(k.gap)}</span>` : ""}<span class="g" title="value to your roster">${f1(b.tav)}</span></div>`).join("")
+                       : `<div class="behind"><span class="n none" style="color:var(--dim);cursor:default">nobody behind him in that order${k.ahead.length ? ` — ${k.ahead.map(a => short(a.name)).join(", ")} ${k.ahead.length === 1 ? "is" : "are"} ahead of him there` : ""}</span></div>`}
+        <div class="line" style="margin-top:6px"><span class="l">Picks before you choose again</span><span class="v">${M.S.intervening}</span></div>
+        <div class="line"><span class="l">Chance he is still there at #${M.NEXT}</span><span class="v">${withheldChip()}</span></div>
+        <div class="line"><span class="l">Rival named for him</span><span class="v txt">${c.denialTeam ? `Roster ${c.denialTeam} · ${takeText(c.takeProb)}` : "none"}</span></div>
+      </div>
+    </div>
+    <div class="foot">${workingHTML(c)}${billed("shSquad", "◉ Insight")}<button class="btn toggle" id="posToggle" aria-pressed="${posOpen}">Which position?</button><span class="fw">${sinceText()}</span></div>
+  </div>`;
+}
+function posRowHTML(c){
+  return LINEUP_ORDER.map(pos => { const P = M.PCTX[pos], b = P.best;
+    return `<div class="door ${pos === c.pos ? "lit" : ""}"><div class="top"><span class="pos" style="color:${pc(pos)}">${pos}</span><span class="st ${P.slot.kind === "vacant" ? "need" : ""}">${P.slot.kind === "vacant" ? "slot open — none held" : P.slot.kind === "second" ? `${P.slot.slot} open beside ${short(P.slot.beside.name)}` : P.slot.kind === "flex" ? "FLEX route only" : "starters set · bench"}</span></div>
+      ${b ? `<div class="bst" data-id="${b.id}" role="button" tabindex="0">${face(b, "sm")}<span>${short(b.name)}</span><span class="v">${f1(b.tav)}</span></div>` : `<div class="bst empty" style="cursor:default">none among the ${M.C.length} rated here</div>`}
+      <div class="cost">${num(P.forfeit) ? `wait: about <b>${f1(P.forfeit)}</b> less at #${M.NEXT} (≈ ${f1(P.nextTurn)})` : "no wait cost measured on this board"}</div></div>`; }).join("");
+}
+function render(reset){
+  if (reset || !M.byId[sel]) { sel = M.C[0].id; filter = "ALL"; railSel = null;
+    document.getElementById("rail").innerHTML = railSpanHTML(); drawRailCtx();
+    document.getElementById("railn").innerHTML = `${M.PREVP ? `your last turn #${M.PREVP.no} → ` : ""}now <b>#${M.ONCLOCK}</b> → your next <b>#${M.NEXT}</b>`;
+    requestAnimationFrame(() => nav.recentre(true)); }
+  const c = M.byId[sel], alts = alternatives(c.id, 3);
+  document.getElementById("ledger").innerHTML = ledgerHTML(c, alts);
+  document.getElementById("roster").innerHTML = rosterListHTML([{c}, ...alts.map((a, i) => ({c: a, tag: String(i + 1), color: ALTC[i]}))]);
+  document.getElementById("filter").innerHTML = ["ALL", ...LINEUP_ORDER].map(p => `<button data-p="${p}" aria-pressed="${p === filter}" ${p !== "ALL" && !M.PRESENT.includes(p) ? "disabled" : ""}>${p}</button>`).join("");
+  const list = filter === "ALL" ? M.C : M.C.filter(x => x.pos === filter);
+  document.getElementById("alts").innerHTML = list.map(x => crowHTML(x, c, {lean: true})).join("") || `<p class="empty" style="padding:8px 4px">No ${POS[filter]} among the ${M.C.length} this board rates here.</p>`;
+  document.getElementById("posrow").hidden = !posOpen; document.getElementById("posrow").innerHTML = posOpen ? posRowHTML(c) : "";
+  document.getElementById("squad").innerHTML = squadHTML(c.name + " against this board");
+  const row = root.querySelector(`.crow[aria-selected="true"]`); if (row) row.scrollIntoView({block: "nearest"});
+  document.getElementById("cap").textContent = listCaption(snapList(document.getElementById("alts"), 1), list.length);
+}
+root.addEventListener("click", e => {
+  const cp = e.target.closest("[data-copy]"); if (cp) { copyName(cp.dataset.copy, cp); return; }
+  if (e.target.closest("[data-sheet]")) return;
+  if (e.target.closest("#posToggle")) { posOpen = !posOpen; render(); return; }
+  const a = e.target.closest("[data-id]"); if (a) { sel = a.dataset.id; render(); return; }
+  const p = e.target.closest("[data-p]"); if (p && !p.disabled) { filter = p.dataset.p; render(); return; }
+  if (e.target.closest("[data-clear]")) { railSel = null; drawRailCtx(); return; }
+  const pk = e.target.closest(".pk.past"); if (pk) { const n = Number(pk.dataset.no); railSel = railSel === n ? null : n; drawRailCtx(); }
+});
+root.addEventListener("keydown", e => { const t = e.target.closest && e.target.closest("[data-id],.pk.past"); if (t && (e.key === "Enter" || e.key === " ") && !e.target.closest("button")) { e.preventDefault(); t.click(); } });
+boot();
+</script>
+</body></html>
