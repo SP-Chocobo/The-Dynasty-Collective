@@ -247,6 +247,10 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 [data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 
+/* a row the engine could not price the way it priced the rest of the board */
+.arm{font-family:var(--f-m);font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--amber-b);border:1px solid var(--amber);border-radius:2px;padding:0 .28rem;margin-left:5px;white-space:nowrap}
+
 /* v3 — TRIO. Position layer SUMMONED (group the board by position) · pool BESIDE · within-position
    by A/B/C SLOTS (click a name to put him in slot C; click a lit letter to remove) · rail = BOXES
    BOTH DIRECTIONS, slim seat tokens between, now → next in frame with the named past to the left. */
@@ -390,6 +394,17 @@ function buildModel(key, fmt){
   M.AFTER_ME = M.BETWEEN[0] || null;
   M.LAST = M.KNOWN[M.KNOWN.length - 1] || null;
   M.coord = p => `${p.rnd}.${pad(p.inr)}`;
+
+/* #187 absence contract, on the card: a row with no season projection must not render as a
+   measured zero. Math.round(null) is 0, and "0 pts" beside a name is a claim the engine never
+   made. #204's companion rule applies too: a row priced on a different arm from the rest of the
+   board is not commensurable with it, and the board was saying nothing at all about that. */
+M.PRICED_ARM = "points_vor_sleeper_season_scored";
+M.hasPts = c => c.projected_points !== null && c.projected_points !== undefined;
+M.pts = (c, word) => M.hasPts(c) ? `${Math.round(c.projected_points)} ${word || "pts"}` : "no season projection";
+M.offArm = c => !!c.bpa_source && c.bpa_source !== M.PRICED_ARM;
+M.armMark = c => M.offArm(c) ? ` <span class="arm" data-tip="Priced on a different arm\nThis name carries no season projection, so the engine fell back to ${c.bpa_source.replace(/_/g, " ")}. Every other name here is priced on ${M.PRICED_ARM.replace(/_/g, " ")}. The two are not the same instrument, so this row's value is not strictly comparable with the rest of the list.">off-arm</span>` : "";
+
   M.nextLabel = M.NEXT_PICK ? M.coord(M.NEXT_PICK) : "—";
   const SEAT_TURNS = {}; M.BETWEEN.forEach(p => SEAT_TURNS[p.seat] = (SEAT_TURNS[p.seat] || 0) + 1);
   M.seatsText = () => {
@@ -610,7 +625,7 @@ function buildModel(key, fmt){
       {l:`Best ${POS[c.position]} left at your next turn`, v:num(c.position_next_turn_value) ? f1(c.position_next_turn_value) : "—", b:`what the position is expected to offer at #${M.NEXT_NO} if you wait on it`, k:num(c.position_next_turn_value) ? "measured" : "unmeasured"},
       {l:`Cost of waiting on ${c.position}`, v:num(c.positional_forfeit) ? f1(c.positional_forfeit) : "—", b:"the best now minus the best left at your next turn — an aid beside the rank, never what ranks", k:num(c.positional_forfeit) ? "measured" : "unmeasured"},
       {l:"Dynasty horizon", v:sgn(c.time_horizon_adj), b:"the age / experience term inside his value", k:"measured"},
-      {l:"Projected season points", v:f1(c.projected_points), b:"season fantasy points under this league's scoring — a different unit from the value rows", k:"measured"},
+      {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring — a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead — a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
       c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not charged against his value — this is not “no risk”", k:"not_charged"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
       {l:"Drop behind him", v:c.positional_cliff ? `${c.positional_cliff.tier} · ${f1(c.positional_cliff.gap)}` : "—", b:`the engine's tier and the raw gap to the next ${POS[c.position]} in the order it was measured (${M.cliffNext(c) ? short(M.cliffNext(c).name) : "a player not on this board"})`, k:"measured"},
       c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? " — a zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
@@ -626,7 +641,7 @@ function buildModel(key, fmt){
     return `<span class="face ${size || ""}" data-pos="${c.position}" style="--pc:${pc(c.position)}" data-tip="${esc(c.name)}">${init}${img}</span>`; };
   M.pill = p => `<span class="pill" style="background:${pc(p)}">${p}</span>`;
   M.copyBtn = c => `<button class="copy" data-copy="${esc(c.name)}" data-tip="Copy the name to carry to Sleeper">⧉ copy name</button>`;
-  M.whoSub = c => `${M.pill(c.position)}<span>${c.team}</span><span>·</span><span>${Math.round(c.projected_points)} projected pts</span><span>·</span><span>${M.slotPhrase(c)}</span>${c.injury_status ? `<span>·</span>${M.avail(c)}` : ""}`;
+  M.whoSub = c => `${M.pill(c.position)}<span>${c.team}</span><span>·</span><span>${M.pts(c, "projected pts")}</span>${M.armMark(c)}<span>·</span><span>${M.slotPhrase(c)}</span>${c.injury_status ? `<span>·</span>${M.avail(c)}` : ""}`;
 
   /* ---- rails ---- */
   const box = (p, cls, line2) => `<div class="pk ${cls}" data-tip="${esc(p.no <= S.consumed ? `${p.name} · ${p.pos} · ${p.team}` : `${M.coord(p)} · ${p.mine ? "you" : "Roster " + p.seat}`)}">

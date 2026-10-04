@@ -247,6 +247,10 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 [data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 
+/* a row the engine could not price the way it priced the rest of the board */
+.arm{font-family:var(--f-m);font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--amber-b);border:1px solid var(--amber);border-radius:2px;padding:0 .28rem;margin-left:5px;white-space:nowrap}
+
 /* v4 — DOORS, multi-format. All position doors exist (derived from the league's own slots and the
    engine's flex map); 4–5 surface in the board's value order; the window slides; a count line says
    so; the drawer carries the position's context when filtered; demand carries its basis verbatim. */
@@ -428,6 +432,17 @@ function buildModel(key, fmt){
   M.AFTER_ME = M.BETWEEN[0] || null;
   M.LAST = M.KNOWN[M.KNOWN.length - 1] || null;
   M.coord = p => `${p.rnd}.${pad(p.inr)}`;
+
+/* #187 absence contract, on the card: a row with no season projection must not render as a
+   measured zero. Math.round(null) is 0, and "0 pts" beside a name is a claim the engine never
+   made. #204's companion rule applies too: a row priced on a different arm from the rest of the
+   board is not commensurable with it, and the board was saying nothing at all about that. */
+M.PRICED_ARM = "points_vor_sleeper_season_scored";
+M.hasPts = c => c.projected_points !== null && c.projected_points !== undefined;
+M.pts = (c, word) => M.hasPts(c) ? `${Math.round(c.projected_points)} ${word || "pts"}` : "no season projection";
+M.offArm = c => !!c.bpa_source && c.bpa_source !== M.PRICED_ARM;
+M.armMark = c => M.offArm(c) ? ` <span class="arm" data-tip="Priced on a different arm\nThis name carries no season projection, so the engine fell back to ${c.bpa_source.replace(/_/g, " ")}. Every other name here is priced on ${M.PRICED_ARM.replace(/_/g, " ")}. The two are not the same instrument, so this row's value is not strictly comparable with the rest of the list.">off-arm</span>` : "";
+
   M.nextLabel = M.NEXT_PICK ? M.coord(M.NEXT_PICK) : "—";
   const SEAT_TURNS = {}; M.BETWEEN.forEach(p => SEAT_TURNS[p.seat] = (SEAT_TURNS[p.seat] || 0) + 1);
   M.seatsText = () => {
@@ -648,7 +663,7 @@ function buildModel(key, fmt){
       {l:`Best ${POS[c.position]} left at your next turn`, v:num(c.position_next_turn_value) ? f1(c.position_next_turn_value) : "—", b:`what the position is expected to offer at #${M.NEXT_NO} if you wait on it`, k:num(c.position_next_turn_value) ? "measured" : "unmeasured"},
       {l:`Cost of waiting on ${c.position}`, v:num(c.positional_forfeit) ? f1(c.positional_forfeit) : "—", b:"the best now minus the best left at your next turn — an aid beside the rank, never what ranks", k:num(c.positional_forfeit) ? "measured" : "unmeasured"},
       {l:"Dynasty horizon", v:sgn(c.time_horizon_adj), b:"the age / experience term inside his value", k:"measured"},
-      {l:"Projected season points", v:f1(c.projected_points), b:"season fantasy points under this league's scoring — a different unit from the value rows", k:"measured"},
+      {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring — a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead — a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
       c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not charged against his value — this is not “no risk”", k:"not_charged"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
       {l:"Drop behind him", v:c.positional_cliff ? `${c.positional_cliff.tier} · ${f1(c.positional_cliff.gap)}` : "—", b:`the engine's tier and the raw gap to the next ${POS[c.position]} in the order it was measured (${M.cliffNext(c) ? short(M.cliffNext(c).name) : "a player not on this board"})`, k:"measured"},
       c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? " — a zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
@@ -664,7 +679,7 @@ function buildModel(key, fmt){
     return `<span class="face ${size || ""}" data-pos="${c.position}" style="--pc:${pc(c.position)}" data-tip="${esc(c.name)}">${init}${img}</span>`; };
   M.pill = p => `<span class="pill" style="background:${pc(p)}">${p}</span>`;
   M.copyBtn = c => `<button class="copy" data-copy="${esc(c.name)}" data-tip="Copy the name to carry to Sleeper">⧉ copy name</button>`;
-  M.whoSub = c => `${M.pill(c.position)}<span>${c.team}</span><span>·</span><span>${Math.round(c.projected_points)} projected pts</span><span>·</span><span>${M.slotPhrase(c)}</span>${c.injury_status ? `<span>·</span>${M.avail(c)}` : ""}`;
+  M.whoSub = c => `${M.pill(c.position)}<span>${c.team}</span><span>·</span><span>${M.pts(c, "projected pts")}</span>${M.armMark(c)}<span>·</span><span>${M.slotPhrase(c)}</span>${c.injury_status ? `<span>·</span>${M.avail(c)}` : ""}`;
 
   /* ---- rails ---- */
   const box = (p, cls, line2) => `<div class="pk ${cls}" data-tip="${esc(p.no <= S.consumed ? `${p.name} · ${p.pos} · ${p.team}` : `${M.coord(p)} · ${p.mine ? "you" : "Roster " + p.seat}`)}">
@@ -875,7 +890,7 @@ function doorHTML(d, idx){
   else {
     const L = M.LEADER, first = best.player_id === L.player_id;
     const vs = first ? (M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>") : `Instead of ${M.short(L.name)}:`;
-    body = `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${Math.round(best.projected_points)} pts · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
+    body = `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
       <div class="valrow"><span class="big">${f1(best.team_acquisition_value)}</span><span class="u">to your roster now</span></div>${M.displaced(best) ? M.dispShort(best) : ""}
       <p class="vs">${vs}${first ? "" : ` <span class="cost2" style="display:inline-flex">${M.costHTML(best, L)}</span>`}</p>
       ${list.length > 1 ? `<div class="then"><span class="k">then at ${d.key}</span>${list.slice(1, 4).map((c, i) => `<div class="tr"><span class="rk">${i + 2}</span><span class="nm">${c.name}${d.compound ? ` <span class="note">${c.position}</span>` : ""}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${list.length > 4 ? `<div class="tr"><span></span><span class="note">+ ${list.length - 4} more in the drawer</span></div>` : ""}</div>` : `<div class="then"><span class="k">the only ${d.compound ? "defender" : POS[d.key]} on the board</span></div>`}</div>
@@ -905,7 +920,7 @@ function callHTML(){
   const b = list[0], same = k => list.every(c => k(c) === k(list[0]));
   const slotSame = same(c => M.slotShort(c)), horSame = same(c => f1(c.time_horizon_adj)), depthSame = same(c => M.depth(c).n || "");
   const card = (c, i) => { const dp = M.depth(c); return `<div class="card" data-row>
-    <div class="who">${M.face(c, "sm")}<span style="min-width:0"><div class="nm">${i + 1} · ${c.name}</div><div class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${Math.round(c.projected_points)} pts</div></span><span style="margin-left:auto;display:flex;gap:6px;flex:0 0 auto">${M.copyBtn(c)}<button class="btn sm" data-work="${c.player_id}">numbers</button></span></div>
+    <div class="who">${M.face(c, "sm")}<span style="min-width:0"><div class="nm">${i + 1} · ${c.name}</div><div class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</div></span><span style="margin-left:auto;display:flex;gap:6px;flex:0 0 auto">${M.copyBtn(c)}<button class="btn sm" data-work="${c.player_id}">numbers</button></span></div>
     <div class="valrow"><span class="big" style="font-size:1.05rem">${f1(c.team_acquisition_value)}</span><span class="note">${i ? `${sgn(c.team_acquisition_value - b.team_acquisition_value)} vs ${M.short(b.name)}` : "the door's best"}</span></div>
     <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li><b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}</li>${horSame ? "" : `<li>dynasty horizon <span class="mono">${sgn(c.time_horizon_adj)}</span></li>`}${c.injury_status ? `<li>${M.avail(c)}</li>` : ""}${depthSame ? "" : `<li>depth insurance ${dp.n ? `<span class="mono">${dp.n}</span> <span class="note">measured</span>` : `<span class="note">${dp.why}</span>`}</li>`}</ul></div>`; };
   const shared = [slotSame ? `${M.slotShort(b)}` : null, M.displaced(b) && same(c => f1(c.displacement_adj)) ? `<span style="color:var(--amber-b)">${f1(b.displacement_adj)} filled-slot displacement (measured)</span>` : null, list.length > 1 && horSame ? `horizon ${sgn(b.time_horizon_adj)}` : null, list.length > 1 && depthSame && M.depth(b).n ? `depth insurance ${M.depth(b).n}` : null].filter(Boolean);
@@ -924,7 +939,7 @@ function drawerHTML(){
       <p>${doorBest(d) ? M.waitLine(pos) : `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}, so nothing to wait on is measured.`}${pos === M.DEAREST && doorBest(d) && M.POS_BY_COST.length > 1 ? ` <span class="dear">The dearest position to wait on right now.</span>` : ""}</p>
       ${doorBest(d) ? tankCap(pos).replace("tankcap", "note") : ""}</div></div>`; }
   document.getElementById("allCtx").innerHTML = ctx;
-  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="nm">${x.name}<small>${x.team} · ${Math.round(x.projected_points)} pts</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
+  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="nm">${x.name}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
   document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · click one to open his door`;
 }
 function flipDraw(){
