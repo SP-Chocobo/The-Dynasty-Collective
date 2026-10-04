@@ -131,7 +131,7 @@ small{font-size:max(12px,.85em)}
 .sheet .sc{overflow:auto;padding:13px 15px;flex:1 1 auto;min-height:0}
 .sheet.left{left:0;top:0;bottom:0;width:min(620px,86%);transform:translateX(-101%)}
 .sheet.right{right:0;top:0;bottom:0;width:min(520px,60%);transform:translateX(101%)}
-.sheet.right.drawer{width:min(900px,68%)}
+.sheet.right.drawer{width:min(980px,72%)}
 .sheet.top{left:0;right:0;top:0;bottom:0;transform:translateY(-101%)}
 .sheet.bottom{left:0;right:0;bottom:0;height:min(420px,70%);transform:translateY(101%)}
 .sheet[data-open="1"]{transform:none}
