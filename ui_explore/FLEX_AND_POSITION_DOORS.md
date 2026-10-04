@@ -90,3 +90,54 @@ Add `K` and `DEF` to at least one roster so the late-round door slide can be ren
 argued about.
 
 Every one of these questions stops being a debate the moment those exist.
+
+---
+
+## 7. The maximal fixture, measured
+
+Owner's request: every position type at once, so each ambiguity fires in the same board.
+
+`QB RB RB WR WR TE FLEX SUPER_FLEX DL LB DB K DEF IDP_FLEX` -- 14 starters, 9 distinct positions,
+three overlapping flex labels, and named IDP slots sitting alongside an `IDP_FLEX`.
+
+The engine takes it without complaint. All nine positions are in `FANTASY_POSITIONS`
+(`DB DEF DL K LB QB RB TE WR`) and it knows five flex labels
+(`FLEX IDP_FLEX REC_FLEX SUPER_FLEX WRRB_FLEX`). Each resolves:
+
+```
+FLEX        -> TE .333  WR .333  RB .333
+SUPER_FLEX  -> QB .850  TE .050  WR .050  RB .050
+IDP_FLEX    -> DL .333  LB .333  DB .333
+```
+
+Resulting per-team demand, which is what nine doors would be built on:
+
+```
+WR  2.383    RB  2.383    QB  1.850    TE  1.383    DL 1.333
+DB  1.333    LB  1.333    K   1.000    DEF 1.000
+                                   total 14.000 vs 14 slots
+```
+
+Conservation holds exactly -- no leakage across three overlapping flex types.
+
+**The finding that matters for the doors: demand does not separate these positions.** The whole
+spread is 1.00 to 2.38, and `TE 1.383` sits a rounding error from `LB 1.333`. On demand alone a
+tight end and a linebacker are the same object. What actually separates them is pool depth -- TE's
+is thin, LB's is enormous -- which is the scarcity axis, and precisely why `§14` excludes IDP from
+the gauge: an LB tank would never visibly drain.
+
+So the maximal case confirms the design rather than straining it. **Doors must rank on the board's
+value order, not on demand**, which is what they already do; and the tank is what makes the
+distinction legible, which is why it is offense-only. Nine doors with five surfaced is a sound
+model at full roster complexity.
+
+**And a second instance of the assumed-share defect, in the format the owner actually plays.**
+`SUPER_FLEX_QB_SHARE = 0.85` is hand-set, and `starter_slot_counts`' own docstring concedes the
+measurement "returns QB 1.00 of every SUPER_FLEX at every league size from 8 to 16". So superflex
+QB demand renders as **1.850 where the measurement says 2.000** -- the same shape as TE's 1.0
+against an optimal 1.5, smaller in size, and live on his own league's board.
+
+| # | format | roster_positions | what it settles |
+|---|---|---|---|
+| 5 | **maximal** | `QB RB RB WR WR TE FLEX SUPER_FLEX DL LB DB K DEF IDP_FLEX` | nine doors at once; three flex types overlapping; named IDP beside `IDP_FLEX`; K/DEF slide |
+
