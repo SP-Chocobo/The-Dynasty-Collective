@@ -12,8 +12,18 @@ import sys, glob, pathlib, json
 from playwright.sync_api import sync_playwright
 HERE = pathlib.Path(__file__).resolve().parent
 SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
-files = sys.argv[1:] or (sorted(str(p) for p in HERE.glob("v*.html") if "v3_" not in p.name) + [str(HERE / "v4_doors.html?notank")])
+import json
+FORMATS = list(json.loads(pathlib.Path("/home/user/The-Dynasty-Collective/ui_explore/fixture.json").read_text()).keys())
 STATES = ["mid", "early", "late"]
+# (file, query, [formats]) — v4 runs every format; the others are control-only
+JOBS = []
+if sys.argv[1:]:
+    JOBS = [(f, "", FORMATS if "v4_" in f else [FORMATS[0]]) for f in sys.argv[1:]]
+else:
+    for f in sorted(str(p) for p in HERE.glob("v*.html") if "v3_" not in p.name):
+        JOBS.append((f, "", FORMATS if "v4_" in f else [FORMATS[0]]))
+    JOBS.append((str(HERE / "v4_doors.html"), "alldoors", ["HEAVY_IDP", "12T_ppr_K_DEF"]))
+    JOBS.append((str(HERE / "v4_doors.html"), "notank", [FORMATS[0]]))
 PROBE = """() => {
   const r = {};
   r.pageScroll = [document.documentElement.scrollWidth > innerWidth + 1, document.documentElement.scrollHeight > innerHeight + 1];
@@ -52,16 +62,17 @@ with sync_playwright() as p:
     exe = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome") + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell"))[0]
     b = p.chromium.launch(executable_path=exe)
     bad = 0
-    for f in files:
+    for f, q, fmts in JOBS:
+      for fmt in fmts:
         for st in STATES:
             pg = b.new_page(viewport={"width": 1440, "height": 900})
             errs = []
             pg.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))
             pg.on("console", lambda m: errs.append(m.type + ": " + m.text) if m.type in ("error", "warning") else None)
-            fpath, _, q = f.partition("?")
-            pg.goto("file://" + str(pathlib.Path(fpath).resolve()) + ("?" + q if q else "") + "#" + st, wait_until="load")
+            fpath = f; isv4 = "v4_" in f
+            pg.goto("file://" + str(pathlib.Path(fpath).resolve()) + ("?" + q if q else "") + "#" + ((fmt + "/") if isv4 else "") + st, wait_until="load")
             pg.wait_for_timeout(600)
-            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}_{st}.png"
+            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}{'_' + fmt if isv4 else ''}_{st}.png"
             pg.screenshot(path=str(out), full_page=False)
             r = pg.evaluate(PROBE)
             problems = []
@@ -76,7 +87,7 @@ with sync_playwright() as p:
             if r["minFont"][0] < 12: problems.append("minFont " + json.dumps(r["minFont"]))
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
             bad += bool(problems)
-            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{st}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
+            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if isv4 else 'ctrl'}/{st}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
             for pr in problems: print("     ", pr)
             pg.close()
     b.close()

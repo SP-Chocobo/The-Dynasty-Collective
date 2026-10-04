@@ -112,7 +112,7 @@ function trioHTML(pos){
 function laneHTML(pos){
   const list = M.atPos(pos), lead = list[0], held = M.heldAt(pos), isFocus = pos === focus;
   const open = M.openAt(pos), want = M.STARTERS.filter(r => r.slot === pos).length;
-  const st = held.length === 0 ? `none held — slot open` : open ? `${held.map(p => M.short(p.name)).join(", ")} · ${open} slot open` : `${held.map(p => M.short(p.name)).join(", ")}${M.openFlex && FLEXIBLE.has(pos) ? " · next → FLEX" : " · next → bench"}`;
+  const st = held.length === 0 ? `none held — slot open` : open ? `${held.map(p => M.short(p.name)).join(", ")} · ${open} slot open` : `${held.map(p => M.short(p.name)).join(", ")}${M.openFlexFor(pos) ? " · next → " + M.openFlexFor(pos).slot : " · next → bench"}`;
   const f = M.FORFEIT[pos];
   const cost = num(f) ? `best left at #${M.NEXT_NO} if you wait: <b>${f1(M.NEXTV[pos])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(pos) ? ` <span class="w">· ${M.costWord(pos)}</span>` : ""}` : `<span class="w">no next-turn value measured — no ${POS[pos]} in the board's top ${M.C.length}</span>`;
   let body;

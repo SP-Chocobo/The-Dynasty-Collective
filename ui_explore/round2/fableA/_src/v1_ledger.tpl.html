@@ -77,7 +77,7 @@ function ledgerHTML(c){
 function posGrid(c){
   return `<div class="posgrid"><div class="ph"><span></span><span>your slot</span><span>best left · value</span><span>cost of waiting on it</span></div>
     ${M.LINEUP_ORDER.map(p => { const b = M.best(p), f = M.FORFEIT[p], held = M.heldAt(p);
-      const slot = M.openAt(p) > 0 ? (held.length ? `${p}${held.length + 1} open` : `<b>${p} open — none held</b>`) : (M.openFlex && FLEXIBLE.has(p) ? "FLEX only" : "bench");
+      const slot = M.openAt(p) > 0 ? (held.length ? `${p}${held.length + 1} open` : `<b>${p} open — none held</b>`) : (M.openFlexFor(p) ? M.openFlexFor(p).slot + " only" : "bench");
       return `<div class="pr"><span class="pos" style="color:${pc(p)}">${p}</span><span>${slot}</span><span>${b ? `<b>${M.short(b.name)}</b> <span class="mono">${f1(b.team_acquisition_value)}</span>` : `<span class="note">none in the board's top ${M.C.length}</span>`}</span><span>${num(f) ? `<span class="mono">${f1(f)}</span> by #${M.NEXT_NO}${M.costWord(p) ? ` · ${M.costWord(p)}` : ""}` : `<span class="note">not measured</span>`}</span></div>`; }).join("")}
     <div class="costkey" style="margin:6px 0 0">The cost of waiting is the best now minus the best left at #${M.NEXT_NO}. It compares positions, not players, and sits beside the board's order as an aid.</div></div>`;
 }

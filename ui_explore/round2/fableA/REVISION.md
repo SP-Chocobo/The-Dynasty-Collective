@@ -188,3 +188,38 @@ captioned, counts match, 12.0px minimum; interaction pass (door open, re-sort ac
 sheets, rosters sheet, numbers) error-free; rendered-text scan of all 12 touched states: no
 "priced"/"UV"/field names/"tie"/"disagree". All 27 PNGs in `_shots/` looked at after the final
 build. v3 untouched.
+
+---
+
+# Multi-format extension (fixture.json, DESIGN_RECORD §7)
+
+All on disk and built; probed over 5 formats × 3 states (+ `?alldoors` for HEAVY_IDP and K_DEF,
+`?notank` for control): no errors, no page scroll, no text overflow, no occlusion, 12px floor.
+
+- **e. `FLEXIBLE` killed.** Eligibility is the engine's `player_universe.FLEX_SLOT_POSITIONS`,
+  read from the engine at build time (`_src/_vocab.json` is only a cache) and applied against the
+  fixture's own `slots`: `slotRoster`, `slotFor`, `openFlexFor`, the rosters sheet routes. QB
+  routes to SUPER_FLEX in `12T_ppr_SF`; IDP to `IDP_FLEX` when a format has one.
+- **a. Nine-door window.** Doors derive from the league's slots: named positions, then each flex
+  slot's eligible positions (TE always its own; flex-only DL/LB/DB compound into one "Defenders"
+  door — data-driven, so LIGHT_IDP lands as data). Ordered by the board's value order; **5
+  surface** (fewer when the league has fewer); the open door is always in the window. HEAVY_IDP
+  late: 7 doors, RB·WR·DB·DL·LB shown, TE #9 and QB #10 named as hidden. K_DEF late: K and DEF
+  are doors 1 and 2. `?alldoors` forces every door visible (wrapped, scrollable) for judging.
+- **b. Count line.** "7 positions this league can start · showing 5, in the board's order — the
+  window slides as the board changes · not shown: TE #9 · QB #10" (chips open the door) · board
+  size · drawer pointer.
+- **d. `slot_share_basis` rendered** on every door and in the drawer context, with the engine's
+  label verbatim (`draft_room.SLOT_SHARE_LABELS`): "demand 1.85/team · assumed even split". QB
+  1.850 in superflex and TE 1.667 render as produced; nothing corrected.
+- **f. Position anchoring.** Each door carries its position pill in the title and a 4px stripe in
+  the position's colour on its left edge (under the tank where one exists); hidden-door chips use
+  the same colour. New tokens for DL/LB/DB/IDP.
+- **c. Drawer context.** Filter per door; when filtered, a context block above the list: what you
+  hold, demand + basis, the wait sentence, dearest-to-wait flag, tank (offense, where sampled),
+  and the door's place in the board's order with whether it is on the main surface.
+- **Tank:** offense-only, no compound door, and only where the engine sampled the format's pool
+  (control only; the other four say "pool: no engine sample for this format").
+- **Refused:** correcting demand values; a user toggle for grouping; a per-door hide affordance.
+- **Seen and shipped:** at HEAVY_IDP and K_DEF (5 doors, 13-slot lineups) the open door's cards
+  sit below the fold with the scroll affordance; the doors themselves are complete.

@@ -1,0 +1,61 @@
+{
+ "FLEX_SLOT_POSITIONS": {
+  "FLEX": [
+   "RB",
+   "TE",
+   "WR"
+  ],
+  "SUPER_FLEX": [
+   "QB",
+   "RB",
+   "TE",
+   "WR"
+  ],
+  "WRRB_FLEX": [
+   "RB",
+   "WR"
+  ],
+  "REC_FLEX": [
+   "TE",
+   "WR"
+  ],
+  "IDP_FLEX": [
+   "DB",
+   "DL",
+   "LB"
+  ]
+ },
+ "FANTASY_POSITIONS": [
+  "DB",
+  "DEF",
+  "DL",
+  "K",
+  "LB",
+  "QB",
+  "RB",
+  "TE",
+  "WR"
+ ],
+ "EXPOSURE": {
+  "measured": "measured against your own lineup",
+  "roster_partially_priced": "not charged -- a player you drafted could not be priced, so a spare who may cover this position was left out of the solve and the exposure it measured is NOT the 0.0 shown here",
+  "vacant": "not measured -- you hold no starter at this position to insure",
+  "no_surplus": "measured, but it is a starter's whole value rather than a backup's job -- some starter here has no cover, so this is not a depth price and is not charged as one",
+  "not_applicable": "not measured -- this position has no startable slot in this league"
+ },
+ "DISPLACEMENT": {
+  "measured": "measured against your own starters",
+  "roster_partially_priced": "a floor -- a player you drafted could not be priced, so a slot he may hold reads as open",
+  "not_applicable": "not measured -- this position has no startable slot in this league",
+  "no_points_anchor": "not measured -- this position has no replacement level in projected points here"
+ },
+ "DENIAL": {
+  "no_intervening_rival": "no rival had a pick before your next turn",
+  "no_rival_priced": "no rival's board could price him, so nothing was measured",
+  "measured": "measured against every rival board that could price him"
+ },
+ "SLOT_SHARE": {
+  "fielded_flex_share": "measured from this pool",
+  "even_flex_split": "assumed even split"
+ }
+}

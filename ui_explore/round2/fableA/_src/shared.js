@@ -20,53 +20,45 @@
      number it explains.
    ============================================================================================ */
 const STATE_KEYS = ["early", "mid", "late"];
+const FORMAT_KEYS = Object.keys(DATA.formats);
+const VOCAB = DATA.vocab;
+/* flex eligibility comes from the engine's own map (player_universe.FLEX_SLOT_POSITIONS), never restated here */
+const FLEX_MAP = VOCAB.FLEX_SLOT_POSITIONS;
+const isFlexSlot = slot => Object.prototype.hasOwnProperty.call(FLEX_MAP, slot);
+const eligible = (slot, pos) => slot === pos || (isFlexSlot(slot) && FLEX_MAP[slot].includes(pos));
+const OFFENSE = new Set(["QB", "RB", "WR", "TE"]);                       // §14: tanks are offense-only, permanently
+const IDP = new Set(["DL", "LB", "DB"]);
 const num = x => typeof x === "number" && isFinite(x);
 const f1  = x => num(x) ? (Math.abs(x) < 0.05 ? "0.0" : x.toFixed(1).replace("-", "−")) : "—";
 const sgn = x => num(x) ? (Math.abs(x) < 0.05 ? "±0.0" : (x > 0 ? "+" : "−") + Math.abs(x).toFixed(1)) : "—";
 const pad = n => String(n).padStart(2, "0");
 const pc  = p => `var(--${(p || "k").toLowerCase()})`;
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-const POS  = {QB:"quarterback", RB:"running back", WR:"receiver", TE:"tight end", K:"kicker", DEF:"defense"};
-const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight ends", K:"kickers", DEF:"defenses"};
+const POS  = {QB:"quarterback", RB:"running back", WR:"receiver", TE:"tight end", K:"kicker", DEF:"defense", DL:"defensive lineman", LB:"linebacker", DB:"defensive back", IDP:"defender"};
+const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
 const TIER_WORD = {HIGH:"a sharp drop", MEDIUM:"a moderate drop", LOW:"no cliff"};
-const FLEXIBLE = new Set(["RB", "WR", "TE"]);
-const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
-/* engine labels, verbatim (lineup_optimizer.EXPOSURE_BASIS_LABELS / DISPLACEMENT_BASIS_LABELS,
-   draft_strategy.DENIAL_BASIS_LABELS). The client never paraphrases a basis. */
-const DEPTH_LABEL = {
-  measured: "measured against your own lineup",
-  roster_partial: "not charged -- a player you drafted could not be priced, so a spare who may cover this position was left out of the solve and the exposure it measured is NOT the 0.0 shown here",
-  vacant: "not measured -- you hold no starter at this position to insure",
-  no_surplus: "measured, but it is a starter's whole value rather than a backup's job -- some starter here has no cover, so this is not a depth price and is not charged as one",
-  not_applicable: "not measured -- this position has no startable slot in this league",
-};
-const DISP_LABEL = {
-  measured: "measured against your own starters",
-  roster_partial: "a floor -- a player you drafted could not be priced, so a slot he may hold reads as open",
-  not_applicable: "not measured -- this position has no startable slot in this league",
-  no_points_anchor: "not measured -- this position has no replacement level in projected points here",
-};
-const DENIAL_LABEL = {
-  no_intervening_rival: "no rival had a pick before your next turn",
-  no_rival_priced: "no rival's board could price him, so nothing was measured",
-  measured: "measured against every rival board that could price him",
-};
+const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
+const ordinal = n => n + (["th","st","nd","rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]);
+/* engine labels, verbatim, read from the engine at build time (lineup_optimizer.EXPOSURE_BASIS_LABELS,
+   DISPLACEMENT_BASIS_LABELS, draft_strategy.DENIAL_BASIS_LABELS, draft_room.SLOT_SHARE_LABELS). */
+const DEPTH_LABEL = VOCAB.EXPOSURE, DISP_LABEL = VOCAB.DISPLACEMENT, DENIAL_LABEL = VOCAB.DENIAL, SHARE_LABEL = VOCAB.SLOT_SHARE;
 
 /* roster: greedy fill of the league's slots from a list of picks */
 function slotRoster(picks, slots){
   const left = picks.slice();
   return slots.map(slot => {
     let i = left.findIndex(p => p.pos === slot);
-    if (i < 0 && slot === "FLEX") i = left.findIndex(p => FLEXIBLE.has(p.pos));
+    if (i < 0 && isFlexSlot(slot)) i = left.findIndex(p => eligible(slot, p.pos));
     if (i < 0 && slot === "BN")   i = left.length ? 0 : -1;
     return {slot, p: i < 0 ? null : left.splice(i, 1)[0]};
   });
 }
 
-function buildModel(key){
-  const S = DATA.states[key], RAIL = DATA.rail;
+function buildModel(key, fmt){
+  fmt = fmt || FORMAT_KEYS[0];
+  const F = DATA.formats[fmt], S = F.states[key], RAIL = F.rail;
   const C = S.candidates.slice().sort((a, b) => a.rank - b.rank);
-  const M = {key, S, C, RAIL};
+  const M = {key, fmt, F, S, C, RAIL};
 
   /* ---- turn geometry, read off the rail (pick_order) ---- */
   M.NOW_NO = S.consumed + 1;
@@ -110,27 +102,27 @@ function buildModel(key){
   M.STARTERS = M.ROSTER.filter(r => r.slot !== "BN");
   M.heldAt = pos => S.myPicks.filter(p => p.pos === pos);
   M.openAt = pos => M.STARTERS.filter(r => r.slot === pos && !r.p).length;
-  M.openFlex = M.STARTERS.filter(r => r.slot === "FLEX" && !r.p).length;
+  M.openFlexFor = pos => M.STARTERS.find(r => !r.p && r.slot !== pos && isFlexSlot(r.slot) && eligible(r.slot, pos)) || null;
   M.startersFull = M.STARTERS.every(r => r.p);
   M.benchFilled = M.ROSTER.filter(r => r.slot === "BN" && r.p).length;
   M.benchTotal = M.ROSTER.filter(r => r.slot === "BN").length;
   M.slotFor = c => {
     const held = M.heldAt(c.position), want = M.STARTERS.filter(r => r.slot === c.position).length;
     if (M.openAt(c.position) > 0) return held.length === 0 ? {kind:"vacant", slot:want > 1 ? c.position + "1" : c.position} : {kind:"second", slot:c.position + (held.length + 1), beside:held[0]};
-    if (M.openFlex > 0 && FLEXIBLE.has(c.position)) return {kind:"flex", slot:"FLEX", holder:held[0] || null};
+    const fx = M.openFlexFor(c.position); if (fx) return {kind:"flex", slot:fx.slot, holder:held[0] || null};
     return {kind:"bench", slot:"BN", holder:held[0] || null};
   };
   M.slotPhrase = c => { const s = M.slotFor(c);
     if (s.kind === "vacant") return `starts at <b>${s.slot}</b> — you hold no ${POS[c.position]}`;
     if (s.kind === "second") return `starts at <b>${s.slot}</b> beside ${short(s.beside.name)}`;
-    if (s.kind === "flex")   return `starts at <b>FLEX</b>${s.holder ? ` — ${short(s.holder.name)} holds ${c.position}` : ""}`;
+    if (s.kind === "flex")   return `starts at <b>${s.slot}</b>${s.holder ? ` — ${short(s.holder.name)} holds ${c.position}` : ""}`;
     return `<b>bench</b> — your starting slots are full`; };
   M.slotShort = c => { const s = M.slotFor(c); return s.kind === "bench" ? "bench" : s.slot; };
   M.rosterStrip = (c, vertical) => {
     let lit = false; const s = c ? M.slotFor(c) : null;
     const cells = M.STARTERS.map(r => {
-      const fills = c && !lit && !r.p && s.kind !== "bench" && (r.slot === c.position || (s.kind === "flex" && r.slot === "FLEX")); if (fills) lit = true;
-      const need = !r.p && r.slot !== "FLEX" && M.heldAt(r.slot).length === 0;
+      const fills = c && !lit && !r.p && s.kind !== "bench" && r.slot === s.slot; if (fills) lit = true;
+      const need = !r.p && !isFlexSlot(r.slot) && M.heldAt(r.slot).length === 0;
       const label = r.p ? short(r.p.name) : fills ? "← " + short(c.name) : "open";
       if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${r.slot}</span><span class="p" title="${r.p ? esc(r.p.name) : ""}">${label}</span></div>`;
       return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}" title="${r.p ? esc(r.p.name) : ""}"><span class="s">${r.slot}</span>${label}</span>`;
@@ -140,8 +132,21 @@ function buildModel(key){
   };
 
   /* ---- positions, board order (tav) and measured order (bpa) ---- */
-  M.LINEUP_ORDER = [...new Set(S.slots.filter(s => s !== "BN" && s !== "FLEX"))];
+  /* every position the league's own slots can start: named slots, plus each flex slot's eligible
+     positions (from the engine's map). Doors: a named position is its own door; a flex-only offensive
+     position is its own door (TE always, FLEX_AND_POSITION_DOORS §2); flex-only IDP compounds into one. */
+  const NAMED = [...new Set(S.slots.filter(sl => sl !== "BN" && !isFlexSlot(sl)))];
+  const FLEX_ONLY = [...new Set(S.slots.filter(isFlexSlot).flatMap(sl => FLEX_MAP[sl]))].filter(p => !NAMED.includes(p));
+  M.LINEUP_ORDER = NAMED.concat(FLEX_ONLY.filter(p => !IDP.has(p))).concat(FLEX_ONLY.filter(p => IDP.has(p)));
+  M.DOORS = NAMED.map(p => ({key:p, label:POS[p], positions:[p], compound:false}))
+    .concat(FLEX_ONLY.filter(p => !IDP.has(p)).map(p => ({key:p, label:POS[p], positions:[p], compound:false})));
+  const idpFlexOnly = FLEX_ONLY.filter(p => IDP.has(p));
+  if (idpFlexOnly.length) M.DOORS.push({key:"IDP", label:"defense (" + idpFlexOnly.join(" / ") + ")", positions:idpFlexOnly, compound:true});
+  M.doorOf = pos => M.DOORS.find(d => d.positions.includes(pos)) || null;
   M.POSITIONS = M.LINEUP_ORDER.filter(p => C.some(c => c.position === p));
+  M.DEMAND = S.demand || {}; M.SHARE_BASIS = S.slot_share_basis || null;
+  M.shareLabel = () => M.SHARE_BASIS ? (SHARE_LABEL[M.SHARE_BASIS] || M.SHARE_BASIS) : "basis not reported";
+  M.demandText = pos => num(M.DEMAND[pos]) ? `demand <b>${M.DEMAND[pos].toFixed(2)}</b>/team · <i class="basis">${M.shareLabel()}</i>` : "";
   M.atPos = pos => C.filter(c => c.position === pos);
   M.atPosBpa = pos => M.atPos(pos).slice().sort((a, b) => b.bpa - a.bpa);
   M.best = pos => M.atPos(pos)[0] || null;
@@ -156,6 +161,9 @@ function buildModel(key){
   M.LEADER = C[0];
   M.get = id => C.find(c => c.player_id === id);
   M.VALUE_ORDER_POS = []; C.forEach(c => { if (!M.VALUE_ORDER_POS.includes(c.position)) M.VALUE_ORDER_POS.push(c.position); });
+  /* doors in the board's value order (a door's rank is its best name's rank); doors with no name last, in lineup order */
+  M.doorBest = d => C.find(c => d.positions.includes(c.position)) || null;
+  M.DOOR_ORDER = M.DOORS.filter(d => M.doorBest(d)).sort((a, b) => M.doorBest(a).rank - M.doorBest(b).rank).concat(M.DOORS.filter(d => !M.doorBest(d)));
 
   /* ---- the cliff ---- */
   M.cliffNext = c => {
@@ -176,18 +184,19 @@ function buildModel(key){
   M.dispSentence = c => { if (!M.displaced(c)) return "";
     const rest = c.team_acquisition_value - c.displacement_adj;
     return `<span class="disp"><b>${f1(c.displacement_adj)}</b> of this is the displacement of a starting slot you have already filled — measured against your own starters. The player himself: <b>${f1(rest)}</b>.</span>`; };
-  M.dispShort = c => M.displaced(c) ? `<span class="disp">${f1(c.displacement_adj)} of it is filled-slot displacement (measured); himself ${f1(c.team_acquisition_value - c.displacement_adj)}</span>` : "";
+  M.dispShort = c => M.displaced(c) ? `<span class="disp">${f1(c.displacement_adj)} is filled-slot displacement (measured) · himself ${f1(c.team_acquisition_value - c.displacement_adj)}</span>` : "";
   /* availability: the engine carried the designation and did not charge it */
   /* §14 tank, per state: the engine's latest sample at or before this pick, shown as of that pick
      (the rail reproduces the engine's drain only through #80, so the client never drains it). No bands. */
-  const G = DATA.gauge || null;
-  M.tank = pos => { if (!G || !num(G.opening[pos])) return null;
+  const G = (DATA.gauge && DATA.gauge[fmt]) || null;
+  M.tankable = pos => OFFENSE.has(pos);
+  M.tank = pos => { if (!G || !num(G.opening[pos]) || !OFFENSE.has(pos)) return null;
     const base = G.history.filter(h => h.at <= S.consumed).sort((a, b) => b.at - a.at)[0];
     const N = G.opening[pos], left = base.left[pos], starters = G.starterRank[pos];
     const startersLeft = Math.max(0, left - (N - starters));
     return {N, left, starters, startersLeft, pctLeft: Math.round(100 * left / N), sampleAt: base.at, coverage: G.coverage[pos], rows: G.rowsOnBoard[pos]}; };
   /* waiting on a position: who you get, when, what it costs — in that order */
-  M.waitLine = pos => num(M.FORFEIT[pos]) ? `If you wait, the best ${POS[pos]} left at <b>#${M.NEXT_NO}</b> is worth about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${POS[pos]}s on this board.`;
+  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> is worth about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
   M.DEAREST = M.POS_BY_COST[0] || null;
   M.avail = c => c.injury_status ? `<i class="inj">${c.injury_status}</i> <span class="note">not charged</span>` : "";
 
@@ -324,9 +333,10 @@ function buildModel(key){
     return seats.map(seat => { const me = seat === S.seat, picks = me ? S.myPicks : M.KNOWN.filter(p => p.seat === seat);
       const r = slotRoster(picks, S.slots), starters = r.filter(x => x.slot !== "BN"), bench = r.filter(x => x.slot === "BN" && x.p).length;
       const turns = M.BETWEEN.filter(p => p.seat === seat).map(p => "#" + p.no);
-      const route = focusPos ? (starters.some(x => x.slot === focusPos && !x.p) ? `${focusPos} slot open` : (FLEXIBLE.has(focusPos) && starters.some(x => x.slot === "FLEX" && !x.p)) ? `FLEX only for a ${focusPos}` : `no slot for a ${focusPos}`) : "";
+      const fx = focusPos ? starters.find(x => !x.p && x.slot !== focusPos && isFlexSlot(x.slot) && eligible(x.slot, focusPos)) : null;
+      const route = focusPos ? (starters.some(x => x.slot === focusPos && !x.p) ? `${focusPos} slot open` : fx ? `${fx.slot} only for a ${focusPos}` : `no slot for a ${focusPos}`) : "";
       return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
-        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && (x.slot === focusPos || (x.slot === "FLEX" && FLEXIBLE.has(focusPos))) ? "fits" : ""}"><i>${x.slot}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
+        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && eligible(x.slot, focusPos) ? "fits" : ""}"><i>${x.slot}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
         <div class="ln note">bench ${bench} of ${M.benchTotal}${route ? ` · <b>${route}</b>` : ""}</div></div>`; }).join("");
   };
   M.boardGrid = () => {
@@ -359,9 +369,13 @@ function markScrollers(){
 }
 function wireChrome(opts){
   const room = document.querySelector(".room");
-  let key = (location.hash || "").replace("#", ""); if (!STATE_KEYS.includes(key)) key = "mid";
+  /* the URL hash is <format>/<state>; a bare <state> means the control format */
+  const h = (location.hash || "").replace("#", "").split("/");
+  let fmt = FORMAT_KEYS.includes(h[0]) ? h[0] : FORMAT_KEYS[0], key = STATE_KEYS.includes(h[h.length - 1]) ? h[h.length - 1] : "mid";
+  if (!opts.formats) fmt = FORMAT_KEYS[0];
   const bar = document.getElementById("rev");
-  bar.innerHTML = `<span class="tag">${opts.tag}</span><span>${opts.sub}</span><span class="states">${STATE_KEYS.map(k => `<button data-state="${k}" aria-pressed="${k === key}">${k}</button>`).join("")}</span><button class="hyp" id="hypBtn" aria-expanded="false">ⓘ hypothesis</button>`;
+  bar.innerHTML = `<span class="tag">${opts.tag}</span><span>${opts.sub}</span>${opts.formats ? `<span class="states fmts">${FORMAT_KEYS.map(k => `<button data-fmt="${k}" aria-pressed="${k === fmt}">${k}</button>`).join("")}</span>` : ""}<span class="states">${STATE_KEYS.map(k => `<button data-state="${k}" aria-pressed="${k === key}">${k}</button>`).join("")}</span><button class="hyp" id="hypBtn" aria-expanded="false">ⓘ hypothesis</button>`;
+  const setHash = () => history.replaceState(null, "", "#" + (opts.formats ? fmt + "/" : "") + key);
   const hyp = document.getElementById("hyp"); hyp.innerHTML = opts.hypothesis; hyp.hidden = true;
   document.getElementById("hypBtn").onclick = e => { hyp.hidden = !hyp.hidden; e.currentTarget.setAttribute("aria-expanded", String(!hyp.hidden)); requestAnimationFrame(markScrollers); };
   const closeAll = () => { room.querySelectorAll(".sheet").forEach(s => { s.dataset.open = "0"; s.setAttribute("aria-hidden", "true"); });
@@ -369,7 +383,8 @@ function wireChrome(opts){
   const open = id => { const s = document.getElementById(id); if (!s) return; const was = s.dataset.open === "1"; closeAll(); if (was) return;
     s.dataset.open = "1"; s.setAttribute("aria-hidden", "false"); room.querySelectorAll(`[data-sheet="${id}"]`).forEach(b => b.setAttribute("aria-expanded", "true")); const sc = room.querySelector(".scrim"); if (sc) sc.dataset.open = "1"; requestAnimationFrame(markScrollers); };
   document.addEventListener("click", e => {
-    const st = e.target.closest("[data-state]"); if (st) { key = st.dataset.state; bar.querySelectorAll("[data-state]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.state === key))); closeAll(); history.replaceState(null, "", "#" + key); opts.onState(key); return; }
+    const st = e.target.closest("[data-state]"); if (st) { key = st.dataset.state; bar.querySelectorAll("[data-state]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.state === key))); closeAll(); setHash(); opts.onState(key, fmt); return; }
+    const fb = e.target.closest("[data-fmt]"); if (fb) { fmt = fb.dataset.fmt; bar.querySelectorAll("[data-fmt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fmt === fmt))); closeAll(); setHash(); opts.onState(key, fmt); return; }
     const b = e.target.closest("[data-sheet]"); if (b) { open(b.dataset.sheet); return; }
     if (e.target.closest("[data-close]") || e.target.classList.contains("scrim")) { closeAll(); return; }
     const cp = e.target.closest("[data-copy]"); if (cp) { try { navigator.clipboard && navigator.clipboard.writeText(cp.dataset.copy); } catch (_) {} const t = cp.textContent; cp.textContent = "✓ copied"; setTimeout(() => { cp.textContent = t; }, 1200); }
@@ -378,11 +393,11 @@ function wireChrome(opts){
     const t = e.target.closest && e.target.closest("[role=button]"); if (t && (e.key === "Enter" || e.key === " ") && !e.target.closest("button")) { e.preventDefault(); t.click(); } });
   document.addEventListener("scroll", e => { if (e.target.dataset && e.target.dataset.list !== undefined) markScrollers(); }, true);
   addEventListener("resize", markScrollers);
-  return {open, closeAll, key: () => key};
+  return {open, closeAll, key: () => key, fmt: () => fmt};
 }
 function fillCommon(M){
   const q = id => document.getElementById(id);
-  if (q("lg")) q("lg").innerHTML = `<b>12-team PPR Dynasty</b> · round ${M.S.round} of ${M.S.rounds} · you are Roster ${M.S.seat}`;
+  if (q("lg")) q("lg").innerHTML = `<b>${M.F.teams}-team · ${M.fmt.replace(/_/g, " ")}</b> · round ${M.S.round} of ${M.S.rounds} · you are Roster ${M.S.seat}`;
   if (q("upnow")) q("upnow").textContent = `PICK ${M.S.pick} — YOU ARE UP`;
   if (q("allRosters")) q("allRosters").innerHTML = M.allRosters();
   if (q("dbHost")) q("dbHost").innerHTML = M.boardGrid();

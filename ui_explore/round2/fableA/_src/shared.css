@@ -7,7 +7,7 @@
   --sky:#1466c4; --sky-b:#6fb2f7; --amber:#e07b0a; --amber-b:#f9a828;
   --cliff:#0d9488; --cliff-b:#3ad9c8; --block:#c2410c; --block-b:#f9a05c;
   --pure:#e2d8c3; --tie:#7b7059; --tie-b:#a99d84;
-  --qb:#8f86f0; --rb:#17bfa0; --wr:#4aa8ef; --te:#e8683f; --k:#a09480; --def:#ef7fc0;
+  --qb:#8f86f0; --rb:#17bfa0; --wr:#4aa8ef; --te:#e8683f; --k:#a09480; --def:#ef7fc0; --dl:#ff6b85; --lb:#c9a4f0; --db:#f9a828; --idp:#ef7fc0;
   --f-d:"Cinzel",Georgia,serif; --f-s:"Segoe UI",system-ui,sans-serif;
   --f-m:"JetBrains Mono","DejaVu Sans Mono",monospace; --r:2px; color-scheme:dark;
 }
@@ -29,10 +29,10 @@ small{font-size:max(12px,.85em)}
 .room{height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--surface-2)}
 
 /* review bar — the variant tag, the state switcher, the hypothesis toggle. Not part of the product. */
-.rev{display:flex;align-items:center;gap:12px;padding:6px 16px;background:#0f0d08;border-bottom:1px solid var(--line-2);font-size:.8rem;color:var(--muted);flex:0 0 auto}
+.rev{display:flex;align-items:center;gap:12px;padding:5px 16px;white-space:nowrap;background:#0f0d08;border-bottom:1px solid var(--line-2);font-size:.8rem;color:var(--muted);flex:0 0 auto}
 .rev .tag{font-family:var(--f-m);color:var(--gold-b);font-weight:700;letter-spacing:.06em}
 .rev .states{display:flex;gap:4px;margin-left:8px}
-.rev .states button{font-family:var(--f-m);font-size:.78rem;padding:.14rem .55rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted)}
+.rev .states button{font-family:var(--f-m);font-size:.75rem;padding:.12rem .45rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted)}
 .rev .states button[aria-pressed="true"]{background:var(--gold-b);border-color:var(--gold-b);color:#15120b}
 .rev .hyp{margin-left:auto;border:1px solid var(--line-2);border-radius:var(--r);padding:.14rem .5rem;color:var(--muted)}
 .rev .hyp[aria-expanded="true"]{color:var(--ink);border-color:var(--dim)}
@@ -219,3 +219,6 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .tankcap b{color:var(--muted);font-weight:600}
 .tankcap .gone{color:var(--amber-b)}
 .lineup{display:flex;align-items:center;gap:10px;padding:6px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--surface-2)}
+
+.basis{font-style:normal;color:var(--amber-b)}
+.rev .fmts{margin-left:14px;padding-left:12px;border-left:1px solid var(--line-2)}

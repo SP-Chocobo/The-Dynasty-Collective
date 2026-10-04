@@ -1,35 +1,51 @@
 #!/usr/bin/env python3
-"""Round 2 build: inject states.json (verbatim, minus the withheld values) + the shared layer into
-each template, write v*_<slug>.html beside this file, node --check every script."""
+"""Build: inject the multi-format fixture (verbatim, minus the withheld values), the engine's own
+vocabularies (read from the engine, never restated), the §14 gauge where the engine sampled it, and
+the shared layer into each template; write v*_<slug>.html; node --check every script.
+
+DATA = {formats: {<format>: {slots, teams, rounds, rail, states}}, vocab: {...}, gauge: {<format>: ...}}
+Adding a format (LIGHT_IDP) is data: it lands in fixture.json and appears in the switcher."""
 import json, pathlib, re, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 SRC = HERE / "_src"
-data = json.loads((HERE.parent.parent / "states.json").read_text())
-# Absence discipline at the contract boundary: the payload names a withheld family and still ships
-# its values. The client never receives them, so no variant can leak one.
-for st in data["states"].values():
-    for c in st["candidates"]:
-        for w in st.get("withheld", []):
-            c.pop(w, None)
-# §14 gauge: the engine's own counts (frame.json), bands collapsed to totals — the tank needs only the
-# pool size, the starter line and the history of what is left. Validate the rail-derived drain against
-# every engine sample so the per-state tank is a reproduction of engine data, not an estimate.
+REPO = pathlib.Path("/home/user/The-Dynasty-Collective")
+fixture = json.loads((REPO / "ui_explore" / "fixture.json").read_text())
+for F in fixture.values():
+    for st in F["states"].values():
+        for c in st["candidates"]:
+            for w in st.get("withheld", []):
+                c.pop(w, None)
+
+# ---- the engine's vocabularies, imported from the engine (one home, #126). A cached copy is kept
+#      beside the sources only so the build runs where the engine does not import. ----
+VOCAB_CACHE = SRC / "_vocab.json"
+dump = subprocess.run([sys.executable, "-c", """
+import json, player_universe as pu, lineup_optimizer as lo, draft_room as dr, draft_strategy as ds
+print(json.dumps({"FLEX_SLOT_POSITIONS": {k: sorted(v) for k, v in pu.FLEX_SLOT_POSITIONS.items()},
+  "FANTASY_POSITIONS": sorted(pu.FANTASY_POSITIONS),
+  "EXPOSURE": lo.EXPOSURE_BASIS_LABELS, "DISPLACEMENT": lo.DISPLACEMENT_BASIS_LABELS,
+  "DENIAL": ds.DENIAL_BASIS_LABELS, "SLOT_SHARE": dr.SLOT_SHARE_LABELS}))
+"""], cwd=REPO, capture_output=True, text=True)
+if dump.returncode == 0:
+    vocab = json.loads(dump.stdout.strip().splitlines()[-1]); VOCAB_CACHE.write_text(json.dumps(vocab, indent=1)); print("vocab: read from the engine")
+else:
+    vocab = json.loads(VOCAB_CACHE.read_text()); print("vocab: engine import failed, using the cached copy", dump.stderr[-200:])
+
+# ---- §14 gauge: engine samples (frame.json) for the one format whose rail they belong to ----
 frame = json.loads((HERE.parent.parent / "frame.json").read_text())
-g = frame["gauge"]
-POSN = list(g["opening"].keys())
+g = frame["gauge"]; POSN = list(g["opening"].keys())
 opening = {p: sum(g["opening"][p].values()) for p in POSN}
 history = [{"at": h["at"], "left": {p: sum(h["left"][p].values()) for p in POSN}} for h in g["history"]]
-exact = []
-for h in history:
-    drafted = {p: sum(1 for x in data["rail"] if x["no"] <= h["at"] and x["pos"] == p) for p in POSN}
-    if all(opening[p] - h["left"][p] == drafted[p] for p in POSN): exact.append(h["at"])
-# The rail reproduces the engine's drain only through #80; after that the engine drains for reasons the
-# rail cannot see (unpriced picks, re-sampling). So the tank renders the ENGINE SAMPLE at or before the
-# pick, disclosed as "as of #N", and never drains it by the rail.
-data["gauge"] = {"opening": opening, "starterRank": g["starterRank"], "history": history, "coverage": g["coverage"], "rowsOnBoard": g["rowsOnBoard"]}
-print("gauge: engine samples every 20 picks; the rail reproduces them exactly at", exact, "- tank uses samples only")
-payload = "const DATA=" + json.dumps(data, separators=(",", ":")) + ";"
+gauge = {}
+for fmt, F in fixture.items():
+    exact = [h["at"] for h in history if all(opening[p] - h["left"][p] == sum(1 for x in F["rail"] if x["no"] <= h["at"] and x["pos"] == p) for p in POSN)]
+    if exact[:5] == [0, 20, 40, 60, 80]:
+        gauge[fmt] = {"opening": opening, "starterRank": g["starterRank"], "history": history, "coverage": g["coverage"], "rowsOnBoard": g["rowsOnBoard"]}
+        print(f"gauge: {fmt} rail reproduces the engine samples at {exact} - tank renders samples only")
+print("gauge: no engine sample for", [f for f in fixture if f not in gauge], "- those formats render the tank's absence, never an estimate")
+
+payload = "const DATA=" + json.dumps({"formats": fixture, "vocab": vocab, "gauge": gauge}, separators=(",", ":")) + ";"
 css = (SRC / "shared.css").read_text()
 js = (SRC / "shared.js").read_text()
 ok = True
