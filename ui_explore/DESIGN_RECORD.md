@@ -169,7 +169,7 @@ Outstanding:
 | c | **Drawer carries per-position context when filtered** | otherwise the override surface punishes disagreement |
 | d | **Render `slot_share_basis`** | `FLEX_AND_POSITION_DOORS.md` §3 -- an assumed share must never pass for a measured one, and every board today is assumed |
 | e | **Replace `FLEXIBLE = ["RB","WR","TE"]`** with engine-derived eligibility | wrong in superflex (QB is flex-eligible), wrong for `IDP_FLEX`; `#126` |
-| f | **Position identity anchoring** | reorder churn versus spatial memory |
+| f | **Position identity anchoring** | reorder churn versus spatial memory. **Drawer half DONE:** its filter row was built from `DOOR_ORDER`, the live value order, so the override surface sorted its own controls by the ordering you open it to override, and the button moved every pick. Now `M.DOORS` -- the league's own slot order, which never moves and reads the same way as the lineup strip above it. The doors themselves still reorder; that is the point of them. |
 | g | *(optional, unruled)* Ledger A's reasoning panel as Doors A's depth layer | both occupy the same slot in the information architecture; composition rather than compromise |
 
 ---

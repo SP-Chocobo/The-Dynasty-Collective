@@ -405,6 +405,27 @@ M.pts = (c, word) => M.hasPts(c) ? `${Math.round(c.projected_points)} ${word || 
 M.offArm = c => !!c.bpa_source && c.bpa_source !== M.PRICED_ARM;
 M.armMark = c => M.offArm(c) ? ` <span class="arm" data-tip="Priced on a different arm\nThis name carries no season projection, so the engine fell back to ${c.bpa_source.replace(/_/g, " ")}. Every other name here is priced on ${M.PRICED_ARM.replace(/_/g, " ")}. The two are not the same instrument, so this row's value is not strictly comparable with the rest of the list.">off-arm</span>` : "";
 
+
+/* A compound door's depth list, which cannot be the top N by value.
+   IDP_FLEX is a SHARED slot, and shared_slot_alternatives prices a shared slot at the MAX
+   replacement level over the positions it admits -- so every position but the max one carries a
+   per-position displacement constant (measured in LIGHT_IDP: LB 0.00, DB -32.81, DL -42.99, zero
+   variance within a position). That constant is ~3x the whole within-position merit spread, so
+   ordering by value alone fills a three-position door with one position's names: the Defenders
+   door showed four linebackers, and a defensive back with a HIGHER bpa than the leader sat 21
+   rows down in the drawer. The engine is right -- those are the slot's real alternatives and
+   that is their real cost. What it does not owe the reader is the impression that DL and DB do
+   not exist. So a compound door spends its rows on one name per position it admits, plus the
+   next name at the leader's own, and lets the gap column say what each one costs. */
+M.doorDepth = (d, best, list) => {
+  if (!d.compound) return list.slice(1, 4);
+  const seen = new Set([best.player_id]), out = [];
+  const take = c => { if (c && !seen.has(c.player_id)) { seen.add(c.player_id); out.push(c); } };
+  take(list.find(c => c.position === best.position && !seen.has(c.player_id)));
+  d.positions.forEach(p => { if (p !== best.position) take(list.find(c => c.position === p && !seen.has(c.player_id))); });
+  return out.sort((a, b) => b.team_acquisition_value - a.team_acquisition_value);
+};
+
   M.nextLabel = M.NEXT_PICK ? M.coord(M.NEXT_PICK) : "—";
   const SEAT_TURNS = {}; M.BETWEEN.forEach(p => SEAT_TURNS[p.seat] = (SEAT_TURNS[p.seat] || 0) + 1);
   M.seatsText = () => {

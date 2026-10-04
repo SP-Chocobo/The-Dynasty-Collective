@@ -154,7 +154,10 @@ function holdText(d){
 function doorHTML(d, idx){
   const best = doorBest(d), pos = posOf(d), list = best ? M.C.filter(c => d.positions.includes(c.position)) : [], h = holdText(d);
   const wait = best ? `${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}` : `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}.`;
-  const dem = d.positions.filter(p => num(M.DEMAND[p])).map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
+  const demPs = d.positions.filter(p => num(M.DEMAND[p]));
+  const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
+  const dem = demSame ? `${demPs.join(" · ")} each — ${M.demandText(demPs[0])}`
+    : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
   let body;
   if (!best) body = `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`}</div>`;
   else {
@@ -163,7 +166,8 @@ function doorHTML(d, idx){
     body = `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
       <div class="valrow"><span class="big">${f1(best.team_acquisition_value)}</span><span class="u">to your roster now</span></div>${M.displaced(best) ? M.dispShort(best) : ""}
       <p class="vs">${vs}${first ? "" : ` <span class="cost2" style="display:inline-flex">${M.costHTML(best, L)}</span>`}</p>
-      ${list.length > 1 ? `<div class="then"><span class="k">then at ${d.key}</span>${list.slice(1, 4).map((c, i) => `<div class="tr"><span class="rk">${i + 2}</span><span class="nm">${c.name}${d.compound ? ` <span class="note">${c.position}</span>` : ""}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${list.length > 4 ? `<div class="tr"><span></span><span class="note">+ ${list.length - 4} more in the drawer</span></div>` : ""}</div>` : `<div class="then"><span class="k">the only ${d.compound ? "defender" : POS[d.key]} on the board</span></div>`}</div>
+      ${list.length > 1 ? (() => { const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
+        return `<div class="then"><span class="k">then at ${d.key}${d.compound ? " · best of each" : ""}</span>${dep.map((c, i) => `<div class="tr"><span class="rk">${d.compound ? c.position : i + 2}</span><span class="nm">${c.name}${M.armMark(c)}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${rest > 0 ? `<div class="tr"><span></span><span class="note">+ ${rest} more in the drawer</span></div>` : ""}</div>`; })() : `<div class="then"><span class="k">the only ${d.compound ? "defender" : POS[d.key]} on the board</span></div>`}</div>
       <div class="dact"><span class="note" style="margin-left:0">${d.key === openKey ? "open below — copy and numbers are on the cards" : `click to open ${d.key}`}</span></div>`;
   }
   return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} doors` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
@@ -199,7 +203,7 @@ function callHTML(){
 }
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
 function drawerHTML(){
-  const keys = ["ALL"].concat(M.DOOR_ORDER.map(d => d.key));
+  const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
   document.getElementById("allFilt").innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
   const d = M.DOORS.find(x => x.key === filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
   let ctx = "";
