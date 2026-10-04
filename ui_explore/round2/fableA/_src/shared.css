@@ -82,7 +82,7 @@ small{font-size:max(12px,.85em)}
 /* vertical roster column variant */
 .rcol .slot{display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--line);font-size:.84rem}
 .rcol .slot:last-child{border:none}
-.rcol .slot .s{font-family:var(--f-m);font-size:.75rem;color:var(--dim);width:38px;flex:0 0 auto}
+.rcol .slot .s{font-family:var(--f-m);font-size:.75rem;color:var(--dim);min-width:38px;flex:0 0 auto;white-space:nowrap}
 .rcol .slot .p{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rcol .slot.open .p{color:var(--dim);font-style:italic}
 .rcol .slot.open.need .s,.rcol .slot.open.need .p{color:var(--amber-b);font-style:normal}
@@ -142,7 +142,7 @@ small{font-size:max(12px,.85em)}
 .rcard.soon{border-color:var(--line-2);background:var(--surface)}
 .rcard .sg{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;margin:2px 0 4px}
 .rcard .sl{display:flex;gap:6px;align-items:center;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rcard .sl i{font-style:normal;font-family:var(--f-m);font-size:.75rem;color:var(--dim);width:34px;flex:0 0 auto}
+.rcard .sl i{font-style:normal;font-family:var(--f-m);font-size:.75rem;color:var(--dim);min-width:34px;flex:0 0 auto;white-space:nowrap;margin-right:4px}
 .rcard .sl.open{color:var(--dim);font-style:italic} .rcard .sl.fits{color:var(--amber-b);font-style:normal}
 .rcard .ln b{color:var(--ink)}
 

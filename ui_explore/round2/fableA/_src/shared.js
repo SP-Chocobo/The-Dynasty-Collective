@@ -424,7 +424,7 @@ M.doorDepth = (d, best, list) => {
       return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""} ${M.benchFolded(seat) ? "foldbn" : ""}" data-seat="${seat}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
         <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && eligible(x.slot, focusPos) ? "fits" : ""}"><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
         <div class="sg bn">
-          <button class="sl bh" data-bench="${seat}" aria-expanded="${!M.benchFolded(seat)}"><i>BN</i>${benchP.length} of ${M.benchTotal}<em>${M.benchFolded(seat) ? "▸" : "▾"}</em></button>
+          <button class="sl bh" data-bench="${seat}" aria-expanded="${!M.benchFolded(seat)}" data-tip="${M.benchFolded(seat) ? "Show this roster's bench" : "Hide this roster's bench"}">bench ${benchP.length} of ${M.benchTotal}<em>${M.benchFolded(seat) ? "expand ▸" : "collapse ▾"}</em></button>
           ${benchP.map(x => `<span class="sl bnrow"><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open bnrow"><i>BN</i>${benchOpen} open</span>` : ""}</div>
         ${route ? `<div class="ln note"><b>${route}</b></div>` : ""}</div>`; }).join("");
   };
