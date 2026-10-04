@@ -167,7 +167,7 @@ denies (`#133`).
 
 ## 9. The fixture, which gates everything in §7
 
-Five formats x three states (early / mid / late), same payload shape as `states.json`:
+Six formats x three states (early / mid / late), same payload shape as `states.json`:
 
 | # | format | roster_positions |
 |---|---|---|
@@ -176,6 +176,15 @@ Five formats x three states (early / mid / late), same payload shape as `states.
 | 3 | no TE slot | `QB RB RB WR WR FLEX FLEX FLEX` |
 | 4 | heavy IDP | `QB RB RB WR WR TE FLEX DL DL LB LB DB DB` |
 | 5 | maximal | `QB RB RB WR WR TE FLEX SUPER_FLEX DL LB DB K DEF IDP_FLEX` |
+| 6 | light IDP | `QB RB RB WR WR TE FLEX IDP_FLEX` |
+
+Format 6 is the one case the other five cannot reach: a single `IDP_FLEX` slot with DL, LB and
+DB all live on the board, which is the only shape that exercises the compound-door rule in
+S6. **Its draft sequence is SIMULATED, not recorded.** Formats 1-5 replay a recorded VDS
+`sharp_auto` arm; no such arm exists for this roster, so `sim_light_idp.py` drafted one with
+the engine against itself and `capture_fixture.py` merges it only where no recorded arm exists
+(`setdefault`, never overriding one). A simulated sequence is evidence about the engine's own
+behaviour, not about a draft that happened -- weigh anything read off format 6 accordingly.
 
 Capture discipline is the `engine-measurement` skill's, without exception: run from the repo
 root, `build_players_db_from_capture()` **not** `build_players_db`, season projections with
@@ -194,7 +203,7 @@ reviewer.
 
 Two readings to refuse, both raised in review and both easy to drift into later.
 
-**"The sliding window is validated" -- no.** It is exercised against **five observed shapes**.
+**"The sliding window is validated" -- no.** It is exercised against **six shapes, five of them observed** (see the provenance note in S9: format 6's sequence is simulated).
 `HEAVY_IDP` proves the window can rank a genuinely crowded surface (7 positions on one board) and
 `12T_ppr_K_DEF` proves K/DEF can arrive late rather than squat permanently. Neither tests the
 **compound-vs-split rule**, because that rule turns on `IDP_FLEX`, and `LIGHT_IDP` has no recorded

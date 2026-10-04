@@ -29,7 +29,7 @@ small{font-size:max(12px,.85em)}
 .room{height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--surface-2)}
 
 /* review bar — the variant tag, the state switcher, the hypothesis toggle. Not part of the product. */
-.rev{display:flex;align-items:center;gap:12px;padding:5px 16px;white-space:nowrap;background:#0f0d08;border-bottom:1px solid var(--line-2);font-size:.8rem;color:var(--muted);flex:0 0 auto}
+.rev{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:12px;padding:5px 16px;white-space:nowrap;background:#0f0d08;border-bottom:1px solid var(--line-2);font-size:.8rem;color:var(--muted);flex:0 0 auto}
 .rev .tag{font-family:var(--f-m);color:var(--gold-b);font-weight:700;letter-spacing:.06em}
 .rev .states{display:flex;gap:4px;margin-left:8px}
 .rev .states button{font-family:var(--f-m);font-size:.75rem;padding:.12rem .45rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted)}

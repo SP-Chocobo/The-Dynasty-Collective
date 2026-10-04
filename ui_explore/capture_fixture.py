@@ -15,7 +15,7 @@ _pg = _ilu.module_from_spec(_gs); _gs.loader.exec_module(_pg)
 
 OUT = pathlib.Path("ui_explore/fixture.json")
 VDS = pathlib.Path("evidence/batteries/VDS_2026-10-01_varied_drafting_strategy_dd4ade7.json")
-WANT = ["12T_ppr", "12T_ppr_SF", "HEAVY_IDP", "12T_ppr_K_DEF", "4WR_TE_PREMIUM"]
+WANT = ["12T_ppr", "12T_ppr_SF", "HEAVY_IDP", "12T_ppr_K_DEF", "4WR_TE_PREMIUM", "LIGHT_IDP"]
 
 players_db, _ = rdb.build_players_db_from_capture()
 season = rdb.season_projections_from_capture(); scoring = rdb.scoring_settings_from_capture()
@@ -23,6 +23,11 @@ arms = {a["label"]: a for a in db.league_matrix(scoring)}
 vds = json.loads(VDS.read_text())
 seqs = {(r.get("format"), r.get("strategy")): r.get("pick_sequence")
         for r in vds["results"] if r.get("pick_sequence")}
+SIM = pathlib.Path("ui_explore/_sim_sequences.json")
+if SIM.exists():
+    for label, seq in json.loads(SIM.read_text()).items():
+        seqs.setdefault((label, "sharp_auto"), seq)
+
 pid_of = lambda p: p.get("chosen_player_id") if isinstance(p, dict) else p
 
 def nm(pid):
