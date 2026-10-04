@@ -163,6 +163,11 @@ function buildModel(key, fmt){
   M.VALUE_ORDER_POS = []; C.forEach(c => { if (!M.VALUE_ORDER_POS.includes(c.position)) M.VALUE_ORDER_POS.push(c.position); });
   /* doors in the board's value order (a door's rank is its best name's rank); doors with no name last, in lineup order */
   M.doorBest = d => C.find(c => d.positions.includes(c.position)) || null;
+  /* #30: K and DEF price against a WEEKLY WIRE STREAMER, not a season hold -- a categorically
+     different alternative, so they are held out of the surfaced doors by default. The list is the
+     engine's (STREAMABLE_POSITIONS), never restated here. */
+  M.STREAMABLE = new Set(DATA.vocab.STREAMABLE_POSITIONS || []);
+  M.isStreamDoor = d => d.positions.length > 0 && d.positions.every(p => M.STREAMABLE.has(p));
   M.DOOR_ORDER = M.DOORS.filter(d => M.doorBest(d)).sort((a, b) => M.doorBest(a).rank - M.doorBest(b).rank).concat(M.DOORS.filter(d => !M.doorBest(d)));
 
   /* ---- the cliff ---- */

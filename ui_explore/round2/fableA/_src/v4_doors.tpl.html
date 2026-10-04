@@ -114,7 +114,8 @@
 let M, openKey = null, filt = "ALL";
 const Q = new URLSearchParams(location.search);
 const SHOW_TANK = !Q.has("notank");         // ?notank: the screen without the tank, for comparison
-const ALL_DOORS = Q.has("alldoors");        // ?alldoors: every door forced visible, so the window rule can be judged
+const ALL_DOORS = Q.has("alldoors");
+let STREAM_HIDE = !Q.has("streamers");   // #30: streamed positions held back; ?streamers starts them shown        // ?alldoors: every door forced visible, so the window rule can be judged
 const WINDOW = 5;
 const DOOR_LABEL = {QB:"Quarterback", RB:"Running back", WR:"Receiver", TE:"Tight end", K:"Kicker", DEF:"Defense", DL:"D-line", LB:"Linebacker", DB:"D-back", IDP:"Defenders"};
 const doorLabel = d => DOOR_LABEL[d.key] || d.label;                           // 4–5 surface (DESIGN_RECORD §6); fewer when the league has fewer doors
@@ -122,7 +123,10 @@ const doorBest = d => M.doorBest(d);
 const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[0]; };   // the position the door's numbers come from
 /* the window: the first WINDOW doors in the board's order; the open door is always in it */
 function windowDoors(){
-  const order = M.DOOR_ORDER; if (ALL_DOORS || order.length <= WINDOW) return order;
+  const order = (STREAM_HIDE && !ALL_DOORS)
+    ? M.DOOR_ORDER.filter(d => !M.isStreamDoor(d) || d.key === openKey)
+    : M.DOOR_ORDER;
+  if (ALL_DOORS || order.length <= WINDOW) return order;
   const w = order.slice(0, WINDOW); const open = order.find(d => d.key === openKey);
   if (open && !w.includes(open)) w[WINDOW - 1] = open;
   return w;
@@ -162,9 +166,12 @@ function doorHTML(d, idx){
   return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" title="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" title="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} doors` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
 }
 function countHTML(w){
-  const all = M.DOOR_ORDER, hidden = all.filter(d => !w.includes(d));
+  const all = M.DOOR_ORDER;
+  const held = (STREAM_HIDE && !ALL_DOORS) ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
+  const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
   return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length ? " — the window slides as the board changes" : ""}</span>
     ${hidden.length ? `<span class="chips">not shown: ${hidden.map(d => `<span class="chip" data-open="${d.key}" title="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d.key) + 1)} door` : " —"}</span>`).join("")}</span>` : ""}
+    ${held.length ? `<span class="chips held">${held.length} held back: ${held.map(d => `<span class="chip" data-open="${d.key}" title="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}</span>`).join("")} <small>streamed off the wire each week, not held all season</small> <a href="#" data-streamtoggle>show them</a></span>` : (STREAM_HIDE ? "" : `<span class="chips held"><a href="#" data-streamtoggle>hold streamed positions back</a></span>`)}
     <span class="cnt note"><b>the board: ${M.C.length} names</b> · lit slot: where the open door's best would start · every name, any position: the drawer ≣${ALL_DOORS ? " · all doors forced visible (?alldoors)" : ""}</span>`;
 }
 function callHTML(){
@@ -228,6 +235,8 @@ const ui = wireChrome({formats:true, tag:"v4 · DOORS", sub:"build target · 4�
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
   const f = e.target.closest("[data-f]"); if (f) { filt = f.dataset.f; drawerHTML(); requestAnimationFrame(markScrollers); return; }
+  const st = e.target.closest("[data-streamtoggle]");
+  if (st) { e.preventDefault(); STREAM_HIDE = !STREAM_HIDE; draw(); return; }
   const o = e.target.closest("[data-open]"); if (o) { if (M.DOORS.some(x => x.key === o.dataset.open)) { openKey = o.dataset.open; draw(); } ui.closeAll(); return; }
   if (e.target.closest("button") || e.target.closest(".sheet")) return;
   const d = e.target.closest("[data-door]"); if (d && d.dataset.door !== openKey) { openKey = d.dataset.door; draw(); }

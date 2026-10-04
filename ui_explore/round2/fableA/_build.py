@@ -22,7 +22,8 @@ for F in fixture.values():
 VOCAB_CACHE = SRC / "_vocab.json"
 dump = subprocess.run([sys.executable, "-c", """
 import json, player_universe as pu, lineup_optimizer as lo, draft_room as dr, draft_strategy as ds
-print(json.dumps({"FLEX_SLOT_POSITIONS": {k: sorted(v) for k, v in pu.FLEX_SLOT_POSITIONS.items()},
+print(json.dumps({"STREAMABLE_POSITIONS": list(dr.STREAMABLE_POSITIONS),
+  "FLEX_SLOT_POSITIONS": {k: sorted(v) for k, v in pu.FLEX_SLOT_POSITIONS.items()},
   "FANTASY_POSITIONS": sorted(pu.FANTASY_POSITIONS),
   "EXPOSURE": lo.EXPOSURE_BASIS_LABELS, "DISPLACEMENT": lo.DISPLACEMENT_BASIS_LABELS,
   "DENIAL": ds.DENIAL_BASIS_LABELS, "SLOT_SHARE": dr.SLOT_SHARE_LABELS}))
@@ -32,18 +33,30 @@ if dump.returncode == 0:
 else:
     vocab = json.loads(VOCAB_CACHE.read_text()); print("vocab: engine import failed, using the cached copy", dump.stderr[-200:])
 
-# ---- §14 gauge: engine samples (frame.json) for the one format whose rail they belong to ----
-frame = json.loads((HERE.parent.parent / "frame.json").read_text())
-g = frame["gauge"]; POSN = list(g["opening"].keys())
-opening = {p: sum(g["opening"][p].values()) for p in POSN}
-history = [{"at": h["at"], "left": {p: sum(h["left"][p].values()) for p in POSN}} for h in g["history"]]
+# ---- §14 gauge, per format, from each format's OWN opening board ----
+# The bar is DERIVED (`projected_points - bpa`), so it never needed a borrowed sample: see
+# ui_explore/capture_fixture.py, which calls evidence/mode_boundary/pool_gauge.py -- one home for
+# the derivation (#126). History is the real measurements only: the opening count, then each
+# captured state's surviving count at its own pick. Nothing between them is interpolated.
 gauge = {}
 for fmt, F in fixture.items():
-    exact = [h["at"] for h in history if all(opening[p] - h["left"][p] == sum(1 for x in F["rail"] if x["no"] <= h["at"] and x["pos"] == p) for p in POSN)]
-    if exact[:5] == [0, 20, 40, 60, 80]:
-        gauge[fmt] = {"opening": opening, "starterRank": g["starterRank"], "history": history, "coverage": g["coverage"], "rowsOnBoard": g["rowsOnBoard"]}
-        print(f"gauge: {fmt} rail reproduces the engine samples at {exact} - tank renders samples only")
-print("gauge: no engine sample for", [f for f in fixture if f not in gauge], "- those formats render the tank's absence, never an estimate")
+    G = F.get("gauge")
+    if not G:
+        continue
+    hist = [{"at": 0, "left": dict(G["opening"])}]
+    for st in F["states"].values():
+        sg = st.get("gauge")
+        if sg:
+            hist.append({"at": sg["atPick"], "left": sg["remaining"]})
+    hist.sort(key=lambda h: h["at"])
+    rows = {p: (round(G["opening"][p] / G["coverage"][p]) if G["coverage"].get(p) else G["opening"][p])
+            for p in G["opening"]}
+    gauge[fmt] = {"opening": G["opening"], "starterRank": G["starterRank"],
+                  "history": hist, "coverage": G["coverage"], "rowsOnBoard": rows}
+    print(f"gauge: {fmt} derived from its own opening board, {len(hist)} measured points")
+missing = [f for f in fixture if f not in gauge]
+if missing:
+    print("gauge: none for", missing, "- those formats render the tank's absence, never an estimate")
 
 payload = "const DATA=" + json.dumps({"formats": fixture, "vocab": vocab, "gauge": gauge}, separators=(",", ":")) + ";"
 css = (SRC / "shared.css").read_text()
