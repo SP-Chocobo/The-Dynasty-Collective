@@ -150,6 +150,20 @@ small{font-size:max(12px,.85em)}
 .rcard .sl i{font-style:normal;font-family:var(--f-m);font-size:.75rem;color:var(--dim);width:34px;flex:0 0 auto}
 .rcard .sl.open{color:var(--dim);font-style:italic} .rcard .sl.fits{color:var(--amber-b);font-style:normal}
 .rcard .ln b{color:var(--ink)}
+
+/* The rosters sheet takes the whole surface now, as the draft board always has. That buys two
+   things the 620px drawer could not: every roster on screen at once, and room for a name to be
+   a name. The card's two narrow columns were clipping "Jaxon Smith-Njigba" and "Javonte
+   Williams" at ~130px each; one column per slot spends the height we were leaving empty and
+   gives the name the whole card. Scoped to the full-surface sheet so the narrow drawer in the
+   other variants keeps its two columns. */
+/* 215px gives six columns, so all twelve rosters land on one screen with no scroll, in both
+   the 8-slot and the 13-slot format (measured: 651px and 818px against an 848px view), and
+   with zero clipped names in either. Wider cards read better but push two rosters below the
+   fold, which defeats the point of opening the whole surface. */
+.sheet.top .rosterGrid{grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+.sheet.top .rcard .sg{grid-template-columns:1fr;gap:0 10px}
+.sheet.top .rcard .sl{overflow:visible;text-overflow:clip}
 .dbgrid{display:grid;gap:3px;min-width:760px}
 .dbh{font-family:var(--f-m);font-size:.75rem;color:var(--dim);text-align:center;padding:3px 0;align-self:center}
 .dbc{border:1px solid var(--line);background:var(--surface-2);padding:4px 5px;min-height:36px;border-radius:2px;font-size:.75rem;line-height:1.25}
@@ -243,7 +257,9 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .tip .th{display:block;color:var(--ink);font-weight:600;margin-bottom:3px}
 .tip.pinned{pointer-events:auto;border-color:var(--dim)}
 .tip .pin{display:block;margin-top:6px;color:var(--dim);font-size:.72rem;font-family:var(--f-m)}
-[data-tip]{cursor:help}
+[data-tip]:not([data-tip=""]){cursor:help}
+.sheet.top .rcard .sg.bn{border-top:1px solid var(--line);margin-top:4px;padding-top:3px}
+.rcard .sg.bn .sl i{color:var(--tie)}
 [data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 
@@ -382,6 +398,9 @@ const POS  = {QB:"quarterback", RB:"running back", WR:"receiver", TE:"tight end"
 const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
 const TIER_WORD = {HIGH:"a sharp drop", MEDIUM:"a moderate drop", LOW:"no cliff"};
 const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
+const posOfPlayer = p => (p && (p.pos || p.position)) || "";
+const slotTag = (slot, p) => (p && isFlexSlot(slot) && posOfPlayer(p)) ? `${slot}·${posOfPlayer(p)}` : slot;
+const tipAttr = t => t ? ` data-tip="${esc(t)}"` : "";
 const ordinal = n => n + (["th","st","nd","rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]);
 /* engine labels, verbatim, read from the engine at build time (lineup_optimizer.EXPOSURE_BASIS_LABELS,
    DISPLACEMENT_BASIS_LABELS, draft_strategy.DENIAL_BASIS_LABELS, draft_room.SLOT_SHARE_LABELS). */
@@ -500,11 +519,37 @@ M.doorDepth = (d, best, list) => {
       const fills = c && !lit && !r.p && s.kind !== "bench" && r.slot === s.slot; if (fills) lit = true;
       const need = !r.p && !isFlexSlot(r.slot) && M.heldAt(r.slot).length === 0;
       const label = r.p ? short(r.p.name) : fills ? "← " + short(c.name) : "open";
-      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${r.slot}</span><span class="p" data-tip="${r.p ? esc(r.p.name) : ""}">${label}</span></div>`;
-      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}" data-tip="${r.p ? esc(r.p.name) : ""}"><span class="s">${r.slot}</span>${label}</span>`;
+      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${slotTag(r.slot, r.p)}</span><span class="p"${tipAttr(r.p ? r.p.name : "")}>${label}</span></div>`;
+      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"${tipAttr(r.p ? r.p.name : "")}><span class="s">${slotTag(r.slot, r.p)}</span>${label}</span>`;
     });
-    const bnTxt = `${M.benchFilled} of ${M.benchTotal}${c && s.kind === "bench" ? ` · ← ${short(c.name)}` : ""}`;
-    return cells.join("") + (vertical ? `<div class="slot open ${c && s.kind === "bench" ? "fills" : ""}"><span class="s">BN</span><span class="p">${bnTxt}</span></div>` : `<span class="slotc open ${c && s.kind === "bench" ? "fills" : ""}"><span class="s">BN</span>${bnTxt}</span>`);
+    /* A bench name is still a name. Every starting slot got its own chip while six bench slots
+       were compounded into "2 of 6", so the players you had actually drafted were the only ones
+       on this strip with no name at all. Names get chips, like starters do; only the EMPTY
+       remainder stays a count, because an empty slot has nothing to say. */
+    /* A bench name is still a name, so the strip says the names -- but in ONE chip, not one
+       chip per bench slot. Giving each bench slot its own chip pushed this strip onto a second
+       line in the 13-starter formats, and the 30px it took came straight out of the open door's
+       card region below, which collapsed to zero cards with its scroll affordance off-screen.
+       The strip is one line; the roster sheet is where a roster gets room. Only the EMPTY
+       remainder stays a count, because an empty slot has nothing to say. */
+    const benchHeld = M.ROSTER.filter(r => r.slot === "BN" && r.p);
+    const toBench = !!(c && s.kind === "bench");
+    const stillOpen = M.benchTotal - M.benchFilled - (toBench ? 1 : 0);
+    const parts = benchHeld.map(r => short(r.p.name));
+    if (toBench) parts.push("← " + short(c.name));
+    if (stillOpen > 0) parts.push(`${stillOpen} open`);
+    const bnLabel = parts.join(" · ");
+    const bnTip = benchHeld.length ? benchHeld.map(r => r.p.name).join(", ") : "";
+    const bnCls = (benchHeld.length ? "" : "open ") + (toBench ? "fills" : "");
+    /* The two containers have room in different directions, so the bench takes a different
+       shape in each. The horizontal strip is ONE line and cannot grow sideways, so it gets one
+       chip. The vertical roster column is a column -- it has room downward and a fixed width
+       with an ellipsis, where that same one-line label was being cut off -- so it gets a row
+       per name. Same facts, laid out the way each container can actually hold them. */
+    const bnCells = vertical
+      ? parts.map((label, i) => `<div class="slot ${i < benchHeld.length ? "" : "open"} ${toBench && label.startsWith("←") ? "fills" : ""}"><span class="s">BN</span><span class="p"${tipAttr(i < benchHeld.length ? benchHeld[i].p.name : "")}>${label}</span></div>`).join("")
+      : `<span class="slotc ${bnCls}"${tipAttr(bnTip)}><span class="s">BN</span>${bnLabel}</span>`;
+    return cells.join("") + bnCells;
   };
 
   /* ---- positions, board order (tav) and measured order (bpa) ---- */
@@ -715,13 +760,15 @@ M.doorDepth = (d, best, list) => {
   M.allRosters = focusPos => {
     const seats = [...new Set(RAIL.map(p => p.seat))].sort((a, b) => Number(a) - Number(b));
     return seats.map(seat => { const me = seat === S.seat, picks = me ? S.myPicks : M.KNOWN.filter(p => p.seat === seat);
-      const r = slotRoster(picks, S.slots), starters = r.filter(x => x.slot !== "BN"), bench = r.filter(x => x.slot === "BN" && x.p).length;
+      const r = slotRoster(picks, S.slots), starters = r.filter(x => x.slot !== "BN");
+      const benchP = r.filter(x => x.slot === "BN" && x.p), benchOpen = M.benchTotal - benchP.length;
       const turns = M.BETWEEN.filter(p => p.seat === seat).map(p => "#" + p.no);
       const fx = focusPos ? starters.find(x => !x.p && x.slot !== focusPos && isFlexSlot(x.slot) && eligible(x.slot, focusPos)) : null;
       const route = focusPos ? (starters.some(x => x.slot === focusPos && !x.p) ? `${focusPos} slot open` : fx ? `${fx.slot} only for a ${focusPos}` : `no slot for a ${focusPos}`) : "";
       return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
-        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && eligible(x.slot, focusPos) ? "fits" : ""}"><i>${x.slot}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
-        <div class="ln note">bench ${bench} of ${M.benchTotal}${route ? ` · <b>${route}</b>` : ""}</div></div>`; }).join("");
+        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && eligible(x.slot, focusPos) ? "fits" : ""}"><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
+        <div class="sg bn">${benchP.map(x => `<span class="sl"><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open"><i>BN</i>${benchOpen} open</span>` : ""}</div>
+        ${route ? `<div class="ln note"><b>${route}</b></div>` : ""}</div>`; }).join("");
   };
   M.boardGrid = () => {
     const seats = [...new Set(RAIL.map(p => p.seat))].sort((a, b) => Number(a) - Number(b)), rounds = [...new Set(RAIL.map(p => p.rnd))].sort((a, b) => a - b);
@@ -802,7 +849,8 @@ function fillCommon(M){
     const b = box(); b.textContent = "";
     const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
     if (lines.length > 1) {
-      const h = document.createElement("span"); h.className = "th"; h.textContent = lines[0];
+      const h = document.createElement("span"); h.className = "th";
+      h.textContent = lines[0].charAt(0).toUpperCase() + lines[0].slice(1);
       b.appendChild(h); b.appendChild(document.createTextNode(lines.slice(1).join("\n\n")));
     } else { b.textContent = text; }
     b.classList.toggle("wide", text.length > 170);
@@ -820,6 +868,7 @@ function fillCommon(M){
   }
 
   function show(h, now) {
+    if (!h.dataset.tip) return;
     host = h; fill(h.dataset.tip);
     const go = () => { place(); box().classList.add("on"); };
     clearTimeout(timer); now ? go() : (timer = setTimeout(go, 130));

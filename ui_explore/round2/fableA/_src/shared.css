@@ -145,6 +145,20 @@ small{font-size:max(12px,.85em)}
 .rcard .sl i{font-style:normal;font-family:var(--f-m);font-size:.75rem;color:var(--dim);width:34px;flex:0 0 auto}
 .rcard .sl.open{color:var(--dim);font-style:italic} .rcard .sl.fits{color:var(--amber-b);font-style:normal}
 .rcard .ln b{color:var(--ink)}
+
+/* The rosters sheet takes the whole surface now, as the draft board always has. That buys two
+   things the 620px drawer could not: every roster on screen at once, and room for a name to be
+   a name. The card's two narrow columns were clipping "Jaxon Smith-Njigba" and "Javonte
+   Williams" at ~130px each; one column per slot spends the height we were leaving empty and
+   gives the name the whole card. Scoped to the full-surface sheet so the narrow drawer in the
+   other variants keeps its two columns. */
+/* 215px gives six columns, so all twelve rosters land on one screen with no scroll, in both
+   the 8-slot and the 13-slot format (measured: 651px and 818px against an 848px view), and
+   with zero clipped names in either. Wider cards read better but push two rosters below the
+   fold, which defeats the point of opening the whole surface. */
+.sheet.top .rosterGrid{grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+.sheet.top .rcard .sg{grid-template-columns:1fr;gap:0 10px}
+.sheet.top .rcard .sl{overflow:visible;text-overflow:clip}
 .dbgrid{display:grid;gap:3px;min-width:760px}
 .dbh{font-family:var(--f-m);font-size:.75rem;color:var(--dim);text-align:center;padding:3px 0;align-self:center}
 .dbc{border:1px solid var(--line);background:var(--surface-2);padding:4px 5px;min-height:36px;border-radius:2px;font-size:.75rem;line-height:1.25}
@@ -238,7 +252,9 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .tip .th{display:block;color:var(--ink);font-weight:600;margin-bottom:3px}
 .tip.pinned{pointer-events:auto;border-color:var(--dim)}
 .tip .pin{display:block;margin-top:6px;color:var(--dim);font-size:.72rem;font-family:var(--f-m)}
-[data-tip]{cursor:help}
+[data-tip]:not([data-tip=""]){cursor:help}
+.sheet.top .rcard .sg.bn{border-top:1px solid var(--line);margin-top:4px;padding-top:3px}
+.rcard .sg.bn .sl i{color:var(--tie)}
 [data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 

@@ -7,8 +7,12 @@
 /* v4 — DOORS, multi-format. All position doors exist (derived from the league's own slots and the
    engine's flex map); 4–5 surface in the board's value order; the window slides; a count line says
    so; the drawer carries the position's context when filtered; demand carries its basis verbatim. */
-.lineup .slots{flex:0 1 auto;gap:5px}
-.lineup .slotc{padding:.16rem .4rem}
+/* The strip is one line, and it must stay one line: when it wraps it takes ~30px straight out
+   of the open door's card region below, which in the 13-starter formats collapses that region
+   to zero cards with its scroll affordance off the bottom of the viewport. HEAVY_IDP late was
+   measured 25px over at gap 5 / padding .16-.4; these metrics clear it with room. */
+.lineup .slots{flex:0 1 auto;gap:4px}
+.lineup .slotc{padding:.12rem .34rem}
 .clk .who{margin-left:auto;white-space:nowrap;font-size:.86rem;color:var(--muted)} .clk .who b{color:var(--ink)}
 .clk .spanline{white-space:nowrap}
 .main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:8px 16px 8px;gap:8px}
@@ -113,7 +117,7 @@
   <div class="scrim"></div>
   <section class="sheet right drawer" id="shAll" aria-hidden="true"><div class="sh"><span class="t">Every name on the board</span><span class="note" id="allNote"></span><button class="x" data-close="1">close ✕</button></div><div class="filt" id="allFilt"></div><div id="allCtx"></div><div class="sc" id="allList" style="padding:0 10px 6px"></div></section>
   <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
-  <section class="sheet left" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">Rosters</span><span class="note" id="rosterNote"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+  <section class="sheet top" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">Rosters</span><span class="note" id="rosterNote"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
   <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
   <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
 </div>
