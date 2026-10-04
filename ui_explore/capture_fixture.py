@@ -94,7 +94,7 @@ for label in WANT:
         cs = [dataclasses.asdict(c) for c in snap.candidates]
         cs.sort(key=lambda c: -(c["team_acquisition_value"] or -1e9))
         rows = []
-        for r, c in enumerate(cs[:24]):
+        for r, c in enumerate(cs):
             row = {k: c.get(k) for k in KEEP}; row["rank"] = r+1
             row["forces"] = [v for k, v in FORCES.items() if c.get(k)]
             rows.append(row)
