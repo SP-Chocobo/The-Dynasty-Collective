@@ -403,6 +403,9 @@ const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight e
 const TIER_WORD = {HIGH:"a sharp drop", MEDIUM:"a moderate drop", LOW:"no cliff"};
 const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
 const posOfPlayer = p => (p && (p.pos || p.position)) || "";
+const nameTip = (p, extra) => p && p.name
+  ? `${p.name}\n${[posOfPlayer(p), p.team, extra].filter(Boolean).join(" · ")}`
+  : "";
 const slotTag = (slot, p) => (p && isFlexSlot(slot) && posOfPlayer(p)) ? `${slot}·${posOfPlayer(p)}` : slot;
 const tipAttr = t => t ? ` data-tip="${esc(t)}"` : "";
 const ordinal = n => n + (["th","st","nd","rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]);
@@ -778,17 +781,17 @@ M.doorDepth = (d, best, list) => {
       const benchP = r.filter(x => x.slot === "BN" && x.p), benchOpen = M.benchTotal - benchP.length;
       const turns = M.BETWEEN.filter(p => p.seat === seat).map(p => "#" + p.no);
       return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""} ${M.benchFolded(seat) ? "foldbn" : ""}" data-seat="${seat}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
-        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"}"><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
+        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"}"${tipAttr(nameTip(x.p))}><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
         <div class="sg bn">
           <button class="sl bh" data-bench="${seat}" aria-expanded="${!M.benchFolded(seat)}" data-tip="${M.benchFolded(seat) ? "Show this roster's bench" : "Hide this roster's bench"}">bench ${benchP.length} of ${M.benchTotal}<em>${M.benchFolded(seat) ? "expand ▸" : "collapse ▾"}</em></button>
-          ${benchP.map(x => `<span class="sl bnrow"><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open bnrow"><i>BN</i>${benchOpen} open</span>` : ""}</div>
+          ${benchP.map(x => `<span class="sl bnrow"${tipAttr(nameTip(x.p))}><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open bnrow"><i>BN</i>${benchOpen} open</span>` : ""}</div>
         </div>`; }).join("");
   };
   M.boardGrid = () => {
     const seats = [...new Set(RAIL.map(p => p.seat))].sort((a, b) => Number(a) - Number(b)), rounds = [...new Set(RAIL.map(p => p.rnd))].sort((a, b) => a - b);
     let html = `<div class="dbgrid" style="grid-template-columns:44px repeat(${seats.length},minmax(58px,1fr))"><div class="dbh"></div>` + seats.map(x => `<div class="dbh">${x === S.seat ? "YOU" : x}</div>`).join("");
     rounds.forEach(r => { html += `<div class="dbh">R${r}</div>`; seats.forEach(x => { const p = RAIL.find(q => q.rnd === r && q.seat === x); if (!p) { html += `<div class="dbc"></div>`; return; }
-      const fut = p.no > S.consumed; html += `<div class="dbc ${p.mine ? "mine" : ""} ${fut ? "future" : ""} ${p.no === M.NOW_NO ? "now" : ""}">${fut ? `<span class="q">${M.coord(p)}</span>` : `<span class="p" style="color:${pc(p.pos)}">${p.pos}</span><span class="p">${short(p.name)}</span>`}</div>`; }); });
+      const fut = p.no > S.consumed; html += `<div class="dbc ${p.mine ? "mine" : ""} ${fut ? "future" : ""} ${p.no === M.NOW_NO ? "now" : ""}"${fut ? "" : tipAttr(nameTip(p, `${M.coord(p)} · #${p.no}`))}>${fut ? `<span class="q">${M.coord(p)}</span>` : `<span class="p" style="color:${pc(p.pos)}">${p.pos}</span><span class="p">${short(p.name)}</span>`}</div>`; }); });
     return html + "</div>";
   };
   M.squad = subject => `<div class="chair"><div class="who" style="color:var(--gold-b)">What this does</div><p>Three chairs argue <b>${subject}</b>: one for, one against, one to settle it. They read the same facts you see here and may not add a number to them.</p></div>
@@ -842,7 +845,10 @@ function wireChrome(opts){
 }
 function fillCommon(M){
   const q = id => document.getElementById(id);
-  if (q("lg")) q("lg").innerHTML = `<b>${M.F.teams}-team · ${M.fmt.replace(/_/g, " ")}</b> · round ${M.S.round} of ${M.S.rounds} · you are Roster ${M.S.seat}`;
+  const stale = M.S.fresh || M.S.stamp
+    ? ` · <span data-tip="Board provenance\nCaptured ${M.S.fresh || "date not recorded"}${M.S.stamp ? ", snapshot " + M.S.stamp : ""}.\nIt reflects the ${M.S.consumed} picks made at that moment and is not re-read while this page is open, so a pick made since will not appear here.">as of pick #${M.S.consumed}</span>`
+    : "";
+  if (q("lg")) q("lg").innerHTML = `<b>${M.F.teams}-team · ${M.fmt.replace(/_/g, " ")}</b> · round ${M.S.round} of ${M.S.rounds} · you are Roster ${M.S.seat}${stale}`;
   if (q("upnow")) q("upnow").textContent = `PICK ${M.S.pick} — YOU ARE UP`;
   if (q("allRosters")) q("allRosters").innerHTML = M.allRosters();
   if (q("dbHost")) q("dbHost").innerHTML = M.boardGrid();
