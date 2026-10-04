@@ -261,6 +261,10 @@ function load(key, fmt){
 const ui = wireChrome({formats:true, tag:"v4 · DOORS", sub:"build target · 4–5 doors surface in the board's order · the drawer is the override", hypothesis:`<b>What this is.</b> Every position the league's own slots can start has a door — named slots first, then each flex slot's eligible positions from the engine's map (TE always its own; flex-only defenders compound into one). Doors sit in the board's value order and <b>${WINDOW} surface</b>; the window slides as the board changes, the count line says how many are hidden and names them, and the open door is always in view. The drawer (≣) is the override: filter to any position and its context — what you hold, its demand with the basis the engine reports, what waiting leaves, its tank — sits above the filtered names. Demand is rendered as the engine produced it and labelled with its basis; nothing is corrected. Tanks are offense-only and appear only where the engine sampled this format's pool. <code>?alldoors</code> forces every door visible; <code>?notank</code> hides the tank.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
+  const bn = e.target.closest("[data-bench]");
+  if (bn) { const seat = bn.dataset.bench;
+    M.benchToggled.has(seat) ? M.benchToggled.delete(seat) : M.benchToggled.add(seat);
+    document.getElementById("allRosters").innerHTML = M.allRosters(); return; }
   const f = e.target.closest("[data-f]"); if (f) { filt = f.dataset.f; drawerHTML(); requestAnimationFrame(markScrollers); return; }
   const st = e.target.closest("[data-streamtoggle]");
   if (st) { e.preventDefault(); STREAM_HIDE = !STREAM_HIDE; draw(); return; }

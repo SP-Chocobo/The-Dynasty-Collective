@@ -403,6 +403,16 @@ M.doorDepth = (d, best, list) => {
   }).join("");
 
   /* ---- sheets content ---- */
+  /* Expand/collapse the bench, per roster. A bench of six is worth showing outright; a dynasty
+     bench of twenty is a wall, and Sleeper scrolls for exactly that reason. So the DEFAULT is
+     derived from the league rather than chosen: show the names while the bench is shallow,
+     fold them once it is deeper than the starting lineup, which is the point at which the
+     bench stops being a tail and starts being the bulk of the card. The reader's own toggle
+     always wins over the default, and is remembered across re-renders because it is keyed by
+     seat rather than by position in the grid. */
+  M.BENCH_FOLD_DEFAULT = M.benchTotal > M.STARTERS.length;
+  M.benchToggled = M.benchToggled || new Set();
+  M.benchFolded = seat => M.benchToggled.has(seat) ? !M.BENCH_FOLD_DEFAULT : M.BENCH_FOLD_DEFAULT;
   M.allRosters = focusPos => {
     const seats = [...new Set(RAIL.map(p => p.seat))].sort((a, b) => Number(a) - Number(b));
     return seats.map(seat => { const me = seat === S.seat, picks = me ? S.myPicks : M.KNOWN.filter(p => p.seat === seat);
@@ -411,9 +421,11 @@ M.doorDepth = (d, best, list) => {
       const turns = M.BETWEEN.filter(p => p.seat === seat).map(p => "#" + p.no);
       const fx = focusPos ? starters.find(x => !x.p && x.slot !== focusPos && isFlexSlot(x.slot) && eligible(x.slot, focusPos)) : null;
       const route = focusPos ? (starters.some(x => x.slot === focusPos && !x.p) ? `${focusPos} slot open` : fx ? `${fx.slot} only for a ${focusPos}` : `no slot for a ${focusPos}`) : "";
-      return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
+      return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""} ${M.benchFolded(seat) ? "foldbn" : ""}" data-seat="${seat}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
         <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && eligible(x.slot, focusPos) ? "fits" : ""}"><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
-        <div class="sg bn">${benchP.map(x => `<span class="sl"><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open"><i>BN</i>${benchOpen} open</span>` : ""}</div>
+        <div class="sg bn">
+          <button class="sl bh" data-bench="${seat}" aria-expanded="${!M.benchFolded(seat)}"><i>BN</i>${benchP.length} of ${M.benchTotal}<em>${M.benchFolded(seat) ? "▸" : "▾"}</em></button>
+          ${benchP.map(x => `<span class="sl bnrow"><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open bnrow"><i>BN</i>${benchOpen} open</span>` : ""}</div>
         ${route ? `<div class="ln note"><b>${route}</b></div>` : ""}</div>`; }).join("");
   };
   M.boardGrid = () => {

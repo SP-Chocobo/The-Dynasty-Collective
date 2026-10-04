@@ -254,6 +254,10 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .tip .pin{display:block;margin-top:6px;color:var(--dim);font-size:.72rem;font-family:var(--f-m)}
 [data-tip]:not([data-tip=""]){cursor:help}
 .sheet.top .rcard .sg.bn{border-top:1px solid var(--line);margin-top:4px;padding-top:3px}
+.rcard .sg.bn .sl.bh{color:var(--muted);cursor:pointer;width:100%;text-align:left;font:inherit;background:none;border:none;padding:0;display:flex;align-items:center;gap:6px}
+.rcard .sg.bn .sl.bh:hover{color:var(--ink)}
+.rcard .sg.bn .sl.bh em{font-style:normal;margin-left:auto;color:var(--dim)}
+.rcard.foldbn .sg.bn .bnrow{display:none}
 .rcard .sg.bn .sl i{color:var(--tie)}
 [data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
