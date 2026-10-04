@@ -188,14 +188,32 @@ denies (`#133`).
 
 Six formats x three states (early / mid / late), same payload shape as `states.json`:
 
-| # | format | roster_positions |
-|---|---|---|
-| 1 | control | `QB RB RB WR WR TE FLEX FLEX` |
-| 2 | superflex | `QB RB RB WR WR TE FLEX SUPER_FLEX` |
-| 3 | no TE slot | `QB RB RB WR WR FLEX FLEX FLEX` |
-| 4 | heavy IDP | `QB RB RB WR WR TE FLEX DL DL LB LB DB DB` |
-| 5 | maximal | `QB RB RB WR WR TE FLEX SUPER_FLEX DL LB DB K DEF IDP_FLEX` |
-| 6 | light IDP | `QB RB RB WR WR TE FLEX IDP_FLEX` |
+**CORRECTED.** This table was written from the PLAN and two of its rows described a fixture that
+was never built -- it claimed a "no TE slot" board and a "maximal" board, and `fixture.json`
+contains neither. Read from the artifact, not from the intention, the six formats are:
+
+| # | key | roster_positions | doors | held back by the window |
+|---|---|---|---|---|
+| 1 | `12T_ppr` | `QB RB RB WR WR TE FLEX FLEX` | 4 | 0 |
+| 2 | `12T_ppr_SF` | `QB RB RB WR WR TE FLEX FLEX SUPER_FLEX` | 4 | 0 |
+| 3 | `HEAVY_IDP` | `QB RB RB WR WR TE FLEX DL DL LB LB DB DB` | 7 | 2 |
+| 4 | `12T_ppr_K_DEF` | `QB RB RB WR WR TE FLEX FLEX K DEF` | 6 | 1 |
+| 5 | `4WR_TE_PREMIUM` | `QB RB RB WR WR WR WR TE TE FLEX` | 4 | 0 |
+| 6 | `LIGHT_IDP` | `QB RB RB WR WR TE FLEX IDP_FLEX` | 5 | 0 |
+
+**Two consequences, both load-bearing, both previously unstated.**
+
+**The sliding window is live in two formats of six.** `windowDoors()` returns early when
+`order.length <= WINDOW`, so in rows 1, 2, 5 and 6 the window is not merely unexercised, it does
+not run. `WINDOW = 5` has been tested at 6 and 7 doors, holding back 1 and 2. It has never been
+tested at the 9-door board, which is the only shape that would hold back 4 and is therefore the
+only one that can tell us whether five is the right number or just a comfortable one.
+
+**The board that produced the TE ruling is not in the fixture.** §8 and
+`FLEX_AND_POSITION_DOORS.md` derive "TE always earns its own door" from the slotless case --
+TE demand 1.000 with no TE slot against 1.667 with one. No fixture format omits the TE slot, so
+the rule that governs every board is the one rule the fixture cannot check. `4WR_TE_PREMIUM`
+is the opposite case, two TE slots, and was mistaken for it in the table above.
 
 Format 6 is the one case the other five cannot reach: a single `IDP_FLEX` slot with DL, LB and
 DB all live on the board, which is the only shape that exercises the compound-door rule in
