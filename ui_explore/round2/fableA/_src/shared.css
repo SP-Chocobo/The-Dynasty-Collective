@@ -77,8 +77,8 @@ small{font-size:max(12px,.85em)}
 .slotc .s{font-family:var(--f-m);font-size:.75rem;color:var(--dim)}
 .slotc.open{border-style:dashed;color:var(--dim)}
 .slotc.open.need{border-color:var(--amber);color:var(--amber-b)} .slotc.open.need .s{color:var(--amber-b)}
-.slotc.fills{border-style:solid;border-color:var(--gold-b);color:var(--gold-b);background:rgba(212,160,23,.1);box-shadow:0 0 0 1px rgba(247,207,74,.25)}
-.slotc.fills .s{color:var(--gold-b)}
+.slotc.open.fills,.slotc.fills{border-style:solid;border-color:var(--emerald-b);color:var(--emerald-b);background:rgba(26,158,75,.14);box-shadow:0 0 0 1px rgba(78,224,140,.3)}
+.slotc.open.fills .s,.slotc.fills .s{color:var(--emerald-b)}
 /* vertical roster column variant */
 .rcol .slot{display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--line);font-size:.84rem}
 .rcol .slot:last-child{border:none}
@@ -86,8 +86,8 @@ small{font-size:max(12px,.85em)}
 .rcol .slot .p{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rcol .slot.open .p{color:var(--dim);font-style:italic}
 .rcol .slot.open.need .s,.rcol .slot.open.need .p{color:var(--amber-b);font-style:normal}
-.rcol .slot.fills{background:rgba(212,160,23,.08);outline:1px solid var(--gold);outline-offset:-1px;border-radius:2px}
-.rcol .slot.fills .p{color:var(--gold-b);font-style:normal;font-weight:600}
+.rcol .slot.open.fills,.rcol .slot.fills{background:rgba(26,158,75,.1);outline:1px solid var(--emerald);outline-offset:-1px;border-radius:2px}
+.rcol .slot.open.fills .p,.rcol .slot.fills .p{color:var(--emerald-b);font-style:normal;font-weight:600}
 
 /* RAIL A — named past + marked span (the free finding). No scroll: the past is clipped on the left. */
 .railA{display:flex;align-items:stretch;gap:5px;padding:7px 16px 8px;border-bottom:1px solid var(--line-2);background:var(--surface-2);flex:0 0 auto}
