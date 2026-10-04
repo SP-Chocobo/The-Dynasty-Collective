@@ -27,7 +27,13 @@ const FLEX_MAP = VOCAB.FLEX_SLOT_POSITIONS;
 const isFlexSlot = slot => Object.prototype.hasOwnProperty.call(FLEX_MAP, slot);
 const eligible = (slot, pos) => slot === pos || (isFlexSlot(slot) && FLEX_MAP[slot].includes(pos));
 const OFFENSE = new Set(["QB", "RB", "WR", "TE"]);                       // §14: tanks are offense-only, permanently
-const IDP = new Set(["DL", "LB", "DB"]);
+/* The one home for how defensive positions are LISTED (#126). Owner's call: DL, LB, DB,
+   always and everywhere, independent of the order a league's own roster_positions happens
+   to use -- HEAVY_IDP read correctly only by accident of its slot list, and the compound
+   door's own label and demand line were rendering them alphabetically (DB / DL / LB). */
+const IDP_ORDER = ["DL", "LB", "DB"];
+const IDP = new Set(IDP_ORDER);
+const byIdp = ps => ps.slice().sort((a, b) => IDP_ORDER.indexOf(a) - IDP_ORDER.indexOf(b));
 const num = x => typeof x === "number" && isFinite(x);
 const f1  = x => num(x) ? (Math.abs(x) < 0.05 ? "0.0" : x.toFixed(1).replace("-", "−")) : "—";
 const sgn = x => num(x) ? (Math.abs(x) < 0.05 ? "±0.0" : (x > 0 ? "+" : "−") + Math.abs(x).toFixed(1)) : "—";
@@ -167,12 +173,15 @@ M.doorDepth = (d, best, list) => {
   /* every position the league's own slots can start: named slots, plus each flex slot's eligible
      positions (from the engine's map). Doors: a named position is its own door; a flex-only offensive
      position is its own door (TE always, FLEX_AND_POSITION_DOORS §2); flex-only IDP compounds into one. */
-  const NAMED = [...new Set(S.slots.filter(sl => sl !== "BN" && !isFlexSlot(sl)))];
+  const NAMED_RAW = [...new Set(S.slots.filter(sl => sl !== "BN" && !isFlexSlot(sl)))];
+  // offence keeps the league's own slot order; defence is always listed in IDP_ORDER
+  const NAMED = NAMED_RAW.filter(p => !IDP.has(p)).concat(byIdp(NAMED_RAW.filter(p => IDP.has(p))));
   const FLEX_ONLY = [...new Set(S.slots.filter(isFlexSlot).flatMap(sl => FLEX_MAP[sl]))].filter(p => !NAMED.includes(p));
-  M.LINEUP_ORDER = NAMED.concat(FLEX_ONLY.filter(p => !IDP.has(p))).concat(FLEX_ONLY.filter(p => IDP.has(p)));
+  const FLEX_IDP = byIdp(FLEX_ONLY.filter(p => IDP.has(p)));
+  M.LINEUP_ORDER = NAMED.concat(FLEX_ONLY.filter(p => !IDP.has(p))).concat(FLEX_IDP);
   M.DOORS = NAMED.map(p => ({key:p, label:POS[p], positions:[p], compound:false}))
     .concat(FLEX_ONLY.filter(p => !IDP.has(p)).map(p => ({key:p, label:POS[p], positions:[p], compound:false})));
-  const idpFlexOnly = FLEX_ONLY.filter(p => IDP.has(p));
+  const idpFlexOnly = FLEX_IDP;
   if (idpFlexOnly.length) M.DOORS.push({key:"IDP", label:"defense (" + idpFlexOnly.join(" / ") + ")", positions:idpFlexOnly, compound:true});
   M.doorOf = pos => M.DOORS.find(d => d.positions.includes(pos)) || null;
   M.POSITIONS = M.LINEUP_ORDER.filter(p => C.some(c => c.position === p));
