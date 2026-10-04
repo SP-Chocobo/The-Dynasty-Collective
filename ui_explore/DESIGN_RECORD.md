@@ -190,6 +190,36 @@ reviewer.
 
 ---
 
+## 9b. What the fixture does and does not establish
+
+Two readings to refuse, both raised in review and both easy to drift into later.
+
+**"The sliding window is validated" -- no.** It is exercised against **five observed shapes**.
+`HEAVY_IDP` proves the window can rank a genuinely crowded surface (7 positions on one board) and
+`12T_ppr_K_DEF` proves K/DEF can arrive late rather than squat permanently. Neither tests the
+**compound-vs-split rule**, because that rule turns on `IDP_FLEX`, and `LIGHT_IDP` has no recorded
+sequence in the VDS corpus. **The one architectural decision invented in this session is the one
+with no board to check it against.** It needs a simulated draft, not a replay.
+
+**The demand figures are not ground truth.** `fixture.json` records `QB 1.850` in superflex and
+`TE 1.667` with a TE slot. Those are **what the current engine produces**, and therefore what
+Doors A must render -- not what is correct. `FLEX_AND_POSITION_DOORS.md` measures both as
+questionable: `SUPER_FLEX_QB_SHARE` is hand-set at 0.85 against a measurement returning 1.00, and
+the even TE split is false in every format tried. A reader six months from now must not mistake a
+captured value for a verified one. That is exactly what `slot_share_basis` is in the payload for.
+
+The separation the fixture buys, stated once:
+
+| layer | claim |
+|---|---|
+| engine | here is what I believe |
+| fixture | here is what the engine actually produced across real board states |
+| Doors A | here is how we choose to manifest it |
+| human reviewers | can a person understand and use that manifestation |
+
+The question the next phase answers is not "which mockup looks best" but **which information
+contract stays intuitive when the league gets weird.**
+
 ## 10. Open, not decided
 
 - **The rail.** §1 rules it; the owner twice floated dropping it and both builds are published
