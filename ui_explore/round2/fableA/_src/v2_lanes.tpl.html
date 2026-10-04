@@ -75,8 +75,8 @@
   <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
     <span class="r"><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
       <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
-      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate</button>
-      <button class="btn" title="Settings">⚙</button></span></header>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock.">⚑ Debate</button>
+      <button class="btn" data-tip="Settings">⚙</button></span></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span id="wait" style="line-height:1.4"></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div><span class="note" id="firstNote" style="margin-left:auto"></span></div>
   <div class="order" id="order"></div>
@@ -100,7 +100,7 @@ function trioHTML(pos){
   const anyH = picked.some(c => f1(c.time_horizon_adj) !== f1(picked[0].time_horizon_adj));
   const anyI = picked.some(c => c.injury_status), anyD = picked.some(c => M.depth(c).n);
   return `<div class="trio"><span class="k">The ${n === 2 ? "two" : "three"} at ${pos}, side by side<span class="note"> · the next-turn value is identical within a position, so this is value, the measured drop and what else differs; identical rows are not shown</span></span>
-    <div class="tg" style="${cols}"><div></div>${picked.map((c, i) => `<div class="hd">${M.face(c, "sm")}<span class="nm">${M.short(c.name)}<small>${c.team} · #${c.rank}${i === 2 && list.length > 3 ? ` <button class="swap" data-swapinfo="1" title="Click any name lower in the lane to put him here">swap ↓</button>` : ""}</small></span></div>`).join("")}
+    <div class="tg" style="${cols}"><div></div>${picked.map((c, i) => `<div class="hd">${M.face(c, "sm")}<span class="nm">${M.short(c.name)}<small>${c.team} · #${c.rank}${i === 2 && list.length > 3 ? ` <button class="swap" data-swapinfo="1" data-tip="Click any name lower in the lane to put him here">swap ↓</button>` : ""}</small></span></div>`).join("")}
       ${row("value now", (c, i) => `<span class="mono">${f1(c.team_acquisition_value)}</span>${i ? ` <span class="note">${sgn(c.team_acquisition_value - picked[0].team_acquisition_value)}</span>` : ""}${M.displaced(c) ? `<div class="note">${f1(c.displacement_adj)} displacement · himself ${f1(c.team_acquisition_value - c.displacement_adj)}</div>` : ""}`)}
       ${row("proj. pts", c => `<span class="mono">${Math.round(c.projected_points)}</span>`)}
       ${row("drop behind", c => `${M.tierWord(c)} <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}`)}
@@ -122,7 +122,7 @@ function laneHTML(pos){
     const vs = isFirst ? (M.C[1] ? `<b>First on the board</b>, ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of #${M.C[1].rank} ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>")
       : `<b>#${lead.rank} on the board</b> — instead of #1 ${M.short(L.name)}:`;
     const rest = list.slice(isFocus ? Math.min(3, list.length) : 1);
-    body = `<div class="lead1"><div class="who"><span class="rank ${isFirst ? "" : "dim"}" title="rank ${lead.rank} on the board">#${lead.rank}</span>${M.face(lead)}<span style="min-width:0"><div class="nm">${lead.name}</div><div class="sub">${lead.team} · ${Math.round(lead.projected_points)} pts · ${M.slotShort(lead)}${lead.injury_status ? ` · <i class="inj">${lead.injury_status}</i>` : ""}</div></span></div><div class="valrow"><span class="big">${f1(lead.team_acquisition_value)}</span><span class="u">to your roster</span></div>
+    body = `<div class="lead1"><div class="who"><span class="rank ${isFirst ? "" : "dim"}" data-tip="rank ${lead.rank} on the board">#${lead.rank}</span>${M.face(lead)}<span style="min-width:0"><div class="nm">${lead.name}</div><div class="sub">${lead.team} · ${Math.round(lead.projected_points)} pts · ${M.slotShort(lead)}${lead.injury_status ? ` · <i class="inj">${lead.injury_status}</i>` : ""}</div></span></div><div class="valrow"><span class="big">${f1(lead.team_acquisition_value)}</span><span class="u">to your roster</span></div>
         ${M.displaced(lead) ? M.dispShort(lead) : ""}
         <p class="vs">${vs}${isFirst ? "" : ` <span class="cost" style="display:inline-flex">${M.costHTML(lead, L)}</span>`}</p></div>
       ${isFocus ? trioHTML(pos) : ""}

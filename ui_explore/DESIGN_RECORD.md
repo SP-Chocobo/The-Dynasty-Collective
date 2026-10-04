@@ -139,7 +139,26 @@ already do.
 
 Already done in the polish pass: order line cut (it was a constant dressed as a conditional with
 no consequence, `#254`); card wording; clock/roster bar rebuilt; bottom doors content-sized;
-rosters sheet rebuilt.
+rosters sheet rebuilt. Since: the held-back chips' ordinal (`indexOf` against an array of
+door objects, so every chip read "0th door"); the `.rev` bar's overflow once a sixth format
+button existed; and the hover boxes.
+
+**The hover boxes (owner, this session).** Every one was a native `title=` -- the only surface
+in the build that nothing designed. OS chrome on a dark page, ~1s to appear, auto-dismissed
+after ~5s, no line breaks, nothing on keyboard focus, nothing on touch. The one that mattered
+is the tank gauge's: **540 characters**, ten times the next longest, carrying three separate
+facts (pool, what the gold line means, what the engine could price) as one unbroken paragraph
+in a container that un-renders itself mid-read. That is the governing constraint in §2 --
+clean dissemination of the why -- losing to a browser default.
+
+Replaced by one delegated `[data-tip]` tooltip in `shared.css` / `shared.js`, so all four
+variants get it: themed to the Obsidian tokens, hover **and** keyboard focus, first line as a
+heading, remaining lines as paragraphs, edge-aware placement, Escape and scroll to dismiss.
+Anything over 170 characters **pins on click**, so a long explanation can be read without
+holding the pointer still -- short labels keep the plain hover so a click on a chip still does
+what the click is for. Tip text is set as `textContent`, never `innerHTML`: some of these
+strings interpolate vendor data, and a hover string must not be able to carry markup. The
+newline convention is the only structure available under that rule, and it is enough.
 
 Outstanding:
 

@@ -222,3 +222,22 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 
 .basis{font-style:normal;color:var(--amber-b)}
 .rev .fmts{margin-left:14px;padding-left:12px;border-left:1px solid var(--line-2)}
+
+/* hover boxes ------------------------------------------------------------------------------
+   The native title= tooltip was the one surface in this build that nothing designed: OS chrome
+   on a dark page, ~1s to appear, auto-dismissed after ~5s, no line breaks. The longest string
+   here is the tank gauge's, which is three separate facts and was being delivered as one
+   unbroken paragraph in a box that un-renders itself mid-read. Text is set as textContent and
+   broken on newlines, so no hover string can inject markup; the first line reads as a heading. */
+.tip{position:fixed;z-index:90;max-width:300px;padding:8px 11px;background:var(--surface);
+  border:1px solid var(--line-2);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.55);
+  font-size:.8rem;line-height:1.5;color:var(--muted);white-space:pre-line;pointer-events:none;
+  opacity:0;transition:opacity .09s ease}
+.tip.on{opacity:1}
+.tip.wide{max-width:430px}
+.tip .th{display:block;color:var(--ink);font-weight:600;margin-bottom:3px}
+.tip.pinned{pointer-events:auto;border-color:var(--dim)}
+.tip .pin{display:block;margin-top:6px;color:var(--dim);font-size:.72rem;font-family:var(--f-m)}
+[data-tip]{cursor:help}
+[data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}

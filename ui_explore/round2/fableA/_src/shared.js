@@ -124,8 +124,8 @@ function buildModel(key, fmt){
       const fills = c && !lit && !r.p && s.kind !== "bench" && r.slot === s.slot; if (fills) lit = true;
       const need = !r.p && !isFlexSlot(r.slot) && M.heldAt(r.slot).length === 0;
       const label = r.p ? short(r.p.name) : fills ? "← " + short(c.name) : "open";
-      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${r.slot}</span><span class="p" title="${r.p ? esc(r.p.name) : ""}">${label}</span></div>`;
-      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}" title="${r.p ? esc(r.p.name) : ""}"><span class="s">${r.slot}</span>${label}</span>`;
+      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${r.slot}</span><span class="p" data-tip="${r.p ? esc(r.p.name) : ""}">${label}</span></div>`;
+      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}" data-tip="${r.p ? esc(r.p.name) : ""}"><span class="s">${r.slot}</span>${label}</span>`;
     });
     const bnTxt = `${M.benchFilled} of ${M.benchTotal}${c && s.kind === "bench" ? ` · ← ${short(c.name)}` : ""}`;
     return cells.join("") + (vertical ? `<div class="slot open ${c && s.kind === "bench" ? "fills" : ""}"><span class="s">BN</span><span class="p">${bnTxt}</span></div>` : `<span class="slotc open ${c && s.kind === "bench" ? "fills" : ""}"><span class="s">BN</span>${bnTxt}</span>`);
@@ -306,16 +306,16 @@ function buildModel(key, fmt){
   /* ---- atoms ---- */
   M.face = (c, size) => { const init = (c.name || "").split(" ").map(w => w[0]).slice(0, 2).join("");
     const img = location.protocol === "file:" ? "" : `<img alt="" src="https://sleepercdn.com/content/nfl/players/${c.player_id}.jpg" onerror="this.remove()">`;
-    return `<span class="face ${size || ""}" data-pos="${c.position}" style="--pc:${pc(c.position)}" title="${esc(c.name)}">${init}${img}</span>`; };
+    return `<span class="face ${size || ""}" data-pos="${c.position}" style="--pc:${pc(c.position)}" data-tip="${esc(c.name)}">${init}${img}</span>`; };
   M.pill = p => `<span class="pill" style="background:${pc(p)}">${p}</span>`;
-  M.copyBtn = c => `<button class="copy" data-copy="${esc(c.name)}" title="Copy the name to carry to Sleeper">⧉ copy name</button>`;
+  M.copyBtn = c => `<button class="copy" data-copy="${esc(c.name)}" data-tip="Copy the name to carry to Sleeper">⧉ copy name</button>`;
   M.whoSub = c => `${M.pill(c.position)}<span>${c.team}</span><span>·</span><span>${Math.round(c.projected_points)} projected pts</span><span>·</span><span>${M.slotPhrase(c)}</span>${c.injury_status ? `<span>·</span>${M.avail(c)}` : ""}`;
 
   /* ---- rails ---- */
-  const box = (p, cls, line2) => `<div class="pk ${cls}" title="${esc(p.no <= S.consumed ? `${p.name} · ${p.pos} · ${p.team}` : `${M.coord(p)} · ${p.mine ? "you" : "Roster " + p.seat}`)}">
+  const box = (p, cls, line2) => `<div class="pk ${cls}" data-tip="${esc(p.no <= S.consumed ? `${p.name} · ${p.pos} · ${p.team}` : `${M.coord(p)} · ${p.mine ? "you" : "Roster " + p.seat}`)}">
       <div class="c"><span>${M.coord(p)}</span>${p.no <= S.consumed ? M.pill(p.pos) : `<span>#${p.no}</span>`}</div>
       <div class="nm">${line2}</div><div class="sd">${p.mine ? "YOU" : "Roster " + p.seat}</div></div>`;
-  M.ticks = () => `<div class="ticks">${M.BETWEEN.map(p => `<i title="#${p.no} · Roster ${p.seat}"></i>`).join("")}</div>`;
+  M.ticks = () => `<div class="ticks">${M.BETWEEN.map(p => `<i data-tip="#${p.no} · Roster ${p.seat}"></i>`).join("")}</div>`;
   /* A: named past boxes (as many whole boxes as fit, newest nearest the clock), YOU ARE UP, one span, YOUR NEXT */
   M.railA = () => {
     const past = M.KNOWN.slice(-14).reverse().map(p => box(p, p.mine ? "mine" : "", short(p.name))).join("");
@@ -328,8 +328,8 @@ function buildModel(key, fmt){
     if (p.no <= S.consumed) return box(p, (p.mine ? "mine " : "") + (p.no < (M.PREV_NO || 0) ? "dimmed" : ""), short(p.name));
     if (p.no === M.NOW_NO) return box(p, "now mine", "YOU ARE UP");
     if (p.no === M.NEXT_NO) return box(p, "next mine", "YOUR NEXT");
-    if (p.no < (M.NEXT_NO || Infinity)) return `<div class="pk between" title="#${p.no} · ${M.coord(p)} · Roster ${p.seat}"><div class="sd">R${p.seat}</div></div>`;
-    return `<div class="pk future ${p.mine ? "mine" : ""}" title="#${p.no} · ${M.coord(p)}"><div class="sd">${p.mine ? "YOU" : "R" + p.seat}</div></div>`;
+    if (p.no < (M.NEXT_NO || Infinity)) return `<div class="pk between" data-tip="#${p.no} · ${M.coord(p)} · Roster ${p.seat}"><div class="sd">R${p.seat}</div></div>`;
+    return `<div class="pk future ${p.mine ? "mine" : ""}" data-tip="#${p.no} · ${M.coord(p)}"><div class="sd">${p.mine ? "YOU" : "R" + p.seat}</div></div>`;
   }).join("");
 
   /* ---- sheets content ---- */
@@ -408,3 +408,65 @@ function fillCommon(M){
   if (q("dbHost")) q("dbHost").innerHTML = M.boardGrid();
   requestAnimationFrame(markScrollers);
 }
+
+/* hover boxes -------------------------------------------------------------------------------
+   One delegated tooltip for every [data-tip] host. Shows on hover AND on keyboard focus, which
+   the native title= never did; click pins it so a long explanation can be read without holding
+   the pointer still, and Escape or a scroll dismisses it. The first line of a tip renders as a
+   heading, the rest as body -- the only structure available without letting hover strings carry
+   markup, which they must not, because some of them interpolate vendor data. */
+(function () {
+  let el = null, host = null, timer = null, pinned = false;
+  const box = () => (el || (el = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tip" }))));
+
+  function fill(text) {
+    const b = box(); b.textContent = "";
+    const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
+    if (lines.length > 1) {
+      const h = document.createElement("span"); h.className = "th"; h.textContent = lines[0];
+      b.appendChild(h); b.appendChild(document.createTextNode(lines.slice(1).join("\n\n")));
+    } else { b.textContent = text; }
+    b.classList.toggle("wide", text.length > 170);
+  }
+
+  function place() {
+    if (!host) return;
+    const b = box(), r = host.getBoundingClientRect(), m = 8;
+    b.style.left = b.style.top = "0px";            // measure unclamped, then clamp
+    const w = b.offsetWidth, h = b.offsetHeight;
+    let top = r.bottom + 6;
+    if (top + h > innerHeight - m) top = (r.top - h - 6 >= m) ? r.top - h - 6 : Math.max(m, innerHeight - h - m);
+    b.style.top = Math.round(top) + "px";
+    b.style.left = Math.round(Math.min(Math.max(m, r.left), innerWidth - w - m)) + "px";
+  }
+
+  function show(h, now) {
+    host = h; fill(h.dataset.tip);
+    const go = () => { place(); box().classList.add("on"); };
+    clearTimeout(timer); now ? go() : (timer = setTimeout(go, 130));
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    clearTimeout(timer); pinned = false; host = null;
+    if (el) { el.classList.remove("on", "pinned"); }
+  }
+
+  addEventListener("mouseover", e => { const h = e.target.closest && e.target.closest("[data-tip]"); if (h && h !== host) { hide(true); show(h); } });
+  addEventListener("mouseout", e => { const h = e.target.closest && e.target.closest("[data-tip]"); if (h && h === host && !pinned) hide(); });
+  addEventListener("focusin", e => { const h = e.target.closest && e.target.closest("[data-tip]"); if (h) show(h, true); });
+  addEventListener("focusout", () => hide());
+  addEventListener("keydown", e => { if (e.key === "Escape") hide(true); });
+  addEventListener("scroll", () => hide(true), true);
+  addEventListener("click", e => {
+    const h = e.target.closest && e.target.closest("[data-tip]");
+    if (!h) { hide(true); return; }
+    // Pin only what is long enough to be worth reading at leisure; short labels keep the
+    // plain hover so a click on a chip or a door still does the thing the click is for.
+    if ((h.dataset.tip || "").length <= 170) return;
+    if (pinned && host === h) { hide(true); return; }
+    pinned = false; show(h, true); pinned = true;
+    const b = box(); b.classList.add("pinned");
+    const n = document.createElement("span"); n.className = "pin"; n.textContent = "click again, or Esc, to dismiss";
+    b.appendChild(n); place();
+  });
+})();

@@ -55,8 +55,8 @@
   <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
     <span class="r"><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
       <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
-      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate the three</button>
-      <button class="btn" title="Settings">⚙</button></span></header>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock.">⚑ Debate the three</button>
+      <button class="btn" data-tip="Settings">⚙</button></span></header>
   <div class="railB" id="railwrap"><div class="scroll" id="railscroll"><div class="track" id="rail"></div></div></div>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span id="wait"></span><span class="right"><button class="btn sm" id="recentre">⟲ now</button></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div><span class="note" id="slotNote" style="margin-left:auto"></span></div>
@@ -78,7 +78,7 @@ const LET = ["A", "B", "C"], CLS = {A:"a", B:"b", C:"c"};
 const picked = () => LET.map(L => M.get(slots[L])).filter(Boolean);
 function trioHTML(){
   const P = LET.map(L => ({L, c:M.get(slots[L])})), live = P.filter(p => p.c);
-  const heads = P.map(p => p.c ? `<div class="head ${CLS[p.L]}">${M.face(p.c)}<span style="min-width:0"><div class="nm">${p.c.name}</div><div class="sub">${p.c.position} · ${p.c.team} · ${Math.round(p.c.projected_points)} pts · #${p.c.rank} on the board</div></span><button class="ab" data-unslot="${p.L}" title="Remove from slot ${p.L}">${p.L} ✕</button></div>` : `<div class="head empty ${CLS[p.L]}">slot ${p.L} — click a name on the board</div>`).join("");
+  const heads = P.map(p => p.c ? `<div class="head ${CLS[p.L]}">${M.face(p.c)}<span style="min-width:0"><div class="nm">${p.c.name}</div><div class="sub">${p.c.position} · ${p.c.team} · ${Math.round(p.c.projected_points)} pts · #${p.c.rank} on the board</div></span><button class="ab" data-unslot="${p.L}" data-tip="Remove from slot ${p.L}">${p.L} ✕</button></div>` : `<div class="head empty ${CLS[p.L]}">slot ${p.L} — click a name on the board</div>`).join("");
   if (live.length < 2) return `<div class="heads">${heads}</div><p class="note" style="margin-top:12px">Put at least two names in the slots to compare them.</p>`;
   const cs = live.map(p => p.c), A = P[0].c || cs[0];
   const cell = (fn, leadIdx) => P.map((p, i) => `<div class="cell ${i === leadIdx ? "lead" : ""}">${p.c ? fn(p.c, i) : ""}</div>`).join("");
@@ -108,7 +108,7 @@ function trioHTML(){
 }
 function poolHTML(){
   const row = c => { const inn = LET.find(L => slots[L] === c.player_id);
-    return `<div class="prow ${inn ? "in" + inn : ""}" data-row data-pick="${c.player_id}" role="button" tabindex="0" title="${inn ? "In slot " + inn + " — click to remove" : "Click to put him in slot C"}"><span class="rk">${c.rank}</span>${M.pill(c.position)}<span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts · ${M.slotShort(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""}</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="let ${inn || ""}">${inn || ""}</span></div>`; };
+    return `<div class="prow ${inn ? "in" + inn : ""}" data-row data-pick="${c.player_id}" role="button" tabindex="0" data-tip="${inn ? "In slot " + inn + " — click to remove" : "Click to put him in slot C"}"><span class="rk">${c.rank}</span>${M.pill(c.position)}<span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts · ${M.slotShort(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""}</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="let ${inn || ""}">${inn || ""}</span></div>`; };
   if (!byPos) return M.C.map(row).join("");
   return M.VALUE_ORDER_POS.concat(M.LINEUP_ORDER.filter(p => !M.VALUE_ORDER_POS.includes(p))).map(p => { const l = M.atPos(p), f = M.FORFEIT[p];
     return `<div class="grp"><span class="pos" style="color:${pc(p)}">${p}</span><span>${num(f) ? `best left at #${M.NEXT_NO} <b>${f1(M.NEXTV[p])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(p) ? ` · ${M.costWord(p)}` : ""}` : `none in the board's top ${M.C.length}`}</span><span class="note" style="margin-left:auto">${M.heldAt(p).length ? `you hold ${M.heldAt(p).map(x => M.short(x.name)).join(", ")}` : "you hold none"}</span></div>${l.map(row).join("")}`; }).join("");

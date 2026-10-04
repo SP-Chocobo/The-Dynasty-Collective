@@ -228,6 +228,25 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .basis{font-style:normal;color:var(--amber-b)}
 .rev .fmts{margin-left:14px;padding-left:12px;border-left:1px solid var(--line-2)}
 
+/* hover boxes ------------------------------------------------------------------------------
+   The native title= tooltip was the one surface in this build that nothing designed: OS chrome
+   on a dark page, ~1s to appear, auto-dismissed after ~5s, no line breaks. The longest string
+   here is the tank gauge's, which is three separate facts and was being delivered as one
+   unbroken paragraph in a box that un-renders itself mid-read. Text is set as textContent and
+   broken on newlines, so no hover string can inject markup; the first line reads as a heading. */
+.tip{position:fixed;z-index:90;max-width:300px;padding:8px 11px;background:var(--surface);
+  border:1px solid var(--line-2);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.55);
+  font-size:.8rem;line-height:1.5;color:var(--muted);white-space:pre-line;pointer-events:none;
+  opacity:0;transition:opacity .09s ease}
+.tip.on{opacity:1}
+.tip.wide{max-width:430px}
+.tip .th{display:block;color:var(--ink);font-weight:600;margin-bottom:3px}
+.tip.pinned{pointer-events:auto;border-color:var(--dim)}
+.tip .pin{display:block;margin-top:6px;color:var(--dim);font-size:.72rem;font-family:var(--f-m)}
+[data-tip]{cursor:help}
+[data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+
 /* v4 — DOORS, multi-format. All position doors exist (derived from the league's own slots and the
    engine's flex map); 4–5 surface in the board's value order; the window slides; a count line says
    so; the drawer carries the position's context when filtered; demand carries its basis verbatim. */
@@ -316,8 +335,8 @@ p.say .rule{color:var(--dim);font-size:.8rem}
   <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
     <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false">≣ Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
       <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
-      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" title="Billed, and only while you are on the clock.">⚑ Debate</button>
-      <button class="btn" title="Settings">⚙</button></span></header>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock.">⚑ Debate</button>
+      <button class="btn" data-tip="Settings">⚙</button></span></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
   <div class="main">
@@ -460,8 +479,8 @@ function buildModel(key, fmt){
       const fills = c && !lit && !r.p && s.kind !== "bench" && r.slot === s.slot; if (fills) lit = true;
       const need = !r.p && !isFlexSlot(r.slot) && M.heldAt(r.slot).length === 0;
       const label = r.p ? short(r.p.name) : fills ? "← " + short(c.name) : "open";
-      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${r.slot}</span><span class="p" title="${r.p ? esc(r.p.name) : ""}">${label}</span></div>`;
-      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}" title="${r.p ? esc(r.p.name) : ""}"><span class="s">${r.slot}</span>${label}</span>`;
+      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${r.slot}</span><span class="p" data-tip="${r.p ? esc(r.p.name) : ""}">${label}</span></div>`;
+      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}" data-tip="${r.p ? esc(r.p.name) : ""}"><span class="s">${r.slot}</span>${label}</span>`;
     });
     const bnTxt = `${M.benchFilled} of ${M.benchTotal}${c && s.kind === "bench" ? ` · ← ${short(c.name)}` : ""}`;
     return cells.join("") + (vertical ? `<div class="slot open ${c && s.kind === "bench" ? "fills" : ""}"><span class="s">BN</span><span class="p">${bnTxt}</span></div>` : `<span class="slotc open ${c && s.kind === "bench" ? "fills" : ""}"><span class="s">BN</span>${bnTxt}</span>`);
@@ -642,16 +661,16 @@ function buildModel(key, fmt){
   /* ---- atoms ---- */
   M.face = (c, size) => { const init = (c.name || "").split(" ").map(w => w[0]).slice(0, 2).join("");
     const img = location.protocol === "file:" ? "" : `<img alt="" src="https://sleepercdn.com/content/nfl/players/${c.player_id}.jpg" onerror="this.remove()">`;
-    return `<span class="face ${size || ""}" data-pos="${c.position}" style="--pc:${pc(c.position)}" title="${esc(c.name)}">${init}${img}</span>`; };
+    return `<span class="face ${size || ""}" data-pos="${c.position}" style="--pc:${pc(c.position)}" data-tip="${esc(c.name)}">${init}${img}</span>`; };
   M.pill = p => `<span class="pill" style="background:${pc(p)}">${p}</span>`;
-  M.copyBtn = c => `<button class="copy" data-copy="${esc(c.name)}" title="Copy the name to carry to Sleeper">⧉ copy name</button>`;
+  M.copyBtn = c => `<button class="copy" data-copy="${esc(c.name)}" data-tip="Copy the name to carry to Sleeper">⧉ copy name</button>`;
   M.whoSub = c => `${M.pill(c.position)}<span>${c.team}</span><span>·</span><span>${Math.round(c.projected_points)} projected pts</span><span>·</span><span>${M.slotPhrase(c)}</span>${c.injury_status ? `<span>·</span>${M.avail(c)}` : ""}`;
 
   /* ---- rails ---- */
-  const box = (p, cls, line2) => `<div class="pk ${cls}" title="${esc(p.no <= S.consumed ? `${p.name} · ${p.pos} · ${p.team}` : `${M.coord(p)} · ${p.mine ? "you" : "Roster " + p.seat}`)}">
+  const box = (p, cls, line2) => `<div class="pk ${cls}" data-tip="${esc(p.no <= S.consumed ? `${p.name} · ${p.pos} · ${p.team}` : `${M.coord(p)} · ${p.mine ? "you" : "Roster " + p.seat}`)}">
       <div class="c"><span>${M.coord(p)}</span>${p.no <= S.consumed ? M.pill(p.pos) : `<span>#${p.no}</span>`}</div>
       <div class="nm">${line2}</div><div class="sd">${p.mine ? "YOU" : "Roster " + p.seat}</div></div>`;
-  M.ticks = () => `<div class="ticks">${M.BETWEEN.map(p => `<i title="#${p.no} · Roster ${p.seat}"></i>`).join("")}</div>`;
+  M.ticks = () => `<div class="ticks">${M.BETWEEN.map(p => `<i data-tip="#${p.no} · Roster ${p.seat}"></i>`).join("")}</div>`;
   /* A: named past boxes (as many whole boxes as fit, newest nearest the clock), YOU ARE UP, one span, YOUR NEXT */
   M.railA = () => {
     const past = M.KNOWN.slice(-14).reverse().map(p => box(p, p.mine ? "mine" : "", short(p.name))).join("");
@@ -664,8 +683,8 @@ function buildModel(key, fmt){
     if (p.no <= S.consumed) return box(p, (p.mine ? "mine " : "") + (p.no < (M.PREV_NO || 0) ? "dimmed" : ""), short(p.name));
     if (p.no === M.NOW_NO) return box(p, "now mine", "YOU ARE UP");
     if (p.no === M.NEXT_NO) return box(p, "next mine", "YOUR NEXT");
-    if (p.no < (M.NEXT_NO || Infinity)) return `<div class="pk between" title="#${p.no} · ${M.coord(p)} · Roster ${p.seat}"><div class="sd">R${p.seat}</div></div>`;
-    return `<div class="pk future ${p.mine ? "mine" : ""}" title="#${p.no} · ${M.coord(p)}"><div class="sd">${p.mine ? "YOU" : "R" + p.seat}</div></div>`;
+    if (p.no < (M.NEXT_NO || Infinity)) return `<div class="pk between" data-tip="#${p.no} · ${M.coord(p)} · Roster ${p.seat}"><div class="sd">R${p.seat}</div></div>`;
+    return `<div class="pk future ${p.mine ? "mine" : ""}" data-tip="#${p.no} · ${M.coord(p)}"><div class="sd">${p.mine ? "YOU" : "R" + p.seat}</div></div>`;
   }).join("");
 
   /* ---- sheets content ---- */
@@ -745,6 +764,68 @@ function fillCommon(M){
   requestAnimationFrame(markScrollers);
 }
 
+/* hover boxes -------------------------------------------------------------------------------
+   One delegated tooltip for every [data-tip] host. Shows on hover AND on keyboard focus, which
+   the native title= never did; click pins it so a long explanation can be read without holding
+   the pointer still, and Escape or a scroll dismisses it. The first line of a tip renders as a
+   heading, the rest as body -- the only structure available without letting hover strings carry
+   markup, which they must not, because some of them interpolate vendor data. */
+(function () {
+  let el = null, host = null, timer = null, pinned = false;
+  const box = () => (el || (el = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tip" }))));
+
+  function fill(text) {
+    const b = box(); b.textContent = "";
+    const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
+    if (lines.length > 1) {
+      const h = document.createElement("span"); h.className = "th"; h.textContent = lines[0];
+      b.appendChild(h); b.appendChild(document.createTextNode(lines.slice(1).join("\n\n")));
+    } else { b.textContent = text; }
+    b.classList.toggle("wide", text.length > 170);
+  }
+
+  function place() {
+    if (!host) return;
+    const b = box(), r = host.getBoundingClientRect(), m = 8;
+    b.style.left = b.style.top = "0px";            // measure unclamped, then clamp
+    const w = b.offsetWidth, h = b.offsetHeight;
+    let top = r.bottom + 6;
+    if (top + h > innerHeight - m) top = (r.top - h - 6 >= m) ? r.top - h - 6 : Math.max(m, innerHeight - h - m);
+    b.style.top = Math.round(top) + "px";
+    b.style.left = Math.round(Math.min(Math.max(m, r.left), innerWidth - w - m)) + "px";
+  }
+
+  function show(h, now) {
+    host = h; fill(h.dataset.tip);
+    const go = () => { place(); box().classList.add("on"); };
+    clearTimeout(timer); now ? go() : (timer = setTimeout(go, 130));
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    clearTimeout(timer); pinned = false; host = null;
+    if (el) { el.classList.remove("on", "pinned"); }
+  }
+
+  addEventListener("mouseover", e => { const h = e.target.closest && e.target.closest("[data-tip]"); if (h && h !== host) { hide(true); show(h); } });
+  addEventListener("mouseout", e => { const h = e.target.closest && e.target.closest("[data-tip]"); if (h && h === host && !pinned) hide(); });
+  addEventListener("focusin", e => { const h = e.target.closest && e.target.closest("[data-tip]"); if (h) show(h, true); });
+  addEventListener("focusout", () => hide());
+  addEventListener("keydown", e => { if (e.key === "Escape") hide(true); });
+  addEventListener("scroll", () => hide(true), true);
+  addEventListener("click", e => {
+    const h = e.target.closest && e.target.closest("[data-tip]");
+    if (!h) { hide(true); return; }
+    // Pin only what is long enough to be worth reading at leisure; short labels keep the
+    // plain hover so a click on a chip or a door still does the thing the click is for.
+    if ((h.dataset.tip || "").length <= 170) return;
+    if (pinned && host === h) { hide(true); return; }
+    pinned = false; show(h, true); pinned = true;
+    const b = box(); b.classList.add("pinned");
+    const n = document.createElement("span"); n.className = "pin"; n.textContent = "click again, or Esc, to dismiss";
+    b.appendChild(n); place();
+  });
+})();
+
 let M, openKey = null, filt = "ALL";
 const Q = new URLSearchParams(location.search);
 const SHOW_TANK = !Q.has("notank");         // ?notank: the screen without the tank, for comparison
@@ -766,10 +847,13 @@ function windowDoors(){
   return w;
 }
 function tankHTML(pos, cls){
-  if (!SHOW_TANK || !M.tankable(pos)) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" title="${M.tankable(pos) ? "No pool sample from the engine for this format." : "No tank: §14 draws the pool gauge for offensive positions only."}"></span>`;
-  const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" title="No pool sample from the engine for this format."></span>`;
+  if (!SHOW_TANK || !M.tankable(pos)) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="${M.tankable(pos) ? "No pool sample from the engine for this format." : "No tank: §14 draws the pool gauge for offensive positions only."}"></span>`;
+  const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="No pool sample from the engine for this format."></span>`;
   const fillPct = 100 * t.left / t.N, markPct = 100 * (t.N - t.starters) / t.N;
-  return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" title="${POS[pos]} pool: ${t.pctLeft}% of the engine's priced ${PLUR[pos]} still on the board (the engine's sample as of #${t.sampleAt}). The gold line is where the position stops producing STARTERS in the replacement sense, and it is a marker rather than an edge: below it players are still startable, and what runs out at the line is surplus over replacement, not production. The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
+  return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" data-tip="${POS[pos]} pool
+${t.pctLeft}% of the engine's priced ${PLUR[pos]} are still on the board — its sample as of #${t.sampleAt}.
+The gold line is where the position stops producing starters in the replacement sense. It is a marker rather than an edge: below it players are still startable, and what runs out at the line is surplus over replacement, not production.
+The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
 }
 function tankCap(pos){
   const t = SHOW_TANK ? M.tank(pos) : null;
@@ -797,7 +881,7 @@ function doorHTML(d, idx){
       ${list.length > 1 ? `<div class="then"><span class="k">then at ${d.key}</span>${list.slice(1, 4).map((c, i) => `<div class="tr"><span class="rk">${i + 2}</span><span class="nm">${c.name}${d.compound ? ` <span class="note">${c.position}</span>` : ""}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${list.length > 4 ? `<div class="tr"><span></span><span class="note">+ ${list.length - 4} more in the drawer</span></div>` : ""}</div>` : `<div class="then"><span class="k">the only ${d.compound ? "defender" : POS[d.key]} on the board</span></div>`}</div>
       <div class="dact"><span class="note" style="margin-left:0">${d.key === openKey ? "open below — copy and numbers are on the cards" : `click to open ${d.key}`}</span></div>`;
   }
-  return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" title="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" title="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} doors` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
+  return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} doors` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
 }
 /* the default open door, which must never be one STREAM_HIDE is holding back */
 function defaultOpen(){
@@ -811,8 +895,8 @@ function countHTML(w){
   const held = (STREAM_HIDE && !ALL_DOORS) ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
   const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
   return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length ? " — the window slides as the board changes" : ""}</span>
-    ${hidden.length ? `<span class="chips">not shown: ${hidden.map(d => `<span class="chip" data-open="${d.key}" title="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</span>`).join("")}</span>` : ""}
-    ${held.length ? `<span class="chips held">Streamable positions: ${held.map(d => `<span class="chip" data-open="${d.key}" title="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}</span>`).join("")} <a href="#" data-streamtoggle>show them</a></span>` : (STREAM_HIDE ? "" : `<span class="chips held"><a href="#" data-streamtoggle>set streamable aside</a></span>`)}
+    ${hidden.length ? `<span class="chips">not shown: ${hidden.map(d => `<span class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</span>`).join("")}</span>` : ""}
+    ${held.length ? `<span class="chips held">Streamable positions: ${held.map(d => `<span class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}</span>`).join("")} <a href="#" data-streamtoggle>show them</a></span>` : (STREAM_HIDE ? "" : `<span class="chips held"><a href="#" data-streamtoggle>set streamable aside</a></span>`)}
     <span class="cnt note"><b>the board: ${M.C.length} names</b> · lit slot: where the open door's best would start · every name, any position: the drawer ≣${ALL_DOORS ? " · all doors forced visible (?alldoors)" : ""}</span>`;
 }
 function callHTML(){
@@ -868,7 +952,7 @@ function draw(){
 function load(key, fmt){
   M = buildModel(key, fmt); openKey = defaultOpen(); filt = "ALL";
   fillCommon(M);
-  document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span title="${M.seatsText()}">${M.ticks()}</span>`;
+  document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span data-tip="${M.seatsText()}">${M.ticks()}</span>`;
   document.getElementById("boardn").innerHTML = M.clockShort();
   draw();
 }
