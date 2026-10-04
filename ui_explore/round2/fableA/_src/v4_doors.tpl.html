@@ -165,6 +165,13 @@ function doorHTML(d, idx){
   }
   return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" title="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" title="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} doors` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
 }
+/* the default open door, which must never be one STREAM_HIDE is holding back */
+function defaultOpen(){
+  const lead = M.doorOf(M.LEADER.position);
+  if (!(STREAM_HIDE && !ALL_DOORS && M.isStreamDoor(lead))) return lead.key;
+  const first = M.DOOR_ORDER.find(d => !M.isStreamDoor(d));
+  return (first || lead).key;
+}
 function countHTML(w){
   const all = M.DOOR_ORDER;
   const held = (STREAM_HIDE && !ALL_DOORS) ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
@@ -215,7 +222,7 @@ function flipDraw(){
 function draw(){
   flipDraw();
   document.getElementById("call").innerHTML = ALL_DOORS ? `<div class="ch"><span class="t">all ${M.DOOR_ORDER.length} doors forced visible</span><span class="note">?alldoors — for judging the window rule; the open door's cards are not drawn in this mode</span></div>` : callHTML();
-  if (!M.DOORS.some(x => x.key === openKey)) openKey = M.doorOf(M.LEADER.position).key;
+  if (!M.DOORS.some(x => x.key === openKey)) openKey = defaultOpen();
   const d = M.DOORS.find(x => x.key === openKey), b = doorBest(d) || M.LEADER;
   document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
   document.getElementById("debate").innerHTML = M.squad(`the ${openKey} door against the board's first name`);
@@ -225,7 +232,7 @@ function draw(){
   requestAnimationFrame(markScrollers);
 }
 function load(key, fmt){
-  M = buildModel(key, fmt); openKey = M.doorOf(M.LEADER.position).key; filt = "ALL";
+  M = buildModel(key, fmt); openKey = defaultOpen(); filt = "ALL";
   fillCommon(M);
   document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span title="${M.seatsText()}">${M.ticks()}</span>`;
   document.getElementById("boardn").innerHTML = M.clockShort();
