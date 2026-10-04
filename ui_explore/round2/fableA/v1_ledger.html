@@ -148,7 +148,7 @@ small{font-size:max(12px,.85em)}
 .rcard .sg{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;margin:2px 0 4px}
 .rcard .sl{display:flex;gap:6px;align-items:center;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rcard .sl i{font-style:normal;font-family:var(--f-m);font-size:.75rem;color:var(--dim);min-width:34px;flex:0 0 auto;white-space:nowrap;margin-right:4px}
-.rcard .sl.open{color:var(--dim);font-style:italic} .rcard .sl.fits{color:var(--amber-b);font-style:normal}
+.rcard .sl.open{color:var(--dim);font-style:italic}
 .rcard .ln b{color:var(--ink)}
 
 /* The rosters sheet takes the whole surface now, as the draft board always has. That buys two
@@ -738,20 +738,18 @@ M.doorDepth = (d, best, list) => {
   M.BENCH_FOLD_DEFAULT = M.benchTotal > M.STARTERS.length;
   M.benchToggled = M.benchToggled || new Set();
   M.benchFolded = seat => M.benchToggled.has(seat) ? !M.BENCH_FOLD_DEFAULT : M.BENCH_FOLD_DEFAULT;
-  M.allRosters = focusPos => {
+  M.allRosters = () => {
     const seats = [...new Set(RAIL.map(p => p.seat))].sort((a, b) => Number(a) - Number(b));
     return seats.map(seat => { const me = seat === S.seat, picks = me ? S.myPicks : M.KNOWN.filter(p => p.seat === seat);
       const r = slotRoster(picks, S.slots), starters = r.filter(x => x.slot !== "BN");
       const benchP = r.filter(x => x.slot === "BN" && x.p), benchOpen = M.benchTotal - benchP.length;
       const turns = M.BETWEEN.filter(p => p.seat === seat).map(p => "#" + p.no);
-      const fx = focusPos ? starters.find(x => !x.p && x.slot !== focusPos && isFlexSlot(x.slot) && eligible(x.slot, focusPos)) : null;
-      const route = focusPos ? (starters.some(x => x.slot === focusPos && !x.p) ? `${focusPos} slot open` : fx ? `${fx.slot} only for a ${focusPos}` : `no slot for a ${focusPos}`) : "";
       return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""} ${M.benchFolded(seat) ? "foldbn" : ""}" data-seat="${seat}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
-        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"} ${!x.p && focusPos && eligible(x.slot, focusPos) ? "fits" : ""}"><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
+        <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"}"><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
         <div class="sg bn">
           <button class="sl bh" data-bench="${seat}" aria-expanded="${!M.benchFolded(seat)}" data-tip="${M.benchFolded(seat) ? "Show this roster's bench" : "Hide this roster's bench"}">bench ${benchP.length} of ${M.benchTotal}<em>${M.benchFolded(seat) ? "expand ▸" : "collapse ▾"}</em></button>
           ${benchP.map(x => `<span class="sl bnrow"><i>BN${posOfPlayer(x.p) ? "·" + posOfPlayer(x.p) : ""}</i>${short(x.p.name)}</span>`).join("")}${benchOpen > 0 ? `<span class="sl open bnrow"><i>BN</i>${benchOpen} open</span>` : ""}</div>
-        ${route ? `<div class="ln note"><b>${route}</b></div>` : ""}</div>`; }).join("");
+        </div>`; }).join("");
   };
   M.boardGrid = () => {
     const seats = [...new Set(RAIL.map(p => p.seat))].sort((a, b) => Number(a) - Number(b)), rounds = [...new Set(RAIL.map(p => p.rnd))].sort((a, b) => a - b);

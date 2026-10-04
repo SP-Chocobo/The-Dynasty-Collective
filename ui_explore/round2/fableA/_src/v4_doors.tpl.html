@@ -246,8 +246,8 @@ function draw(){
   const d = M.DOORS.find(x => x.key === openKey), b = doorBest(d) || M.LEADER;
   document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
   document.getElementById("debate").innerHTML = M.squad(`the ${openKey} door against the board's first name`);
-  document.getElementById("allRosters").innerHTML = M.allRosters(posOf(d));
-  document.getElementById("rosterNote").innerHTML = `every roster as a lineup · <b style="color:var(--amber-b)">amber</b>: a slot a ${POS[posOf(d)]} could start in · the rosters picking before #${M.NEXT_NO} are lit`;
+  document.getElementById("allRosters").innerHTML = M.allRosters();
+  document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
   drawerHTML();
   requestAnimationFrame(markScrollers);
 }

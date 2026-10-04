@@ -143,7 +143,7 @@ small{font-size:max(12px,.85em)}
 .rcard .sg{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;margin:2px 0 4px}
 .rcard .sl{display:flex;gap:6px;align-items:center;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rcard .sl i{font-style:normal;font-family:var(--f-m);font-size:.75rem;color:var(--dim);min-width:34px;flex:0 0 auto;white-space:nowrap;margin-right:4px}
-.rcard .sl.open{color:var(--dim);font-style:italic} .rcard .sl.fits{color:var(--amber-b);font-style:normal}
+.rcard .sl.open{color:var(--dim);font-style:italic}
 .rcard .ln b{color:var(--ink)}
 
 /* The rosters sheet takes the whole surface now, as the draft board always has. That buys two
