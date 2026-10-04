@@ -20,7 +20,16 @@
 .count .chip:hover{color:var(--ink);border-color:var(--dim)}
 .count .chip i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .count .cnt{margin-left:auto}
-.doors{display:grid;gap:9px;flex:0 0 auto;align-items:start}
+/* Door geometry must not depend on how much text a door happens to carry. A door with a
+   filled-slot displacement line, or the one carrying "the dearest position to wait on", ran
+   18-116px taller than its neighbours (measured across all 18 format/state pairs) and the row
+   came out ragged along the bottom. The grid row is ALREADY as tall as its tallest door, so
+   that height is reserved either way -- the short doors simply declined to occupy it. They
+   occupy it now, at no cost in vertical space, and the slack collects in one designated place:
+   above the footer, which pins to the bottom edge, so every "click to open" sits on one
+   baseline however much stands above it. */
+.doors{display:grid;gap:9px;flex:0 0 auto;align-items:stretch}
+.door .dact{margin-top:auto}
 .doors.all{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;grid-template-columns:repeat(auto-fill,minmax(262px,1fr))!important}
 .door{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0;cursor:pointer;will-change:transform;position:relative}
 .door.open{border-color:var(--gold-b);box-shadow:0 0 0 1px rgba(247,207,74,.25),0 0 18px rgba(212,160,23,.12);cursor:default}
