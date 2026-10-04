@@ -9,6 +9,9 @@ import json, pathlib, dataclasses, sys
 sys.path.insert(0, str(pathlib.Path.cwd()))  # script lives in ui_explore/; engine is at root
 import data_merger as dm, draft_room as dr, draft_battery as db, draft_strategy as ds
 import pick_synthesis as ps, run_draft_battery as rdb
+import importlib.util as _ilu
+_gs = _ilu.spec_from_file_location("pool_gauge", "evidence/mode_boundary/pool_gauge.py")
+_pg = _ilu.module_from_spec(_gs); _gs.loader.exec_module(_pg)
 
 OUT = pathlib.Path("ui_explore/fixture.json")
 VDS = pathlib.Path("evidence/batteries/VDS_2026-10-01_varied_drafting_strategy_dd4ade7.json")
@@ -57,6 +60,21 @@ for label in WANT:
         failures.append(f"{label}: only {len(usable)} usable turns"); continue
     picks_idx = [usable[0], usable[len(usable) // 3], usable[int(len(usable) * 0.78)]]
 
+    # §14 GAUGE, per format. The bar is derived (`projected_points - bpa`) off this format's
+    # own opening board -- not borrowed from another format's sample, and not drained by the
+    # rail. compute_draft_board gives the FULL board; snapshot candidates are narrowed.
+    ob = dr.compute_draft_board(merger, players_db, [], ME, league, mode="auto",
+                                sleeper_projections=season, sleeper_basis=dr.SLEEPER_BASIS_SEASON_SUM)
+    orows = ob.to_dict("records") if hasattr(ob, "to_dict") else list(ob)
+    g_level, g_ordered, g_opening, g_onboard = _pg.opening_state(orows)
+    pts_by_pid = {str(r["player_id"]): r.get("projected_points") for r in orows
+                  if r.get("projected_points") is not None}
+    g_rank = {p: _pg.starter_bar_rank([pts_by_pid[i] for i in ids if i in pts_by_pid],
+                                      g_level.get(p)) for p, ids in g_ordered.items()}
+    gauge = {"opening": g_opening, "starterRank": {k: v for k, v in g_rank.items() if v},
+             "coverage": {k: round(v, 4) for k, v in _pg.coverage(g_opening, g_onboard).items()},
+             "basis": "derived from this format's own opening board (projected_points - bpa)"}
+
     rail = []
     for i in range(teams * rounds):
         e = {"no": i+1, "rnd": i//teams+1, "inr": i%teams+1, "seat": order[i], "mine": order[i] == ME}
@@ -80,7 +98,10 @@ for label in WANT:
             row = {k: c.get(k) for k in KEEP}; row["rank"] = r+1
             row["forces"] = [v for k, v in FORCES.items() if c.get(k)]
             rows.append(row)
-        states[key] = {"pick": snap.pick_label, "index": idx, "round": snap.round,
+        drafted = {str(p["player_id"]) for p in picks if p.get("player_id")}
+        remaining = {p: sum(1 for i in ids if i not in drafted) for p, ids in g_ordered.items()}
+        states[key] = {"gauge": {"remaining": remaining, "atPick": idx},
+          "pick": snap.pick_label, "index": idx, "round": snap.round,
           "seat": snap.my_roster_id, "teams": teams, "rounds": rounds,
           "regime": snap.decision_regime, "pool": snap.pool_scope,
           "consumed": snap.picks_consumed, "intervening": cs[0]["intervening_picks"],
@@ -93,7 +114,7 @@ for label in WANT:
           "withheld": sorted(ps.withheld_fields()),
           "myPicks": [x for x in rail[:idx] if x["mine"] and x.get("name")],
           "candidates": rows}
-    out[label] = {"slots": league.get("roster_positions", []), "teams": teams,
+    out[label] = {"gauge": gauge, "slots": league.get("roster_positions", []), "teams": teams,
                   "rounds": rounds, "rail": rail, "states": states}
 
     # VERIFY before anything downstream trusts it
