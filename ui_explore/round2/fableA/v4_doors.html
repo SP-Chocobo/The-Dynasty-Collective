@@ -769,12 +769,12 @@ function tankHTML(pos, cls){
   if (!SHOW_TANK || !M.tankable(pos)) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" title="${M.tankable(pos) ? "No pool sample from the engine for this format." : "No tank: §14 draws the pool gauge for offensive positions only."}"></span>`;
   const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" title="No pool sample from the engine for this format."></span>`;
   const fillPct = 100 * t.left / t.N, markPct = 100 * (t.N - t.starters) / t.N;
-  return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" title="${POS[pos]} pool: ${t.pctLeft}% of the engine's priced ${PLUR[pos]} still on the board (the engine's sample as of #${t.sampleAt}). The gold line is where the position stops producing starters; the hatched zone above it is the starter supply, and below it what is left is bench. The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
+  return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" title="${POS[pos]} pool: ${t.pctLeft}% of the engine's priced ${PLUR[pos]} still on the board (the engine's sample as of #${t.sampleAt}). The gold line is where the position stops producing STARTERS in the replacement sense, and it is a marker rather than an edge: below it players are still startable, and what runs out at the line is surplus over replacement, not production. The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
 }
 function tankCap(pos){
   const t = SHOW_TANK ? M.tank(pos) : null;
   if (!t) return M.tankable(pos) && SHOW_TANK ? `<div class="tankcap">pool: no engine sample for this format</div>` : "";
-  return `<div class="tankcap">pool <b>${t.pctLeft}% left</b> as of #${t.sampleAt} · ${t.startersLeft ? `<b>starters left</b>` : `<span class="gone">starters gone → bench</span>`}</div>`;
+  return `<div class="tankcap">pool <b>${t.pctLeft}% left</b> as of #${t.sampleAt} · ${t.startersLeft ? `<b>starters left</b>` : `<span class="gone">past the starter line · startable, not an upgrade</span>`}</div>`;
 }
 function holdText(d){
   const held = M.S.myPicks.filter(p => d.positions.includes(p.pos)), open = d.positions.reduce((n, p) => n + M.openAt(p), 0);
