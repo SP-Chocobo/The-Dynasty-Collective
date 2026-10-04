@@ -98,7 +98,8 @@
 .srow .rk{font-family:var(--f-m);font-size:.75rem;color:var(--dim)}
 .srow .nm{font-weight:600;min-width:0} .srow .nm small{color:var(--dim);font-weight:400;font-size:.78rem;margin-left:6px}
 .srow .v{font-family:var(--f-m);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap} .srow .v small{font-weight:400;color:var(--dim);font-size:.75rem;margin-left:5px;font-family:var(--f-s)}
-.srow .tk{grid-column:3/-1;font-size:.8rem;color:var(--muted);line-height:1.4}
+.srow .meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 10px;min-width:0}
+.srow .tk{font-size:.8rem;color:var(--muted);line-height:1.4}
 </style></head><body>
 <div class="room">
   <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
@@ -227,7 +228,7 @@ function drawerHTML(){
       <p>${doorBest(d) ? M.waitLine(pos) : `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}, so nothing to wait on is measured.`}${pos === M.DEAREST && doorBest(d) && M.POS_BY_COST.length > 1 ? ` <span class="dear">The dearest position to wait on right now.</span>` : ""}</p>
       ${doorBest(d) ? tankCap(pos).replace("tankcap", "note") : ""}</div></div>`; }
   document.getElementById("allCtx").innerHTML = ctx;
-  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="nm">${x.name}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
+  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
   document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · click one to open his door`;
 }
 function flipDraw(){
