@@ -153,9 +153,14 @@ M.doorDepth = (d, best, list) => {
   M.slotName = (pos, nth, want) => want > 1 ? pos + nth : pos;
   M.slotFor = c => {
     const held = M.heldAt(c.position), want = M.STARTERS.filter(r => r.slot === c.position).length;
-    if (M.openAt(c.position) > 0) return held.length === 0 ? {kind:"vacant", slot:M.slotName(c.position, 1, want)} : {kind:"second", slot:M.slotName(c.position, held.length + 1, want), beside:held[0]};
-    const fx = M.openFlexFor(c.position); if (fx) return {kind:"flex", slot:fx.slot, holder:held[0] || null};
-    return {kind:"bench", slot:"BN", holder:held[0] || null};
+    if (M.openAt(c.position) > 0) {
+      const row = M.STARTERS.find(r => r.slot === c.position && !r.p);
+      return held.length === 0
+        ? {kind:"vacant", slot:M.slotName(c.position, 1, want), row}
+        : {kind:"second", slot:M.slotName(c.position, held.length + 1, want), beside:held[0], row};
+    }
+    const fx = M.openFlexFor(c.position); if (fx) return {kind:"flex", slot:fx.slot, holder:held[0] || null, row:fx};
+    return {kind:"bench", slot:"BN", holder:held[0] || null, row:null};
   };
   M.slotPhrase = c => { const s = M.slotFor(c);
     if (s.kind === "vacant") return `starts at <b>${s.slot}</b> — you hold no ${POS[c.position]}`;
@@ -165,11 +170,8 @@ M.doorDepth = (d, best, list) => {
   M.slotShort = c => { const s = M.slotFor(c); return s.kind === "bench" ? "bench" : s.slot; };
   M.rosterStrip = (c, vertical) => {
     let lit = false; const s = c ? M.slotFor(c) : null;
-    const nth = {};
     const cells = M.STARTERS.map(r => {
-      nth[r.slot] = (nth[r.slot] || 0) + 1;
-      const want = M.STARTERS.filter(x => x.slot === r.slot).length;
-      const fills = c && !lit && !r.p && s.kind !== "bench" && M.slotName(r.slot, nth[r.slot], want) === s.slot; if (fills) lit = true;
+      const fills = c && !lit && !r.p && s.kind !== "bench" && r === s.row; if (fills) lit = true;
       const need = !r.p && !isFlexSlot(r.slot) && M.heldAt(r.slot).length === 0;
       const label = r.p ? short(r.p.name) : fills ? "← " + short(c.name) : "open";
       if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${slotTag(r.slot, r.p)}</span><span class="p"${tipAttr(r.p ? r.p.name : "")}>${label}</span></div>`;
