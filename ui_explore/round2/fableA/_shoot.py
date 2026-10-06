@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render every variant at 1440x900 in each of the three states and ASSERT on:
+"""Render every variant at each width in WIDTHS x 900, in each of the three states, and ASSERT on:
    - console / page errors, page scroll, self-clipping under overflow:hidden (round 1's probes)
    - text overflow: any visible text node whose box is wider/taller than its clip (ellipsis or hidden)
    - occlusion: a visible text element whose centre point resolves to an element that is neither
@@ -15,6 +15,7 @@ SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
 import json
 FORMATS = list(json.loads(pathlib.Path("/home/user/The-Dynasty-Collective/ui_explore/fixture.json").read_text()).keys())
 STATES = ["mid", "early", "late"]
+WIDTHS = [int(w) for w in __import__("os").environ.get("SHOOT_WIDTHS", "1440").split(",")]   # 1440 alone is blind to text that only collides when the doors narrow
 # (file, query, [formats]) — v4 runs every format; the others are control-only
 JOBS = []
 if sys.argv[1:]:
@@ -55,6 +56,20 @@ PROBE = """() => {
   let min = 99, minEl = '';
   all.forEach(el => { if (!vis(el)) return; const t = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); if (!t) return; const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < min) { min = fs; minEl = tag(el) + ': ' + el.textContent.trim().slice(0, 20); } });
   r.minFont = [min, minEl];
+  r.glyphOverlap = [];
+  // per-LINE boxes on both sides: an inline element's bounding rect is the union of its line
+  // boxes, so it spans lines it does not occupy and reads as an overlap that isn't there.
+  const lineRects = el => { let n = null; el.childNodes.forEach(c => { if (c.nodeType === 3 && c.textContent.trim()) n = c; }); if (!n) return [];
+    const rg = document.createRange(); rg.selectNodeContents(n);
+    return [...rg.getClientRects()].filter(b => b.width > 0 && b.height > 0); };
+  all.forEach(el => { if (!vis(el) || getComputedStyle(el).position !== 'static') return;
+    const as = lineRects(el); if (!as.length) return;
+    for (let s2 = el.nextElementSibling; s2; s2 = s2.nextElementSibling) {
+      if (!vis(s2) || getComputedStyle(s2).position !== 'static' || !s2.textContent.trim()) continue;
+      const bs = [...s2.getClientRects()].filter(b => b.width > 0 && b.height > 0);
+      const hit = as.some(a => bs.some(b => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1
+                                         && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1));
+      if (hit) r.glyphOverlap.push(tag(el) + ': "' + el.textContent.trim().slice(0, 24) + '" runs under ' + tag(s2)); } });
   const now = document.querySelector('.pk.now'), nxt = document.querySelector('.pk.next');
   if (now) { const nb = now.getBoundingClientRect(), xb = nxt ? nxt.getBoundingClientRect() : null; r.rail = {now: nb.left >= 0 && nb.right <= innerWidth, next: xb ? xb.left >= 0 && xb.right <= innerWidth : null, namedPast: [...document.querySelectorAll('.pk')].filter(p => { const b = p.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && !p.classList.contains('between') && !p.classList.contains('future') && !p.classList.contains('now') && !p.classList.contains('next'); }).length}; }
   return r; }"""
@@ -65,14 +80,15 @@ with sync_playwright() as p:
     for f, q, fmts in JOBS:
       for fmt in fmts:
         for st in STATES:
-            pg = b.new_page(viewport={"width": 1440, "height": 900})
+          for W in WIDTHS:
+            pg = b.new_page(viewport={"width": W, "height": 900})
             errs = []
             pg.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))
             pg.on("console", lambda m: errs.append(m.type + ": " + m.text) if m.type in ("error", "warning") else None)
             fpath = f; isv4 = "v4_" in f
             pg.goto("file://" + str(pathlib.Path(fpath).resolve()) + ("?" + q if q else "") + "#" + ((fmt + "/") if isv4 else "") + st, wait_until="load")
             pg.wait_for_timeout(600)
-            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}{'_' + fmt if isv4 else ''}_{st}.png"
+            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}{'_' + fmt if isv4 else ''}_{st}{'' if W == 1440 else '_w' + str(W)}.png"
             pg.screenshot(path=str(out), full_page=False)
             r = pg.evaluate(PROBE)
             problems = []
@@ -85,9 +101,10 @@ with sync_playwright() as p:
             if r["badScrollers"]: problems.append("scroller without affordance " + json.dumps(r["badScrollers"]))
             if r["badCounts"]: problems.append("count mismatch " + json.dumps(r["badCounts"]))
             if r["minFont"][0] < 12: problems.append("minFont " + json.dumps(r["minFont"]))
+            if r["glyphOverlap"]: problems.append("text runs under a sibling " + json.dumps(r["glyphOverlap"]))
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
             bad += bool(problems)
-            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if isv4 else 'ctrl'}/{st}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
+            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if isv4 else 'ctrl'}/{st}@{W}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
             for pr in problems: print("     ", pr)
             pg.close()
     b.close()

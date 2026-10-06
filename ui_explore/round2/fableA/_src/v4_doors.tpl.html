@@ -48,8 +48,8 @@
 .tank .fill{background:var(--tie)} .tank .fill.st{background:var(--emerald)}
 .door .body{min-width:0;display:flex;flex-direction:column}
 .dh{padding:8px 12px 7px;border-bottom:1px solid var(--line)}
-.dh .top{display:flex;align-items:baseline;gap:8px}
-.dh .pos{font-family:var(--f-d);font-size:1.04rem;font-weight:700;display:flex;align-items:baseline;gap:7px;white-space:nowrap;min-width:0}
+.dh .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dh .pos{font-family:var(--f-d);font-size:1.04rem;font-weight:700;display:flex;align-items:baseline;gap:7px;white-space:nowrap;flex:0 0 auto}
 .dh .n{margin-left:auto;font-family:var(--f-m);font-size:.75rem;color:var(--gold-b);white-space:nowrap;font-weight:700}
 .dh .n.dim{color:var(--dim);font-weight:400}
 .dh .st{font-size:.8rem;color:var(--muted);margin-top:2px} .dh .st.need{color:var(--amber-b)}
@@ -186,7 +186,7 @@ function doorHTML(d, idx){
         return `<div class="then"><span class="k">then at ${d.key}${d.compound ? " · best of each" : ""}</span>${dep.map((c, i) => `<div class="tr"><span class="rk">${d.compound ? c.position : i + 2}</span><span class="nm">${c.name}${M.armMark(c)}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${rest > 0 ? `<div class="tr"><span></span><span class="note">+ ${rest} more in the drawer</span></div>` : ""}</div>`; })() : `<div class="then"><span class="k">the only ${d.compound ? "defender" : POS[d.key]} on the board</span></div>`}</div>
       <div class="dact"><span class="note" style="margin-left:0">${d.key === openKey ? "open below — copy and numbers are on the cards" : `click to open ${d.key}`}</span></div>`;
   }
-  return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} doors` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
+  return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
 }
 /* the default open door, which must never be one STREAM_HIDE is holding back */
 function defaultOpen(){
