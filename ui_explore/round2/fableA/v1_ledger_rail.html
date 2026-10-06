@@ -606,7 +606,7 @@ M.doorDepth = (d, best, list) => {
     const startersLeft = Math.max(0, left - (N - starters));
     return {N, left, starters, startersLeft, pctLeft: Math.round(100 * left / N), sampleAt: base.at, coverage: G.coverage[pos], rows: G.rowsOnBoard[pos]}; };
   /* waiting on a position: who you get, when, what it costs — in that order */
-  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> is worth about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
+  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> nets about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
   M.DEAREST = M.POS_BY_COST[0] || null;
   M.avail = c => c.injury_status ? `<i class="inj">${c.injury_status}</i> <span class="note">not charged</span>` : "";
 
