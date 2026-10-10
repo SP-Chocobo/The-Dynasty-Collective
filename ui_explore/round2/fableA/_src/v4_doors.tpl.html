@@ -42,16 +42,19 @@
    glitch, and a size derived from the door's own box would inherit any future change to
    how many doors surface.
      - it grows with viewport HEIGHT, the axis whose slack a bigger name actually spends;
-     - it is capped by the width ONE DOOR GETS IN THE WORST CASE, five across:
-       door = (100vw - 32px padding - 36px of gaps) / 5, and the cap is 5% of that,
-       which reduces to (1vw - 0.68px). Sized to five doors, so a four-door board — where
-       each door is wider — is comfortably inside the cap rather than depending on it.
+     - it is capped so the LONGEST NAME ON THE BOARD still sets on one line. That name
+       ("Jacory Croskey-Merritt") measures 12.67 em-widths, stable across sizes. The cap
+       is CALIBRATED, not derived: the box around the name is sized by the sub-line
+       underneath it whenever the sub is longer, and the sub does not scale, so a closed
+       form would rest on a "constant" measured at 54px, 70.69px and 114.91px in three
+       places. The coefficient below is the largest of three candidates that introduced
+       no wrapping the shipped size did not already have, over 28 viewports x 18 boards.
      - the floor of each clamp is the metric this surface shipped at 900px tall, so short
        viewports are untouched and the gate still measures what it measured before.
    The face and the then-list are DERIVED from --nm at the ratios they already had
    (44/16.32, 14.4/44): an avatar that grew on its own stole width from the name beside
    it and wrapped the longest name on the board. */
-.doors{--nm:clamp(1.02rem,min(0.30rem + 1.30vh,1vw - 0.68px),1.30rem);
+.doors{--nm:clamp(1.02rem,min(0.30rem + 1.30vh,1.30vw - 4.38px),1.30rem);
        --nm2:calc(var(--nm)*0.824);
        --fc:calc(var(--nm)*2.7);
        --fcf:calc(var(--nm)*0.882)}
