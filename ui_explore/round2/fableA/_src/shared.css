@@ -27,6 +27,8 @@
   --sky:#1356c9; --sky-b:#56a0fa; --amber:#d4700a; --amber-b:#f8a52a;
   --cliff:#07837a; --cliff-b:#2fcfc0; --block:#b53a09; --block-b:#f79a53;
   --pure:#efe5cd; --tie:#6f6550; --tie-b:#a1947b;
+  /* the starter-band hatch. one home: it was a hardcoded rgba() of a gold that no longer exists. */
+  --hatch:rgba(245,201,63,.70);
   --qb:#7b5cf0; --rb:#0fa877; --wr:#2f7df0; --te:#e0661f; --k:#8d7350; --def:#c21f4d; --dl:#e35d7a; --lb:#b08cf5; --db:#d9a21c; --idp:#c21f4d;
   --f-d:"Cinzel",Georgia,serif; --f-s:"Segoe UI",system-ui,sans-serif;
   --f-m:"JetBrains Mono","DejaVu Sans Mono",monospace; --r:2px; color-scheme:dark;
