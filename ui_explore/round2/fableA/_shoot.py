@@ -15,7 +15,10 @@ SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
 import json
 FORMATS = list(json.loads(pathlib.Path("/home/user/The-Dynasty-Collective/ui_explore/fixture.json").read_text()).keys())
 STATES = ["mid", "early", "late"]
-WIDTHS = [int(w) for w in __import__("os").environ.get("SHOOT_WIDTHS", "1440").split(",")]   # 1440 alone is blind to text that only collides when the doors narrow
+# Viewports as WxH. Typography scales with viewport HEIGHT (and is capped by door width),
+# so a width alone no longer describes a render: the suite has to be able to vary both.
+VIEWPORTS = [tuple(int(n) for n in v.lower().split("x"))
+             for v in __import__("os").environ.get("SHOOT_VIEWPORTS", "1440x900").split(",")]
 # (file, query, [formats]) — v4 runs every format; the others are control-only
 JOBS = []
 if sys.argv[1:]:
@@ -80,15 +83,15 @@ with sync_playwright() as p:
     for f, q, fmts in JOBS:
       for fmt in fmts:
         for st in STATES:
-          for W in WIDTHS:
-            pg = b.new_page(viewport={"width": W, "height": 900})
+          for W, H in VIEWPORTS:
+            pg = b.new_page(viewport={"width": W, "height": H})
             errs = []
             pg.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))
             pg.on("console", lambda m: errs.append(m.type + ": " + m.text) if m.type in ("error", "warning") else None)
             fpath = f; isv4 = "v4_" in f
             pg.goto("file://" + str(pathlib.Path(fpath).resolve()) + ("?" + q if q else "") + "#" + ((fmt + "/") if isv4 else "") + st, wait_until="load")
             pg.wait_for_timeout(600)
-            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}{'_' + fmt if isv4 else ''}_{st}{'' if W == 1440 else '_w' + str(W)}.png"
+            out = SHOTS / f"{pathlib.Path(fpath).stem}{'_' + q if q else ''}{'_' + fmt if isv4 else ''}_{st}{'' if (W, H) == (1440, 900) else f'_{W}x{H}'}.png"
             pg.screenshot(path=str(out), full_page=False)
             r = pg.evaluate(PROBE)
             problems = []
@@ -104,7 +107,7 @@ with sync_playwright() as p:
             if r["glyphOverlap"]: problems.append("text runs under a sibling " + json.dumps(r["glyphOverlap"]))
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
             bad += bool(problems)
-            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if isv4 else 'ctrl'}/{st}@{W}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
+            print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if isv4 else 'ctrl'}/{st}@{W}x{H}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
             for pr in problems: print("     ", pr)
             pg.close()
     b.close()
