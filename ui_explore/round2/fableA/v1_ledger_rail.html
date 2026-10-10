@@ -573,7 +573,17 @@ M.doorDepth = (d, best, list) => {
   M.POSITIONS = M.LINEUP_ORDER.filter(p => C.some(c => c.position === p));
   M.DEMAND = S.demand || {}; M.SHARE_BASIS = S.slot_share_basis || null;
   M.shareLabel = () => M.SHARE_BASIS ? (SHARE_LABEL[M.SHARE_BASIS] || M.SHARE_BASIS) : "basis not reported";
-  M.demandText = pos => num(M.DEMAND[pos]) ? `demand <b>${M.DEMAND[pos].toFixed(2)}</b>/team · <i class="basis">${M.shareLabel()}</i>` : "";
+  /* The demand VALUE is per position. The basis behind it is not: slot_share_basis is one
+     field on the board, so the same words rode every door — four or five identical copies
+     per screen, and on a position with no flex eligibility they qualified a number that was
+     never split (QB 1.00 in a one-QB league, K and DEF, the IDP slots in HEAVY_IDP: ten of
+     the fixture's thirty-two positions carry an exact slot count). The basis is stated ONCE
+     per surface instead, by M.shareNote. Omitted only where the league starts no flex slot
+     at all, which is absence of the mechanism, not a hidden basis: where a flex slot exists
+     and the engine reported no basis, the note still says so. */
+  M.HAS_FLEX = (S.slots || []).some(isFlexSlot);
+  M.shareNote = () => M.HAS_FLEX ? `flex share in demand: <i class="basis">${M.shareLabel()}</i>` : "";
+  M.demandText = pos => num(M.DEMAND[pos]) ? `demand <b>${M.DEMAND[pos].toFixed(2)}</b>/team` : "";
   M.atPos = pos => C.filter(c => c.position === pos);
   M.atPosBpa = pos => M.atPos(pos).slice().sort((a, b) => b.bpa - a.bpa);
   M.best = pos => M.atPos(pos)[0] || null;
