@@ -14881,3 +14881,132 @@ use (+21.70 and +43.69 a seat).
 
 **Post-freeze work:** the branch needs a deliberate ordering/tiebreak policy for its flat regions. No
 measurement here licenses a replacement, which is why nothing was changed before the freeze.
+
+## #294 — INJURY HISTORY INVESTIGATED AND REJECTED AS A GRADE; `lineup_optimizer`'S REFUSAL TO
+## CARRY A BASE RATE IS NOW MEASURED RATHER THAN MERELY CAUTIOUS
+
+Opened because a league member asked for an injury-probability bar on the draft surface, and the
+owner asked whether Sleeper's data could support one. The answer is no. The useful part of that
+answer is WHICH hypotheses died and on what evidence, so the next audit does not re-run them.
+
+**Nothing in the engine was changed by this item.** No durability grade, no injury penalty, no
+external ingestion, `risk_adj` untouched. It is a recorded negative result plus two corrections.
+
+### The external source that exists, and the two traps inside it
+
+`nflverse-data` publishes per-week NFL roster status (`RES` = injured reserve) and the official
+weekly injury report (body part, Out/Doubtful/Questionable), 2009–2025, reachable from this
+container and joinable to Sleeper ids. Coverage against the 213-player `ui_explore` fixture board:
+169 (79%) via `roster_weekly`'s own `sleeper_id`, 200 (93%) via the `db_playerids` gsis crosswalk.
+The 13 unmapped are ALL team defenses — not rookies, which is worth stating because an earlier
+reading of this during the session said rookies and was wrong.
+
+**TRAP 1 — the committed Sleeper weekly capture LOOKS like injury history and is not.** Every row
+of `sleeper_weekly_2024.json` carries `player.injury_status`, `injury_body_part` and
+`injury_start_date`. They are the capture-time record backfilled onto every historical row:
+**identical across all 18 weeks for 2,561 of 2,562 players.** The `stats` half of the same row IS
+genuine per-week data (`last_modified` moves week to week). A grade built on the `player` half
+would describe the capture date while claiming to describe the season.
+
+**TRAP 2 — the official injury report structurally excludes the severe cases.** A player drops off
+the weekly report once he is placed on IR. Rashee Rice returns 1 report row and Alex Singleton 0,
+against 16 and 15 IR weeks respectively. The join was audited by surname before the data was
+blamed — 153 matched, 0 mismatches — so the thinness is the source, not the instrument.
+`roster_weekly`'s `RES` status is what captures those absences, and it is also what separates
+"hurt" from "did not play": Malik Willis reads ACT 18 / IR 0 while Bradley Chubb reads ACT 0 /
+IR 17. `stats.gp` alone cannot make that distinction and ranks Willis as the least available
+player on the board.
+
+### The backtest: churn-controlled, per fold, with bootstrap intervals
+
+Offensive skill positions, requiring ≥16 roster weeks in BOTH seasons — the control matters: without
+it the first pass returned a BACKWARDS quartile split, an artifact of fringe players being cut and
+changing the denominator.
+
+    prior-season IR spell  ->  P(any IR next season), 95% CI
+    fold        none                 1-5 wk               6+ wk
+    2023->24    0.20 [0.16,0.24]     0.29 [0.17,0.41]     0.25 [0.14,0.36]
+                n=408                n=58                 n=56
+    2024->25    0.25 [0.21,0.29]     0.33 [0.20,0.46]     0.30 [0.19,0.42]
+                n=411                n=46                 n=57
+
+Every injured interval overlaps the none-group mean, and 6+ weeks sits BELOW 1–5 in both folds.
+
+    returned vs not, restricted to onset <= wk13 so both groups COULD return
+    fold        returned             never returned
+    2023->24    0.27 [0.13,0.40]     0.21 [0.10,0.33]    <- reversed
+    2024->25    0.24 [0.11,0.38]     0.32 [0.17,0.46]
+
+    same body part in both seasons
+    fold        no IR                IR 6+ wk
+    2023->24    0.20                 0.11 [0.04,0.20]
+    2024->25    0.14                 0.12 [0.04,0.21]
+
+    age band control, P(any IR next season)
+    <=25    no IR 0.20 / 0.23    any IR 0.21 / 0.29      <- no effect
+    26-28   no IR 0.20 / 0.27    any IR 0.40 / 0.29      <- folds disagree
+
+### WHAT THIS RULES OUT
+
+- **A severity gradient from IR spell length.** Not monotonic, intervals overlap, and the longest
+  spells carry the LOWEST re-IR rate of any injured bucket.
+- **"Returning from IR is a positive signal."** The folds disagree in direction once the tautology
+  below is removed.
+- **Same-body-part recurrence as a usable feature.** Long-IR players show LOWER same-part rates,
+  which is detection bias and not protection: a man on IR is off the weekly report, so fewer body
+  parts are recorded for him at all and the intersection cannot fire.
+- **Blending Out/Doubtful weeks into a PREDICTIVE score.** It roughly halves the association
+  (rho +0.422/+0.358 for IR weeks alone against +0.221/+0.203 blended). The blend improves the
+  DISPLAY distribution and degrades the prediction; those are different goals and were conflated
+  once in this session.
+
+### CORRECTIONS IN FULL
+
+1. **A reported rho of +0.597 for the flag "late IR, never returned" is WITHDRAWN.** It was
+   tautological: a week-15 placement cannot return before the season ends, so the flag partly
+   re-encodes its own onset term. Restricted to returnable onsets, the effect does not replicate.
+
+2. **"Surface `exposure` — it is already computed and read by nothing" is WITHDRAWN.** Measured on
+   the fixture, `depth_basis` is `measured` on **15 of 700 rows**, and by draft state: **early 0 of
+   360, mid 0 of 290, late 15 of 50.** Exposure is structurally unavailable during the phase of a
+   draft where it would inform a pick — `vacant` before a roster exists, `no_surplus` once it does
+   and before a bench does, which `lineup_optimizer` already names as "each starter's own value
+   wearing a depth-shaped label", i.e. not depth information. It is also NOT unread: `pick_debate`
+   renders it with its basis. The detector's write-only `exposure` is the dict key inside
+   `depth_exposure()`'s return, a different object from the scalar on the candidate.
+
+3. **Spearman overstated the effect and the group means are the honest instrument.** The outcome is
+   heavily zero-inflated — most players are 0 IR weeks in both seasons — and that mass of
+   double-zeros manufactures rank agreement. A rho of +0.42 sits alongside intervals that overlap
+   everywhere, and the intervals are what should be believed.
+
+### WHAT IS NOT FIXED, AND WHY
+
+- **No base rate is supplied**, which leaves `depth_exposure`'s documented socket open exactly as
+  it was: *"A caller that acquires real base rates can weight these numbers; until then they are
+  pure severity."* This item is the attempt to acquire them. The result is that they are not
+  acquirable at a defensible confidence from three seasons, so the engine's refusal to invent
+  "RBs get hurt 1.4x more than WRs" is now backed by measurement rather than only by caution.
+- **The negative results are bounded by their own definitions.** Three seasons, two folds that
+  share players and are therefore not independent, offensive skill positions only, outcome =
+  next-season IR weeks rather than fantasy points lost. They do not establish that no predictive
+  injury signal exists in a richer dataset — only that this one does not support a grade.
+- **If availability history is ever revisited, `#146` is the precedent to follow, not this item's
+  silence.** `bye_week` was ruled admissible in REDRAFT ONLY — "a real cost when you own the player
+  for one season and meaningless when the asset outlives the schedule" — gated on
+  `league["settings"]["type"]`. A prior-season IR stint has the identical shape.
+
+### What was ALREADY in the record, and was nearly duplicated
+
+Two artifacts were drafted during this investigation and discarded before they were written, because
+the register already answers them and a second home is `#126`:
+
+- **A capture protocol to settle the `risk_adj` double-count.** `#191` was RETRACTED AND INVERTED
+  already: Sleeper projects injured players for a full season (`gp=17` even on IR), so there is no
+  double-count to detect. An independent probe here — weekly projections for Out players at 1.03x
+  their own healthy median, 0% zeroed — agrees with it from a different data path, and is recorded
+  only as corroboration.
+- **A `#172` data-contract finding that `injury_status` is designation-only.** The emitted
+  vocabulary table with counts is already printed in the `#191 IR/PUP + #202` entry, measured on
+  more rows than this session used.
+

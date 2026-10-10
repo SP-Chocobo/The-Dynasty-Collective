@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 245 markdown documents.
+`python3 doc_index.py` regenerates this. 257 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
@@ -8,8 +8,8 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
 | SUPERSEDED | 43 | still valid or partly valid, but something later changed what it means. |
-| DECLARED | 46 | says what kind of document it is before making claims. |
-| UNDECLARED | 126 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| DECLARED | 47 | says what kind of document it is before making claims. |
+| UNDECLARED | 137 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -138,6 +138,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/smoke_seats/RESULT.md`
 - `evidence/upside_gap/CHRONOLOGY.md`
 - `evidence/upside_gap/RESULT.md`
+- `ui_explore/ADJUDICATION_R1.md`
 
 ## UNDECLARED
 
@@ -267,3 +268,14 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/w18_instrument/CONFIGURATION.md`
 - `evidence/w18_instrument/INSTRUMENT.md`
 - `evidence/w4_01/THE_PREMISE_IS_FALSE.md`
+- `ui_explore/DESIGN_RECORD.md`
+- `ui_explore/FLEX_AND_POSITION_DOORS.md`
+- `ui_explore/round2/ADJUDICATION_R2.md`
+- `ui_explore/round2/OWNER_FEEDBACK_R2.md`
+- `ui_explore/round2/fableA/RATIONALE.md`
+- `ui_explore/round2/fableA/REVISION.md`
+- `ui_explore/round2/fableB/RATIONALE.md`
+- `ui_explore/round2/reviews/opus_A.md`
+- `ui_explore/round2/reviews/opus_B.md`
+- `ui_explore/round2/reviews/sonnet_A.md`
+- `ui_explore/round2/reviews/sonnet_B.md`
