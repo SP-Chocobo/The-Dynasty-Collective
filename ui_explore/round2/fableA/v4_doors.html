@@ -327,24 +327,37 @@ p.say .rule{color:var(--dim);font-size:.8rem}
    so the slack below them is what a bigger name spends. Width only decides how many
    columns fit. Each clamp's floor is the metric this surface shipped at 900px tall, so
    a short viewport is unchanged and the gate still measures what it measured before. */
-/* ONE driver: --nm, and it is a function of the VIEWPORT ALONE. Nothing in it reads the
-   board, so the type cannot resize between picks — sizes that shift mid-draft read as a
-   glitch, and a size derived from the door's own box would inherit any future change to
-   how many doors surface.
-     - it grows with viewport HEIGHT, the axis whose slack a bigger name actually spends;
-     - it is capped so the LONGEST NAME ON THE BOARD still sets on one line. That name
-       ("Jacory Croskey-Merritt") measures 12.67 em-widths, stable across sizes. The cap
-       is CALIBRATED, not derived: the box around the name is sized by the sub-line
-       underneath it whenever the sub is longer, and the sub does not scale, so a closed
-       form would rest on a "constant" measured at 54px, 70.69px and 114.91px in three
-       places. The coefficient below is the largest of three candidates that introduced
-       no wrapping the shipped size did not already have, over 28 viewports x 18 boards.
-     - the floor of each clamp is the metric this surface shipped at 900px tall, so short
-       viewports are untouched and the gate still measures what it measured before.
+/* ONE driver: --nm.
+     - it grows with viewport HEIGHT, the axis whose slack a bigger name actually spends:
+       the doors are a fixed-height block in a flex column and the strip below absorbs
+       what is left, so at 1440x900 there are 8-33px free and at 2000x1100 there are
+       252-357px. A flat increase would have come out of a strip already scrolling.
+     - it is capped by THE DOOR'S OWN WIDTH, read through a container query rather than
+       assumed. Height alone inflates type on a tall narrow screen until it wraps
+       (1280x1400 went 9 wrapped names to 46 before this cap existed). Assuming the
+       worst case of five doors instead held four-door boards — the ordinary league
+       shape — 8-12% below what their wider doors carry, right across the laptop range.
+     - the cap is CALIBRATED, not derived. The longest name on the board ("Jacory
+       Croskey-Merritt") measures 12.67 em-widths, stable across sizes, but the box
+       around a name is sized by the sub-line underneath whenever the sub is longer,
+       and the sub does not scale — so the "chrome" a closed form needs measured 54px,
+       70.69px and 114.91px in three places. These two numbers are the largest that
+       introduced no wrapping the shipped size did not already have, over 28 viewports
+       x 18 boards. Do not "simplify" them back into a formula; there isn't one.
+     - every clamp floor is the metric this surface shipped at 900px tall, so short
+       viewports are untouched by construction.
    The face and the then-list are DERIVED from --nm at the ratios they already had
-   (44/16.32, 14.4/44): an avatar that grew on its own stole width from the name beside
-   it and wrapped the longest name on the board. */
-.doors{--nm:clamp(1.02rem,min(0.30rem + 1.30vh,1.30vw - 4.38px),1.30rem);
+   (44/16.32, 14.4/44). Scaling the face on its own, it reached 52px while the name was
+   still pinned at its floor, took 7.5px from the name beside it and wrapped the longest
+   name on the board. Tied to --nm they cannot grow apart.
+   STABILITY: type that resized between picks would read as a glitch. Door width depends
+   on door count, and door count comes from the league's startable slots, not from what
+   has been drafted — so it is constant for a draft. That is a property of today's door
+   logic, not a guarantee, so _shoot.py ASSERTS it: the computed name size must be
+   identical across every draft state of a format. Make doors appear or disappear
+   mid-draft later and the suite fails loudly instead of the type silently breathing. */
+.door{container-type:inline-size}
+.doors{--nm:clamp(1.02rem,min(0.30rem + 1.30vh,6.508cqw - 3.498px),1.30rem);
        --nm2:calc(var(--nm)*0.824);
        --fc:calc(var(--nm)*2.7);
        --fcf:calc(var(--nm)*0.882)}

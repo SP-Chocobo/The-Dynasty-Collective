@@ -15,10 +15,15 @@ SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
 import json
 FORMATS = list(json.loads(pathlib.Path("/home/user/The-Dynasty-Collective/ui_explore/fixture.json").read_text()).keys())
 STATES = ["mid", "early", "late"]
-# Viewports as WxH. Typography scales with viewport HEIGHT (and is capped by door width),
-# so a width alone no longer describes a render: the suite has to be able to vary both.
+# Viewports as WxH. Typography scales with viewport HEIGHT and is capped by the door's
+# own width, so a width alone no longer describes a render. BOTH defaults are load-
+# bearing. At 1440x900 the name lands 0.18px above its clamp floor, so the cross-state
+# size assertion below has almost no headroom there — it happens to catch a planted
+# door-count change, but a build sitting flat on the floor would hide one. 1700x1100 is
+# a viewport where the cap binds with real margin (17.61px vs 19.1px on the same
+# plant), so the assertion has something to measure.
 VIEWPORTS = [tuple(int(n) for n in v.lower().split("x"))
-             for v in __import__("os").environ.get("SHOOT_VIEWPORTS", "1440x900").split(",")]
+             for v in __import__("os").environ.get("SHOOT_VIEWPORTS", "1440x900,1700x1100").split(",")]
 # (file, query, [formats]) — v4 runs every format; the others are control-only
 JOBS = []
 if sys.argv[1:]:
@@ -59,6 +64,8 @@ PROBE = """() => {
   let min = 99, minEl = '';
   all.forEach(el => { if (!vis(el)) return; const t = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); if (!t) return; const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < min) { min = fs; minEl = tag(el) + ': ' + el.textContent.trim().slice(0, 20); } });
   r.minFont = [min, minEl];
+  const _nm = document.querySelector('#doors .door .who .nm');
+  r.nameFs = _nm ? getComputedStyle(_nm).fontSize : null;
   r.glyphOverlap = [];
   // per-LINE boxes on both sides: an inline element's bounding rect is the union of its line
   // boxes, so it spans lines it does not occupy and reads as an overlap that isn't there.
@@ -76,6 +83,7 @@ PROBE = """() => {
   const now = document.querySelector('.pk.now'), nxt = document.querySelector('.pk.next');
   if (now) { const nb = now.getBoundingClientRect(), xb = nxt ? nxt.getBoundingClientRect() : null; r.rail = {now: nb.left >= 0 && nb.right <= innerWidth, next: xb ? xb.left >= 0 && xb.right <= innerWidth : null, namedPast: [...document.querySelectorAll('.pk')].filter(p => { const b = p.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && !p.classList.contains('between') && !p.classList.contains('future') && !p.classList.contains('now') && !p.classList.contains('next'); }).length}; }
   return r; }"""
+NAME_FS = {}   # (file, query, format, viewport) -> {state: computed name size}
 with sync_playwright() as p:
     exe = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome") + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell"))[0]
     b = p.chromium.launch(executable_path=exe)
@@ -106,9 +114,25 @@ with sync_playwright() as p:
             if r["minFont"][0] < 12: problems.append("minFont " + json.dumps(r["minFont"]))
             if r["glyphOverlap"]: problems.append("text runs under a sibling " + json.dumps(r["glyphOverlap"]))
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
+            if r.get("nameFs"):
+                NAME_FS.setdefault((pathlib.Path(fpath).name, q, fmt, (W, H)), {})[st] = r["nameFs"]
             bad += bool(problems)
             print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if isv4 else 'ctrl'}/{st}@{W}x{H}]  scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
             for pr in problems: print("     ", pr)
             pg.close()
     b.close()
-    sys.exit(1 if bad else 0)
+
+# The door names scale with the viewport and are capped by the door's own width. Door
+# width depends on door count, which comes from the league's startable slots and not
+# from what has been drafted — so the size must not move as a draft progresses. Type
+# that resizes between picks reads as a glitch. This asserts the invariant rather than
+# trusting it: if doors are ever made to appear or disappear mid-draft, this fails here
+# instead of the type quietly breathing on the owner's screen.
+drift = {k: v for k, v in NAME_FS.items() if len(set(v.values())) > 1}
+for k, v in sorted(drift.items(), key=lambda kv: str(kv[0])):
+    print(f"!! name size moves between draft states  {k[0]}{'?' + k[1] if k[1] else ''} [{k[2]} @ {k[3][0]}x{k[3][1]}]  {v}")
+bad += len(drift)
+print(f"ok  name size is identical across draft states for all {len(NAME_FS)} (file, format, viewport) groups"
+      if not drift else
+      f"!! name size MOVES between draft states in {len(drift)} of {len(NAME_FS)} (file, format, viewport) groups")
+sys.exit(1 if bad else 0)
