@@ -422,6 +422,10 @@ const pad = n => String(n).padStart(2, "0");
 const pc  = p => `var(--${(p || "k").toLowerCase()})`;
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 const POS  = {QB:"quarterback", RB:"running back", WR:"receiver", TE:"tight end", K:"kicker", DEF:"defense", DL:"defensive lineman", LB:"linebacker", DB:"defensive back", IDP:"defender"};
+/* The position as a LABEL, for a header slot: "running back" -> "Running Back". POS itself stays
+   lower case because it is mostly used mid-sentence ("the best receiver left"), so the Title Case
+   form is derived where a label is wanted rather than kept as a second vocabulary (#126). */
+const posTitle = p => (POS[p] || p).replace(/\b[a-z]/g, m => m.toUpperCase());
 const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
 const TIER_WORD = {HIGH:"a sharp drop", MEDIUM:"a moderate drop", LOW:"no cliff"};
 const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
@@ -996,9 +1000,10 @@ function fillCommon(M){
     const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
     if (lines.length > 1) {
       const h = document.createElement("span"); h.className = "th";
-      // The header is auto-capitalised so a tip built from interpolated vocabulary reads right:
-      // POS is lower case BY DESIGN because it is used mid-sentence ("the best receiver left"),
-      // so `${POS[pos]} pool` is authored lower case and drawn as "Running back pool".
+      // First-letter upper case on the header. MEASURED POPULATION: zero -- every header the
+      // board can draw is authored with a capital already, the pool headers included since they
+      // took posTitle. It is kept as a net for a tip built from interpolated vocabulary, not
+      // because anything relies on it; said plainly so it is not later read as a live mechanism.
       h.textContent = dash(lines[0].charAt(0).toUpperCase() + lines[0].slice(1));
       b.appendChild(h); b.appendChild(document.createTextNode(dash(lines.slice(1).join("\n\n"))));
     } else { b.textContent = dash(text); }
