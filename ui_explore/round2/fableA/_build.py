@@ -11,6 +11,14 @@ HERE = pathlib.Path(__file__).resolve().parent
 SRC = HERE / "_src"
 REPO = pathlib.Path("/home/user/The-Dynasty-Collective")
 fixture = json.loads((REPO / "ui_explore" / "fixture.json").read_text())
+# §AVAIL. The availability RECORD: counts with denominators, derived from nflverse roster status
+# and the official injury report, carried with its sources and its exclusions. It is a DISSEMINATED
+# FACT, not an engine quantity -- #294 measured that a durability grade is not supportable, so this
+# file holds no score, rate or risk and the surface renders only what it counts.
+_av = REPO / "ui_explore" / "availability.json"
+avail = json.loads(_av.read_text()) if _av.exists() else {"players": {}}
+print(f"avail: {len(avail.get('players', {}))} players, seasons {avail.get('_seasons')}, "
+      f"{sum(1 for v in avail.get('players', {}).values() if not v.get('seasons'))} rendering as absence")
 for F in fixture.values():
     for st in F["states"].values():
         for c in st["candidates"]:
@@ -58,7 +66,7 @@ missing = [f for f in fixture if f not in gauge]
 if missing:
     print("gauge: none for", missing, "- those formats render the tank's absence, never an estimate")
 
-payload = "const DATA=" + json.dumps({"formats": fixture, "vocab": vocab, "gauge": gauge}, separators=(",", ":")) + ";"
+payload = "const DATA=" + json.dumps({"formats": fixture, "vocab": vocab, "gauge": gauge, "avail": avail}, separators=(",", ":")) + ";"
 css = (SRC / "shared.css").read_text()
 js = (SRC / "shared.js").read_text()
 ok = True

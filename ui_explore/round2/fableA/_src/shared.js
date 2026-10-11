@@ -292,6 +292,49 @@ M.doorDepth = (d, best, list) => {
   /* waiting on a position: who you get, when, what it costs — in that order */
   M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> nets about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
   M.DEAREST = M.POS_BY_COST[0] || null;
+  /* ============================================================================================
+     §AVAIL. THE DURABILITY RECORD, AND WHY IT IS A RECORD AND NOT A GRADE.
+
+     #294 measured a 0-100 durability score and rejected it: prior IR is only weakly associated
+     with next-season absence, the intervals overlap the never-injured baseline at every bucket,
+     and nothing survives age banding. So nothing here is combined. Each line is a COUNT WITH ITS
+     DENOMINATOR, which needs no calibration and cannot be wrong.
+
+     TWO READINGS, NEVER MERGED. "Is he hurt now" is a present fact and already rides the card as
+     the live designation. "How available has he been" is a historical count over COMPLETED
+     seasons. Merging them would hide a man on IR today behind a spotless record -- measured: 16
+     of 43 currently-flagged players carry a history of 95%+.
+
+     ABSENCE IS RENDERED AS ABSENCE (#187). A player with no completed NFL season gets "no NFL
+     record", never a clean one: all five true rookies on this board would otherwise read as
+     perfectly durable off a handful of weeks. Silence here means a CLEAN record, and only that.
+     ============================================================================================ */
+  M.AVAIL = (DATA.avail && DATA.avail.players) || {};
+  M.availSeasons = c => (M.AVAIL[c.player_id] || {}).seasons || null;
+  M.availAbsent = c => M.AVAIL[c.player_id] && !((M.AVAIL[c.player_id].seasons || []).length);
+  M.availWorst = c => {
+    const ss = M.availSeasons(c);
+    return ss && ss.length ? (ss.find(x => x.missed > 0) || null) : null;
+  };
+  /* A MARK, NOT A LINE, AND NOT A COLOUR. The record is hover-depth detail: printed on every
+     door headline at once it cost a line per card and pushed the tightest board's card strip
+     past the fold at 1440x900. Two DISTINCT glyphs rather than one glyph in two shades --
+     absence is not a milder severity, and a ramp was measured out anyway (a six-step one failed
+     CVD at dE 0.5, and every hue here is already spoken for by position identity). Silence means
+     a clean record and only that. */
+  M.availMark = c => {
+    if (M.availAbsent(c)) return ` <span class="hm none"${tipAttr(M.availTip(c))}>\u25cc</span>`;
+    const w = M.availWorst(c);
+    if (!w) return "";
+    return ` <span class="hm"${tipAttr(M.availTip(c))}>\u271a</span>`;
+  };
+  M.availTip = c => {
+    if (M.availAbsent(c)) return "No completed NFL season, so there is no availability record to read.\nNot a clean record -- an absent one.";
+    const ss = M.availSeasons(c);
+    if (!ss || !ss.length) return "";
+    const rows = ss.map(x => `${x.y}  ${x.missed} of ${x.of} weeks missed${x.ir ? ` (${x.ir} on IR)` : ""}${x.part ? ` · ${x.part}` : ""}`);
+    return `Availability record — completed seasons\n${rows.join("\n")}\nWeeks on injured reserve plus weeks ruled Out or Doubtful. A count, not a forecast.`;
+  };
   M.avail = c => c.injury_status ? `<i class="inj">${c.injury_status}</i> <span class="note">not charged</span>` : "";
 
   /* ============================================================================================
