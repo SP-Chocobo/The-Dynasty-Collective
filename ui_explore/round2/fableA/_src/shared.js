@@ -500,7 +500,7 @@ M.doorDepth = (d, best, list) => {
       rows.push({l:ordered.map(w => WITHHELD_LABEL[w] || w).join("<br>"),
                  v:WITHHELD_WORD, b:WITHHELD_WHY, k:"withheld"});
     }
-    return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb"><i class="ek">${KIND[e.k]}</i> ${dash(e.b)}</span></div>`).join("");
+    return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb">${e.k === "withheld" ? "" : `<i class="ek">${KIND[e.k]}</i> `}${dash(e.b)}</span></div>`).join("");
   };
 
   /* ---- atoms ---- */

@@ -200,8 +200,8 @@ small{font-size:max(12px,.85em)}
 .ev{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.86rem}
 .ev:last-child{border:none}
 .ev .el{color:var(--muted)} .ev .en{font-family:var(--f-m);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
-.ev .eb{grid-column:1/-1;font-size:.78rem;color:var(--dim);line-height:1.45}
-.ek{font-style:normal;font-family:var(--f-m);font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.04rem .3rem;border-radius:2px;border:1px solid var(--line-2);color:var(--muted);margin-right:4px}
+.ev .eb{grid-column:1/-1;font-size:.78rem;color:var(--dim);line-height:1.7}
+.ek{font-style:normal;font-family:var(--f-m);font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.15;padding:.02rem .3rem;border-radius:2px;border:1px solid var(--line-2);color:var(--muted);margin-right:4px}
 .ev.withheld .en,.ev.withheld .ek{color:var(--violet-b);border-color:var(--violet)}
 .ev.unmeasured .ek,.ev.not_priced .ek{color:var(--amber-b);border-color:var(--amber)}
 .ev.count .ek{color:var(--sky-b);border-color:var(--sky)}
@@ -848,7 +848,7 @@ M.doorDepth = (d, best, list) => {
       rows.push({l:ordered.map(w => WITHHELD_LABEL[w] || w).join("<br>"),
                  v:WITHHELD_WORD, b:WITHHELD_WHY, k:"withheld"});
     }
-    return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb"><i class="ek">${KIND[e.k]}</i> ${dash(e.b)}</span></div>`).join("");
+    return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb">${e.k === "withheld" ? "" : `<i class="ek">${KIND[e.k]}</i> `}${dash(e.b)}</span></div>`).join("");
   };
 
   /* ---- atoms ---- */
