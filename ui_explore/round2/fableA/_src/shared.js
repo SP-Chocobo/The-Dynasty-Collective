@@ -54,6 +54,10 @@ const ordinal = n => n + (["th","st","nd","rd"][(n % 100 > 10 && n % 100 < 14) ?
 /* engine labels, verbatim, read from the engine at build time (lineup_optimizer.EXPOSURE_BASIS_LABELS,
    DISPLACEMENT_BASIS_LABELS, draft_strategy.DENIAL_BASIS_LABELS, draft_room.SLOT_SHARE_LABELS). */
 const DEPTH_LABEL = VOCAB.EXPOSURE, DISP_LABEL = VOCAB.DISPLACEMENT, DENIAL_LABEL = VOCAB.DENIAL, SHARE_LABEL = VOCAB.SLOT_SHARE;
+//: The withheld word and the REASON for it, read from pick_synthesis rather than written
+//: here. Its own comment is why: four surfaces must say this, and a hand copy in each is
+//: four places to go stale the day the calibration flag flips. This was the fifth (#126).
+const WITHHELD_WORD = VOCAB.WITHHELD_CARD_TEXT, WITHHELD_WHY = VOCAB.WITHHELD_REASON;
 
 /* roster: greedy fill of the league's slots from a list of picks */
 function slotRoster(picks, slots){
@@ -360,7 +364,7 @@ M.doorDepth = (d, best, list) => {
       ? "No weeks missed in either completed season. A record of what happened, not a forecast of what will."
       : "Weeks on injured reserve, weeks ruled Out or Doubtful, and weeks inactive carrying an injury designation. A count, not a forecast."}`;
   };
-  M.avail = c => c.injury_status ? `<i class="inj">${c.injury_status}</i> <span class="note">not charged</span>` : "";
+  M.avail = c => c.injury_status ? `<i class="inj">${c.injury_status}</i> <span class="note">not priced into value</span>` : "";
 
   /* ============================================================================================
      compare(a, b): across positions, three real quantities — value now (the board's order), what
@@ -400,7 +404,7 @@ M.doorDepth = (d, best, list) => {
       if (r.ahead) out.push(`They are neighbours in the order the drop was measured; between them the engine finds <b>${M.tierWord(r.ahead)}</b> (${f1(r.ahead.positional_cliff.gap)}).`);
       else out.push(`Behind ${A}: ${M.cliffText(a)}. Behind ${B}: ${M.cliffText(b)}.`);
       if (f1(a.time_horizon_adj) !== f1(b.time_horizon_adj)) out.push(`Dynasty horizon: ${sgn(a.time_horizon_adj)} on ${A}, ${sgn(b.time_horizon_adj)} on ${B}.`);
-      if ((a.injury_status || null) !== (b.injury_status || null)) out.push(`${a.injury_status ? `${A} is listed ${a.injury_status}` : `${A} carries no designation`}; ${b.injury_status ? `${B} is listed ${b.injury_status}` : `${B} none`}. The designation is carried and not charged.`);
+      if ((a.injury_status || null) !== (b.injury_status || null)) out.push(`${a.injury_status ? `${A} is listed ${a.injury_status}` : `${A} carries no designation`}; ${b.injury_status ? `${B} is listed ${b.injury_status}` : `${B} none`}. The designation is carried and not priced into his value.`);
       if (r.depthDiff) out.push(`Depth insurance ${r.depthDiff[0]} against ${r.depthDiff[1]}.`);
     }
     return out;
@@ -439,7 +443,8 @@ M.doorDepth = (d, best, list) => {
   M.costKey = subj => `<b>now</b> = value against ${short(subj.name)} today, the board's order · <b>at #${M.NEXT_NO}</b> = what his position leaves at your next turn against what ${subj.position} leaves · <b>both picks</b> = the two added together, him first`;
 
   /* ---- the engine's working (hidden until asked): every number with its kind; measured zeros print ---- */
-  const KIND = {measured:"measured", count:"a count", withheld:"withheld", unmeasured:"not measured", not_charged:"not charged"};
+  const KIND = {measured:"measured", count:"a count", withheld:"withheld", unmeasured:"not measured",
+              not_charged:"not charged", not_priced:"not priced into value"};
   M.working = c => {
     const d = M.depth(c), rows = [
       {l:"Value to your roster", v:f1(c.team_acquisition_value), b:"what the board is ordered by", k:"measured"},
@@ -451,12 +456,12 @@ M.doorDepth = (d, best, list) => {
       {l:`Cost of waiting on ${c.position}`, v:num(c.positional_forfeit) ? f1(c.positional_forfeit) : "—", b:"the best now minus the best left at your next turn — an aid beside the rank, never what ranks", k:num(c.positional_forfeit) ? "measured" : "unmeasured"},
       {l:"Dynasty horizon", v:sgn(c.time_horizon_adj), b:"the age / experience term inside his value", k:"measured"},
       {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring — a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead — a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
-      c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not charged against his value — this is not “no risk”", k:"not_charged"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
+      c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not priced into his value — this is not “no risk”", k:"not_priced"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
       {l:"Drop behind him", v:c.positional_cliff ? `${c.positional_cliff.tier} · ${f1(c.positional_cliff.gap)}` : "—", b:`the engine's tier and the raw gap to the next ${POS[c.position]} in the order it was measured (${M.cliffNext(c) ? short(M.cliffNext(c).name) : "a player not on this board"})`, k:"measured"},
       c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? " — a zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
       {l:"Picks until your next turn", v:String(S.intervening), b:"a count read off the pick order; shown in place of the survival estimate while that is withheld", k:"count"},
     ];
-    (S.withheld || []).forEach(w => rows.push({l:({survival_probability:"Chance he lasts to your next turn", opportunity_cost:"Cost of waiting on him", expected_value_of_waiting:"Expected value if you wait"})[w] || w, v:"withheld", b:"computed, then held back: it failed calibration against real drafts", k:"withheld"}));
+    (S.withheld || []).forEach(w => rows.push({l:({survival_probability:"Chance he lasts to your next turn", opportunity_cost:"Cost of waiting on him", expected_value_of_waiting:"Expected value if you wait"})[w] || w, v:WITHHELD_WORD, b:WITHHELD_WHY, k:"withheld"}));
     return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb"><i class="ek">${KIND[e.k]}</i> ${e.b}</span></div>`).join("");
   };
 

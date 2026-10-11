@@ -30,11 +30,18 @@ for F in fixture.values():
 VOCAB_CACHE = SRC / "_vocab.json"
 dump = subprocess.run([sys.executable, "-c", """
 import json, player_universe as pu, lineup_optimizer as lo, draft_room as dr, draft_strategy as ds
+import pick_synthesis as ps
 print(json.dumps({"STREAMABLE_POSITIONS": list(dr.STREAMABLE_POSITIONS),
   "FLEX_SLOT_POSITIONS": {k: sorted(v) for k, v in pu.FLEX_SLOT_POSITIONS.items()},
   "FANTASY_POSITIONS": sorted(pu.FANTASY_POSITIONS),
   "EXPOSURE": lo.EXPOSURE_BASIS_LABELS, "DISPLACEMENT": lo.DISPLACEMENT_BASIS_LABELS,
-  "DENIAL": ds.DENIAL_BASIS_LABELS, "SLOT_SHARE": dr.SLOT_SHARE_LABELS}))
+  "DENIAL": ds.DENIAL_BASIS_LABELS, "SLOT_SHARE": dr.SLOT_SHARE_LABELS,
+  # The REASON a number is withheld, taken from the engine rather than written here.
+  # pick_synthesis made WITHHELD_REASON a single home because "a hand-copied sentence in
+  # each is four places to go stale the day SURVIVAL_IS_CALIBRATED flips" -- and this
+  # prototype had hand-copied a fifth. One home (#126).
+  "WITHHELD_CARD_TEXT": ps.WITHHELD_CARD_TEXT, "WITHHELD_REASON": ps.WITHHELD_REASON,
+  "SURVIVAL_DERIVED_FIELDS": list(ps.SURVIVAL_DERIVED_FIELDS)}))
 """], cwd=REPO, capture_output=True, text=True)
 if dump.returncode == 0:
     vocab = json.loads(dump.stdout.strip().splitlines()[-1]); VOCAB_CACHE.write_text(json.dumps(vocab, indent=1)); print("vocab: read from the engine")

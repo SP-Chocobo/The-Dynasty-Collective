@@ -15010,3 +15010,108 @@ the register already answers them and a second home is `#126`:
   vocabulary table with counts is already printed in the `#191 IR/PUP + #202` entry, measured on
   more rows than this session used.
 
+
+
+## #295 — THE PROTOTYPE'S WITHHELD CONTRACT IS NOW ASSERTED, AND ITS REASON SENTENCE HAD A
+## SECOND HOME; ONE PUBLISHED CLAIM OF MINE WITHDRAWN
+
+An outside design review of the Doors A prototype raised the withheld survival family: *"a hidden
+field in a pretty interface isn't a withheld result. It's a visible result with a curtain over
+it."* That is the right question to ask, and the answer here is mixed in a way worth recording,
+because two of the three things I first reported were wrong.
+
+### The curtain is real. Measured, not assumed.
+
+`ui_explore/fixture.json` carries `survival_probability`, `opportunity_cost` and
+`expected_value_of_waiting` as live numbers on **all 700 candidate rows** — it is the engine
+capture, and `capture_fixture.py` takes the family from `ps.withheld_fields()` rather than a
+second list. `_build.py` pops them before inlining, so the **built artifacts carry 0 of 700**,
+verified by walking every committed `*.html` payload rather than by trusting the build's
+docstring. `waiting_cost`, which IS shown, survives: the strip is targeted, not a blanket drop.
+
+So the review's implied present-tense leak was not established, and my own first reading — that
+it had caught us — was withdrawn within the same investigation.
+
+### What WAS missing: nothing made it stay true
+
+The strip was one `c.pop(w, None)` in a build script, with no test. `test_withheld_propagation`
+audits the four ENGINE surfaces; the prototype is a fifth and was unguarded.
+`test_withheld_values_never_reach_the_prototype.py` now holds it, in the shape this repo keeps
+re-learning the hard way:
+
+- **The vacuity guard comes first.** An artifact that never carried the fields would pass an
+  absence check while proving nothing — the terminology guard whose live population was zero
+  could fire and had nothing in range to fire at. So the SOURCE fixture is asserted to carry the
+  family as numbers on every row BEFORE the artifact is asserted not to.
+- **The walk is schema-agnostic**, over the whole payload rather than a known key path. One
+  committed artifact (`_v1_ledger_rail_prev.html`) carries an older schema with no `formats` key,
+  which a path-based check would have skipped in silence.
+- **`None` is not a leak.** A present key with no value is the absence contract (`#187`) saying
+  "asked, does not exist" — a different statement from a suppressed one.
+- **Mutation-tested, three arms, each restored**: strip removed from the build → FAILED
+  (5 failures); sentence hand-written back → FAILED; fixture stripped of the family → the
+  vacuity guard FAILED. Baseline OK before and after.
+
+### THE REAL DEFECT, which the review did not name and my own flag pointed at by accident
+
+`pick_synthesis.WITHHELD_REASON` exists for a stated purpose: *"a hand-copied sentence in each is
+four places to go stale the day `SURVIVAL_IS_CALIBRATED` flips."* The prototype had hand-copied a
+**fifth**: `"computed, then held back: it failed calibration against real drafts"`.
+
+**WITHDRAWN: my claim that this reason was unsourced.** I grepped `POST_AUDIT_PLAN.md` for the
+wording, did not find it, and reported that the UI asserted a cause I could not substantiate. The
+cause is fully substantiated — in `survival_is_presentable`'s docstring (*"two arms measured it
+losing to a constant predictor"*) with `SURVIVAL_CALIBRATION_EVIDENCE` naming the two evidence
+files, both present. I looked in the register for something that correctly lives in the module.
+That is the one-home discipline working, and me checking the wrong home.
+
+The hand copy was therefore **accurate and still wrong to exist** — which is precisely the state a
+second home occupies before it drifts. And it was already lossy: the engine's sentence also says
+the estimate *"is worst exactly where a reader would lean on it hardest"* and *"Do not estimate
+one from the numbers that are shown."* The prototype's copy carried neither, so the surface was
+understating its own warning. The build now reads `WITHHELD_CARD_TEXT` and `WITHHELD_REASON` from
+the engine, verified rendering verbatim in all three withheld rows.
+
+### Two senses of "not charged", separated rather than standardised
+
+The review asked for `"not charged"` to become `"not priced into value"` globally. Globally is
+wrong: `lineup_optimizer` uses that phrase of an EXPOSURE figure that is not a depth price
+(`EXPOSURE_ROSTER_PARTIAL`, `no_surplus`), and `test_a_roster_the_solver_never_saw_whole` pins it.
+The prototype used the same words of an injury DESIGNATION that did not reduce a value. Two
+subjects, one wording — and "not charged" can read as a cost assessed and then waived.
+
+So the UI's designation label alone becomes `"not priced into value"`, which also makes the
+display agree with the basis key it has always had (`designation_not_priced`). The engine's uses
+are untouched. Standardising would have merged two distinct claims; disambiguating separates them.
+
+### A live `undefined` found while reading that code
+
+`KIND` mapped five kinds. The projected-points row sets `k:"not_priced"`, which was **not among
+them**, so `KIND[e.k]` was `undefined` and the panel rendered the literal word beside its amber
+styling. `shared.css` already had a `.ev.not_priced` rule, so the kind was intended and only its
+label was missing. Reachable on 2 of 700 rows (Keyshaun Elliott, LB, `LIGHT_IDP` early and mid —
+the only rows with no season projection). Fixed, and verified in the rendered DOM: 16 kind chips,
+0 empty or `undefined`.
+
+### Measured and NOT acted on: depth exposure during a draft
+
+The review's closing recommendation was to audit whether `lineup_optimizer.depth_exposure` can be
+surfaced in Doors A. It cannot usefully be, and this is the second time that has been measured.
+Across the same 700 rows, `depth_basis` is `vacant` on 488, `no_surplus` on 194, `measured` on
+**15**, `roster_partially_priced` on 3 — and the 15 are all late-draft (early 0 of 360, mid 0 of
+290, late 15 of 50). The cause is structural rather than a wiring gap: exposure prices a DEPTH
+loss, which needs a surplus to slide up, and a mid-draft roster has holes instead of surplus.
+Where it does exist, `pick_debate` already renders it. No change.
+
+### The suite policed the new guard, on the first full run
+
+Two of this repo's meta-guards failed on the new test file, and both were right:
+
+- `test_prose_names` — the file's own comment said `` `_prev` ``, a backticked name resolving to
+  nothing. The rule is "the name exists, or the prose says it is history"; a shorthand for a
+  filename is neither. Now `` `_v1_ledger_rail_prev.html` ``.
+- `test_suite_taxonomy` — a new test module must cite its audit section or register item in its
+  docstring, or it "answers to nothing" and drops out of every coverage query. Now cites `#295`.
+
+Worth recording because it is the same discipline this entry is about, applied one level up: a
+guard written to stop an invariant going unstated was itself unstated until the suite said so.

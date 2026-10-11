@@ -61,5 +61,12 @@
  "SLOT_SHARE": {
   "fielded_flex_share": "measured from this pool",
   "even_flex_split": "assumed even split"
- }
+ },
+ "WITHHELD_CARD_TEXT": "withheld",
+ "WITHHELD_REASON": "Withheld, not missing: this number is computed, and it failed its calibration check against real drafts -- it lost to a constant predictor on two independent arms, and it is worst exactly where a reader would lean on it hardest. So the claim is not put in front of a person. Do not estimate one from the numbers that are shown.",
+ "SURVIVAL_DERIVED_FIELDS": [
+  "survival_probability",
+  "opportunity_cost",
+  "expected_value_of_waiting"
+ ]
 }
