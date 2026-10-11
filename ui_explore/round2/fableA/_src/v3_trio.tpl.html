@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Trio Draft Room</title>
-<meta name="description" content="Round 2, v3 — a three-slot comparison the drafter builds from a resident board, one name per position by default; the board's order is one row, the two-pick plan against slot A is the next, and nothing else ranks; the rail keeps boxes both directions.">
+<meta name="description" content="Round 2, v3: a three-slot comparison the drafter builds from a resident board, one name per position by default; the board's order is one row, the two-pick plan against slot A is the next, and nothing else ranks; the rail keeps boxes both directions.">
 <style>
 /*__CSS__*/
 /* v3 — TRIO. Position layer SUMMONED (group the board by position) · pool BESIDE · within-position
@@ -78,7 +78,7 @@ const LET = ["A", "B", "C"], CLS = {A:"a", B:"b", C:"c"};
 const picked = () => LET.map(L => M.get(slots[L])).filter(Boolean);
 function trioHTML(){
   const P = LET.map(L => ({L, c:M.get(slots[L])})), live = P.filter(p => p.c);
-  const heads = P.map(p => p.c ? `<div class="head ${CLS[p.L]}">${M.face(p.c)}<span style="min-width:0"><div class="nm">${p.c.name}</div><div class="sub">${p.c.position} · ${p.c.team} · ${Math.round(p.c.projected_points)} pts · #${p.c.rank} on the board</div></span><button class="ab" data-unslot="${p.L}" data-tip="Remove from slot ${p.L}">${p.L} ✕</button></div>` : `<div class="head empty ${CLS[p.L]}">slot ${p.L} — click a name on the board</div>`).join("");
+  const heads = P.map(p => p.c ? `<div class="head ${CLS[p.L]}">${M.face(p.c)}<span style="min-width:0"><div class="nm">${p.c.name}</div><div class="sub">${p.c.position} · ${p.c.team} · ${Math.round(p.c.projected_points)} pts · #${p.c.rank} on the board</div></span><button class="ab" data-unslot="${p.L}" data-tip="Remove from slot ${p.L}">${p.L} ✕</button></div>` : `<div class="head empty ${CLS[p.L]}">slot ${p.L} · click a name on the board</div>`).join("");
   if (live.length < 2) return `<div class="heads">${heads}</div><p class="note" style="margin-top:12px">Put at least two names in the slots to compare them.</p>`;
   const cs = live.map(p => p.c), A = P[0].c || cs[0];
   const cell = (fn, leadIdx) => P.map((p, i) => `<div class="cell ${i === leadIdx ? "lead" : ""}">${p.c ? fn(p.c, i) : ""}</div>`).join("");
@@ -86,14 +86,14 @@ function trioHTML(){
   /* 1 — the board's order: the one row that ranks */
   const byV = cs.slice().sort((a, b) => b.team_acquisition_value - a.team_acquisition_value), leadIdx = P.findIndex(p => p.c === byV[0]);
   const gaps = byV.slice(1).map(c => `${f1(byV[0].team_acquisition_value - c.team_acquisition_value)} over ${M.short(c.name)}`).join(", ");
-  rows.push(`<div class="drow order" data-row><div class="lab">The board's order<br><small>value to your roster now</small></div>${cell(c => `<span class="mono">${f1(c.team_acquisition_value)}</span>${M.displaced(c) ? `<div class="note" style="color:var(--amber-b)">${f1(c.displacement_adj)} of it is a filled-slot displacement, measured; himself ${f1(c.team_acquisition_value - c.displacement_adj)}</div>` : ""}`, leadIdx)}<div class="say"><b>${M.short(byV[0].name)}</b> first by ${gaps} — this is the one row that ranks.</div></div>`);
+  rows.push(`<div class="drow order" data-row><div class="lab">The board's order<br><small>value to your roster now</small></div>${cell(c => `<span class="mono">${f1(c.team_acquisition_value)}</span>${M.displaced(c) ? `<div class="note" style="color:var(--amber-b)">${f1(c.displacement_adj)} of it is a filled-slot displacement, measured; himself ${f1(c.team_acquisition_value - c.displacement_adj)}</div>` : ""}`, leadIdx)}<div class="say"><b>${M.short(byV[0].name)}</b> first by ${gaps}. This is the one row that ranks.</div></div>`);
   /* 2 — against slot A: three real quantities, nothing collapsed */
   const others = P.filter(p => p.c && p.c !== A);
   const anyCross = others.some(p => p.c.position !== A.position);
-  rows.push(`<div class="drow" data-row><div class="lab">Against ${M.short(A.name)}<br><small>now · next turn · plan</small></div>${cell(c => c === A ? `<span class="note">slot A — the others are costed against him</span>` : M.costHTML(c, A), -1)}
+  rows.push(`<div class="drow" data-row><div class="lab">Against ${M.short(A.name)}<br><small>now · next turn · plan</small></div>${cell(c => c === A ? `<span class="note">slot A · the others are costed against him</span>` : M.costHTML(c, A), -1)}
     <div class="say" style="color:var(--muted)">${anyCross ? M.costKey(A) + "." : `Same position as ${M.short(A.name)}: what is left at your next turn is identical for both, so the second cell is the measured drop between them.`}</div></div>`);
   /* 3 — what each position leaves at your next turn, as a value, not an order */
-  if (anyCross) rows.push(`<div class="drow" data-row><div class="lab">Best left at #${M.NEXT_NO}<br><small>if you wait on his position</small></div>${cell(c => num(M.NEXTV[c.position]) ? `<span class="mono">${f1(M.NEXTV[c.position])}</span> at ${c.position}${M.costWord(c.position) ? `<div class="note">waiting costs ${f1(M.FORFEIT[c.position])} — ${M.costWord(c.position)}</div>` : `<div class="note">waiting costs ${f1(M.FORFEIT[c.position])}</div>`}` : `<span class="note">not measured at ${c.position}</span>`, -1)}</div>`);
+  if (anyCross) rows.push(`<div class="drow" data-row><div class="lab">Best left at #${M.NEXT_NO}<br><small>if you wait on his position</small></div>${cell(c => num(M.NEXTV[c.position]) ? `<span class="mono">${f1(M.NEXTV[c.position])}</span> at ${c.position}${M.costWord(c.position) ? `<div class="note">waiting costs ${f1(M.FORFEIT[c.position])} · ${M.costWord(c.position)}</div>` : `<div class="note">waiting costs ${f1(M.FORFEIT[c.position])}</div>`}` : `<span class="note">not measured at ${c.position}</span>`, -1)}</div>`);
   /* 4 — where each starts (only when it differs) */
   if (cs.some(c => M.slotShort(c) !== M.slotShort(cs[0]))) rows.push(`<div class="drow" data-row><div class="lab">Where he starts</div>${cell(c => M.slotPhrase(c), -1)}</div>`);
   else rows.push(`<div class="drow" data-row><div class="lab">Where he starts</div><div class="say" style="color:var(--muted)">All of them: ${M.slotPhrase(cs[0])}.</div></div>`);
@@ -108,7 +108,7 @@ function trioHTML(){
 }
 function poolHTML(){
   const row = c => { const inn = LET.find(L => slots[L] === c.player_id);
-    return `<div class="prow ${inn ? "in" + inn : ""}" data-row data-pick="${c.player_id}" role="button" tabindex="0" data-tip="${inn ? "In slot " + inn + " — click to remove" : "Click to put him in slot C"}"><span class="rk">${c.rank}</span>${M.pill(c.position)}<span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts · ${M.slotShort(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""}</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="let ${inn || ""}">${inn || ""}</span></div>`; };
+    return `<div class="prow ${inn ? "in" + inn : ""}" data-row data-pick="${c.player_id}" role="button" tabindex="0" data-tip="${inn ? "In slot " + inn + " · click to remove" : "Click to put him in slot C"}"><span class="rk">${c.rank}</span>${M.pill(c.position)}<span class="nm">${c.name}<small>${c.team} · ${Math.round(c.projected_points)} pts · ${M.slotShort(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""}</small></span><span class="v">${f1(c.team_acquisition_value)}</span><span class="let ${inn || ""}">${inn || ""}</span></div>`; };
   if (!byPos) return M.C.map(row).join("");
   return M.VALUE_ORDER_POS.concat(M.LINEUP_ORDER.filter(p => !M.VALUE_ORDER_POS.includes(p))).map(p => { const l = M.atPos(p), f = M.FORFEIT[p];
     return `<div class="grp"><span class="pos" style="color:${pc(p)}">${p}</span><span>${num(f) ? `best left at #${M.NEXT_NO} <b>${f1(M.NEXTV[p])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(p) ? ` · ${M.costWord(p)}` : ""}` : `none in the board's top ${M.C.length}`}</span><span class="note" style="margin-left:auto">${M.heldAt(p).length ? `you hold ${M.heldAt(p).map(x => M.short(x.name)).join(", ")}` : "you hold none"}</span></div>${l.map(row).join("")}`; }).join("");

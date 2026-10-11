@@ -156,7 +156,7 @@ M.doorDepth = (d, best, list) => {
     return parts.join("; ");
   };
   M.waitShort = () => `Next turn <b>${M.nextLabel}</b> (#${M.NEXT_NO}) · <b>${S.intervening} picks</b> away`;
-  M.waitText = () => `You pick again at <b>${M.nextLabel}</b> (#${M.NEXT_NO}), after <b>${S.intervening} picks</b> — ${M.seatsText()}.`;
+  M.waitText = () => `You pick again at <b>${M.nextLabel}</b> (#${M.NEXT_NO}), after <b>${S.intervening} picks</b>: ${M.seatsText()}.`;
   /* §1: who is on the clock is never ambiguous, with or without a rail */
   M.clockShort = () => `next up: <b>Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}</b>${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> (Roster ${M.LAST.seat})` : ""}`;
   M.clockText = () => `On the clock: <b>you</b> (Roster ${S.seat}) · next up: Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> by Roster ${M.LAST.seat}` : " · first pick of the draft"}`;
@@ -193,10 +193,10 @@ M.doorDepth = (d, best, list) => {
     return {kind:"bench", slot:"BN", holder:held[0] || null, row:null};
   };
   M.slotPhrase = c => { const s = M.slotFor(c);
-    if (s.kind === "vacant") return `starts at <b>${s.slot}</b> — you hold no ${POS[c.position]}`;
+    if (s.kind === "vacant") return `starts at <b>${s.slot}</b>, where you hold no ${POS[c.position]}`;
     if (s.kind === "second") return `starts at <b>${s.slot}</b> beside ${short(s.beside.name)}`;
-    if (s.kind === "flex")   return `starts at <b>${s.slot}</b>${s.holder ? ` — ${short(s.holder.name)} holds ${c.position}` : ""}`;
-    return `<b>bench</b> — your starting slots are full`; };
+    if (s.kind === "flex")   return `starts at <b>${s.slot}</b>${s.holder ? `, where ${short(s.holder.name)} holds ${c.position}` : ""}`;
+    return `<b>bench</b>: your starting slots are full`; };
   M.slotShort = c => { const s = M.slotFor(c); return s.kind === "bench" ? "bench" : s.slot; };
   M.rosterStrip = (c, vertical) => {
     let lit = false; const s = c ? M.slotFor(c) : null;
@@ -307,7 +307,7 @@ M.doorDepth = (d, best, list) => {
   M.displaced = c => c.displacement_basis === "measured" && num(c.displacement_adj) && Math.abs(c.displacement_adj) >= 0.05;
   M.dispSentence = c => { if (!M.displaced(c)) return "";
     const rest = c.team_acquisition_value - c.displacement_adj;
-    return `<span class="disp"><b>${f1(c.displacement_adj)}</b> of this is the displacement of a starting slot you have already filled — measured against your own starters. The player himself: <b>${f1(rest)}</b>.</span>`; };
+    return `<span class="disp"><b>${f1(c.displacement_adj)}</b> of this is the displacement of a starting slot you have already filled, measured against your own starters. The player himself: <b>${f1(rest)}</b>.</span>`; };
   M.dispShort = c => M.displaced(c) ? `<span class="disp">${f1(c.displacement_adj)} is filled-slot displacement (measured) · himself ${f1(c.team_acquisition_value - c.displacement_adj)}</span>` : "";
   /* availability: the engine carried the designation and did not charge it */
   /* §14 tank, per state: the engine's latest sample at or before this pick, shown as of that pick
@@ -320,7 +320,7 @@ M.doorDepth = (d, best, list) => {
     const startersLeft = Math.max(0, left - (N - starters));
     return {N, left, starters, startersLeft, pctLeft: Math.round(100 * left / N), sampleAt: base.at, coverage: G.coverage[pos], rows: G.rowsOnBoard[pos]}; };
   /* waiting on a position: who you get, when, what it costs — in that order */
-  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> nets about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
+  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> nets about <b>${f1(M.NEXTV[pos])}</b>, which is <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
   M.DEAREST = M.POS_BY_COST[0] || null;
   /* ============================================================================================
      §AVAIL. THE DURABILITY RECORD, AND WHY IT IS A RECORD AND NOT A GRADE.
@@ -386,7 +386,7 @@ M.doorDepth = (d, best, list) => {
       return `${x.y}  ${x.missed} of ${x.of} weeks missed${x.ir ? ` (${x.ir} on IR)` : ""}${why}`;
     });
     const none = !ss.some(x => x.missed);
-    return `Availability record — completed seasons\n${rows.join("\n")}\n${none
+    return `Availability record, completed seasons\n${rows.join("\n")}\n${none
       ? "No weeks missed in either completed season. A record of what happened, not a forecast of what will."
       : "Weeks on injured reserve, weeks ruled Out or Doubtful, and weeks inactive carrying an injury designation. A count, not a forecast."}`;
   };
@@ -422,7 +422,7 @@ M.doorDepth = (d, best, list) => {
   M.whyLines = (a, b) => {
     const r = M.compare(a, b), A = `<b>${short(a.name)}</b>`, B = `<b>${short(b.name)}</b>`, out = [];
     const lead = r.dv >= 0 ? A : B, trail = r.dv >= 0 ? B : A;
-    out.push(`${lead} is <b>${f1(Math.abs(r.dv))}</b> ahead of ${trail} in value to your roster now — the board's order.`);
+    out.push(`${lead} is <b>${f1(Math.abs(r.dv))}</b> ahead of ${trail} in value to your roster now, which is the board's order.`);
     if (!r.same) {
       if (r.hasNext) out.push(`Wait on ${b.position} and the best ${POS[b.position]} left at your next turn is worth <b>${f1(M.NEXTV[b.position])}</b>; wait on ${a.position} and the best ${POS[a.position]} left is worth <b>${f1(M.NEXTV[a.position])}</b>. Both picks together: <b>${short(r.planLeader.name)} now</b> is the better two-pick plan by <b>${f1(Math.abs(r.planEdge))}</b>.`);
       else out.push(`No next-turn value is measured for ${!num(M.NEXTV[a.position]) ? a.position : b.position} on this board.`);
@@ -481,10 +481,10 @@ M.doorDepth = (d, best, list) => {
       {l:`Best ${POS[c.position]} left at your next turn`, v:num(c.position_next_turn_value) ? f1(c.position_next_turn_value) : "—", b:`what the position is expected to offer at #${M.NEXT_NO} if you wait on it`, k:num(c.position_next_turn_value) ? "measured" : "unmeasured"},
       {l:`Cost of waiting on ${c.position}`, v:num(c.positional_forfeit) ? f1(c.positional_forfeit) : "—", b:"the best now minus the best left at your next turn — an aid beside the rank, never what ranks", k:num(c.positional_forfeit) ? "measured" : "unmeasured"},
       {l:"Dynasty horizon", v:sgn(c.time_horizon_adj), b:"the age / experience term inside his value", k:"measured"},
-      {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring — a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead — a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
-      c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not priced into his value — this is not “no risk”", k:"not_priced"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
+      {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring, a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead, a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
+      c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not priced into his value. This is not “no risk”", k:"not_priced"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
       {l:"Drop behind him", v:c.positional_cliff ? `${c.positional_cliff.tier} · ${f1(c.positional_cliff.gap)}` : "—", b:`the engine's tier and the raw gap to the next ${POS[c.position]} in the order it was measured (${M.cliffNext(c) ? short(M.cliffNext(c).name) : "a player not on this board"})`, k:"measured"},
-      c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? " — a zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
+      c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? ". A zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
       {l:"Picks until your next turn", v:String(S.intervening), b:"a count read off the pick order; shown in place of the survival estimate while that is withheld", k:"count"},
     ];
     /* ONE BLOCK, NOT ONE PER FIELD. These are not three findings -- they are one estimate in
@@ -618,7 +618,7 @@ function fillCommon(M){
     ? ` · <span data-tip="Board provenance\nCaptured ${M.S.fresh || "date not recorded"}${M.S.stamp ? ", snapshot " + M.S.stamp : ""}.\nIt reflects the ${M.S.consumed} picks made at that moment and is not re-read while this page is open, so a pick made since will not appear here.">as of pick #${M.S.consumed}</span>`
     : "";
   if (q("lg")) q("lg").innerHTML = `<b>${M.F.teams}-team · ${M.fmt.replace(/_/g, " ")}</b> · round ${M.S.round} of ${M.S.rounds} · you are Roster ${M.S.seat}${stale}`;
-  if (q("upnow")) q("upnow").textContent = `PICK ${M.S.pick} — YOU ARE UP`;
+  if (q("upnow")) q("upnow").textContent = `PICK ${M.S.pick} · YOU ARE UP`;
   if (q("allRosters")) q("allRosters").innerHTML = M.allRosters();
   if (q("dbHost")) q("dbHost").innerHTML = M.boardGrid();
   requestAnimationFrame(markScrollers);

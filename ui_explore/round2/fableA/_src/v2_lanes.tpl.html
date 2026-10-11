@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lanes Draft Room</title>
-<meta name="description" content="Round 2, v2 — four position lanes in the lineup's fixed order, the focused lane widened into a three-name comparison, and no rail at all: the wait is one sentence.">
+<meta name="description" content="Round 2, v2: four position lanes in the lineup's fixed order, the focused lane widened into a three-name comparison, and no rail at all: the wait is one sentence.">
 <style>
 /*__CSS__*/
 /* v2 — LANES, no rail. Position layer PERSISTENT in STABLE lineup order (contents change, columns
@@ -112,15 +112,15 @@ function trioHTML(pos){
 function laneHTML(pos){
   const list = M.atPos(pos), lead = list[0], held = M.heldAt(pos), isFocus = pos === focus;
   const open = M.openAt(pos), want = M.STARTERS.filter(r => r.slot === pos).length;
-  const st = held.length === 0 ? `none held — slot open` : open ? `${held.map(p => M.short(p.name)).join(", ")} · ${open} slot open` : `${held.map(p => M.short(p.name)).join(", ")}${M.openFlexFor(pos) ? " · next → " + M.openFlexFor(pos).slot : " · next → bench"}`;
+  const st = held.length === 0 ? `none held, slot open` : open ? `${held.map(p => M.short(p.name)).join(", ")} · ${open} slot open` : `${held.map(p => M.short(p.name)).join(", ")}${M.openFlexFor(pos) ? " · next → " + M.openFlexFor(pos).slot : " · next → bench"}`;
   const f = M.FORFEIT[pos];
-  const cost = num(f) ? `best left at #${M.NEXT_NO} if you wait: <b>${f1(M.NEXTV[pos])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(pos) ? ` <span class="w">· ${M.costWord(pos)}</span>` : ""}` : `<span class="w">no next-turn value measured — no ${POS[pos]} in the board's top ${M.C.length}</span>`;
+  const cost = num(f) ? `best left at #${M.NEXT_NO} if you wait: <b>${f1(M.NEXTV[pos])}</b> · waiting costs <b>${f1(f)}</b>${M.costWord(pos) ? ` <span class="w">· ${M.costWord(pos)}</span>` : ""}` : `<span class="w">no next-turn value measured: no ${POS[pos]} in the board's top ${M.C.length}</span>`;
   let body;
   if (!lead) body = `<div class="empty">No ${POS[pos]} in the board's top ${M.C.length}.${held.length ? ` You hold ${held.map(p => M.short(p.name)).join(", ")}.` : " You hold none."}</div>`;
   else {
     const L = M.LEADER, isFirst = lead.player_id === L.player_id;
     const vs = isFirst ? (M.C[1] ? `<b>First on the board</b>, ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of #${M.C[1].rank} ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>")
-      : `<b>#${lead.rank} on the board</b> — instead of #1 ${M.short(L.name)}:`;
+      : `<b>#${lead.rank} on the board</b> · instead of #1 ${M.short(L.name)}:`;
     const rest = list.slice(isFocus ? Math.min(3, list.length) : 1);
     body = `<div class="lead1"><div class="who"><span class="rank ${isFirst ? "" : "dim"}" data-tip="rank ${lead.rank} on the board">#${lead.rank}</span>${M.face(lead)}<span style="min-width:0"><div class="nm">${lead.name}</div><div class="sub">${lead.team} · ${Math.round(lead.projected_points)} pts · ${M.slotShort(lead)}${lead.injury_status ? ` · <i class="inj">${lead.injury_status}</i>` : ""}</div></span></div><div class="valrow"><span class="big">${f1(lead.team_acquisition_value)}</span><span class="u">to your roster</span></div>
         ${M.displaced(lead) ? M.dispShort(lead) : ""}
@@ -133,7 +133,7 @@ function laneHTML(pos){
 }
 function draw(){
   const top = M.C.slice(0, 4);
-  document.getElementById("order").innerHTML = `<span class="k">Who is ahead of whom</span><span class="seq">${top.map((c, i) => `<span><i>#${c.rank}</i><b>${M.short(c.name)}</b> ${c.position} <span class="d">${i ? sgn(c.team_acquisition_value - top[0].team_acquisition_value) : f1(c.team_acquisition_value)}</span></span>`).join("")}</span><span class="rule">— the board's order by value now; the # on every name is his place in it</span>`;
+  document.getElementById("order").innerHTML = `<span class="k">Who is ahead of whom</span><span class="seq">${top.map((c, i) => `<span><i>#${c.rank}</i><b>${M.short(c.name)}</b> ${c.position} <span class="d">${i ? sgn(c.team_acquisition_value - top[0].team_acquisition_value) : f1(c.team_acquisition_value)}</span></span>`).join("")}</span><span class="rule">the board's order by value now; the # on every name is his place in it</span>`;
   const el = document.getElementById("lanes");
   el.style.gridTemplateColumns = M.LINEUP_ORDER.map(p => p === focus ? "1.9fr" : M.best(p) ? "1fr" : ".55fr").join(" ");
   el.innerHTML = M.LINEUP_ORDER.map(laneHTML).join("");
@@ -149,7 +149,7 @@ function load(key){
   document.getElementById("wait").innerHTML = `${M.clockText()}<br>${M.waitText()}`;
   draw();
 }
-const ui = wireChrome({tag:"v2 · LANES", sub:"position layer persistent, fixed order · lanes are the pool · within-position always on in the focused lane · NO RAIL", hypothesis:`<b>Hypothesis.</b> The owner found Lanes clean and asked whether the room needs a rail at all, so this is lanes with no rail: the clock line names who is on the clock, who is next and what was last taken, and says when you pick again; the draft board is a tab. The four lanes sit in the lineup's own order — QB · RB · WR · TE — and <b>never reorder</b>; what each position leaves at your next turn changes inside its header instead, so the ordering's instability across the draft becomes changing contents in stable columns. The focused lane widens into the genuinely new thing: the two or three names at that position side by side on the facts that differ within a position. Every other lane's lead carries its cost against the board's first name as now · next turn · plan, so the alternatives are costed, not ranked as errors. This is an explicit §1 change request; the rationale names the cost.`, onState:load});
+const ui = wireChrome({tag:"v2 · LANES", sub:"position layer persistent, fixed order · lanes are the pool · within-position always on in the focused lane · NO RAIL", hypothesis:`<b>Hypothesis.</b> The owner found Lanes clean and asked whether the room needs a rail at all, so this is lanes with no rail: the clock line names who is on the clock, who is next and what was last taken, and says when you pick again; the draft board is a tab. The four lanes sit in the lineup's own order (QB · RB · WR · TE) and <b>never reorder</b>; what each position leaves at your next turn changes inside its header instead, so the ordering's instability across the draft becomes changing contents in stable columns. The focused lane widens into the genuinely new thing: the two or three names at that position side by side on the facts that differ within a position. Every other lane's lead carries its cost against the board's first name as now · next turn · plan, so the alternatives are costed, not ranked as errors. This is an explicit §1 change request; the rationale names the cost.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
   if (e.target.closest("button") || e.target.closest(".sheet")) return;

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Doors Draft Room</title>
-<meta name="description" content="Build target — every position the league can start has a door; four or five surface in the board's order and the window slides; each offensive door carries its pool tank; the drawer is the override surface with the position's context above the filtered list.">
+<meta name="description" content="Build target: every position the league can start has a door; four or five surface in the board's order and the window slides; each offensive door carries its pool tank; the drawer is the override surface with the position's context above the filtered list.">
 <style>
 /* The design has always NAMED these faces and never shipped one of them. Cinzel is a Google
    font that exists on no operating system, JetBrains Mono on no stock install, and Segoe UI only
@@ -616,7 +616,7 @@ M.doorDepth = (d, best, list) => {
     return parts.join("; ");
   };
   M.waitShort = () => `Next turn <b>${M.nextLabel}</b> (#${M.NEXT_NO}) · <b>${S.intervening} picks</b> away`;
-  M.waitText = () => `You pick again at <b>${M.nextLabel}</b> (#${M.NEXT_NO}), after <b>${S.intervening} picks</b> — ${M.seatsText()}.`;
+  M.waitText = () => `You pick again at <b>${M.nextLabel}</b> (#${M.NEXT_NO}), after <b>${S.intervening} picks</b>: ${M.seatsText()}.`;
   /* §1: who is on the clock is never ambiguous, with or without a rail */
   M.clockShort = () => `next up: <b>Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}</b>${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> (Roster ${M.LAST.seat})` : ""}`;
   M.clockText = () => `On the clock: <b>you</b> (Roster ${S.seat}) · next up: Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> by Roster ${M.LAST.seat}` : " · first pick of the draft"}`;
@@ -653,10 +653,10 @@ M.doorDepth = (d, best, list) => {
     return {kind:"bench", slot:"BN", holder:held[0] || null, row:null};
   };
   M.slotPhrase = c => { const s = M.slotFor(c);
-    if (s.kind === "vacant") return `starts at <b>${s.slot}</b> — you hold no ${POS[c.position]}`;
+    if (s.kind === "vacant") return `starts at <b>${s.slot}</b>, where you hold no ${POS[c.position]}`;
     if (s.kind === "second") return `starts at <b>${s.slot}</b> beside ${short(s.beside.name)}`;
-    if (s.kind === "flex")   return `starts at <b>${s.slot}</b>${s.holder ? ` — ${short(s.holder.name)} holds ${c.position}` : ""}`;
-    return `<b>bench</b> — your starting slots are full`; };
+    if (s.kind === "flex")   return `starts at <b>${s.slot}</b>${s.holder ? `, where ${short(s.holder.name)} holds ${c.position}` : ""}`;
+    return `<b>bench</b>: your starting slots are full`; };
   M.slotShort = c => { const s = M.slotFor(c); return s.kind === "bench" ? "bench" : s.slot; };
   M.rosterStrip = (c, vertical) => {
     let lit = false; const s = c ? M.slotFor(c) : null;
@@ -767,7 +767,7 @@ M.doorDepth = (d, best, list) => {
   M.displaced = c => c.displacement_basis === "measured" && num(c.displacement_adj) && Math.abs(c.displacement_adj) >= 0.05;
   M.dispSentence = c => { if (!M.displaced(c)) return "";
     const rest = c.team_acquisition_value - c.displacement_adj;
-    return `<span class="disp"><b>${f1(c.displacement_adj)}</b> of this is the displacement of a starting slot you have already filled — measured against your own starters. The player himself: <b>${f1(rest)}</b>.</span>`; };
+    return `<span class="disp"><b>${f1(c.displacement_adj)}</b> of this is the displacement of a starting slot you have already filled, measured against your own starters. The player himself: <b>${f1(rest)}</b>.</span>`; };
   M.dispShort = c => M.displaced(c) ? `<span class="disp">${f1(c.displacement_adj)} is filled-slot displacement (measured) · himself ${f1(c.team_acquisition_value - c.displacement_adj)}</span>` : "";
   /* availability: the engine carried the designation and did not charge it */
   /* §14 tank, per state: the engine's latest sample at or before this pick, shown as of that pick
@@ -780,7 +780,7 @@ M.doorDepth = (d, best, list) => {
     const startersLeft = Math.max(0, left - (N - starters));
     return {N, left, starters, startersLeft, pctLeft: Math.round(100 * left / N), sampleAt: base.at, coverage: G.coverage[pos], rows: G.rowsOnBoard[pos]}; };
   /* waiting on a position: who you get, when, what it costs — in that order */
-  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> nets about <b>${f1(M.NEXTV[pos])}</b> — <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
+  M.waitLine = (pos, short) => num(M.FORFEIT[pos]) ? `If you wait, the best ${short ? "" : POS[pos] + " "}left at <b>#${M.NEXT_NO}</b> nets about <b>${f1(M.NEXTV[pos])}</b>, which is <b>${f1(M.FORFEIT[pos])}</b> less than taking one now.` : `No next-turn value is measured for ${PLUR[pos] || pos} on this board.`;
   M.DEAREST = M.POS_BY_COST[0] || null;
   /* ============================================================================================
      §AVAIL. THE DURABILITY RECORD, AND WHY IT IS A RECORD AND NOT A GRADE.
@@ -846,7 +846,7 @@ M.doorDepth = (d, best, list) => {
       return `${x.y}  ${x.missed} of ${x.of} weeks missed${x.ir ? ` (${x.ir} on IR)` : ""}${why}`;
     });
     const none = !ss.some(x => x.missed);
-    return `Availability record — completed seasons\n${rows.join("\n")}\n${none
+    return `Availability record, completed seasons\n${rows.join("\n")}\n${none
       ? "No weeks missed in either completed season. A record of what happened, not a forecast of what will."
       : "Weeks on injured reserve, weeks ruled Out or Doubtful, and weeks inactive carrying an injury designation. A count, not a forecast."}`;
   };
@@ -882,7 +882,7 @@ M.doorDepth = (d, best, list) => {
   M.whyLines = (a, b) => {
     const r = M.compare(a, b), A = `<b>${short(a.name)}</b>`, B = `<b>${short(b.name)}</b>`, out = [];
     const lead = r.dv >= 0 ? A : B, trail = r.dv >= 0 ? B : A;
-    out.push(`${lead} is <b>${f1(Math.abs(r.dv))}</b> ahead of ${trail} in value to your roster now — the board's order.`);
+    out.push(`${lead} is <b>${f1(Math.abs(r.dv))}</b> ahead of ${trail} in value to your roster now, which is the board's order.`);
     if (!r.same) {
       if (r.hasNext) out.push(`Wait on ${b.position} and the best ${POS[b.position]} left at your next turn is worth <b>${f1(M.NEXTV[b.position])}</b>; wait on ${a.position} and the best ${POS[a.position]} left is worth <b>${f1(M.NEXTV[a.position])}</b>. Both picks together: <b>${short(r.planLeader.name)} now</b> is the better two-pick plan by <b>${f1(Math.abs(r.planEdge))}</b>.`);
       else out.push(`No next-turn value is measured for ${!num(M.NEXTV[a.position]) ? a.position : b.position} on this board.`);
@@ -941,10 +941,10 @@ M.doorDepth = (d, best, list) => {
       {l:`Best ${POS[c.position]} left at your next turn`, v:num(c.position_next_turn_value) ? f1(c.position_next_turn_value) : "—", b:`what the position is expected to offer at #${M.NEXT_NO} if you wait on it`, k:num(c.position_next_turn_value) ? "measured" : "unmeasured"},
       {l:`Cost of waiting on ${c.position}`, v:num(c.positional_forfeit) ? f1(c.positional_forfeit) : "—", b:"the best now minus the best left at your next turn — an aid beside the rank, never what ranks", k:num(c.positional_forfeit) ? "measured" : "unmeasured"},
       {l:"Dynasty horizon", v:sgn(c.time_horizon_adj), b:"the age / experience term inside his value", k:"measured"},
-      {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring — a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead — a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
-      c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not priced into his value — this is not “no risk”", k:"not_priced"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
+      {l:"Projected season points", v:f1(c.projected_points), b:M.hasPts(c) ? "season fantasy points under this league's scoring, a different unit from the value rows" : `no season projection exists for this name, so the engine priced it on ${(c.bpa_source||"another arm").replace(/_/g," ")} instead, a different instrument from every other row here`, k:M.hasPts(c) ? "measured" : "not_priced"},
+      c.risk_basis === "designation_not_priced" ? {l:"Availability", v:c.injury_status || "no designation", b:"the designation is carried and not priced into his value. This is not “no risk”", k:"not_priced"} : {l:"Availability term", v:f1(c.risk_adj), b:String(c.risk_basis).replace(/_/g, " "), k:"measured"},
       {l:"Drop behind him", v:c.positional_cliff ? `${c.positional_cliff.tier} · ${f1(c.positional_cliff.gap)}` : "—", b:`the engine's tier and the raw gap to the next ${POS[c.position]} in the order it was measured (${M.cliffNext(c) ? short(M.cliffNext(c).name) : "a player not on this board"})`, k:"measured"},
-      c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? " — a zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
+      c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? ". A zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
       {l:"Picks until your next turn", v:String(S.intervening), b:"a count read off the pick order; shown in place of the survival estimate while that is withheld", k:"count"},
     ];
     /* ONE BLOCK, NOT ONE PER FIELD. These are not three findings -- they are one estimate in
@@ -1078,7 +1078,7 @@ function fillCommon(M){
     ? ` · <span data-tip="Board provenance\nCaptured ${M.S.fresh || "date not recorded"}${M.S.stamp ? ", snapshot " + M.S.stamp : ""}.\nIt reflects the ${M.S.consumed} picks made at that moment and is not re-read while this page is open, so a pick made since will not appear here.">as of pick #${M.S.consumed}</span>`
     : "";
   if (q("lg")) q("lg").innerHTML = `<b>${M.F.teams}-team · ${M.fmt.replace(/_/g, " ")}</b> · round ${M.S.round} of ${M.S.rounds} · you are Roster ${M.S.seat}${stale}`;
-  if (q("upnow")) q("upnow").textContent = `PICK ${M.S.pick} — YOU ARE UP`;
+  if (q("upnow")) q("upnow").textContent = `PICK ${M.S.pick} · YOU ARE UP`;
   if (q("allRosters")) q("allRosters").innerHTML = M.allRosters();
   if (q("dbHost")) q("dbHost").innerHTML = M.boardGrid();
   requestAnimationFrame(markScrollers);
@@ -1185,7 +1185,7 @@ function tankHTML(pos, cls){
   const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="No pool sample from the engine for this format."></span>`;
   const fillPct = 100 * t.left / t.N, markPct = 100 * (t.N - t.starters) / t.N;
   return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" data-tip="${posTitle(pos)} pool
-${t.pctLeft}% of the engine's priced ${PLUR[pos]} are still on the board — its sample as of #${t.sampleAt}.
+${t.pctLeft}% of the engine's priced ${PLUR[pos]} are still on the board, its sample as of #${t.sampleAt}.
 The gold line is where the position stops producing starters in the replacement sense. It is a marker rather than an edge: below it players are still startable, and what runs out at the line is surplus over replacement, not production.
 The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
 }
@@ -1198,14 +1198,14 @@ function holdText(d){
   const held = M.S.myPicks.filter(p => d.positions.includes(p.pos)), open = d.positions.reduce((n, p) => n + M.openAt(p), 0);
   const names = held.length > 2 ? `${held.length} held` : held.map(p => M.short(p.name)).join(", ");
   const fx = M.openFlexFor(d.positions[0]);
-  return {need: held.length === 0, text: held.length === 0 ? (open ? `you hold none — slot open` : fx ? `you hold none — ${fx.slot} open` : `you hold none`) : open ? `${names} · ${open} slot open` : `${names}${fx ? " · next → " + fx.slot : " · next → bench"}`};
+  return {need: held.length === 0, text: held.length === 0 ? (open ? `you hold none, slot open` : fx ? `you hold none, ${fx.slot} open` : `you hold none`) : open ? `${names} · ${open} slot open` : `${names}${fx ? " · next → " + fx.slot : " · next → bench"}`};
 }
 function doorHTML(d, idx){
   const best = doorBest(d), pos = posOf(d), list = best ? M.C.filter(c => d.positions.includes(c.position)) : [], h = holdText(d);
   const wait = best ? `${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}` : `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}.`;
   const demPs = d.positions.filter(p => num(M.DEMAND[p]));
   const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
-  const dem = demSame ? `${demPs.join(" · ")} each — ${M.demandText(demPs[0])}`
+  const dem = demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}`
     : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
   let body;
   if (!best) body = `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`}</div>`;
@@ -1217,7 +1217,7 @@ function doorHTML(d, idx){
       <p class="vs">${vs}${first ? "" : ` <span class="cost2" style="display:inline-flex">${M.costHTML(best, L)}</span>`}</p>
       ${list.length > 1 ? (() => { const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
         return `<div class="then"><span class="k">then at ${d.key}${d.compound ? " · best of each" : ""}</span>${dep.map((c, i) => `<div class="tr"><span class="rk">${d.compound ? c.position : i + 2}</span><span class="nm">${c.name}${M.armMark(c)}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${rest > 0 ? `<div class="tr"><span></span><span class="note">+ ${rest} more in the drawer</span></div>` : ""}</div>`; })() : `<div class="then"><span class="k">the only ${d.compound ? "defender" : POS[d.key]} on the board</span></div>`}</div>
-      <div class="dact"><span class="note" style="margin-left:0">${d.key === openKey ? "open below — copy and numbers are on the cards" : `click to open ${d.key}`}</span></div>`;
+      <div class="dact"><span class="note" style="margin-left:0">${d.key === openKey ? "open below · copy and numbers are on the cards" : `click to open ${d.key}`}</span></div>`;
   }
   return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
 }
@@ -1232,14 +1232,14 @@ function countHTML(w){
   const all = M.DOOR_ORDER;
   const held = (STREAM_HIDE && !ALL_DOORS) ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
   const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
-  return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length ? " — the window slides as the board changes" : ""}</span>
+  return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length ? ": the window slides as the board changes" : ""}</span>
     ${hidden.length ? `<span class="chips">not shown: ${hidden.map(d => `<span class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</span>`).join("")}</span>` : ""}
     ${held.length ? `<span class="chips held">Streamable positions: ${held.map(d => `<span class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}</span>`).join("")} <a href="#" data-streamtoggle>show them</a></span>` : (STREAM_HIDE ? "" : `<span class="chips held"><a href="#" data-streamtoggle>set streamable aside</a></span>`)}
     <span class="cnt note"><b>the board: ${M.C.length} names</b> · lit slot: where the open door's best would start · every name, any position: the drawer ≣${M.shareNote() ? " · " + M.shareNote() : ""}${ALL_DOORS ? " · all doors forced visible (?alldoors)" : ""}</span>`;
 }
 function callHTML(){
   const d = M.DOORS.find(x => x.key === openKey), list = M.C.filter(c => d.positions.includes(c.position)).slice(0, 3);
-  if (!list.length) return `<div class="ch"><span class="t">${d.key} door</span><span class="note">nothing to lay side by side — no ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}</span></div>`;
+  if (!list.length) return `<div class="ch"><span class="t">${d.key} door</span><span class="note">nothing to lay side by side. no ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}</span></div>`;
   const b = list[0], same = k => list.every(c => k(c) === k(list[0]));
   const slotSame = same(c => M.slotShort(c)), horSame = same(c => f1(c.time_horizon_adj)), depthSame = same(c => M.depth(c).n || "");
   const card = (c, i) => { const dp = M.depth(c); return `<div class="card" data-row>
@@ -1257,7 +1257,7 @@ function drawerHTML(){
   const d = M.DOORS.find(x => x.key === filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
   let ctx = "";
   if (d) { const pos = posOf(d), h = holdText(d), inWin = windowDoors().includes(d), idx = M.DOOR_ORDER.indexOf(d);
-    ctx = `<div class="ctx">${tankHTML(pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${doorBest(d) ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface — the window is showing higher doors"}` : "no name on the board"}</span></div>
+    ctx = `<div class="ctx">${tankHTML(pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${doorBest(d) ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
       <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
       <p>${doorBest(d) ? M.waitLine(pos) : `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}, so nothing to wait on is measured.`}${pos === M.DEAREST && doorBest(d) && M.POS_BY_COST.length > 1 ? ` <span class="dear">The dearest position to wait on right now.</span>` : ""}</p>
       ${doorBest(d) ? tankCap(pos).replace("tankcap", "note") : ""}</div></div>`; }
@@ -1277,7 +1277,7 @@ function flipDraw(){
 }
 function draw(){
   flipDraw();
-  document.getElementById("call").innerHTML = ALL_DOORS ? `<div class="ch"><span class="t">all ${M.DOOR_ORDER.length} doors forced visible</span><span class="note">?alldoors — for judging the window rule; the open door's cards are not drawn in this mode</span></div>` : callHTML();
+  document.getElementById("call").innerHTML = ALL_DOORS ? `<div class="ch"><span class="t">all ${M.DOOR_ORDER.length} doors forced visible</span><span class="note">?alldoors · for judging the window rule; the open door's cards are not drawn in this mode</span></div>` : callHTML();
   if (!M.DOORS.some(x => x.key === openKey)) openKey = defaultOpen();
   const d = M.DOORS.find(x => x.key === openKey), b = doorBest(d) || M.LEADER;
   document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
@@ -1294,7 +1294,7 @@ function load(key, fmt){
   document.getElementById("boardn").innerHTML = M.clockShort();
   draw();
 }
-const ui = wireChrome({formats:true, tag:"v4 · DOORS", sub:"build target · 4–5 doors surface in the board's order · the drawer is the override", hypothesis:`<b>What this is.</b> Every position the league's own slots can start has a door — named slots first, then each flex slot's eligible positions from the engine's map (TE always its own; flex-only defenders compound into one). Doors sit in the board's value order and <b>${WINDOW} surface</b>; the window slides as the board changes, the count line says how many are hidden and names them, and the open door is always in view. The drawer (≣) is the override: filter to any position and its context — what you hold, its demand with the basis the engine reports, what waiting leaves, its tank — sits above the filtered names. Demand is rendered as the engine produced it and labelled with its basis; nothing is corrected. Tanks are offense-only and appear only where the engine sampled this format's pool. <code>?alldoors</code> forces every door visible; <code>?notank</code> hides the tank.`, onState:load});
+const ui = wireChrome({formats:true, tag:"v4 · DOORS", sub:"build target · 4–5 doors surface in the board's order · the drawer is the override", hypothesis:`<b>What this is.</b> Every position the league's own slots can start has a door; named slots first, then each flex slot's eligible positions from the engine's map (TE always its own; flex-only defenders compound into one). Doors sit in the board's value order and <b>${WINDOW} surface</b>; the window slides as the board changes, the count line says how many are hidden and names them, and the open door is always in view. The drawer (≣) is the override: filter to any position and its context: what you hold, its demand with the basis the engine reports, what waiting leaves, its tank, sits above the filtered names. Demand is rendered as the engine produced it and labelled with its basis; nothing is corrected. Tanks are offense-only and appear only where the engine sampled this format's pool. <code>?alldoors</code> forces every door visible; <code>?notank</code> hides the tank.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
   const bn = e.target.closest("[data-bench]");
