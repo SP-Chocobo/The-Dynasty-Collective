@@ -346,7 +346,15 @@ M.doorDepth = (d, best, list) => {
     if (M.availAbsent(c)) return "No completed NFL season, so there is no availability record to read.\nNot a clean record -- an absent one.";
     const ss = M.availSeasons(c);
     if (!ss || !ss.length) return "";
-    const rows = ss.map(x => `${x.y}  ${x.missed} of ${x.of} weeks missed${x.ir ? ` (${x.ir} on IR)` : ""}${x.part ? ` · ${x.part}` : ""}`);
+    /* EVERY part, and when there is none, SAY so. A man on injured reserve drops off the weekly
+       report, so the weeks are known and the reason is not -- 14 season-rows here are in exactly
+       that state. Printing the count with nothing after it would read as an unremarkable absence
+       of detail rather than as a reported gap (#187). */
+    const rows = ss.map(x => {
+      const why = x.parts && x.parts.length ? ` · ${x.parts.join(", ")}`
+                : (x.missed ? " · reason not reported" : "");
+      return `${x.y}  ${x.missed} of ${x.of} weeks missed${x.ir ? ` (${x.ir} on IR)` : ""}${why}`;
+    });
     const none = !ss.some(x => x.missed);
     return `Availability record — completed seasons\n${rows.join("\n")}\n${none
       ? "No weeks missed in either completed season. A record of what happened, not a forecast of what will."
