@@ -175,8 +175,16 @@ const SHOW_TANK = !Q.has("notank");         // ?notank: the screen without the t
 const ALL_DOORS = Q.has("alldoors");
 let STREAM_HIDE = !Q.has("streamers");   // #30: streamed positions held back; ?streamers starts them shown        // ?alldoors: every door forced visible, so the window rule can be judged
 const WINDOW = 5;
-const DOOR_LABEL = {QB:"Quarterback", RB:"Running back", WR:"Receiver", TE:"Tight end", K:"Kicker", DEF:"Defense", DL:"D-line", LB:"Linebacker", DB:"D-back", IDP:"Defenders"};
-const doorLabel = d => DOOR_LABEL[d.key] || d.label;                           // 4–5 surface (DESIGN_RECORD §6); fewer when the league has fewer doors
+/* A SECOND POSITION VOCABULARY lived here, and it disagreed with the first: it said "Receiver"
+   where POS says "wide receiver", and "Defenders" where POS says "defender". Nothing made them
+   agree, so they drifted (#126). Now only the genuinely SHORT forms are listed -- the door header
+   is width-constrained and cannot carry "defensive lineman" -- and everything else is derived, so
+   the header and the prose cannot disagree again. Title Case is load-bearing here rather than
+   cosmetic: the header is set in Cinzel, which has no true lower case, so an authored capital
+   draws full height and a lower-case letter draws as a small cap. "Running back" therefore drew
+   as "Rᴜɴɴɪɴɢ ʙᴀᴄᴋ" while its own tooltip said "Running Back". */
+const DOOR_SHORT = {DL:"D-line", DB:"D-back", IDP:"Defenders"};
+const doorLabel = d => DOOR_SHORT[d.key] || posTitle(d.key) || d.label;        // 4–5 surface (DESIGN_RECORD §6); fewer when the league has fewer doors
 const doorBest = d => M.doorBest(d);
 const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[0]; };   // the position the door's numbers come from
 /* the window: the first WINDOW doors in the board's order; the open door is always in it */

@@ -388,12 +388,15 @@ const sgn = x => num(x) ? (Math.abs(x) < 0.05 ? "±0.0" : (x > 0 ? "+" : "−") 
 const pad = n => String(n).padStart(2, "0");
 const pc  = p => `var(--${(p || "k").toLowerCase()})`;
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-const POS  = {QB:"quarterback", RB:"running back", WR:"receiver", TE:"tight end", K:"kicker", DEF:"defense", DL:"defensive lineman", LB:"linebacker", DB:"defensive back", IDP:"defender"};
+/* FULL position names, every one of them. WR read "receiver" alone here -- the only truncated
+   entry in a map where every sibling is spelled out -- and it was ambiguous besides: a tight end
+   is a receiver, and this board draws a TIGHT END door beside it. */
+const POS  = {QB:"quarterback", RB:"running back", WR:"wide receiver", TE:"tight end", K:"kicker", DEF:"defense", DL:"defensive lineman", LB:"linebacker", DB:"defensive back", IDP:"defender"};
 /* The position as a LABEL, for a header slot: "running back" -> "Running Back". POS itself stays
    lower case because it is mostly used mid-sentence ("the best receiver left"), so the Title Case
    form is derived where a label is wanted rather than kept as a second vocabulary (#126). */
 const posTitle = p => (POS[p] || p).replace(/\b[a-z]/g, m => m.toUpperCase());
-const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
+const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"wide receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
 const TIER_WORD = {HIGH:"a sharp drop", MEDIUM:"a moderate drop", LOW:"no cliff"};
 const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
 const posOfPlayer = p => (p && (p.pos || p.position)) || "";

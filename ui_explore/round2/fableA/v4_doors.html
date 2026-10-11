@@ -500,12 +500,15 @@ const sgn = x => num(x) ? (Math.abs(x) < 0.05 ? "±0.0" : (x > 0 ? "+" : "−") 
 const pad = n => String(n).padStart(2, "0");
 const pc  = p => `var(--${(p || "k").toLowerCase()})`;
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-const POS  = {QB:"quarterback", RB:"running back", WR:"receiver", TE:"tight end", K:"kicker", DEF:"defense", DL:"defensive lineman", LB:"linebacker", DB:"defensive back", IDP:"defender"};
+/* FULL position names, every one of them. WR read "receiver" alone here -- the only truncated
+   entry in a map where every sibling is spelled out -- and it was ambiguous besides: a tight end
+   is a receiver, and this board draws a TIGHT END door beside it. */
+const POS  = {QB:"quarterback", RB:"running back", WR:"wide receiver", TE:"tight end", K:"kicker", DEF:"defense", DL:"defensive lineman", LB:"linebacker", DB:"defensive back", IDP:"defender"};
 /* The position as a LABEL, for a header slot: "running back" -> "Running Back". POS itself stays
    lower case because it is mostly used mid-sentence ("the best receiver left"), so the Title Case
    form is derived where a label is wanted rather than kept as a second vocabulary (#126). */
 const posTitle = p => (POS[p] || p).replace(/\b[a-z]/g, m => m.toUpperCase());
-const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
+const PLUR = {QB:"quarterbacks", RB:"running backs", WR:"wide receivers", TE:"tight ends", K:"kickers", DEF:"defenses", DL:"defensive linemen", LB:"linebackers", DB:"defensive backs", IDP:"defenders"};
 const TIER_WORD = {HIGH:"a sharp drop", MEDIUM:"a moderate drop", LOW:"no cliff"};
 const ORD = ["", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
 const posOfPlayer = p => (p && (p.pos || p.position)) || "";
@@ -1138,8 +1141,16 @@ const SHOW_TANK = !Q.has("notank");         // ?notank: the screen without the t
 const ALL_DOORS = Q.has("alldoors");
 let STREAM_HIDE = !Q.has("streamers");   // #30: streamed positions held back; ?streamers starts them shown        // ?alldoors: every door forced visible, so the window rule can be judged
 const WINDOW = 5;
-const DOOR_LABEL = {QB:"Quarterback", RB:"Running back", WR:"Receiver", TE:"Tight end", K:"Kicker", DEF:"Defense", DL:"D-line", LB:"Linebacker", DB:"D-back", IDP:"Defenders"};
-const doorLabel = d => DOOR_LABEL[d.key] || d.label;                           // 4–5 surface (DESIGN_RECORD §6); fewer when the league has fewer doors
+/* A SECOND POSITION VOCABULARY lived here, and it disagreed with the first: it said "Receiver"
+   where POS says "wide receiver", and "Defenders" where POS says "defender". Nothing made them
+   agree, so they drifted (#126). Now only the genuinely SHORT forms are listed -- the door header
+   is width-constrained and cannot carry "defensive lineman" -- and everything else is derived, so
+   the header and the prose cannot disagree again. Title Case is load-bearing here rather than
+   cosmetic: the header is set in Cinzel, which has no true lower case, so an authored capital
+   draws full height and a lower-case letter draws as a small cap. "Running back" therefore drew
+   as "Rᴜɴɴɪɴɢ ʙᴀᴄᴋ" while its own tooltip said "Running Back". */
+const DOOR_SHORT = {DL:"D-line", DB:"D-back", IDP:"Defenders"};
+const doorLabel = d => DOOR_SHORT[d.key] || posTitle(d.key) || d.label;        // 4–5 surface (DESIGN_RECORD §6); fewer when the league has fewer doors
 const doorBest = d => M.doorBest(d);
 const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[0]; };   // the position the door's numbers come from
 /* the window: the first WINDOW doors in the board's order; the open door is always in it */
