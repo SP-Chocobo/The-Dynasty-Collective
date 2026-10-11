@@ -546,14 +546,28 @@ M.doorDepth = (d, best, list) => {
     if (s.kind === "flex")   return `starts at <b>${s.slot}</b>${s.holder ? `, where ${short(s.holder.name)} holds ${c.position}` : ""}`;
     return `<b>bench</b>: your starting slots are full`; };
   M.slotShort = c => { const s = M.slotFor(c); return s.kind === "bench" ? "bench" : s.slot; };
+  /* WHAT AN EMPTY SLOT MEANS, on hover. Measured before writing: every FILLED chip carried a
+     tooltip (the player's name) and NO open chip carried one, while the legend explained the lit
+     green slot and never the gold one. So the single chip on the strip that is shouting at you
+     was the only one with nothing attached, and the owner had to ask what it meant. Each state
+     now says its own thing, and the flex names its eligible positions from the engine's own map
+     rather than a second list kept here (#126). */
+  const orList = a => a.length < 2 ? (a[0] || "") : a.slice(0, -1).join(", ") + " or " + a[a.length - 1];
+  const slotTip = (r, fills, need, c) => {
+    if (r.p) return r.p.name;                                  // filled: unchanged, the full name
+    if (fills) return `${c.name}\nWould start here if you take him.`;
+    if (isFlexSlot(r.slot)) return `Open flex\nAny surplus ${orList((FLEX_MAP[r.slot] || []).map(x => POS[x] || x))} fills it.`;
+    if (need) return `No ${POS[r.slot] || r.slot} held\nNothing on your roster can fill this starting slot.`;
+    return `Open ${POS[r.slot] || r.slot} slot\nYou hold ${M.heldAt(r.slot).length}, and the lineup starts another.`;
+  };
   M.rosterStrip = (c, vertical) => {
     let lit = false; const s = c ? M.slotFor(c) : null;
     const cells = M.STARTERS.map(r => {
       const fills = c && !lit && !r.p && s.kind !== "bench" && r === s.row; if (fills) lit = true;
       const need = !r.p && !isFlexSlot(r.slot) && M.heldAt(r.slot).length === 0;
       const label = r.p ? short(r.p.name) : fills ? "← " + short(c.name) : "open";
-      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${slotTag(r.slot, r.p)}</span><span class="p"${tipAttr(r.p ? r.p.name : "")}>${label}</span></div>`;
-      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"${tipAttr(r.p ? r.p.name : "")}><span class="s">${slotTag(r.slot, r.p)}</span>${label}</span>`;
+      if (vertical) return `<div class="slot ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"><span class="s">${slotTag(r.slot, r.p)}</span><span class="p"${tipAttr(slotTip(r, fills, need, c))}>${label}</span></div>`;
+      return `<span class="slotc ${r.p ? "" : "open"} ${need ? "need" : ""} ${fills ? "fills" : ""}"${tipAttr(slotTip(r, fills, need, c))}><span class="s">${slotTag(r.slot, r.p)}</span>${label}</span>`;
     });
     /* A bench name is still a name. Every starting slot got its own chip while six bench slots
        were compounded into "2 of 6", so the players you had actually drafted were the only ones
@@ -572,7 +586,12 @@ M.doorDepth = (d, best, list) => {
     if (toBench) parts.push("← " + short(c.name));
     if (stillOpen > 0) parts.push(`${stillOpen} open`);
     const bnLabel = parts.join(" · ");
-    const bnTip = benchHeld.length ? benchHeld.map(r => r.p.name).join(", ") : "";
+    /* The bench was the one chip left with no hover once the starting slots got theirs, so
+       hovering the strip answered everywhere but here. An empty bench still has something to
+       say, and it is the thing a drafter most needs to hear about it. */
+    const bnTip = benchHeld.length
+      ? `Bench\n${benchHeld.map(r => r.p.name).join(", ")}`
+      : `Bench\n${stillOpen} open. A name on the bench does not start.`;
     const bnCls = (benchHeld.length ? "" : "open ") + (toBench ? "fills" : "");
     /* The two containers have room in different directions, so the bench takes a different
        shape in each. The horizontal strip is ONE line and cannot grow sideways, so it gets one
