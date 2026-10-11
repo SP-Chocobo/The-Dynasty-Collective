@@ -15115,3 +15115,75 @@ Two of this repo's meta-guards failed on the new test file, and both were right:
 
 Worth recording because it is the same discipline this entry is about, applied one level up: a
 guard written to stop an invariant going unstated was itself unstated until the suite said so.
+
+
+## #296 — `positional_forfeit` MEASURED AGAINST THE BAR ITS COUSIN FAILED; SHOWN WITH ITS LIMIT
+## STATED RATHER THAN WITHHELD
+
+The owner asked whether the forfeit carries calibration evidence of its own. It did not, and the
+absence was easy to miss because something forfeit-shaped sits in `evidence/`:
+`evidence/forfeit_knife_edge/` is a QUANTISATION probe (`#86`, whether `round(expected_taken)` is
+a knife-edge), not a calibration. It never asks whether the prediction matched the outcome. So a
+number drawn on every door had nothing behind it while its cousin `survival_probability` had been
+measured, failed, and withheld everywhere.
+
+### What was measured, and why that quantity
+
+`expected_taken`, not the value terms. `positional_forfeits` walks a position's curve down by
+`round(expected_taken)` and reports the drop, so the forfeit is only as good as that count — and
+unlike the value terms it is ROSTER-INDEPENDENT. `position_next_turn_value` and the actual best
+left at the next turn are not in the same units, because my own roster changes between the two
+turns; comparing them would confound the model with my own pick.
+
+**416 (turn, position) pairs, six formats, replayed VDS drafts, turns on the gap AHEAD:**
+
+| predictor | MAE | bias |
+|---|---|---|
+| model `expected_taken` | 1.459 | **-1.075** |
+| per-position constant | **1.388** | 0.000 |
+| gap x prior share | **1.365** | 0.000 |
+| nothing gets taken | 2.077 | -2.077 |
+
+Beaten by both naive baselines pooled, and by its own per-position constant in 4 of 6 formats.
+Reliability off by ~2x and MONOTONIC — a bias, not noise: 0.56 -> 1.32, 1.37 -> 2.60,
+2.36 -> 4.68, 3.84 -> 7.33.
+
+### THE CONFOUND RULED OUT, AND THE ONE THAT WAS NOT
+
+Counting the wrong population is the error this repository keeps re-learning, and here it would
+have manufactured exactly this bias for free: if `expected_taken` predicts takes from the PRICED
+pool only and the instrument counts every body drafted, the model reads low without being wrong.
+Both populations are recorded per row. **The restriction is not vacuous** — the priced filter
+excludes 489 of 970 rows on an opening `12T_ppr` board — and it changed nothing, because every
+intervening pick in every replay was already priced. Identical to three decimals both ways.
+
+NOT ruled out, and stated rather than buried: takes are attributed by `players_db` position, so a
+multi-eligible player taken into a flex counts under his listed position. WR carries the largest
+bias (-2.04), which is where that would bite hardest. And the replays are engine-driven drafters,
+not humans — a limit that cuts both ways, since failing to predict its own kin is not the weaker
+indictment.
+
+### RULED: LABEL IT, DO NOT WITHHOLD IT
+
+The direction decides this. Under-counting takes walks the curve down too few players, so the
+next-turn value is overstated and the displayed cost of waiting is UNDERSTATED. The door's number
+is a floor. That is a conservative aid, which is categorically unlike survival's "62% he lasts" —
+a per-player probability a reader leans on directly, and the thing `withheld_fields()` exists for.
+
+So the numbers panel's basis line now states the measured limit, and the figure stays. Withholding
+would be the wrong instrument: `#187` holds that a reader shown nothing assumes the data was
+missing and reasons around the gap, and this number was already framed as "an aid beside the rank,
+never what ranks".
+
+THE DOOR HEADLINE WAS DELIBERATELY LEFT ALONE. Writing "at least 6.0 less" onto the main surface
+would promote one measurement against engine-driven opponents into a claim about every draft. The
+limit lives in the panel until someone checks it against human ones.
+
+### `#56` held
+
+This MEASURES. It tunes nothing, and no number here may be written back into the engine as a
+constant. The capture's LIMITS forbid calibrating against one league, and that prohibition does
+not soften because the error was measured rather than guessed.
+
+Evidence: `evidence/forfeit_calibration/` — `calibrate_forfeit.py` (re-runnable from the repo
+root), `forfeit_calibration.json` (every row plus the summary), `RESULT.md`.
