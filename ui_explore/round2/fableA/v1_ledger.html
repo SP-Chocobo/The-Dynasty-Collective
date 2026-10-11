@@ -427,6 +427,11 @@ const DEPTH_LABEL = VOCAB.EXPOSURE, DISP_LABEL = VOCAB.DISPLACEMENT, DENIAL_LABE
 //: here. Its own comment is why: four surfaces must say this, and a hand copy in each is
 //: four places to go stale the day the calibration flag flips. This was the fifth (#126).
 const WITHHELD_WORD = VOCAB.WITHHELD_CARD_TEXT, WITHHELD_WHY = VOCAB.WITHHELD_REASON;
+//: What each withheld field is CALLED to a person. The engine owns the family and the
+//: reason; these are this surface's plain-English names for the three, in one place.
+const WITHHELD_LABEL = {survival_probability:"Chance he lasts to your next turn",
+                        opportunity_cost:"Cost of waiting on him",
+                        expected_value_of_waiting:"Expected value if you wait"};
 
 /* roster: greedy fill of the league's slots from a list of picks */
 function slotRoster(picks, slots){
@@ -830,7 +835,19 @@ M.doorDepth = (d, best, list) => {
       c.denial_basis === "measured" ? {l:"Kept from a rival", v:f1(c.denial_value) + (c.denial_team ? ` (roster ${c.denial_team})` : ""), b:DENIAL_LABEL.measured + (num(c.denial_value) && Math.abs(c.denial_value) < 0.05 ? " — a zero is a measurement" : ""), k:"measured"} : {l:"Kept from a rival", v:"—", b:DENIAL_LABEL[c.denial_basis] || "not measured", k:"unmeasured"},
       {l:"Picks until your next turn", v:String(S.intervening), b:"a count read off the pick order; shown in place of the survival estimate while that is withheld", k:"count"},
     ];
-    (S.withheld || []).forEach(w => rows.push({l:({survival_probability:"Chance he lasts to your next turn", opportunity_cost:"Cost of waiting on him", expected_value_of_waiting:"Expected value if you wait"})[w] || w, v:WITHHELD_WORD, b:WITHHELD_WHY, k:"withheld"}));
+    /* ONE BLOCK, NOT ONE PER FIELD. These are not three findings -- they are one estimate in
+       three units (opportunity_cost = value x (1 - survival); expected_value_of_waiting =
+       value x survival), which is why the engine keeps them as a FAMILY and withholds them
+       together. A row each printed the identical reason three times and implied three separate
+       judgements had been made. Listed in the engine's own order so the headline number leads
+       and its two derivatives follow it, which is the fact a reader needs to see. */
+    const wh = S.withheld || [];
+    if (wh.length) {
+      const fam = (VOCAB.SURVIVAL_DERIVED_FIELDS || []).filter(f => wh.includes(f));
+      const ordered = fam.concat(wh.filter(f => !fam.includes(f)));
+      rows.push({l:ordered.map(w => WITHHELD_LABEL[w] || w).join("<br>"),
+                 v:WITHHELD_WORD, b:WITHHELD_WHY, k:"withheld"});
+    }
     return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb"><i class="ek">${KIND[e.k]}</i> ${dash(e.b)}</span></div>`).join("");
   };
 
