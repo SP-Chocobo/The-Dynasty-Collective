@@ -322,10 +322,24 @@ M.doorDepth = (d, best, list) => {
      absence is not a milder severity, and a ramp was measured out anyway (a six-step one failed
      CVD at dE 0.5, and every hue here is already spoken for by position identity). Silence means
      a clean record and only that. */
+  /* THREE STATES, ALL DRAWN. Silence used to mean "clean record", which made the absence of a
+     mark do two jobs at once -- "he is fine" and "there is nothing here to hover" -- and a
+     reader cannot tell those apart by looking. Every player the record covers now carries a
+     mark, so the affordance is where you expect it and the tooltip always answers.
+
+        cross   a record WITH missed weeks
+        check   a record with NONE
+        dotted  no completed NFL season: an ABSENT record, not a clean one
+
+     Still no ramp and no hue: a six-step one failed CVD at dE 0.5, and every colour here is
+     already spoken for by position identity. Only DEF and K carry nothing, because they are
+     excluded from the record and a mark would imply one exists. */
   M.availMark = c => {
+    const rec = M.AVAIL[c.player_id];
+    if (!rec) return "";                                   // DEF / K -- excluded, never "clean"
     if (M.availAbsent(c)) return ` <span class="hm none"${tipAttr(M.availTip(c))}>\u25cc</span>`;
     const w = M.availWorst(c);
-    if (!w) return "";
+    if (!w) return ` <span class="hm ok"${tipAttr(M.availTip(c))}>\u2713</span>`;
     return ` <span class="hm"${tipAttr(M.availTip(c))}>\u271a</span>`;
   };
   M.availTip = c => {
@@ -333,7 +347,10 @@ M.doorDepth = (d, best, list) => {
     const ss = M.availSeasons(c);
     if (!ss || !ss.length) return "";
     const rows = ss.map(x => `${x.y}  ${x.missed} of ${x.of} weeks missed${x.ir ? ` (${x.ir} on IR)` : ""}${x.part ? ` · ${x.part}` : ""}`);
-    return `Availability record — completed seasons\n${rows.join("\n")}\nWeeks on injured reserve plus weeks ruled Out or Doubtful. A count, not a forecast.`;
+    const none = !ss.some(x => x.missed);
+    return `Availability record — completed seasons\n${rows.join("\n")}\n${none
+      ? "No weeks missed in either completed season. A record of what happened, not a forecast of what will."
+      : "Weeks on injured reserve, weeks ruled Out or Doubtful, and weeks inactive carrying an injury designation. A count, not a forecast."}`;
   };
   M.avail = c => c.injury_status ? `<i class="inj">${c.injury_status}</i> <span class="note">not charged</span>` : "";
 
