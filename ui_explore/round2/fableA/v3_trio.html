@@ -414,6 +414,20 @@ const nameTip = (p, extra) => p && p.name
   : "";
 const slotTag = (slot, p) => (p && isFlexSlot(slot) && posOfPlayer(p)) ? `${slot}·${posOfPlayer(p)}` : slot;
 const tipAttr = t => t ? ` data-tip="${esc(t)}"` : "";
+/* DISPLAY TYPOGRAPHY, not content. The engine writes " -- " in its own prose (a Python source
+   convention), and this surface renders that prose VERBATIM on purpose -- the words have one
+   home, in the engine (#126). So the dash is converted where it is DRAWN rather than where it is
+   written: the data stays byte-identical to the engine's, and the surface stops mixing two dash
+   conventions in one sentence. Same division the tooltip header already uses for capitalisation.
+
+   WHERE IT IS LIVE, measured rather than assumed: 16 of 16 numbers-panel basis rows carry engine
+   prose, and it fires there. In the TOOLTIP path its population is 0 -- no data-tip on any of the
+   five surfaces carries " -- " across all 18 states today. It is applied there anyway, and that
+   is a deliberate choice rather than an oversight: a transform is not a guard, so an empty
+   population makes no false assurance, while leaving the path out would mean the next engine
+   string that lands in a tooltip draws a dash the rest of the surface does not use. Stated here
+   so nobody later reads it as a tested path. */
+const dash = s => String(s).replace(/ -- /g, " \u2014 ");
 const ordinal = n => n + (["th","st","nd","rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]);
 /* engine labels, verbatim, read from the engine at build time (lineup_optimizer.EXPOSURE_BASIS_LABELS,
    DISPLACEMENT_BASIS_LABELS, draft_strategy.DENIAL_BASIS_LABELS, draft_room.SLOT_SHARE_LABELS). */
@@ -711,7 +725,7 @@ M.doorDepth = (d, best, list) => {
     return ` <span class="hm"${tipAttr(M.availTip(c))}>\u271a</span>`;
   };
   M.availTip = c => {
-    if (M.availAbsent(c)) return "No completed NFL season, so there is no availability record to read.\nNot a clean record -- an absent one.";
+    if (M.availAbsent(c)) return "No availability record\nHe has no completed NFL season, so there is nothing to read yet.\nNot a clean record \u2014 an absent one.";
     const ss = M.availSeasons(c);
     if (!ss || !ss.length) return "";
     /* EVERY part, and when there is none, SAY so. A man on injured reserve drops off the weekly
@@ -826,7 +840,7 @@ M.doorDepth = (d, best, list) => {
       {l:"Picks until your next turn", v:String(S.intervening), b:"a count read off the pick order; shown in place of the survival estimate while that is withheld", k:"count"},
     ];
     (S.withheld || []).forEach(w => rows.push({l:({survival_probability:"Chance he lasts to your next turn", opportunity_cost:"Cost of waiting on him", expected_value_of_waiting:"Expected value if you wait"})[w] || w, v:WITHHELD_WORD, b:WITHHELD_WHY, k:"withheld"}));
-    return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb"><i class="ek">${KIND[e.k]}</i> ${e.b}</span></div>`).join("");
+    return rows.map(e => `<div class="ev ${e.k}"><span class="el">${e.l}</span><span class="en">${e.v}</span><span class="eb"><i class="ek">${KIND[e.k]}</i> ${dash(e.b)}</span></div>`).join("");
   };
 
   /* ---- atoms ---- */
@@ -965,9 +979,12 @@ function fillCommon(M){
     const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
     if (lines.length > 1) {
       const h = document.createElement("span"); h.className = "th";
-      h.textContent = lines[0].charAt(0).toUpperCase() + lines[0].slice(1);
-      b.appendChild(h); b.appendChild(document.createTextNode(lines.slice(1).join("\n\n")));
-    } else { b.textContent = text; }
+      // The header is auto-capitalised so a tip built from interpolated vocabulary reads right:
+      // POS is lower case BY DESIGN because it is used mid-sentence ("the best receiver left"),
+      // so `${POS[pos]} pool` is authored lower case and drawn as "Running back pool".
+      h.textContent = dash(lines[0].charAt(0).toUpperCase() + lines[0].slice(1));
+      b.appendChild(h); b.appendChild(document.createTextNode(dash(lines.slice(1).join("\n\n"))));
+    } else { b.textContent = dash(text); }
     b.classList.toggle("wide", text.length > 170);
   }
 
