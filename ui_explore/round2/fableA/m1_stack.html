@@ -383,6 +383,9 @@ html,body{height:auto;overflow:visible}
 .db{padding:5px 12px 8px;display:flex;flex-direction:column;gap:4px}
 .who{display:flex;align-items:center;gap:10px}
 .who .nm{font-weight:700;font-size:1rem;line-height:1.2}
+/* a name wraps before its availability mark, never after it: the mark is one glyph and used
+   to land alone on a line of its own at 360px ("Travis Etienne / +") */
+.who .nm,.card .nm{text-wrap:pretty}
 .who .sub{font-size:.78rem;color:var(--muted);margin-top:2px}
 .door .face{width:36px;height:36px;font-size:.8rem}
 .vs{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0} .vs b{color:var(--ink)}
@@ -1350,7 +1353,13 @@ function fillCommon(M){
 
 let M, openKey = null, filt = "ALL";
 const Q = new URLSearchParams(location.search);
-const COLLAPSED = Q.has("collapsed");     // ?collapsed: the main display with no door open, the state the X returns to
+/* COLLAPSED-FIRST. The bare URL lands on the main display with nothing open. The owner's sentence
+   is "the 4-5 main recommendations near the top; click one door and the other options populate
+   the lower end; X to collapse back to the main display", and both reviewers read it the same
+   way: the landing screen is the four or five, and a tap is what the reader does next. ?open
+   lands with the leader's door open, so the gate can measure that state by URL; ?collapsed is
+   still honoured as the brief reserves it, and is now what the bare URL does. */
+const OPEN = Q.has("open");
 let STREAM_HIDE = !Q.has("streamers");    // #30: streamed positions held back; ?streamers starts them shown
 const WINDOW = 5;                         // 4-5 surface, as on the desktop; the window slides and the count line says so
 const doorBest = d => M.doorBest(d);
@@ -1407,14 +1416,14 @@ function draw(){
 }
 function reveal(key){ const el = document.querySelector(`.door[data-door="${key}"]`); if (el) el.scrollIntoView({block:"start", behavior:"smooth"}); }
 function load(key, fmt){
-  M = buildModel(key, fmt); openKey = COLLAPSED ? null : defaultOpen(); filt = "ALL";
+  M = buildModel(key, fmt); openKey = OPEN ? defaultOpen() : null; filt = "ALL";
   fillCommon(M);
   document.documentElement.style.setProperty("--clkh", document.querySelector(".clk").offsetHeight + "px");   // the stuck clock's height, for scroll-margin-top
   document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span data-tip="${M.seatsText()}">${M.ticks()}</span>`;
   document.getElementById("boardn").innerHTML = M.clockShort();
   draw();
 }
-const ui = wireChrome({formats:true, tag:"m1 · STACK", sub:"phone · the doors as a stack, one opens in place", hypothesis:`<b>What this is.</b> The phone side of the doors room. The same ${WINDOW} doors surface in the board's order, as a vertical stack of compact rows; each closed row still carries who, the value, and first-on-the-board or instead-of, so the stack answers without a tap. Tap a row and it opens in place with what the desktop's open door and its card strip carry: the wait line, the pool, and the position's other names priced against the board's first name. The X in its corner collapses it; the reader never loses their place. The drawer (≣) is the override, every name at any position. <code>?collapsed</code> renders the stack with no door open.`, onState:load});
+const ui = wireChrome({formats:true, tag:"m1 · STACK", sub:"phone · the doors as a stack, one opens in place", hypothesis:`<b>What this is.</b> The phone side of the doors room. The same ${WINDOW} doors surface in the board's order, as a vertical stack of compact rows; each closed row still carries who, the value, and first-on-the-board or instead-of, so the stack answers without a tap. Tap a row and it opens in place with what the desktop's open door and its card strip carry: the wait line, the pool, and the position's other names priced against the board's first name. The X in its corner collapses it; the reader never loses their place. The drawer (≣) is the override, every name at any position. The bare URL lands on the stack with no door open; <code>?open</code> lands with the leader's door open.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); document.getElementById("workCopy").innerHTML = M.copyBtn(c); ui.open("shWork"); return; }
   const bn = e.target.closest("[data-bench]");

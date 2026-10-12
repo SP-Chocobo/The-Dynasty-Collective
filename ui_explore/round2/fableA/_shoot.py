@@ -53,16 +53,18 @@ def _jobs_for(f):
     """Every format on the surfaces that carry all of them (v4 and every mobile surface, which
     are the same board); the first format only on the controls."""
     if is_mobile(f):
-        # `?collapsed` is the main display with no door open. It is reachable by URL rather than
-        # only by tapping the X, so the suite can assert BOTH states without an interaction
-        # script -- the state a reader returns to is as measurable as the one they open.
-        # EVERY format collapsed, not a sample of two. The collapsed state is the MAIN DISPLAY
-        # -- the thing the owner specified as "the 4-5 main recommendations near the top" -- and
-        # sampling two formats left it unmeasured on the hardest board in the fixture. m1's
-        # collapsed HEAVY_IDP measures 1.96 screens against a 2.0 budget, so the format the
-        # sample skipped is the one with the least margin. A budget that does not cover its
-        # tightest case is not a budget.
-        return [(f, "", FORMATS), (f, "collapsed", FORMATS)]
+        # The bare URL is the MAIN DISPLAY with no door open -- the thing the owner specified as
+        # "the 4-5 main recommendations near the top" -- and `?open` lands with the leader's door
+        # open. Both are reachable by URL rather than only by tapping, so the suite asserts BOTH
+        # states without an interaction script: the state a reader lands on and returns to is as
+        # measurable as the one they open. (The phones used to land open and reach the main
+        # display through `?collapsed`; they land collapsed now, and `?collapsed` is still
+        # honoured as the brief reserves it.)
+        # EVERY format in both states, not a sample of two. Sampling two formats left the main
+        # display unmeasured on the hardest board in the fixture: m1's collapsed HEAVY_IDP
+        # measured 1.96 screens against a 2.0 budget, so the format the sample skipped was the
+        # one with the least margin. A budget that does not cover its tightest case is not a budget.
+        return [(f, "", FORMATS), (f, "open", FORMATS)]
     return [(f, "", FORMATS if "v4_" in f else [FORMATS[0]])]
 
 JOBS = []

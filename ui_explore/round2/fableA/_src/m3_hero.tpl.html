@@ -93,6 +93,9 @@ html,body{height:auto;overflow:visible}
 .db{padding:6px 12px 8px;display:flex;flex-direction:column;gap:4px}
 .who{display:flex;align-items:center;gap:10px}
 .who .nm{font-weight:700;font-size:1.1rem;line-height:1.2}
+/* a name wraps before its availability mark, never after it: the mark is one glyph and used
+   to land alone on a line of its own at 360px ("Jacory Croskey-Merritt / ✓") */
+.who .nm,.card .nm{text-wrap:pretty}
 .who .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
 .door .face{width:44px;height:44px;font-size:.9rem}
 .vs{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0} .vs b{color:var(--ink)}
@@ -200,7 +203,14 @@ html,body{height:auto;overflow:visible}
    display, the state the X returns to, and what ?collapsed renders. */
 let M, openKey = null, filt = "ALL";
 const Q = new URLSearchParams(location.search);
-const COLLAPSED = Q.has("collapsed");     // ?collapsed: the leader as hero, the chips, nothing open
+/* COLLAPSED-FIRST. The bare URL lands on the leader as hero, the chips, and nothing open. The
+   owner's sentence is "the 4-5 main recommendations near the top; click one door and the other
+   options populate the lower end; X to collapse back to the main display", and both reviewers
+   read it the same way. The hero carries its actions in both states, so the forfeit it prints
+   always sits beside the numbers button that reaches its basis. ?open lands with the leader's
+   alternatives open, so the gate can measure that state by URL; ?collapsed is still honoured as
+   the brief reserves it, and is now what the bare URL does. */
+const OPEN = Q.has("open");
 let STREAM_HIDE = !Q.has("streamers");    // #30: streamed positions held back; ?streamers starts them shown
 const WINDOW = 5;                         // 4-5 surface, as on the desktop; the window slides and the count line says so
 const doorBest = d => M.doorBest(d);
@@ -222,9 +232,11 @@ function heroHTML(d, idx){
   if (!best) body = `<div class="empty">${doorHeld(M, d)} ${doorNone(M, d)}</div>`;
   else body = `<div class="db">${doorWho(M, d, best)}
       ${phoneVs(M, best)}${M.displaced(best) ? M.dispShort(best) : ""}
-      ${open ? `<div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div>` : ""}</div>
+      <div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div></div>
       ${phoneCtx(M, d, pos)}`;
-  const x = open ? `<button class="x" data-x="1" aria-label="Close the ${d.label} door and return to the board's first name">✕</button>` : "";
+  /* the X says what it does: the hero is the top door, which is the board's first name except
+     when that name is streamable and set aside, so "the board's first name" was false in K_DEF */
+  const x = open ? `<button class="x" data-x="1" aria-label="Close the ${d.label} door's other names and return to the top door">✕</button>` : "";
   return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}</div>${x}</section>`;
 }
 /* the chips: the window's other doors, in the board's order, and only those -- the count line
@@ -281,14 +293,14 @@ function draw(){
 }
 function reveal(){ const el = document.getElementById("doors"); if (el) el.scrollIntoView({block:"start", behavior:"smooth"}); }
 function load(key, fmt){
-  M = buildModel(key, fmt); openKey = COLLAPSED ? null : defaultOpen(); filt = "ALL";
+  M = buildModel(key, fmt); openKey = OPEN ? defaultOpen() : null; filt = "ALL";
   fillCommon(M);
   document.documentElement.style.setProperty("--clkh", document.querySelector(".clk").offsetHeight + "px");   // the stuck clock's height, for scroll-margin-top
   document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span data-tip="${M.seatsText()}">${M.ticks()}</span>`;
   document.getElementById("boardn").innerHTML = M.clockShort();
   draw();
 }
-const ui = wireChrome({formats:true, tag:"m3 · HERO", sub:"phone · one hero door, the other doors as chips under it", hypothesis:`<b>What this is.</b> The phone side of the doors room. One door is the hero, the board's first name full width, carrying what the desktop's open door carries; the other doors in the window are a row of chips under it, each the position, its best name and the gap to the board's first name, so the row answers what else is valid and at what cost without a tap. Tap a chip and the hero swaps to that position's best and its other names fill the block under the chips, priced against the board's first name. The X returns to the board's first name. The drawer (≣) is the override, every name at any position. <code>?collapsed</code> renders the leader as hero with nothing open.`, onState:load});
+const ui = wireChrome({formats:true, tag:"m3 · HERO", sub:"phone · one hero door, the other doors as chips under it", hypothesis:`<b>What this is.</b> The phone side of the doors room. One door is the hero, the board's first name full width, carrying what the desktop's open door carries; the other doors in the window are a row of chips under it, each the position, its best name and the gap to the board's first name, so the row answers what else is valid and at what cost without a tap. Tap a chip and the hero swaps to that position's best and its other names fill the block under the chips, priced against the board's first name. The X clears them and returns to the top door. The drawer (≣) is the override, every name at any position. The bare URL lands on the leader as hero with nothing open; <code>?open</code> lands with his other names open.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); document.getElementById("workCopy").innerHTML = M.copyBtn(c); ui.open("shWork"); return; }
   const bn = e.target.closest("[data-bench]");
