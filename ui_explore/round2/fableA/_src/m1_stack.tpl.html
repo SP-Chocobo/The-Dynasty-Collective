@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Doors Draft Room · Stack</title>
+<meta name="description" content="Phone side of the doors draft room: the doors as a vertical stack of compact rows in the board's order; a tapped door expands in place with its other names, their cost against the board's first name and the wait line; the X in its corner collapses it back.">
+<style>
+/*__CSS__*/
+/* m1 -- STACK, the phone side of v4. Same tokens, same model, same door. The doors are a vertical
+   stack of compact rows in the board's order, four or five of them as on the desktop; one row is
+   open and carries, in place, what the desktop's open door and its card strip carry: the wait
+   line, the pool, the position's other names with their cost against the board's first name.
+   Every closed row still answers who, why and at what cost on its own -- the name, the value,
+   first-on-the-board or instead-of -- so the stack reads without a tap. */
+/* The page scrolls; the room does not clip. Sheets pin to the viewport rather than the room. */
+html,body{height:auto;overflow:visible}
+.room{height:auto;min-height:100vh;overflow:visible}
+.scrim,.sheet{position:fixed}
+.sheet.right,.sheet.right.drawer,.sheet.left{width:100%}
+.sheet .sh{padding:8px 12px;flex-wrap:wrap;row-gap:4px} .sheet .sh .x{min-height:44px;display:inline-flex;align-items:center;padding:0 .8rem}
+.sheet .sc{padding:10px 12px}
+/* the review bar is harness furniture; one line, scrolls sideways, costs ~34px */
+.rev{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;padding:5px 12px}
+.rev::-webkit-scrollbar{display:none}
+.rev .fmts{margin-left:6px;padding-left:8px} .rev .hyp{margin-left:6px}
+/* header: the wordmark and the league line share a line; the sheet buttons are a 3x2 grid of
+   thumb-sized buttons, every one at least 44px tall */
+.hdr{flex-wrap:wrap;gap:4px 10px;padding:8px 12px;align-items:flex-start}
+.wm{font-size:17px;line-height:1.5}
+.lg{font-size:13px;line-height:1.45;flex:1 1 170px;min-width:0}
+.hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.3rem .35rem;font-size:12.5px;white-space:nowrap}
+.btn.sm{min-height:44px;font-size:.8rem;padding:0 .7rem}
+.copy{min-height:44px;display:inline-flex;align-items:center;padding:0 .7rem}
+/* the clock: the timer and the pick on one line, the next-turn span and the seats below */
+.clk{flex-wrap:wrap;gap:3px 12px;padding:7px 12px;font-size:14px}
+.timer{font-size:20px} .upnow{font-size:15px}
+.clk .spanline{flex:1 1 100%;flex-wrap:wrap;gap:4px 10px;font-size:13px}
+.clk .who{flex:1 1 100%;font-size:13px;color:var(--muted)} .clk .who b{color:var(--ink)}
+/* the lineup strip stays one line, as on the desktop; here it scrolls sideways and the lit slot is
+   brought into view, so the chip that matters is the one on screen */
+.lineup{padding:6px 12px;gap:8px}
+.lineup .slots{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+.lineup .slots::-webkit-scrollbar{display:none}
+.lineup .slotc{padding:.14rem .36rem;font-size:12.8px}
+/* main */
+.main{display:flex;flex-direction:column;padding:8px 12px 28px;gap:8px}
+.count{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);line-height:1.45}
+.count b{color:var(--ink)}
+.count .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.count .chip{font-family:var(--f-m);font-size:.75rem;font-weight:700;min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .65rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface)}
+.count .chip:hover{color:var(--ink);border-color:var(--dim)}
+.count .chip i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px}
+.doors{display:flex;flex-direction:column;gap:8px}
+/* the door: the desktop's, stacked. Edge, header, body; the open one grows in place. */
+.door{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0;position:relative;cursor:pointer}
+.door.open{border-color:var(--gold-b);box-shadow:0 0 0 1px rgba(247,207,74,.25),0 0 18px rgba(212,160,23,.12);cursor:default}
+.door.none{opacity:.75;background:var(--surface-2)}
+.door .edge{grid-row:1/-1;border-right:1px solid var(--line-2);background:var(--surface-2);position:relative;overflow:hidden;align-self:stretch}
+.door .edge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+.door .edge .tank{position:absolute;left:4px;right:0;top:0;bottom:0;width:auto;border:none;border-radius:0}
+.door .edge.notank{background:repeating-linear-gradient(135deg,var(--surface-2) 0 4px,var(--surface) 4px 8px)}
+.tank .zone{position:absolute;left:0;right:0;top:0;background:repeating-linear-gradient(135deg,var(--hatch) 0 2px,transparent 2px 6px)}
+.tank .mark{height:3px;background:var(--gold-b)}
+.tank .fill{background:var(--tie)} .tank .fill.st{background:var(--emerald)}
+.door .body{min-width:0;display:flex;flex-direction:column}
+.dh{padding:8px 12px 0}
+.dh .top{display:flex;align-items:baseline;gap:8px}
+.door.open .dh .top{padding-right:46px}
+.dh .pos{font-family:var(--f-d);font-size:1rem;font-weight:700;display:flex;align-items:baseline;gap:7px;white-space:nowrap;flex:0 1 auto;min-width:0}
+.dh .n{margin-left:auto;font-family:var(--f-m);font-size:.75rem;color:var(--gold-b);white-space:nowrap;font-weight:700}
+.dh .n.dim{color:var(--dim);font-weight:400}
+.dh .hint{font-size:.75rem;color:var(--dim)}
+.dh .st{font-size:.8rem;color:var(--muted);margin-top:2px;line-height:1.4} .dh .st.need{color:var(--amber-b)}
+.dh .st b{color:var(--muted);font-family:var(--f-m);font-weight:600}
+.door .x{position:absolute;top:4px;right:4px;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface-2);font-size:1.05rem;z-index:1}
+.door .x:hover{color:var(--ink);border-color:var(--dim)}
+.db{padding:6px 12px 9px;display:flex;flex-direction:column;gap:5px}
+.who{display:flex;align-items:center;gap:10px}
+.who .nm{font-weight:700;font-size:1rem;line-height:1.2}
+.who .sub{font-size:.78rem;color:var(--muted);margin-top:2px}
+.door .face{width:40px;height:40px;font-size:.85rem}
+.vs{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0} .vs b{color:var(--ink)}
+.vs .big{font-size:1.15rem;line-height:1;vertical-align:-1px;color:var(--ink)}
+.vs .u{display:inline;margin:0;white-space:normal}
+.door .cost2{display:inline-flex;gap:10px;flex-wrap:wrap;vertical-align:baseline} .door .cost2 .cc{gap:4px} .door .cost2 .cc .cv{font-size:.88rem}
+.door .disp{font-size:.84rem;margin:0}
+.door .empty{padding:6px 12px 10px;color:var(--dim);font-size:.84rem;line-height:1.5}
+/* the open door: its own actions, its context (what the desktop's door header carries), then
+   the position's other names as the desktop's cards, stacked */
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.ctx2{border-top:1px solid var(--line);margin:0 12px;padding:7px 0 4px;font-size:.82rem;color:var(--muted);line-height:1.45}
+.ctx2 b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.ctx2 .dear{display:block;color:var(--amber-b)}
+.ctx2 .tankcap{margin-top:3px}
+.then{border-top:1px solid var(--line);margin:4px 12px 0;padding:8px 0 10px}
+.then .ch{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700}
+.cards{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.card{border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;background:var(--surface-2);min-width:0}
+.card .who{align-items:flex-start}
+.card .who .nm{font-size:.95rem}
+.card .who .rk{font-family:var(--f-m);font-size:.75rem;color:var(--dim);margin-right:2px}
+.card .cost{display:flex;flex-wrap:wrap;gap:3px 12px;align-items:baseline;margin-top:5px}
+.card .cost .big{font-size:1.05rem;line-height:1}
+.card .cost .cost2{display:inline-flex;gap:10px;flex-wrap:wrap} .card .cost .cc{gap:4px} .card .cost .cc .cv{font-size:.88rem}
+.card ul{margin:4px 0 0;padding:0;list-style:none;font-size:.84rem;color:var(--muted);line-height:1.45}
+.card li b{color:var(--ink)} .card li .mono{color:var(--ink)}
+.card.one{color:var(--dim);font-size:.84rem;line-height:1.5}
+.morebtn{width:100%;min-height:44px;margin-top:6px;border:1px dashed var(--line-2);border-radius:var(--r);color:var(--muted);font-size:.84rem}
+.morebtn:hover{color:var(--ink);border-color:var(--dim)}
+.arm{font-size:.75rem}
+/* the drawer: a filter per door; when filtered, the position's context sits above the list */
+.drawer .filt{display:flex;gap:4px;flex-wrap:wrap;padding:8px 10px 6px}
+.filt button{min-height:44px;min-width:44px;padding:0 .6rem}
+.ctx{margin:0 10px 8px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface-2);padding:8px 10px;display:grid;grid-template-columns:18px minmax(0,1fr);gap:0 10px}
+.ctx .edge{border-radius:2px;position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line-2)}
+.ctx .edge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+.ctx .edge .tank{position:absolute;left:4px;right:0;top:0;bottom:0;width:auto;border:none;border-radius:0}
+.ctx .t{font-family:var(--f-d);font-weight:700;font-size:1rem;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.ctx .t .n{margin-left:auto;font-family:var(--f-s);font-weight:400;font-size:.78rem;color:var(--dim)}
+.ctx p{margin:3px 0 0;font-size:.84rem;color:var(--muted);line-height:1.45} .ctx p b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.ctx p .dear{color:var(--amber-b)}
+.srow{display:grid;grid-template-columns:24px 34px minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:12px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:.95rem;min-height:44px}
+.srow:hover{background:var(--surface-2)}
+.srow .rk{font-family:var(--f-m);font-size:.8rem;color:var(--dim)}
+.srow .pill{display:flex;align-items:center;justify-content:center;padding:.48rem 0 .36rem;font-size:.8rem;line-height:1}
+.srow .nm{font-weight:600;min-width:0;font-size:1rem} .srow .nm small{color:var(--dim);font-weight:400;font-size:.8rem;margin-left:6px}
+.srow .v{font-family:var(--f-m);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap} .srow .v small{font-weight:400;color:var(--dim);font-size:.8rem;margin-left:5px;font-family:var(--f-s)}
+.srow .meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 10px;min-width:0}
+.srow .tk{font-size:.84rem;color:var(--muted);line-height:1.4}
+</style></head><body>
+<div class="room">
+  <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
+  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false">≣ Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock.">⚑ Debate</button>
+      <button class="btn" data-tip="Not wired up
+A placeholder, so the layout is complete. This prototype reads one fixed capture, so there is nothing here to re-read; in the live room this re-pulls the draft state and moves the &quot;as of pick&quot; mark in the league line.">⟳ Resync</button><button class="btn" data-tip="Settings">⚙ Settings</button></span></header>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
+  <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
+  <div class="main">
+    <div class="count" id="count"></div>
+    <div class="doors" id="doors"></div>
+  </div>
+  <div class="scrim"></div>
+  <section class="sheet right drawer" id="shAll" aria-hidden="true"><div class="sh"><span class="t">Every name on the board</span><span class="note" id="allNote"></span><button class="x" data-close="1">close ✕</button></div><div class="filt" id="allFilt"></div><div id="allCtx"></div><div class="sc" id="allList" style="padding:0 10px 6px"></div></section>
+  <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
+  <section class="sheet top" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">Rosters</span><span class="note" id="rosterNote"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+  <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+  <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+</div>
+<script>
+/*__DATA__*/
+/*__SHARED__*/
+let M, openKey = null, filt = "ALL";
+const Q = new URLSearchParams(location.search);
+const COLLAPSED = Q.has("collapsed");     // ?collapsed: the main display with no door open, the state the X returns to
+let STREAM_HIDE = !Q.has("streamers");    // #30: streamed positions held back; ?streamers starts them shown
+const WINDOW = 5;                         // 4-5 surface, as on the desktop; the window slides and the count line says so
+const doorBest = d => M.doorBest(d);
+const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[0]; };
+const holdText = d => doorHold(M, d);
+const noneText = d => `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}.`;
+/* the window: the first WINDOW doors in the board's order; the open door is always in it */
+function windowDoors(){
+  const order = STREAM_HIDE ? M.DOOR_ORDER.filter(d => !M.isStreamDoor(d) || d.key === openKey) : M.DOOR_ORDER;
+  if (order.length <= WINDOW) return order;
+  const w = order.slice(0, WINDOW); const open = order.find(d => d.key === openKey);
+  if (open && !w.includes(open)) w[WINDOW - 1] = open;
+  return w;
+}
+/* the default open door, which must never be one STREAM_HIDE is holding back */
+function defaultOpen(){
+  const lead = M.doorOf(M.LEADER.position);
+  if (!(STREAM_HIDE && M.isStreamDoor(lead))) return lead.key;
+  const first = M.DOOR_ORDER.find(d => !M.isStreamDoor(d));
+  return (first || lead).key;
+}
+/* a name against the board's first name: the desktop's own sentence, the model's own cells */
+function vsLeader(c){
+  const L = M.LEADER;
+  if (c.player_id === L.player_id) return M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>";
+  return `Instead of ${M.short(L.name)}: <span class="cost2">${M.costHTML(c, L)}</span>`;
+}
+function demandLine(d){
+  const demPs = d.positions.filter(p => num(M.DEMAND[p]));
+  const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
+  return demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}` : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
+}
+/* the open door's other names: the desktop's card strip, one card per row, each priced against
+   the board's first name. A compound door spends its rows as the model does (doorDepth). */
+function altsHTML(d, best, list){
+  const L = M.LEADER, who = d.compound ? "defender" : POS[d.key];
+  if (list.length < 2) return `<div class="then"><div class="ch"><span class="t">then at ${d.key}</span></div><div class="cards"><div class="card one">Only one ${who} is rated on this board; nothing to set beside him.</div></div></div>`;
+  const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
+  const slotSame = [best].concat(dep).every(c => M.slotShort(c) === M.slotShort(best));
+  const card = (c, i) => `<div class="card" data-row>
+    <div class="who">${M.face(c, "sm")}<span style="min-width:0"><div class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</div><div class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</div></span></div>
+    <div class="cost"><span class="big">${f1(c.team_acquisition_value)}</span><span class="cost2">${M.costHTML(c, L)}</span></div>
+    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li><b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}</li>${c.injury_status ? `<li>${M.avail(c)}</li>` : ""}</ul>
+    <div class="acts">${M.copyBtn(c)}<button class="btn sm" data-work="${c.player_id}">numbers</button></div></div>`;
+  return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">cost against ${M.short(L.name)}, the board's first name${slotSame ? ` · same for all: ${M.slotShort(best)}` : ""} · lasts to #${M.NEXT_NO}? <span class="wh">${WITHHELD_WORD}</span></span></div>
+    <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
+    ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
+}
+function doorHTML(d, idx){
+  const best = doorBest(d), pos = posOf(d), list = best ? M.C.filter(c => d.positions.includes(c.position)) : [], h = holdText(d), open = d.key === openKey;
+  const dem = demandLine(d);
+  const head = `<div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span>${open ? "" : `<span class="hint">▾</span>`}</div>
+    <div class="st ${h.need ? "need" : ""}">${h.text}${dem ? ` · ${dem}` : ""}</div></div>`;
+  let body;
+  if (!best) body = `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`} ${noneText(d)}</div>`;
+  else body = `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
+      <p class="vs"><span class="big">${f1(best.team_acquisition_value)}</span> <span class="u">to your roster now</span> · ${vsLeader(best)}</p>${M.displaced(best) ? M.dispShort(best) : ""}
+      ${open ? `<div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div>` : ""}</div>`;
+  const ctx = open && best ? `<div class="ctx2">${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}${doorTankCap(M, pos)}</div>` : "";
+  const alts = open && best ? altsHTML(d, best, list) : "";
+  const x = open ? `<button class="x" data-x="1" aria-label="Collapse the ${d.label} door">✕</button>` : "";
+  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}${ctx}${alts}</div>${x}</section>`;
+}
+function countHTML(w){
+  const all = M.DOOR_ORDER;
+  const held = STREAM_HIDE ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
+  const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
+  const lit = openKey ? "lit slot: where the open door's best would start" : "lit slot: where the board's first name would start";
+  return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length ? ": the window slides as the board changes" : ""}</span>
+    ${hidden.length ? `<span class="chips"><span>not shown:</span>${hidden.map(d => `<button class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</button>`).join("")}</span>` : ""}
+    ${held.length ? `<span class="chips held"><span>Streamable positions:</span>${held.map(d => `<button class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}</button>`).join("")}<button class="chip" data-streamtoggle>show them</button></span>` : (STREAM_HIDE ? "" : `<span class="chips held"><button class="chip" data-streamtoggle>set streamable aside</button></span>`)}
+    <span class="note"><b>the board: ${M.C.length} names</b> · ${lit}${M.shareNote() ? " · " + M.shareNote() : ""}</span>`;
+}
+/* the drawer: a filter per door; when filtered, the position's context sits above the list */
+function drawerHTML(){
+  const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
+  document.getElementById("allFilt").innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
+  const d = M.DOORS.find(x => x.key === filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
+  let ctx = "";
+  if (d) { const pos = posOf(d), h = holdText(d), inWin = windowDoors().includes(d), idx = M.DOOR_ORDER.indexOf(d);
+    ctx = `<div class="ctx">${doorTank(M, pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${doorBest(d) ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
+      <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
+      <p>${doorBest(d) ? M.waitLine(pos) : `${noneText(d).replace(/\.$/, "")}, so nothing to wait on is measured.`}${pos === M.DEAREST && doorBest(d) && M.POS_BY_COST.length > 1 ? ` <span class="dear">The dearest position to wait on right now.</span>` : ""}</p>
+      ${doorBest(d) ? doorTankCap(M, pos).replace("tankcap", "note") : ""}</div></div>`; }
+  document.getElementById("allCtx").innerHTML = ctx;
+  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
+  document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · tap one to open his door`;
+}
+/* the lit chip is the one that matters, so the one-line strip is scrolled to show it */
+function litIntoView(){
+  const s = document.getElementById("slots"), f = s.querySelector(".fills");
+  if (!f) { s.scrollLeft = 0; return; }
+  const sb = s.getBoundingClientRect(), fb = f.getBoundingClientRect();
+  s.scrollLeft = Math.max(0, s.scrollLeft + (fb.left - sb.left) - (sb.width - fb.width) / 2);
+}
+function draw(){
+  const w = windowDoors();
+  document.getElementById("doors").innerHTML = w.map(d => doorHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
+  document.getElementById("count").innerHTML = countHTML(w);
+  const d = openKey ? M.DOORS.find(x => x.key === openKey) : null, b = d ? doorBest(d) : M.LEADER;
+  document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
+  litIntoView();
+  document.getElementById("debate").innerHTML = M.squad(openKey ? `the ${openKey} door against the board's first name` : `the board's first name against the field`);
+  document.getElementById("allRosters").innerHTML = M.allRosters();
+  document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
+  drawerHTML();
+  requestAnimationFrame(markScrollers);
+}
+function reveal(key){ const el = document.querySelector(`.door[data-door="${key}"]`); if (el) el.scrollIntoView({block:"start", behavior:"smooth"}); }
+function load(key, fmt){
+  M = buildModel(key, fmt); openKey = COLLAPSED ? null : defaultOpen(); filt = "ALL";
+  fillCommon(M);
+  document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span data-tip="${M.seatsText()}">${M.ticks()}</span>`;
+  document.getElementById("boardn").innerHTML = M.clockShort();
+  draw();
+}
+const ui = wireChrome({formats:true, tag:"m1 · STACK", sub:"phone · the doors as a stack, one opens in place", hypothesis:`<b>What this is.</b> The phone side of the doors room. The same ${WINDOW} doors surface in the board's order, as a vertical stack of compact rows; each closed row still carries who, the value, and first-on-the-board or instead-of, so the stack answers without a tap. Tap a row and it opens in place with what the desktop's open door and its card strip carry: the wait line, the pool, and the position's other names priced against the board's first name. The X in its corner collapses it; the reader never loses their place. The drawer (≣) is the override, every name at any position. <code>?collapsed</code> renders the stack with no door open.`, onState:load});
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); ui.open("shWork"); return; }
+  const bn = e.target.closest("[data-bench]");
+  if (bn) { const seat = bn.dataset.bench;
+    M.benchToggled.has(seat) ? M.benchToggled.delete(seat) : M.benchToggled.add(seat);
+    document.getElementById("allRosters").innerHTML = M.allRosters(); return; }
+  const f = e.target.closest("[data-f]"); if (f) { filt = f.dataset.f; drawerHTML(); requestAnimationFrame(markScrollers); return; }
+  const st = e.target.closest("[data-streamtoggle]"); if (st) { e.preventDefault(); STREAM_HIDE = !STREAM_HIDE; draw(); return; }
+  const dr = e.target.closest("[data-drawer]"); if (dr) { filt = dr.dataset.drawer; drawerHTML(); ui.open("shAll"); return; }
+  const x = e.target.closest("[data-x]"); if (x) { openKey = null; draw(); return; }
+  const o = e.target.closest("[data-open]"); if (o) { if (M.DOORS.some(d => d.key === o.dataset.open)) { openKey = o.dataset.open; draw(); reveal(openKey); } ui.closeAll(); return; }
+  if (e.target.closest("button") || e.target.closest(".sheet")) return;
+  const d = e.target.closest("[data-door]"); if (d && d.dataset.door !== openKey) { openKey = d.dataset.door; draw(); }
+});
+load(ui.key(), ui.fmt());
+</script></body></html>

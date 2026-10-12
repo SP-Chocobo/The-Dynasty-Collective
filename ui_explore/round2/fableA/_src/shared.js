@@ -590,6 +590,46 @@ M.doorDepth = (d, best, list) => {
 }
 
 /* ============================================================================================
+   The door's own helpers, shared by the doors surface (v4) and its phone adaptations (m1-m3).
+   They lived in v4's template. Copying them into three more templates would have made four
+   homes for DOOR_SHORT and for the tank's prose, and the vocabulary rule gives each one (#126).
+   ============================================================================================ */
+/* A SECOND POSITION VOCABULARY once lived in v4, and it disagreed with the first: it said
+   "Receiver" where POS says "wide receiver", and "Defenders" where POS says "defender". Nothing
+   made them agree, so they drifted (#126). Now only the genuinely SHORT forms are listed -- the
+   door header is width-constrained and cannot carry "defensive lineman" -- and everything else
+   is derived through posTitle, so the header and the prose cannot disagree again. Title Case is
+   load-bearing rather than cosmetic: the header is set in Cinzel, which has no true lower case,
+   so an authored capital draws full height and a lower-case letter draws as a small cap.
+   "Running back" therefore drew as small caps while its own tooltip said "Running Back". */
+const DOOR_SHORT = {DL:"D-line", DB:"D-back", IDP:"Defenders"};
+const doorLabel = d => DOOR_SHORT[d.key] || posTitle(d.key) || d.label;
+/* what you hold at a door's positions, and where the next one would land */
+function doorHold(M, d){
+  const held = M.S.myPicks.filter(p => d.positions.includes(p.pos)), open = d.positions.reduce((n, p) => n + M.openAt(p), 0);
+  const names = held.length > 2 ? `${held.length} held` : held.map(p => M.short(p.name)).join(", ");
+  const fx = M.openFlexFor(d.positions[0]);
+  return {need: held.length === 0, text: held.length === 0 ? (open ? `you hold none, slot open` : fx ? `you hold none, ${fx.slot} open` : `you hold none`) : open ? `${names} · ${open} slot open` : `${names}${fx ? " · next → " + fx.slot : " · next → bench"}`};
+}
+/* the §14 tank on a door's edge; show=false (v4's ?notank) draws the position stripe alone */
+function doorTank(M, pos, cls, show){
+  if (show === undefined) show = true;
+  if (!show || !M.tankable(pos)) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="${M.tankable(pos) ? "No pool sample from the engine for this format." : "No tank: §14 draws the pool gauge for offensive positions only."}"></span>`;
+  const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="No pool sample from the engine for this format."></span>`;
+  const fillPct = 100 * t.left / t.N, markPct = 100 * (t.N - t.starters) / t.N;
+  return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" data-tip="${posTitle(pos)} pool
+${t.pctLeft}% of the engine's priced ${PLUR[pos]} are still on the board, its sample as of #${t.sampleAt}.
+The gold line is where the position stops producing starters in the replacement sense. It is a marker rather than an edge: below it players are still startable, and what runs out at the line is surplus over replacement, not production.
+The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
+}
+function doorTankCap(M, pos, show){
+  if (show === undefined) show = true;
+  const t = show ? M.tank(pos) : null;
+  if (!t) return M.tankable(pos) && show ? `<div class="tankcap">pool: no engine sample for this format</div>` : "";
+  return `<div class="tankcap">pool <b>${t.pctLeft}% left</b> as of #${t.sampleAt} · ${t.startersLeft ? `<b>starters left</b>` : `<span class="gone">past the starter line · startable, not an upgrade</span>`}</div>`;
+}
+
+/* ============================================================================================
    Chrome shared by every variant: review bar, sheets, copy, and the scroll affordance — every
    list that overflows says so ("↓ N more") so a short list over a dark fold is never mistaken
    for a failed render, and a captioned count never silently differs from what is drawn.
