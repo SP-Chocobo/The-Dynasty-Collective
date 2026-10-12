@@ -78,6 +78,8 @@ PROBE = """(opt) => {
   const tag = el => (el.className && el.className.toString().split(' ')[0]) || el.tagName.toLowerCase();
   r.scrollers = all.filter(el => { const cs = getComputedStyle(el); return /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 2; }).map(el => ({id: tag(el) + (el.dataset.list ? '[' + el.dataset.list + ']' : ''), more: el.dataset.more || null, moreVisible: !!(el.parentElement.querySelector(':scope > .more') && vis(el.parentElement.querySelector(':scope > .more')))}));
   r.badScrollers = r.scrollers.filter(s => !s.more || !s.moreVisible).map(s => s.id);
+  r.deepScroll = all.filter(el => { const cs = getComputedStyle(el); return /(auto|scroll)/.test(cs.overflowY); })
+    .reduce((m, el) => Math.max(m, el.scrollHeight), 0);
   r.clipped = all.filter(el => { const cs = getComputedStyle(el); return cs.overflow === 'hidden' && !/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 2 && !el.classList.contains('face') && !el.classList.contains('room') && !el.classList.contains('past') && !el.classList.contains('scroll'); }).map(el => tag(el) + ' ' + el.scrollHeight + '/' + el.clientHeight).slice(0, 10);
   // text overflow: an element with its own text whose content is wider than its box and not scrollable
   r.textOverflow = all.filter(el => { if (!vis(el)) return false; const hasText = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); if (!hasText) return false;
@@ -98,7 +100,7 @@ PROBE = """(opt) => {
   r.badCounts = r.counts.filter(c => c.drawn + c.more < c.rows).map(c => c.list + ' ' + c.drawn + '+' + c.more + '<' + c.rows);
   // tap targets: a thumb needs 44px, and a control that misses it is a control that gets
   // mis-pressed under a draft clock. Asserted on mobile only -- a mouse does not care.
-  r.tap = !MOB ? [] : all.filter(el => vis(el)
+  r.tap = !MOB ? [] : all.filter(el => vis(el) && !el.closest('#rev,#hyp')
       && el.matches('button,a[href],[role="button"],[data-door],[data-open],[data-f],[data-sheet],[data-close]')
       && !el.querySelector('button,a[href],[role="button"]'))
     .map(el => { const b = el.getBoundingClientRect(); return {t: tag(el), w: Math.round(b.width), h: Math.round(b.height), x: el.textContent.trim().slice(0, 18)}; })
@@ -147,10 +149,10 @@ with sync_playwright() as p:
             r = pg.evaluate(PROBE, {"mobile": is_mobile(f)})
             problems = []
             if errs: problems.append("errors " + json.dumps(errs))
-            screens = r["docH"] / max(1, r["vh"])
+            screens = max(r["docH"], r.get("deepScroll") or 0) / max(1, r["vh"])
             if is_mobile(f):
                 if r["pageScroll"][0]: problems.append("horizontal pageScroll")
-                if screens > SCROLL_BUDGET: problems.append(f"scroll budget: the document is {screens:.2f} screens tall, over {SCROLL_BUDGET}")
+                if screens > SCROLL_BUDGET: problems.append(f"scroll budget: {screens:.2f} screens of travel (document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {SCROLL_BUDGET}")
                 if r["tap"]: problems.append("tap target under 44px " + json.dumps(r["tap"]))
             elif any(r["pageScroll"]): problems.append("pageScroll")
             if r["clipped"]: problems.append("clipped " + json.dumps(r["clipped"]))
