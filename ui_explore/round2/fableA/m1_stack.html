@@ -311,13 +311,14 @@ html,body{height:auto;overflow:visible}
 .rev{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;padding:5px 12px}
 .rev::-webkit-scrollbar{display:none}
 .rev .fmts{margin-left:6px;padding-left:8px} .rev .hyp{margin-left:6px}
-/* header: the wordmark and the league line share a line; the sheet buttons are a 3x2 grid of
-   thumb-sized buttons, every one at least 44px tall */
+/* header: the wordmark and the league line share a line; the sheet buttons are one row of six,
+   icon over label, each at least 44px tall and never narrower than 32px */
 .hdr{flex-wrap:wrap;gap:4px 10px;padding:8px 12px;align-items:flex-start}
 .wm{font-size:17px;line-height:1.5}
 .lg{font-size:12.5px;line-height:1.45;flex:1 1 170px;min-width:0}
-.hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
+.hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:4px}
 .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.3rem .35rem;font-size:12.5px;white-space:nowrap}
+.hdr .btn{flex-direction:column;gap:2px;padding:4px 0;font-size:12px;line-height:1.2;min-height:50px} .hdr .btn i{font-style:normal;font-size:15px;line-height:1}
 .btn.sm{min-height:44px;font-size:.8rem;padding:0 .7rem}
 .copy{min-height:44px;display:inline-flex;align-items:center;padding:0 .7rem}
 /* the clock: the timer and the pick on one line, the next-turn span and the seats below */
@@ -325,21 +326,21 @@ html,body{height:auto;overflow:visible}
 .timer{font-size:20px} .upnow{font-size:15px}
 .clk .spanline{flex:1 1 100%;flex-wrap:wrap;gap:4px 10px;font-size:13px}
 .clk .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk .who b{color:var(--ink)}
-/* the lineup strip stays one line, as on the desktop; here it scrolls sideways and the lit slot is
-   brought into view, so the chip that matters is the one on screen */
-.lineup{padding:6px 12px;gap:8px}
-.lineup .slots{flex:1 1 auto;min-width:0;flex-wrap:nowrap;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
-.lineup .slots::-webkit-scrollbar{display:none}
-.lineup .slotc{padding:.14rem .36rem;font-size:12.8px}
+/* the lineup strip wraps: every chip stays reachable, and the label leads the first line with the
+   chips flowing after it rather than taking a line of its own */
+.lineup{padding:6px 12px;gap:3px 4px;flex-wrap:wrap;align-items:center}
+.lineup .k{margin-right:4px}
+.lineup .slots{display:contents}
+.lineup .slotc{padding:.12rem .34rem;font-size:12.8px;gap:4px}
 /* main */
-.main{display:flex;flex-direction:column;padding:8px 12px 28px;gap:8px}
+.main{display:flex;flex-direction:column;padding:8px 12px 18px;gap:8px}
 .count{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);line-height:1.45}
 .count b{color:var(--ink)}
 .count .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:-2px}
 .count .chip{font-family:var(--f-m);font-size:.75rem;font-weight:700;min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .65rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface)}
 .count .chip:hover{color:var(--ink);border-color:var(--dim)}
 .count .chip i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px}
-.doors{display:flex;flex-direction:column;gap:7px}
+.doors{display:flex;flex-direction:column;gap:6px}
 /* the door: the desktop's, stacked. Edge, header, body; the open one grows in place. */
 .door{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0;position:relative;cursor:pointer}
 .door.open{border-color:var(--gold-b);box-shadow:0 0 0 1px rgba(247,207,74,.25),0 0 18px rgba(212,160,23,.12);cursor:default}
@@ -370,8 +371,10 @@ html,body{height:auto;overflow:visible}
 .vs{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0} .vs b{color:var(--ink)}
 .vs .big{font-size:1.08rem;line-height:1;vertical-align:-1px;color:var(--ink)}
 .vs .u{display:inline;margin:0;white-space:normal;text-transform:none;letter-spacing:0;font-size:.8rem}
-/* the three cells on one line where they fit: the label's letter-spacing is the difference */
-.cost2{display:flex;gap:3px 10px;flex-wrap:wrap} .cost2 .cc{gap:4px} .cost2 .cc .cv{font-size:.88rem} .cost2 .cc .ck{letter-spacing:.02em}
+/* the three cells on one line where they fit: lower-case labels, no letter-spacing, and the
+   "instead of" lead as a cell of its own rather than a line of its own */
+.cost2{display:flex;gap:3px 8px;flex-wrap:wrap;align-items:baseline} .cost2 .cc{gap:4px} .cost2 .cc .cv{font-size:.84rem} .cost2 .cc .ck{letter-spacing:0;text-transform:none;font-size:.78rem}
+.cost2 .lead{font-size:.84rem;color:var(--muted)}
 .door .disp{font-size:.84rem;margin:0}
 .door .empty{padding:6px 12px 10px;color:var(--dim);font-size:.84rem;line-height:1.5}
 /* the open door: its own actions, its context (what the desktop's door header carries), then
@@ -396,7 +399,7 @@ html,body{height:auto;overflow:visible}
 .card .sub{font-size:.78rem;color:var(--muted);margin-top:1px;display:block}
 .card .val{text-align:right;white-space:nowrap}
 .card .val .big{font-size:1.02rem;line-height:1.2;display:block}
-.card .go{display:block;font-size:.75rem;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-top:3px}
+.card .go{font-size:.75rem;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;font-weight:700;white-space:nowrap}
 .card .cost2{grid-column:2/-1}
 .card ul{grid-column:2/-1;margin:1px 0 0;padding:0;list-style:none;font-size:.82rem;color:var(--muted);line-height:1.4}
 .card li b{color:var(--ink)} .card li .mono{color:var(--ink)}
@@ -427,11 +430,11 @@ html,body{height:auto;overflow:visible}
 <div class="room">
   <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
   <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
-    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false">≣ Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false">▤ Rosters</button>
-      <button class="btn" data-sheet="shBoard" aria-expanded="false">▦ Draft board</button>
-      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock.">⚑ Debate</button>
+    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every<br>name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft<br>board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button>
       <button class="btn" data-tip="Not wired up
-A placeholder, so the layout is complete. This prototype reads one fixed capture, so there is nothing here to re-read; in the live room this re-pulls the draft state and moves the &quot;as of pick&quot; mark in the league line.">⟳ Resync</button><button class="btn" data-tip="Settings">⚙ Settings</button></span></header>
+A placeholder, so the layout is complete. This prototype reads one fixed capture, so there is nothing here to re-read; in the live room this re-pulls the draft state and moves the &quot;as of pick&quot; mark in the league line."><i>⟳</i>Resync</button><button class="btn" data-tip="Settings"><i>⚙</i>Settings</button></span></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
   <div class="main">
@@ -1229,7 +1232,7 @@ function defaultOpen(){
 function vsLeader(c){
   const L = M.LEADER, v = `<span class="big">${f1(c.team_acquisition_value)}</span> <span class="u">to your roster now</span>`;
   if (c.player_id === L.player_id) return `<p class="vs">${v} · ${M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>"}</p>`;
-  return `<p class="vs">${v} · Instead of ${M.short(L.name)}:</p><div class="cost2">${M.costHTML(c, L)}</div>`;
+  return `<p class="vs">${v}</p><div class="cost2"><span class="lead">instead of ${M.short(L.name)}</span>${M.costHTML(c, L)}</div>`;
 }
 function demandLine(d){
   const demPs = d.positions.filter(p => num(M.DEMAND[p]));
@@ -1246,8 +1249,8 @@ function altsHTML(d, best, list){
   /* against the board's first name: across positions the three cells (now, at your next turn, both
      picks); within his own position the plain gap, since the fact line already carries the drop */
   const same = c => c.position === L.position;
-  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span style="min-width:0"><span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span></span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span><span class="go">numbers ›</span></span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
-    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""}</li></ul></div>`;
+  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span style="min-width:0"><span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span></span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
+    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
   return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · lasts to #${M.NEXT_NO}? <span class="wh">${WITHHELD_WORD}</span></span></div>
     <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
     ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
@@ -1273,7 +1276,6 @@ function countHTML(w){
   const all = M.DOOR_ORDER;
   const held = STREAM_HIDE ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
   const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
-  const lit = openKey ? "lit slot: where the open door's best would start" : "lit slot: where the board's first name would start";
   const chip = d => `<button class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</button>`;
   const tail = hidden.length ? " · not shown:" : held.length ? " · streamable positions set aside:" : "";
   const chips = hidden.length
@@ -1282,7 +1284,7 @@ function countHTML(w){
     : (STREAM_HIDE ? "" : `<span class="chips"><button class="chip" data-streamtoggle>set streamable aside</button></span>`);
   return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""}${tail}</span>
     ${chips}
-    <span class="note"><b>the board: ${M.C.length} names</b> · ${lit}${M.shareNote() ? " · " + M.shareNote() : ""}</span>`;
+    <span class="note"><b>the board: ${M.C.length} names</b>${M.shareNote() ? " · " + M.shareNote() : ""}</span>`;
 }
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
 function drawerHTML(){
@@ -1299,20 +1301,12 @@ function drawerHTML(){
   document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
   document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · tap one to open his door`;
 }
-/* the lit chip is the one that matters, so the one-line strip is scrolled to show it */
-function litIntoView(){
-  const s = document.getElementById("slots"), f = s.querySelector(".fills");
-  if (!f) { s.scrollLeft = 0; return; }
-  const sb = s.getBoundingClientRect(), fb = f.getBoundingClientRect();
-  s.scrollLeft = Math.max(0, s.scrollLeft + (fb.left - sb.left) - (sb.width - fb.width) / 2);
-}
 function draw(){
   const w = windowDoors();
   document.getElementById("doors").innerHTML = w.map(d => doorHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
   document.getElementById("count").innerHTML = countHTML(w);
   const d = openKey ? M.DOORS.find(x => x.key === openKey) : null, b = d ? doorBest(d) : M.LEADER;
   document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
-  litIntoView();
   document.getElementById("debate").innerHTML = M.squad(openKey ? `the ${openKey} door against the board's first name` : `the board's first name against the field`);
   document.getElementById("allRosters").innerHTML = M.allRosters();
   document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
