@@ -272,5 +272,9 @@ document.addEventListener("click", e => {
   const d = e.target.closest("[data-door]"); if (d && d.dataset.door !== openKey) { openKey = d.dataset.door; draw(); reveal(openKey); }
 });
 load(ui.key(), ui.fmt());
+/* the fold cue is re-read whenever the page scrolls, the viewport resizes, or the DOCUMENT changes
+   height with neither: the fonts swap in after first paint (font-display:swap) and a 1.02-screen
+   page measured as fitting one frame earlier, so its cue stayed dark. One render in 397 did that. */
 addEventListener("scroll", phoneFold, {passive:true}); addEventListener("resize", phoneFold);
+new ResizeObserver(phoneFold).observe(document.body); if (document.fonts) document.fonts.ready.then(phoneFold);
 </script></body></html>
