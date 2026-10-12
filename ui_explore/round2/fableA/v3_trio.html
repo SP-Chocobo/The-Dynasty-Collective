@@ -68,21 +68,21 @@ small{font-size:max(12px,.85em)}
 
 /* header */
 .hdr{display:flex;align-items:center;gap:14px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line-2);flex:0 0 auto}
-.wm{font-family:var(--f-d);font-weight:700;letter-spacing:.1em;color:var(--gold-b);text-transform:uppercase;font-size:1rem}
-.lg{font-size:.86rem;color:var(--muted)} .lg b{color:var(--ink)}
+.wm{font-family:var(--f-d);font-weight:700;letter-spacing:.1em;color:var(--gold-b);text-transform:uppercase;font-size:clamp(16px,min(calc(16px + (100vh - 900px)*0.0075),calc(16px + (100vw - 1280px)*0.00714)),19px)}
+.lg{font-size:clamp(13.76px,min(calc(13.76px + (100vh - 900px)*0.0069),calc(13.76px + (100vw - 1280px)*0.00652)),16.5px);color:var(--muted)} .lg b{color:var(--ink)}
 .hdr .r{margin-left:auto;display:flex;gap:8px;align-items:center}
-.btn{border:1px solid var(--line-2);border-radius:var(--r);padding:.34rem .66rem;color:var(--muted);background:var(--surface-2);font-size:.84rem;white-space:nowrap}
+.btn{border:1px solid var(--line-2);border-radius:var(--r);padding:.34rem .66rem;color:var(--muted);background:var(--surface-2);font-size:clamp(13.44px,min(calc(13.44px + (100vh - 900px)*0.0064),calc(13.44px + (100vw - 1280px)*0.0061)),16px);white-space:nowrap}
 .btn:hover{color:var(--ink);border-color:var(--dim)}
 .btn[aria-expanded="true"]{background:var(--gold-b);border-color:var(--gold-b);color:#15120b}
 .btn.paid{border-style:dashed;border-color:var(--violet)} .btn.paid:hover{color:var(--violet-b)}
 .btn.sm{padding:.18rem .5rem;font-size:.78rem}
 
 /* the clock line */
-.clk{display:flex;align-items:center;gap:18px;padding:7px 16px;border-bottom:1px solid var(--line-2);background:var(--surface);flex:0 0 auto;font-size:.88rem;color:var(--muted)}
+.clk{display:flex;align-items:center;gap:18px;padding:7px 16px;border-bottom:1px solid var(--line-2);background:var(--surface);flex:0 0 auto;font-size:clamp(14.08px,min(calc(14.08px + (100vh - 900px)*0.0073),calc(14.08px + (100vw - 1280px)*0.00695)),17px);color:var(--muted)}
 .clk b{color:var(--ink)}
-.timer{font-family:var(--f-m);font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;display:flex;align-items:baseline;gap:8px}
+.timer{font-family:var(--f-m);font-size:clamp(21.6px,min(calc(21.6px + (100vh - 900px)*0.011),calc(21.6px + (100vw - 1280px)*0.01048)),26px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1;display:flex;align-items:baseline;gap:8px}
 .timer small{font-size:.75rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;font-family:var(--f-s);font-weight:700}
-.upnow{font-family:var(--f-d);font-size:1.02rem;font-weight:700;letter-spacing:.05em;color:var(--gold-b);white-space:nowrap}
+.upnow{font-family:var(--f-d);font-size:clamp(16.32px,min(calc(16.32px + (100vh - 900px)*0.008),calc(16.32px + (100vw - 1280px)*0.00757)),19.5px);font-weight:700;letter-spacing:.05em;color:var(--gold-b);white-space:nowrap}
 .clk .right{margin-left:auto;display:flex;gap:14px;align-items:center}
 
 /* atoms */
@@ -100,7 +100,7 @@ small{font-size:max(12px,.85em)}
 
 /* roster strip — the slot the subject would fill is lit (the owner liked this on Ledger B) */
 .slots{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.slotc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:var(--r);padding:.2rem .5rem;font-size:.8rem;background:var(--surface-2);white-space:nowrap}
+.slotc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:var(--r);padding:.2rem .5rem;font-size:clamp(12.8px,min(calc(12.8px + (100vh - 900px)*0.0063),calc(12.8px + (100vw - 1280px)*0.00595)),15.3px);background:var(--surface-2);white-space:nowrap}
 .slotc .s{font-family:var(--f-m);font-size:.75rem;color:var(--dim)}
 .slotc.open{border-style:dashed;color:var(--dim)}
 .slotc.open.need{border-color:var(--amber);color:var(--amber-b)} .slotc.open.need .s{color:var(--amber-b)}
