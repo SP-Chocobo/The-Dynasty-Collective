@@ -56,7 +56,13 @@ def _jobs_for(f):
         # `?collapsed` is the main display with no door open. It is reachable by URL rather than
         # only by tapping the X, so the suite can assert BOTH states without an interaction
         # script -- the state a reader returns to is as measurable as the one they open.
-        return [(f, "", FORMATS), (f, "collapsed", FORMATS[:2])]
+        # EVERY format collapsed, not a sample of two. The collapsed state is the MAIN DISPLAY
+        # -- the thing the owner specified as "the 4-5 main recommendations near the top" -- and
+        # sampling two formats left it unmeasured on the hardest board in the fixture. m1's
+        # collapsed HEAVY_IDP measures 1.96 screens against a 2.0 budget, so the format the
+        # sample skipped is the one with the least margin. A budget that does not cover its
+        # tightest case is not a budget.
+        return [(f, "", FORMATS), (f, "collapsed", FORMATS)]
     return [(f, "", FORMATS if "v4_" in f else [FORMATS[0]])]
 
 JOBS = []
