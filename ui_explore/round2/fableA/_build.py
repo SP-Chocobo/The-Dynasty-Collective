@@ -88,10 +88,32 @@ for tpl in sorted(SRC.glob("v*.tpl.html")) + sorted(SRC.glob("m*.tpl.html")):
         jobs.append((tpl, tpl.name.replace(".tpl.html", "_rail.html"), "const WITH_RAIL=true;"))
     else:
         jobs.append((tpl, tpl.name.replace(".tpl.html", ".html"), ""))
+# A template is tens of KB. A megabyte-scale one is not a big template, it is a runaway write --
+# which happened: `m1_stack.tpl.html` was once overwritten with one function repeated 29,339
+# times, 45 MB of it, and the build below printed `ok ... 44008 KB` and exited 0.
+TPL_MAX = 250_000
+# The payload alone is ~1.1 MB, so every artifact lands near it. A build far outside this band
+# either lost the payload or inlined it more than once.
+OUT_MIN, OUT_MAX = 900_000, 3_000_000
 for tpl, name, flag in jobs:
-    html = tpl.read_text().replace("/*__CSS__*/", css).replace("/*__DATA__*/", payload + flag).replace("/*__SHARED__*/", js)
+    raw = tpl.read_text()
+    assert len(raw) <= TPL_MAX, (f"{tpl.name}: {len(raw):,} bytes, over the {TPL_MAX:,} cap. "
+                                 "A template this size is a runaway write, not a big template")
+    # PRESENT, not merely consumed. This asserted only that the markers were GONE afterwards,
+    # which a template containing none of them satisfies trivially -- so a file carrying no
+    # fixture, no CSS and no shared layer built clean and reported ok. Every one of the three
+    # must be there exactly once BEFORE substitution, or nothing was injected and the artifact
+    # is a plausible-looking build of the wrong thing.
+    for m in ("__CSS__", "__DATA__", "__SHARED__"):
+        n = raw.count(f"/*{m}*/")
+        assert n == 1, (f"{tpl.name}: marker {m} appears {n} times, expected exactly 1. "
+                        "Nothing is injected where it is absent, and it is inlined once per "
+                        "occurrence where it repeats")
+    html = raw.replace("/*__CSS__*/", css).replace("/*__DATA__*/", payload + flag).replace("/*__SHARED__*/", js)
     for m in ("__CSS__", "__DATA__", "__SHARED__"):
         assert m not in html, f"{tpl.name}: marker {m} left over"
+    assert OUT_MIN <= len(html) <= OUT_MAX, (f"{name}: {len(html):,} bytes, outside "
+        f"{OUT_MIN:,}-{OUT_MAX:,}. Every artifact inlines the same ~1.1 MB fixture once")
     out = HERE / name
     out.write_text(html)
     scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, flags=re.S)
