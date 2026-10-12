@@ -180,7 +180,13 @@ html,body{height:auto;overflow:visible}
 /*__SHARED__*/
 let M, openKey = null, filt = "ALL";
 const Q = new URLSearchParams(location.search);
-const COLLAPSED = Q.has("collapsed");     // ?collapsed: the main display with no door open, the state the X returns to
+/* COLLAPSED-FIRST. The bare URL lands on the main display with nothing open. The owner's sentence
+   is "the 4-5 main recommendations near the top; click one door and the other options populate
+   the lower end; X to collapse back to the main display", and both reviewers read it the same
+   way: the landing screen is the four or five, and a tap is what the reader does next. ?open
+   lands with the leader's door open, so the gate can measure that state by URL; ?collapsed is
+   still honoured as the brief reserves it, and is now what the bare URL does. */
+const OPEN = Q.has("open");
 let STREAM_HIDE = !Q.has("streamers");    // #30: streamed positions held back; ?streamers starts them shown
 const WINDOW = 5;                         // 4-5 surface, as on the desktop; the window slides and the count line says so
 const doorBest = d => M.doorBest(d);
