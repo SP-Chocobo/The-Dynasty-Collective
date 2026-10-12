@@ -186,62 +186,22 @@ const WINDOW = 5;                         // 4-5 surface, as on the desktop; the
 const doorBest = d => M.doorBest(d);
 const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[0]; };
 const holdText = d => doorHold(M, d);
-const noneText = d => `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}.`;
-/* the window: the first WINDOW doors in the board's order; the open door is always in it */
-function windowDoors(){
-  const order = STREAM_HIDE ? M.DOOR_ORDER.filter(d => !M.isStreamDoor(d) || d.key === openKey) : M.DOOR_ORDER;
-  if (order.length <= WINDOW) return order;
-  const w = order.slice(0, WINDOW); const open = order.find(d => d.key === openKey);
-  if (open && !w.includes(open)) w[WINDOW - 1] = open;
-  return w;
-}
-/* the default open door, which must never be one STREAM_HIDE is holding back */
-function defaultOpen(){
-  const lead = M.doorOf(M.LEADER.position);
-  if (!(STREAM_HIDE && M.isStreamDoor(lead))) return lead.key;
-  const first = M.DOOR_ORDER.find(d => !M.isStreamDoor(d));
-  return (first || lead).key;
-}
-/* the value, then the name against the board's first name: the desktop's own sentence for the
-   leader, the model's own cells for anyone else */
-function vsLeader(c){
-  const L = M.LEADER, v = `<span class="big">${f1(c.team_acquisition_value)}</span> <span class="u">to your roster now</span>`;
-  if (c.player_id === L.player_id) return `<p class="vs">${v} · ${M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>"}</p>`;
-  return `<p class="vs">${v}</p><div class="cost2"><span class="lead">instead of ${M.short(L.name)}</span>${M.costHTML(c, L)}</div>`;
-}
-function demandLine(d){
-  const demPs = d.positions.filter(p => num(M.DEMAND[p]));
-  const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
-  return demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}` : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
-}
-/* the open door's other names: the desktop's card strip, one card per row, each priced against
-   the board's first name. A compound door spends its rows as the model does (doorDepth). */
-function altsHTML(d, best, list){
-  const L = M.LEADER, who = d.compound ? "defender" : POS[d.key];
-  if (list.length < 2) return `<div class="then"><div class="ch"><span class="t">then at ${d.key}</span></div><div class="cards"><div class="card one">Only one ${who} is rated on this board; nothing to set beside him.</div></div></div>`;
-  const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
-  const slotSame = [best].concat(dep).every(c => M.slotShort(c) === M.slotShort(best));
-  /* against the board's first name: across positions the three cells (now, at your next turn, both
-     picks); within his own position the plain gap, since the fact line already carries the drop */
-  const same = c => c.position === L.position;
-  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
-    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
-  return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · lasts to #${M.NEXT_NO}? <span class="wh">${WITHHELD_WORD}</span></span></div>
-    <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
-    ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
-}
+/* the window, the default door, the sentences and the card strip are shared.js's (doorWindow,
+   doorDefault, doorVs, doorDemand, doorNone, phoneVs, phoneCtx, phoneAlts): one home each for
+   the three phones and the desktop, after a copy here had already drifted from v4's wording. */
+const windowDoors = () => doorWindow(M, openKey, STREAM_HIDE, WINDOW);
+const defaultOpen = () => doorDefault(M, STREAM_HIDE);
 function doorHTML(d, idx){
   const best = doorBest(d), pos = posOf(d), list = best ? M.C.filter(c => d.positions.includes(c.position)) : [], h = holdText(d), open = d.key === openKey;
-  const dem = demandLine(d);
   const head = `<div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span>${open ? "" : `<span class="hint">▾</span>`}</div>
     <div class="st ${h.need ? "need" : ""}">${h.text}</div></div>`;
   let body;
-  if (!best) body = `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`} ${noneText(d)}</div>`;
-  else body = `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
-      ${vsLeader(best)}${M.displaced(best) ? M.dispShort(best) : ""}
+  if (!best) body = `<div class="empty">${doorHeld(M, d)} ${doorNone(M, d)}</div>`;
+  else body = `<div class="db">${doorWho(M, d, best)}
+      ${phoneVs(M, best)}${M.displaced(best) ? M.dispShort(best) : ""}
       ${open ? `<div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div>` : ""}</div>`;
-  const ctx = open && best ? `<div class="ctx2">${dem ? `<div class="dem">${dem}${M.shareNote() ? " · " + M.shareNote() : ""}</div>` : ""}${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}${doorTankCap(M, pos)}</div>` : "";
-  const alts = open && best ? altsHTML(d, best, list) : "";
+  const ctx = open && best ? phoneCtx(M, d, pos) : "";
+  const alts = open && best ? phoneAlts(M, d, best, list) : "";
   const x = open ? `<button class="x" data-x="1" aria-label="Collapse the ${d.label} door">✕</button>` : "";
   return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}${ctx}${alts}</div>${x}</section>`;
 }
@@ -257,10 +217,10 @@ function drawerHTML(){
   if (d) { const pos = posOf(d), h = holdText(d), inWin = windowDoors().includes(d), idx = M.DOOR_ORDER.indexOf(d);
     ctx = `<div class="ctx">${doorTank(M, pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${doorBest(d) ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
       <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
-      <p>${doorBest(d) ? M.waitLine(pos) : `${noneText(d).replace(/\.$/, "")}, so nothing to wait on is measured.`}${pos === M.DEAREST && doorBest(d) && M.POS_BY_COST.length > 1 ? ` <span class="dear">The dearest position to wait on right now.</span>` : ""}</p>
+      <p>${doorBest(d) ? M.waitLine(pos) : doorNone(M, d, ", so nothing to wait on is measured.")}${doorBest(d) && doorDear(M, pos) ? " " + doorDear(M, pos) : ""}</p>
       ${doorBest(d) ? doorTankCap(M, pos).replace("tankcap", "note") : ""}</div></div>`; }
   document.getElementById("allCtx").innerHTML = ctx;
-  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
+  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? doorNoun(d) : "name"} in the board's top ${M.C.length}.</p>`;
   document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · tap one to open his door`;
 }
 function draw(){

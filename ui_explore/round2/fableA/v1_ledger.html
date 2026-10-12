@@ -980,6 +980,49 @@ function doorTankCap(M, pos, show){
   if (!t) return M.tankable(pos) && show ? `<div class="tankcap">pool: no engine sample for this format</div>` : "";
   return `<div class="tankcap">pool <b>${t.pctLeft}% left</b> as of #${t.sampleAt} · ${t.startersLeft ? `<b>starters left</b>` : `<span class="gone">past the starter line · startable, not an upgrade</span>`}</div>`;
 }
+/* The rest of the door's logic and sentences, moved here from v4's template in a second pass
+   once the three phones had each copied them and one copy had drifted ("Instead of X:" on the
+   desktop, "instead of X" on every phone). Each is the desktop's code verbatim, with the
+   template's globals (STREAM_HIDE, ALL_DOORS, WINDOW, openKey) passed in; v4 calls them through
+   the same names it always had and its rendered markup is certified unchanged (_domdiff.py). */
+/* the window: the first n doors in the board's order; the open door is always in it. streamHide
+   holds the streamable doors back (#30); all (v4's ?alldoors) forces every door visible. */
+function doorWindow(M, openKey, streamHide, n, all){
+  const order = (streamHide && !all) ? M.DOOR_ORDER.filter(d => !M.isStreamDoor(d) || d.key === openKey) : M.DOOR_ORDER;
+  if (all || order.length <= n) return order;
+  const w = order.slice(0, n); const open = order.find(d => d.key === openKey);
+  if (open && !w.includes(open)) w[n - 1] = open;
+  return w;
+}
+/* the default open door: the leader's, which must never be one streamHide is holding back */
+function doorDefault(M, streamHide){
+  const lead = M.doorOf(M.LEADER.position);
+  if (!(streamHide && M.isStreamDoor(lead))) return lead.key;
+  const first = M.DOOR_ORDER.find(d => !M.isStreamDoor(d));
+  return (first || lead).key;
+}
+/* a door's noun in prose: the position's word, or "defender" for the compound door */
+const doorNoun = d => d.compound ? "defender" : POS[d.key];
+/* a door with no name on the board, and what you hold at it */
+const doorNone = (M, d, tail) => `No ${doorNoun(d)} in the board's top ${M.C.length}${tail || "."}`;
+const doorHeld = (M, d) => doorHold(M, d).need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`;
+/* demand across the door's positions, folded when every position says the same thing */
+function doorDemand(M, d){
+  const demPs = d.positions.filter(p => num(M.DEMAND[p]));
+  const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
+  return demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}` : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
+}
+/* the superlative over forfeits, drawn only where there is more than one to rank */
+const doorDear = (M, pos) => pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : "";
+/* the name against the board's first name: the leader's own sentence, or the lead-in to the
+   cost cells for anyone else. ONE sentence for four surfaces. */
+function doorVs(M, c){
+  const L = M.LEADER;
+  if (c.player_id !== L.player_id) return `Instead of ${M.short(L.name)}:`;
+  return M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>";
+}
+/* who: the face, the name with its availability mark, and the sub line */
+const doorWho = (M, d, best) => `<div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>`;
 
 /* ============================================================================================
    THE PHONE SURFACES' SHARED PIECES (m1-m3). Phone-only: the desktop draws its count line and
@@ -1016,6 +1059,36 @@ function phoneCount(M, w, streamHide, extra){
    in the open door. Read from costOf, never recomputed from the values beside it (#126). */
 const glanceCells = (M, b) => M.costOf(b, M.LEADER).filter(c => c.k === "now" || c.k === "both picks" || c.v === "not measured");
 const glanceHTML = (M, b) => glanceCells(M, b).map(c => `<span class="cc ${c.fav ? "fav" : ""}"><span class="ck">${c.k}</span><span class="cv">${c.v}</span></span>`).join("");
+/* the value, then the name against the board's first name: the desktop's sentence (doorVs) for
+   the leader, and for anyone else the same lead-in as a cell before the model's own cells */
+function phoneVs(M, c){
+  const L = M.LEADER, v = `<span class="big">${f1(c.team_acquisition_value)}</span> <span class="u">to your roster now</span>`;
+  if (c.player_id === L.player_id) return `<p class="vs">${v} · ${doorVs(M, c)}</p>`;
+  return `<p class="vs">${v}</p><div class="cost2"><span class="lead">${doorVs(M, c)}</span>${M.costHTML(c, L)}</div>`;
+}
+/* the open door's context, what the desktop's door header carries: demand with its basis, the
+   wait line, the dearest-position mark, the pool */
+function phoneCtx(M, d, pos){
+  const dem = doorDemand(M, d);
+  return `<div class="ctx2">${dem ? `<div class="dem">${dem}${M.shareNote() ? " · " + M.shareNote() : ""}</div>` : ""}${M.waitLine(pos, true)}${doorDear(M, pos)}${doorTankCap(M, pos)}</div>`;
+}
+/* the open door's other names: the desktop's card strip, one card per row, each priced against
+   the board's first name -- across positions the three cells, within his own position the plain
+   gap, since the fact line already carries the drop. A compound door spends its rows as the
+   model does (doorDepth). `after` prefixes the header with the door's best (m3, whose strip sits
+   under the chips rather than inside the door). */
+function phoneAlts(M, d, best, list, after){
+  const L = M.LEADER, who = doorNoun(d);
+  if (list.length < 2) return `<div class="then"><div class="ch"><span class="t">then at ${d.key}</span></div><div class="cards"><div class="card one">Only one ${who} is rated on this board; nothing to set beside him.</div></div></div>`;
+  const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
+  const slotSame = [best].concat(dep).every(c => M.slotShort(c) === M.slotShort(best));
+  const same = c => c.position === L.position;
+  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
+    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
+  return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">${after ? `after ${M.short(best.name)} · ` : ""}against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · ${withheldAsk(M.NEXT_NO)}</span></div>
+    <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
+    ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
+}
 /* THE FOLD CUE. The page-level sibling of markScrollers: a phone page scrolls, and in 17 of 216
    probed renders the first screen ended in a gutter with real content below it and nothing on
    screen saying so -- a finished-looking page that was not finished. While the document runs on

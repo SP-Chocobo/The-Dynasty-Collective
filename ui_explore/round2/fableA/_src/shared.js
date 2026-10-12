@@ -711,6 +711,36 @@ function phoneCount(M, w, streamHide, extra){
    in the open door. Read from costOf, never recomputed from the values beside it (#126). */
 const glanceCells = (M, b) => M.costOf(b, M.LEADER).filter(c => c.k === "now" || c.k === "both picks" || c.v === "not measured");
 const glanceHTML = (M, b) => glanceCells(M, b).map(c => `<span class="cc ${c.fav ? "fav" : ""}"><span class="ck">${c.k}</span><span class="cv">${c.v}</span></span>`).join("");
+/* the value, then the name against the board's first name: the desktop's sentence (doorVs) for
+   the leader, and for anyone else the same lead-in as a cell before the model's own cells */
+function phoneVs(M, c){
+  const L = M.LEADER, v = `<span class="big">${f1(c.team_acquisition_value)}</span> <span class="u">to your roster now</span>`;
+  if (c.player_id === L.player_id) return `<p class="vs">${v} · ${doorVs(M, c)}</p>`;
+  return `<p class="vs">${v}</p><div class="cost2"><span class="lead">${doorVs(M, c)}</span>${M.costHTML(c, L)}</div>`;
+}
+/* the open door's context, what the desktop's door header carries: demand with its basis, the
+   wait line, the dearest-position mark, the pool */
+function phoneCtx(M, d, pos){
+  const dem = doorDemand(M, d);
+  return `<div class="ctx2">${dem ? `<div class="dem">${dem}${M.shareNote() ? " · " + M.shareNote() : ""}</div>` : ""}${M.waitLine(pos, true)}${doorDear(M, pos)}${doorTankCap(M, pos)}</div>`;
+}
+/* the open door's other names: the desktop's card strip, one card per row, each priced against
+   the board's first name -- across positions the three cells, within his own position the plain
+   gap, since the fact line already carries the drop. A compound door spends its rows as the
+   model does (doorDepth). `after` prefixes the header with the door's best (m3, whose strip sits
+   under the chips rather than inside the door). */
+function phoneAlts(M, d, best, list, after){
+  const L = M.LEADER, who = doorNoun(d);
+  if (list.length < 2) return `<div class="then"><div class="ch"><span class="t">then at ${d.key}</span></div><div class="cards"><div class="card one">Only one ${who} is rated on this board; nothing to set beside him.</div></div></div>`;
+  const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
+  const slotSame = [best].concat(dep).every(c => M.slotShort(c) === M.slotShort(best));
+  const same = c => c.position === L.position;
+  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
+    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
+  return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">${after ? `after ${M.short(best.name)} · ` : ""}against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · ${withheldAsk(M.NEXT_NO)}</span></div>
+    <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
+    ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
+}
 /* THE FOLD CUE. The page-level sibling of markScrollers: a phone page scrolls, and in 17 of 216
    probed renders the first screen ended in a gutter with real content below it and nothing on
    screen saying so -- a finished-looking page that was not finished. While the document runs on
