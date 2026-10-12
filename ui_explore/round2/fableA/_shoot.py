@@ -158,6 +158,12 @@ PROBE = """(opt) => {
       const hit = as.some(a => bs.some(b => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1
                                          && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1));
       if (hit) r.glyphOverlap.push(tag(el) + ': "' + el.textContent.trim().slice(0, 24) + '" runs under ' + tag(s2)); } });
+  // THE FOLD. The page-level sibling of the scroller rule: when the document runs on below the
+  // viewport, the cue at the fold must be drawn and lit, or a first screen that happens to end
+  // in a gutter reads as a finished page (17 of 216 probed renders did before the cue existed).
+  const fold = document.querySelector('.fold');
+  r.foldMissing = MOB && document.documentElement.scrollHeight > innerHeight + 6
+    && !(fold && fold.classList.contains('on') && +getComputedStyle(fold).opacity > 0.5);
   const now = document.querySelector('.pk.now'), nxt = document.querySelector('.pk.next');
   if (now) { const nb = now.getBoundingClientRect(), xb = nxt ? nxt.getBoundingClientRect() : null; r.rail = {now: nb.left >= 0 && nb.right <= innerWidth, next: xb ? xb.left >= 0 && xb.right <= innerWidth : null, namedPast: [...document.querySelectorAll('.pk')].filter(p => { const b = p.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && !p.classList.contains('between') && !p.classList.contains('future') && !p.classList.contains('now') && !p.classList.contains('next'); }).length}; }
   return r; }"""
@@ -191,6 +197,7 @@ with sync_playwright() as p:
                     f"document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {budget}")
                 if r["tap"]: problems.append("tap target under 44px " + json.dumps(r["tap"]))
                 if r["hClip"]: problems.append("runs off the right edge " + json.dumps(r["hClip"]))
+                if r.get("foldMissing"): problems.append("the page runs on below the fold and nothing at the fold says so")
             elif any(r["pageScroll"]): problems.append("pageScroll")
             if r["clipped"]: problems.append("clipped " + json.dumps(r["clipped"]))
             if r["textOverflow"]: problems.append("textOverflow " + json.dumps(r["textOverflow"]))

@@ -10,9 +10,18 @@
    line, the pool, the position's other names with their cost against the board's first name.
    Every closed row still answers who, why and at what cost on its own -- the name, the value,
    first-on-the-board or instead-of -- so the stack reads without a tap. */
-/* The page scrolls; the room does not clip. Sheets pin to the viewport rather than the room. */
+/* The page scrolls; the room does not clip. Sheets pin to the viewport rather than the room.
+   100dvh where the browser has it: on iOS Safari 100vh is the toolbar-retracted height, taller
+   than what is visible, and the floor would otherwise leave a strip of dark nothing to scroll. */
 html,body{height:auto;overflow:visible}
-.room{height:auto;min-height:100vh;overflow:visible}
+.room{height:auto;min-height:100vh;min-height:100dvh;overflow:visible}
+/* the fold: a fixed band at the bottom of the viewport, lit only while the document runs on
+   below it, so a first screen that happens to end in a gutter never reads as a finished page.
+   Pointer-through, and its label is a pseudo-element: a signpost over the content, never content
+   under a sibling. Below the scrim (20) and the sheets (30). phoneFold in shared.js drives it. */
+.fold{position:fixed;left:0;right:0;bottom:0;height:52px;pointer-events:none;z-index:8;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:linear-gradient(180deg,rgba(18,15,10,0) 0%,rgba(18,15,10,.94) 65%);opacity:0;transition:opacity .15s}
+.fold.on{opacity:1}
+.fold::after{content:attr(data-cue);font-family:var(--f-m);font-size:12.5px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);padding:4px 11px}
 .scrim,.sheet{position:fixed}
 .sheet.right,.sheet.right.drawer,.sheet.left{width:100%}
 .sheet .sh{padding:8px 12px;flex-wrap:wrap;row-gap:4px} .sheet .sh .x{min-height:44px;display:inline-flex;align-items:center;padding:0 .8rem}
@@ -32,11 +41,18 @@ html,body{height:auto;overflow:visible}
 .hdr .btn{flex-direction:column;gap:1px;padding:3px 0;font-size:12px;line-height:1.2;min-height:46px} .hdr .btn i{font-style:normal;font-size:15px;line-height:1}
 .btn.sm{min-height:44px;font-size:.8rem;padding:0 .7rem}
 .copy{min-height:44px;display:inline-flex;align-items:center;padding:0 .7rem}
-/* the clock: the timer and the pick on one line, the next-turn span and the seats below */
-.clk{flex-wrap:wrap;gap:2px 12px;padding:6px 12px;font-size:14px}
+/* the clock: the timer and the pick are one line, and that line STICKS to the top of the
+   viewport. On the desktop the clock cannot scroll (.room is 100vh and clips); on a phone the
+   page scrolls, and reveal() used to carry the pick timer clean off the screen at the moment a
+   reader was weighing an alternative. The next-turn span and the seats are context and scroll
+   with the page, in .clk2 under it. Below the scrim (20) and the sheets (30). */
+.clk{position:sticky;top:0;z-index:6;flex-wrap:nowrap;gap:12px;padding:5px 12px;font-size:14px}
 .timer{font-size:20px} .upnow{font-size:15px}
-.clk .spanline{flex:1 1 100%;flex-wrap:wrap;gap:4px 10px;font-size:13px}
-.clk .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk .who b{color:var(--ink)}
+.clk2{display:flex;flex-wrap:wrap;gap:2px 12px;padding:4px 12px 6px;border-bottom:1px solid var(--line-2);background:var(--surface);font-size:13px;color:var(--muted)}
+.clk2 .spanline{flex:1 1 100%;flex-wrap:wrap;gap:4px 10px;font-size:13px}
+.clk2 .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk2 .who b{color:var(--ink)}
+/* what reveal() scrolls to lands just below the stuck clock rather than beneath it */
+.door,.panel,.doors{scroll-margin-top:calc(var(--clkh,42px) + 4px)}
 /* the lineup strip wraps: every chip stays reachable, and the label leads the first line with the
    chips flowing after it rather than taking a line of its own */
 .lineup{padding:5px 12px;gap:3px;flex-wrap:wrap;align-items:center}
@@ -144,7 +160,8 @@ html,body{height:auto;overflow:visible}
     <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
       <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft board</button>
       <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button></span></header>
-  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span></div>
+  <div class="clk2"><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
   <div class="main">
     <div class="count" id="count"></div>
@@ -156,6 +173,7 @@ html,body{height:auto;overflow:visible}
   <section class="sheet top" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">Rosters</span><span class="note" id="rosterNote"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
   <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
   <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+  <div class="fold" id="fold" data-cue="" aria-hidden="true"></div>
 </div>
 <script>
 /*__DATA__*/
@@ -255,12 +273,13 @@ function draw(){
   document.getElementById("allRosters").innerHTML = M.allRosters();
   document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
   drawerHTML();
-  requestAnimationFrame(markScrollers);
+  requestAnimationFrame(markScrollers); requestAnimationFrame(phoneFold);
 }
 function reveal(key){ const el = document.querySelector(`.door[data-door="${key}"]`); if (el) el.scrollIntoView({block:"start", behavior:"smooth"}); }
 function load(key, fmt){
   M = buildModel(key, fmt); openKey = COLLAPSED ? null : defaultOpen(); filt = "ALL";
   fillCommon(M);
+  document.documentElement.style.setProperty("--clkh", document.querySelector(".clk").offsetHeight + "px");   // the stuck clock's height, for scroll-margin-top
   document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span data-tip="${M.seatsText()}">${M.ticks()}</span>`;
   document.getElementById("boardn").innerHTML = M.clockShort();
   draw();
@@ -278,7 +297,11 @@ document.addEventListener("click", e => {
   const x = e.target.closest("[data-x]"); if (x) { openKey = null; draw(); return; }
   const o = e.target.closest("[data-open]"); if (o) { if (M.DOORS.some(d => d.key === o.dataset.open)) { openKey = o.dataset.open; draw(); reveal(openKey); } ui.closeAll(); return; }
   if (e.target.closest("button") || e.target.closest(".sheet")) return;
-  const d = e.target.closest("[data-door]"); if (d && d.dataset.door !== openKey) { openKey = d.dataset.door; draw(); }
+  /* a tapped door opens AND is revealed: the door above it collapses on the redraw, so without the
+     reveal the opened door landed wherever that collapse happened to leave it (its header off the
+     top of the screen in one measured run, 117px down in another, from the same tap). */
+  const d = e.target.closest("[data-door]"); if (d && d.dataset.door !== openKey) { openKey = d.dataset.door; draw(); reveal(openKey); }
 });
 load(ui.key(), ui.fmt());
+addEventListener("scroll", phoneFold, {passive:true}); addEventListener("resize", phoneFold);
 </script></body></html>
