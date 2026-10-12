@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Doors Draft Room · Grid</title>
+<meta name="description" content="Phone side of the doors draft room: the doors as a tight two-column grid of buttons at the top, each carrying its position, its best name and its value, with nothing below; tapping one fills a panel under the grid with that position's context and its other names, and the X in the panel's corner returns to the bare grid.">
+<style>
+/*__CSS__*/
+/* m2 -- GRID, the phone side of v4. Same tokens, same model, same door. The doors are a tight
+   two-column grid of tiles at the top, four or five of them in the board's order as on the
+   desktop; each tile is a position, its best name and its value against the board's first name,
+   so the grid alone answers who, why and at what cost. The main display is the grid and
+   nothing under it. Tapping a tile fills a panel BELOW the grid with what the desktop's open door
+   and its card strip carry; the X in the panel's corner clears it and the grid stands bare. */
+/* The page scrolls; the room does not clip. Sheets pin to the viewport rather than the room. */
+html,body{height:auto;overflow:visible}
+.room{height:auto;min-height:100vh;overflow:visible}
+.scrim,.sheet{position:fixed}
+.sheet.right,.sheet.right.drawer,.sheet.left{width:100%}
+.sheet .sh{padding:8px 12px;flex-wrap:wrap;row-gap:4px} .sheet .sh .x{min-height:44px;display:inline-flex;align-items:center;padding:0 .8rem}
+.sheet .sc{padding:10px 12px}
+/* the review bar is harness furniture; one line, scrolls sideways, costs ~34px */
+.rev{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;padding:5px 12px}
+.rev::-webkit-scrollbar{display:none}
+.rev .fmts{margin-left:6px;padding-left:8px} .rev .hyp{margin-left:6px}
+/* header: the wordmark and the league line share a line; the four sheet buttons are one row,
+   icon over label, each at least 44px tall. Resync and Settings are not draft-time actions on a
+   phone and are left to the desktop. */
+.hdr{flex-wrap:wrap;gap:4px 10px;padding:8px 12px;align-items:flex-start}
+.wm{font-size:15px;line-height:1.5}
+.lg{font-size:12px;line-height:1.4;flex:1 1 170px;min-width:0}
+.hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:3px}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.3rem .35rem;font-size:12.5px;white-space:nowrap}
+.hdr .btn{flex-direction:column;gap:1px;padding:3px 0;font-size:12px;line-height:1.2;min-height:46px} .hdr .btn i{font-style:normal;font-size:15px;line-height:1}
+.btn.sm{min-height:44px;font-size:.8rem;padding:0 .7rem}
+.copy{min-height:44px;display:inline-flex;align-items:center;padding:0 .7rem}
+/* the clock: the timer and the pick on one line, the next-turn span and the seats below */
+.clk{flex-wrap:wrap;gap:2px 12px;padding:6px 12px;font-size:14px}
+.timer{font-size:20px} .upnow{font-size:15px}
+.clk .spanline{flex:1 1 100%;flex-wrap:wrap;gap:4px 10px;font-size:13px}
+.clk .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk .who b{color:var(--ink)}
+/* the lineup strip wraps: every chip stays reachable, and the label leads the first line with the
+   chips flowing after it rather than taking a line of its own */
+.lineup{padding:5px 12px;gap:3px;flex-wrap:wrap;align-items:center}
+.lineup .k{margin-right:4px}
+.lineup .slots{display:contents}
+.lineup .slotc{padding:.1rem .3rem;font-size:12.5px;gap:4px;line-height:1.25}
+/* main */
+.main{display:flex;flex-direction:column;padding:8px 12px 10px;gap:8px}
+.count{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);line-height:1.45}
+.count b{color:var(--ink)}
+.count .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:-2px}
+.count .chip{font-family:var(--f-m);font-size:.75rem;font-weight:700;min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .65rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface)}
+.count .chip:hover{color:var(--ink);border-color:var(--dim)}
+.count .chip i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px}
+/* the grid: two tiles across; an odd last tile takes the whole row rather than leaving a hole */
+.doors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.door:last-child:nth-child(odd){grid-column:1/-1}
+.door{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:14px minmax(0,1fr);min-width:0;position:relative;cursor:pointer;min-height:44px}
+.door.open{border-color:var(--gold-b);box-shadow:0 0 0 1px rgba(247,207,74,.25),0 0 18px rgba(212,160,23,.12)}
+.door.none{opacity:.75;background:var(--surface-2)}
+.door .edge{grid-row:1/-1;border-right:1px solid var(--line-2);background:var(--surface-2);position:relative;overflow:hidden;align-self:stretch}
+.door .edge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+.door .edge .tank{position:absolute;left:4px;right:0;top:0;bottom:0;width:auto;border:none;border-radius:0}
+.door .edge.notank{background:repeating-linear-gradient(135deg,var(--surface-2) 0 4px,var(--surface) 4px 8px)}
+.tank .zone{position:absolute;left:0;right:0;top:0;background:repeating-linear-gradient(135deg,var(--hatch) 0 2px,transparent 2px 6px)}
+.tank .mark{height:3px;background:var(--gold-b)}
+.tank .fill{background:var(--tie)} .tank .fill.st{background:var(--emerald)}
+.door .body{min-width:0;display:flex;flex-direction:column;padding:6px 9px 7px;gap:2px}
+.door .top{display:flex;align-items:center;gap:6px}
+.door .n{margin-left:auto;font-family:var(--f-m);font-size:.75rem;color:var(--gold-b);white-space:nowrap;font-weight:700}
+.door .n.dim{color:var(--dim);font-weight:400}
+.door .pos{font-family:var(--f-d);font-size:.92rem;font-weight:700;line-height:1.25;white-space:nowrap;overflow:visible}
+.who{display:flex;align-items:center;gap:8px;margin-top:2px}
+.who .nm{font-weight:700;font-size:.95rem;line-height:1.2;min-width:0}
+.who .sub{font-size:.76rem;color:var(--muted);margin-top:1px}
+.door .val{display:flex;align-items:baseline;gap:6px;margin-top:3px;flex-wrap:wrap}
+.door .val .big{font-size:1.05rem;line-height:1}
+.door .val .d{font-family:var(--f-m);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.door .val .d.first{color:var(--gold-b);font-weight:700}
+.door .st{font-size:.76rem;color:var(--muted);margin-top:2px;line-height:1.35} .door .st.need{color:var(--amber-b)}
+.door .empty{font-size:.78rem;color:var(--dim);line-height:1.4;margin-top:2px}
+/* the panel: the open door, below the grid. Its parts are the desktop's door and card strip. */
+.panel{border:1px solid var(--gold-b);box-shadow:0 0 0 1px rgba(247,207,74,.25),0 0 18px rgba(212,160,23,.12);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0;position:relative}
+.panel:empty,.panel.bare{display:none}
+.panel .pbody{min-width:0;display:flex;flex-direction:column}
+.panel .edge{grid-row:1/-1;border-right:1px solid var(--line-2);background:var(--surface-2);position:relative;overflow:hidden;align-self:stretch}
+.panel .edge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+.panel .edge .tank{position:absolute;left:4px;right:0;top:0;bottom:0;width:auto;border:none;border-radius:0}
+.panel .edge.notank{background:repeating-linear-gradient(135deg,var(--surface-2) 0 4px,var(--surface) 4px 8px)}
+.dh{padding:7px 46px 0 12px}
+.dh .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dh .pos{font-family:var(--f-d);font-size:1rem;font-weight:700;display:flex;align-items:baseline;gap:7px;white-space:nowrap}
+.dh .n{font-family:var(--f-m);font-size:.75rem;color:var(--gold-b);white-space:nowrap;font-weight:700}
+.dh .st{font-size:.8rem;color:var(--muted);margin-top:2px;line-height:1.4} .dh .st.need{color:var(--amber-b)}
+.panel .x{position:absolute;top:4px;right:4px;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface-2);font-size:1.05rem;z-index:1}
+.panel .x:hover{color:var(--ink);border-color:var(--dim)}
+.db{padding:5px 12px 8px;display:flex;flex-direction:column;gap:4px}
+.panel .who .nm{font-size:1rem}
+.panel .face{width:36px;height:36px;font-size:.8rem}
+.vs{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0} .vs b{color:var(--ink)}
+.vs .big{font-size:1.08rem;line-height:1;vertical-align:-1px;color:var(--ink)}
+.vs .u{display:inline;margin:0;white-space:normal;text-transform:none;letter-spacing:0;font-size:.8rem}
+.cost2{display:flex;gap:3px 8px;flex-wrap:wrap;align-items:baseline} .cost2 .cc{gap:4px} .cost2 .cc .cv{font-size:.8rem} .cost2 .cc .ck{letter-spacing:0;text-transform:none;font-size:.78rem}
+.cost2 .lead{font-size:.84rem;color:var(--muted)}
+.panel .disp{font-size:.84rem;margin:0}
+.panel .empty{padding:6px 12px 10px;color:var(--dim);font-size:.84rem;line-height:1.5}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.ctx2{border-top:1px solid var(--line);margin:0 12px;padding:6px 0 4px;font-size:.82rem;color:var(--muted);line-height:1.45}
+.ctx2 b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.ctx2 .dem{color:var(--dim)} .ctx2 .dem b{color:var(--muted)}
+.ctx2 .dear{display:block;color:var(--amber-b)}
+.ctx2 .tankcap{margin-top:3px}
+.then{border-top:1px solid var(--line);margin:4px 12px 0;padding:7px 0 9px}
+.then .ch{display:block;line-height:1.45}
+.then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700;margin-right:6px}
+.cards{display:flex;flex-direction:column;gap:5px;margin-top:5px}
+.card{border:1px solid var(--line);border-radius:var(--r);padding:6px 9px;background:var(--surface-2);min-width:0;display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:2px 8px;align-items:start;cursor:pointer}
+.card:hover{border-color:var(--line-2)}
+.card .face{grid-row:1/3;width:28px;height:28px;font-size:.75rem;margin-top:1px}
+.card .nm{font-weight:700;font-size:.95rem;line-height:1.2;min-width:0}
+.card .nm .rk{font-family:var(--f-m);font-size:.75rem;color:var(--dim);margin-right:2px}
+.card .sub{font-size:.78rem;color:var(--muted);grid-column:2/-1;margin-top:-1px}
+.card .val{text-align:right;white-space:nowrap}
+.card .val .big{font-size:1.02rem;line-height:1.2;display:block}
+.card .go{font-size:.75rem;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;font-weight:700;white-space:nowrap}
+.card .cost2{grid-column:1/-1}
+.card ul{grid-column:2/-1;margin:1px 0 0;padding:0;list-style:none;font-size:.82rem;color:var(--muted);line-height:1.4}
+.card li b{color:var(--ink)} .card li .mono{color:var(--ink)}
+.card.one{display:block;color:var(--dim);font-size:.84rem;line-height:1.5;cursor:default}
+.morebtn{width:100%;min-height:44px;margin-top:6px;border:1px dashed var(--line-2);border-radius:var(--r);color:var(--muted);font-size:.84rem}
+.morebtn:hover{color:var(--ink);border-color:var(--dim)}
+.arm{font-size:.75rem}
+/* the drawer: a filter per door; when filtered, the position's context sits above the list */
+.drawer .filt{display:flex;gap:4px;flex-wrap:wrap;padding:8px 10px 6px}
+.filt button{min-height:44px;min-width:44px;padding:0 .6rem}
+.ctx{margin:0 10px 8px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface-2);padding:8px 10px;display:grid;grid-template-columns:18px minmax(0,1fr);gap:0 10px}
+.ctx .edge{border-radius:2px;position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line-2)}
+.ctx .edge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+.ctx .edge .tank{position:absolute;left:4px;right:0;top:0;bottom:0;width:auto;border:none;border-radius:0}
+.ctx .t{font-family:var(--f-d);font-weight:700;font-size:1rem;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.ctx .t .n{margin-left:auto;font-family:var(--f-s);font-weight:400;font-size:.78rem;color:var(--dim)}
+.ctx p{margin:3px 0 0;font-size:.84rem;color:var(--muted);line-height:1.45} .ctx p b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.ctx p .dear{color:var(--amber-b)}
+.srow{display:grid;grid-template-columns:24px 34px minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:12px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:.95rem;min-height:44px}
+.srow:hover{background:var(--surface-2)}
+.srow .rk{font-family:var(--f-m);font-size:.8rem;color:var(--dim)}
+.srow .pill{display:flex;align-items:center;justify-content:center;padding:.48rem 0 .36rem;font-size:.8rem;line-height:1}
+.srow .nm{font-weight:600;min-width:0;font-size:1rem} .srow .nm small{color:var(--dim);font-weight:400;font-size:.8rem;margin-left:6px}
+.srow .v{font-family:var(--f-m);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap} .srow .v small{font-weight:400;color:var(--dim);font-size:.8rem;margin-left:5px;font-family:var(--f-s)}
+.srow .meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 10px;min-width:0}
+.srow .tk{font-size:.84rem;color:var(--muted);line-height:1.4}
+</style></head><body>
+<div class="room">
+  <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
+  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
+    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button></span></header>
+  <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
+  <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
+  <div class="main">
+    <div class="count" id="count"></div>
+    <div class="doors" id="doors"></div>
+    <div class="panel bare" id="panel"></div>
+  </div>
+  <div class="scrim"></div>
+  <section class="sheet right drawer" id="shAll" aria-hidden="true"><div class="sh"><span class="t">Every name on the board</span><span class="note" id="allNote"></span><button class="x" data-close="1">close ✕</button></div><div class="filt" id="allFilt"></div><div id="allCtx"></div><div class="sc" id="allList" style="padding:0 10px 6px"></div></section>
+  <section class="sheet right" id="shWork" aria-hidden="true"><div class="sh"><span class="t" id="workT">The numbers</span><span id="workCopy"></span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="work"></div></section>
+  <section class="sheet top" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">Rosters</span><span class="note" id="rosterNote"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
+  <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
+  <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+</div>
+<script>
+/*__DATA__*/
+/*__SHARED__*/
+let M, openKey = null, filt = "ALL";
+const Q = new URLSearchParams(location.search);
+const COLLAPSED = Q.has("collapsed");     // ?collapsed: the bare grid, the state the X returns to
+let STREAM_HIDE = !Q.has("streamers");    // #30: streamed positions held back; ?streamers starts them shown
+const WINDOW = 5;                         // 4-5 surface, as on the desktop; the window slides and the count line says so
+const doorBest = d => M.doorBest(d);
+const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[0]; };
+const holdText = d => doorHold(M, d);
+const noneText = d => `No ${d.compound ? "defender" : POS[d.key]} in the board's top ${M.C.length}.`;
+/* the window: the first WINDOW doors in the board's order; the open door is always in it */
+function windowDoors(){
+  const order = STREAM_HIDE ? M.DOOR_ORDER.filter(d => !M.isStreamDoor(d) || d.key === openKey) : M.DOOR_ORDER;
+  if (order.length <= WINDOW) return order;
+  const w = order.slice(0, WINDOW); const open = order.find(d => d.key === openKey);
+  if (open && !w.includes(open)) w[WINDOW - 1] = open;
+  return w;
+}
+/* the default open door, which must never be one STREAM_HIDE is holding back */
+function defaultOpen(){
+  const lead = M.doorOf(M.LEADER.position);
+  if (!(STREAM_HIDE && M.isStreamDoor(lead))) return lead.key;
+  const first = M.DOOR_ORDER.find(d => !M.isStreamDoor(d));
+  return (first || lead).key;
+}
+/* the value, then the name against the board's first name: the desktop's own sentence for the
+   leader, the model's own cells for anyone else */
+function vsLeader(c){
+  const L = M.LEADER, v = `<span class="big">${f1(c.team_acquisition_value)}</span> <span class="u">to your roster now</span>`;
+  if (c.player_id === L.player_id) return `<p class="vs">${v} · ${M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>"}</p>`;
+  return `<p class="vs">${v}</p><div class="cost2"><span class="lead">instead of ${M.short(L.name)}</span>${M.costHTML(c, L)}</div>`;
+}
+function demandLine(d){
+  const demPs = d.positions.filter(p => num(M.DEMAND[p]));
+  const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
+  return demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}` : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
+}
+/* a tile: the position, its best name, its value, and the gap to the board's first name in the
+   drawer row's own shorthand ("first", or the signed gap). The unit is stated once, on the count line. */
+function tileHTML(d, idx){
+  const best = doorBest(d), pos = posOf(d), h = holdText(d), open = d.key === openKey, L = M.LEADER;
+  const top = `<div class="top">${M.pill(d.key)}<span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span></div><div class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${doorLabel(d)}</div>`;
+  const body = best
+    ? `<div class="who"><span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}</div></span></div>
+       <div class="val"><span class="big">${f1(best.team_acquisition_value)}</span><span class="d ${best.player_id === L.player_id ? "first" : ""}">${best.player_id === L.player_id ? "first" : sgn(best.team_acquisition_value - L.team_acquisition_value)}</span></div>
+       <div class="st ${h.need ? "need" : ""}">${h.text}</div>`
+    : `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`} ${noneText(d)}</div>`;
+  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${top}${body}</div></section>`;
+}
+/* the open door's other names: the desktop's card strip, one card per row, each priced against
+   the board's first name. A compound door spends its rows as the model does (doorDepth). */
+function altsHTML(d, best, list){
+  const L = M.LEADER, who = d.compound ? "defender" : POS[d.key];
+  if (list.length < 2) return `<div class="then"><div class="ch"><span class="t">then at ${d.key}</span></div><div class="cards"><div class="card one">Only one ${who} is rated on this board; nothing to set beside him.</div></div></div>`;
+  const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
+  const slotSame = [best].concat(dep).every(c => M.slotShort(c) === M.slotShort(best));
+  const same = c => c.position === L.position;
+  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
+    <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
+  return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · lasts to #${M.NEXT_NO}? <span class="wh">${WITHHELD_WORD}</span></span></div>
+    <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
+    ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
+}
+/* the panel: the desktop's open door, laid under the grid */
+function panelHTML(d){
+  const best = doorBest(d), pos = posOf(d), list = best ? M.C.filter(c => d.positions.includes(c.position)) : [], h = holdText(d), idx = M.DOOR_ORDER.indexOf(d);
+  const dem = demandLine(d);
+  const head = `<div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} · open` : "no name"}</span></div>
+    <div class="st ${h.need ? "need" : ""}">${h.text}</div></div>`;
+  const body = best
+    ? `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
+      ${vsLeader(best)}${M.displaced(best) ? M.dispShort(best) : ""}
+      <div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div></div>
+      <div class="ctx2">${dem ? `<div class="dem">${dem}${M.shareNote() ? " · " + M.shareNote() : ""}</div>` : ""}${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}${doorTankCap(M, pos)}</div>
+      ${altsHTML(d, best, list)}`
+    : `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`} ${noneText(d)}</div>`;
+  return `${doorTank(M, pos)}<div class="pbody">${head}${body}</div><button class="x" data-x="1" aria-label="Close the ${d.label} door and return to the grid">✕</button>`;
+}
+/* the count line: a window that says it is a window, and the one place the tiles' unit is stated */
+function countHTML(w){
+  const all = M.DOOR_ORDER;
+  const held = STREAM_HIDE ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
+  const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
+  const chip = d => `<button class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</button>`;
+  const tail = hidden.length ? " · not shown:" : held.length ? " · streamable positions set aside:" : "";
+  const chips = hidden.length
+    ? `<span class="chips">${hidden.map(chip).join("")}${held.length ? `<span>streamable, set aside:</span>${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button>` : ""}</span>`
+    : held.length ? `<span class="chips">${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button></span>`
+    : (STREAM_HIDE ? "" : `<span class="chips"><button class="chip" data-streamtoggle>set streamable aside</button></span>`);
+  return `<span><b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""} · <b>${M.C.length} names</b> on the board · values are to your roster now, the small one against ${M.short(M.LEADER.name)}, the board's first name${tail}</span>
+    ${chips}`;
+}
+/* the drawer: a filter per door; when filtered, the position's context sits above the list */
+function drawerHTML(){
+  const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
+  document.getElementById("allFilt").innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
+  const d = M.DOORS.find(x => x.key === filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
+  let ctx = "";
+  if (d) { const pos = posOf(d), h = holdText(d), inWin = windowDoors().includes(d), idx = M.DOOR_ORDER.indexOf(d);
+    ctx = `<div class="ctx">${doorTank(M, pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${doorBest(d) ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
+      <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
+      <p>${doorBest(d) ? M.waitLine(pos) : `${noneText(d).replace(/\.$/, "")}, so nothing to wait on is measured.`}${pos === M.DEAREST && doorBest(d) && M.POS_BY_COST.length > 1 ? ` <span class="dear">The dearest position to wait on right now.</span>` : ""}</p>
+      ${doorBest(d) ? doorTankCap(M, pos).replace("tankcap", "note") : ""}</div></div>`; }
+  document.getElementById("allCtx").innerHTML = ctx;
+  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? (d.compound ? "defender" : POS[d.key]) : "name"} in the board's top ${M.C.length}.</p>`;
+  document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · tap one to open his door`;
+}
+function draw(){
+  const w = windowDoors();
+  document.getElementById("doors").innerHTML = w.map(d => tileHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
+  document.getElementById("count").innerHTML = countHTML(w);
+  const d = openKey ? M.DOORS.find(x => x.key === openKey) : null, b = d ? doorBest(d) : M.LEADER;
+  const panel = document.getElementById("panel");
+  panel.innerHTML = d ? panelHTML(d) : ""; panel.classList.toggle("bare", !d);
+  document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
+  document.getElementById("debate").innerHTML = M.squad(openKey ? `the ${openKey} door against the board's first name` : `the board's first name against the field`);
+  document.getElementById("allRosters").innerHTML = M.allRosters();
+  document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
+  drawerHTML();
+  requestAnimationFrame(markScrollers);
+}
+function reveal(){ const el = document.getElementById("panel"); if (el && !el.classList.contains("bare")) el.scrollIntoView({block:"start", behavior:"smooth"}); }
+function load(key, fmt){
+  M = buildModel(key, fmt); openKey = COLLAPSED ? null : defaultOpen(); filt = "ALL";
+  fillCommon(M);
+  document.getElementById("spanline").innerHTML = `<span style="white-space:nowrap">${M.waitShort()}</span><span data-tip="${M.seatsText()}">${M.ticks()}</span>`;
+  document.getElementById("boardn").innerHTML = M.clockShort();
+  draw();
+}
+const ui = wireChrome({formats:true, tag:"m2 · GRID", sub:"phone · the doors as a two-column grid, a panel opens under it", hypothesis:`<b>What this is.</b> The phone side of the doors room. The same ${WINDOW} doors surface in the board's order as a two-column grid of tiles, each the position, its best name, its value and the gap to the board's first name, so the grid alone answers who, why and at what cost; the main display is the grid and nothing under it. Tap a tile and a panel fills below the grid with what the desktop's open door and its card strip carry: the wait line, the pool, and the position's other names priced against the board's first name. The X in the panel's corner clears it. The drawer (≣) is the override, every name at any position. <code>?collapsed</code> renders the bare grid.`, onState:load});
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); document.getElementById("workCopy").innerHTML = M.copyBtn(c); ui.open("shWork"); return; }
+  const bn = e.target.closest("[data-bench]");
+  if (bn) { const seat = bn.dataset.bench;
+    M.benchToggled.has(seat) ? M.benchToggled.delete(seat) : M.benchToggled.add(seat);
+    document.getElementById("allRosters").innerHTML = M.allRosters(); return; }
+  const f = e.target.closest("[data-f]"); if (f) { filt = f.dataset.f; drawerHTML(); requestAnimationFrame(markScrollers); return; }
+  const st = e.target.closest("[data-streamtoggle]"); if (st) { e.preventDefault(); STREAM_HIDE = !STREAM_HIDE; draw(); return; }
+  const dr = e.target.closest("[data-drawer]"); if (dr) { filt = dr.dataset.drawer; drawerHTML(); ui.open("shAll"); return; }
+  const x = e.target.closest("[data-x]"); if (x) { openKey = null; draw(); return; }
+  const o = e.target.closest("[data-open]"); if (o) { if (M.DOORS.some(d => d.key === o.dataset.open)) { openKey = o.dataset.open; draw(); reveal(); } ui.closeAll(); return; }
+  if (e.target.closest("button") || e.target.closest(".sheet")) return;
+  const d = e.target.closest("[data-door]"); if (d) { openKey = d.dataset.door === openKey ? null : d.dataset.door; draw(); if (openKey) reveal(); }
+});
+load(ui.key(), ui.fmt());
+</script></body></html>
