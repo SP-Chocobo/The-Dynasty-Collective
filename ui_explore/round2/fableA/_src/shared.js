@@ -84,6 +84,10 @@ const WITHHELD_WORD = VOCAB.WITHHELD_CARD_TEXT, WITHHELD_WHY = VOCAB.WITHHELD_RE
 const WITHHELD_LABEL = {survival_probability:"Chance he lasts to your next turn",
                         opportunity_cost:"Cost of waiting on him",
                         expected_value_of_waiting:"Expected value if you wait"};
+//: The card strip's form of the first of those: a header has no room for the sentence, so it
+//: asks "lasts to #N?" and answers with the withheld word. The question and its answer lived
+//: as a hand-written pair in four templates (v4 spelled the word itself); this is their home.
+const withheldAsk = n => `lasts to #${n}? <span class="wh">${WITHHELD_WORD}</span>`;
 
 /* roster: greedy fill of the league's slots from a list of picks */
 function slotRoster(picks, slots){
@@ -628,6 +632,49 @@ function doorTankCap(M, pos, show){
   if (!t) return M.tankable(pos) && show ? `<div class="tankcap">pool: no engine sample for this format</div>` : "";
   return `<div class="tankcap">pool <b>${t.pctLeft}% left</b> as of #${t.sampleAt} · ${t.startersLeft ? `<b>starters left</b>` : `<span class="gone">past the starter line · startable, not an upgrade</span>`}</div>`;
 }
+/* The rest of the door's logic and sentences, moved here from v4's template in a second pass
+   once the three phones had each copied them and one copy had drifted ("Instead of X:" on the
+   desktop, "instead of X" on every phone). Each is the desktop's code verbatim, with the
+   template's globals (STREAM_HIDE, ALL_DOORS, WINDOW, openKey) passed in; v4 calls them through
+   the same names it always had and its rendered markup is certified unchanged (_domdiff.py). */
+/* the window: the first n doors in the board's order; the open door is always in it. streamHide
+   holds the streamable doors back (#30); all (v4's ?alldoors) forces every door visible. */
+function doorWindow(M, openKey, streamHide, n, all){
+  const order = (streamHide && !all) ? M.DOOR_ORDER.filter(d => !M.isStreamDoor(d) || d.key === openKey) : M.DOOR_ORDER;
+  if (all || order.length <= n) return order;
+  const w = order.slice(0, n); const open = order.find(d => d.key === openKey);
+  if (open && !w.includes(open)) w[n - 1] = open;
+  return w;
+}
+/* the default open door: the leader's, which must never be one streamHide is holding back */
+function doorDefault(M, streamHide){
+  const lead = M.doorOf(M.LEADER.position);
+  if (!(streamHide && M.isStreamDoor(lead))) return lead.key;
+  const first = M.DOOR_ORDER.find(d => !M.isStreamDoor(d));
+  return (first || lead).key;
+}
+/* a door's noun in prose: the position's word, or "defender" for the compound door */
+const doorNoun = d => d.compound ? "defender" : POS[d.key];
+/* a door with no name on the board, and what you hold at it */
+const doorNone = (M, d, tail) => `No ${doorNoun(d)} in the board's top ${M.C.length}${tail || "."}`;
+const doorHeld = (M, d) => doorHold(M, d).need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`;
+/* demand across the door's positions, folded when every position says the same thing */
+function doorDemand(M, d){
+  const demPs = d.positions.filter(p => num(M.DEMAND[p]));
+  const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
+  return demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}` : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
+}
+/* the superlative over forfeits, drawn only where there is more than one to rank */
+const doorDear = (M, pos) => pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : "";
+/* the name against the board's first name: the leader's own sentence, or the lead-in to the
+   cost cells for anyone else. ONE sentence for four surfaces. */
+function doorVs(M, c){
+  const L = M.LEADER;
+  if (c.player_id !== L.player_id) return `Instead of ${M.short(L.name)}:`;
+  return M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>";
+}
+/* who: the face, the name with its availability mark, and the sub line */
+const doorWho = (M, d, best) => `<div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>`;
 
 /* ============================================================================================
    THE PHONE SURFACES' SHARED PIECES (m1-m3). Phone-only: the desktop draws its count line and

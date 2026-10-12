@@ -570,6 +570,10 @@ const WITHHELD_WORD = VOCAB.WITHHELD_CARD_TEXT, WITHHELD_WHY = VOCAB.WITHHELD_RE
 const WITHHELD_LABEL = {survival_probability:"Chance he lasts to your next turn",
                         opportunity_cost:"Cost of waiting on him",
                         expected_value_of_waiting:"Expected value if you wait"};
+//: The card strip's form of the first of those: a header has no room for the sentence, so it
+//: asks "lasts to #N?" and answers with the withheld word. The question and its answer lived
+//: as a hand-written pair in four templates (v4 spelled the word itself); this is their home.
+const withheldAsk = n => `lasts to #${n}? <span class="wh">${WITHHELD_WORD}</span>`;
 
 /* roster: greedy fill of the league's slots from a list of picks */
 function slotRoster(picks, slots){
