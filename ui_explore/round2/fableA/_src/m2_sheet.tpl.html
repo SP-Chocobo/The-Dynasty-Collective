@@ -72,10 +72,12 @@ html,body{height:auto;overflow:visible}
 .who{display:flex;align-items:center;gap:8px;margin-top:2px}
 .who .nm{font-weight:700;font-size:.95rem;line-height:1.2;min-width:0}
 .who .sub{font-size:.76rem;color:var(--muted);margin-top:1px}
-.door .val{display:flex;align-items:baseline;gap:6px;margin-top:3px;flex-wrap:wrap}
+.door .val{display:flex;align-items:baseline;gap:4px 8px;margin-top:3px;flex-wrap:wrap}
 .door .val .big{font-size:1.05rem;line-height:1}
 .door .val .d{font-family:var(--f-m);font-size:.78rem;color:var(--muted);white-space:nowrap}
 .door .val .d.first{color:var(--gold-b);font-weight:700}
+/* the two glance cells sit on their own line under the value, so a tile reads value, then cost */
+.door .val .cost2{flex:1 1 100%;gap:2px 8px} .door .val .cost2 .cc{white-space:nowrap}
 .door .st{font-size:.76rem;color:var(--muted);margin-top:2px;line-height:1.35} .door .st.need{color:var(--amber-b)}
 .door .empty{font-size:.78rem;color:var(--dim);line-height:1.4;margin-top:2px}
 /* the panel: the open door, below the grid. Its parts are the desktop's door and card strip. */
@@ -208,14 +210,16 @@ function demandLine(d){
   const demSame = demPs.length > 1 && demPs.every(p => M.demandText(p) === M.demandText(demPs[0]));
   return demSame ? `${demPs.join(" · ")} each · ${M.demandText(demPs[0])}` : demPs.map(p => `${d.compound ? p + " " : ""}${M.demandText(p)}`).join(" · ");
 }
-/* a tile: the position, its best name, its value, and the gap to the board's first name in the
-   drawer row's own shorthand ("first", or the signed gap). The unit is stated once, on the count line. */
+/* a tile: the position, its best name, its value, and against the board's first name either
+   "first" or the model's two glance cells, now and both picks (glanceHTML in shared.js: the cell
+   the engine can reverse is drawn beside the one it reverses). The value's unit is stated once,
+   on the count line. */
 function tileHTML(d, idx){
   const best = doorBest(d), pos = posOf(d), h = holdText(d), open = d.key === openKey, L = M.LEADER;
   const top = `<div class="top">${M.pill(d.key)}<span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span></div><div class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${doorLabel(d)}</div>`;
   const body = best
     ? `<div class="who"><span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}</div></span></div>
-       <div class="val"><span class="big">${f1(best.team_acquisition_value)}</span><span class="d ${best.player_id === L.player_id ? "first" : ""}">${best.player_id === L.player_id ? "first" : sgn(best.team_acquisition_value - L.team_acquisition_value)}</span></div>
+       <div class="val"><span class="big">${f1(best.team_acquisition_value)}</span>${best.player_id === L.player_id ? `<span class="d first">first</span>` : `<span class="cost2">${glanceHTML(M, best)}</span>`}</div>
        <div class="st ${h.need ? "need" : ""}">${h.text}</div>`
     : `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`} ${noneText(d)}</div>`;
   return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${top}${body}</div></section>`;
@@ -249,20 +253,9 @@ function panelHTML(d){
     : `<div class="empty">${h.need ? "You hold none." : `You hold ${M.S.myPicks.filter(p => d.positions.includes(p.pos)).map(p => M.short(p.name)).join(", ")}.`} ${noneText(d)}</div>`;
   return `${doorTank(M, pos)}<div class="pbody">${head}${body}</div><button class="x" data-x="1" aria-label="Close the ${d.label} door and return to the grid">✕</button>`;
 }
-/* the count line: a window that says it is a window, and the one place the tiles' unit is stated */
-function countHTML(w){
-  const all = M.DOOR_ORDER;
-  const held = STREAM_HIDE ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
-  const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
-  const chip = d => `<button class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${doorBest(d) ? ` ${ordinal(M.DOOR_ORDER.indexOf(d) + 1)} door` : " —"}</button>`;
-  const tail = hidden.length ? " · not shown:" : held.length ? " · streamable positions set aside:" : "";
-  const chips = hidden.length
-    ? `<span class="chips">${hidden.map(chip).join("")}${held.length ? `<span>streamable, set aside:</span>${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button>` : ""}</span>`
-    : held.length ? `<span class="chips">${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button></span>`
-    : (STREAM_HIDE ? "" : `<span class="chips"><button class="chip" data-streamtoggle>set streamable aside</button></span>`);
-  return `<span><b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""} · <b>${M.C.length} names</b> on the board · values are to your roster now, the small one against ${M.short(M.LEADER.name)}, the board's first name${tail}</span>
-    ${chips}`;
-}
+/* the count line is phoneCount in shared.js, one line for the three phones; this surface adds
+   the one place its tiles' unit is stated. */
+const countExtra = () => ` · values to your roster now, cost against ${M.short(M.LEADER.name)}, the board's first name`;
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
 function drawerHTML(){
   const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
@@ -281,7 +274,7 @@ function drawerHTML(){
 function draw(){
   const w = windowDoors();
   document.getElementById("doors").innerHTML = w.map(d => tileHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
-  document.getElementById("count").innerHTML = countHTML(w);
+  document.getElementById("count").innerHTML = phoneCount(M, w, STREAM_HIDE, countExtra());
   const d = openKey ? M.DOORS.find(x => x.key === openKey) : null, b = d ? doorBest(d) : M.LEADER;
   const panel = document.getElementById("panel");
   panel.innerHTML = d ? panelHTML(d) : ""; panel.classList.toggle("bare", !d);

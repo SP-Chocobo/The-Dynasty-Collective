@@ -978,6 +978,42 @@ function doorTankCap(M, pos, show){
 }
 
 /* ============================================================================================
+   THE PHONE SURFACES' SHARED PIECES (m1-m3). Phone-only: the desktop draws its count line and
+   its card strip in its own geometry (v4_doors.tpl.html) and does not read these. Each of the
+   three phone templates carried its own copy; the count line moved first because m3's copy had
+   stopped telling the truth -- it printed the window's size ("showing 4") over a row that drew
+   every door the league can start, with a "show streamable" button beside the streamable doors
+   it offered to show. One function the three draw cannot disagree with itself (#126).
+   ============================================================================================ */
+/* the count line: a window that says it is a window. Every door the window is not drawing is
+   named here by its place in the board's order, as a 44px chip that opens it, and the streamable
+   doors held back (#30) are named under their own words beside the one button that shows them.
+   `extra` is a surface's own clause, spliced before the tail (m2 states its tiles' unit here, once). */
+function phoneCount(M, w, streamHide, extra){
+  const all = M.DOOR_ORDER;
+  const held = streamHide ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
+  const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
+  const chip = d => `<button class="chip" data-open="${d.key}" data-tip="Open the ${d.label} door"><i style="background:${pc(d.key)}"></i>${d.key}${M.doorBest(d) ? ` ${ordinal(all.indexOf(d) + 1)} door` : " —"}</button>`;
+  const tail = hidden.length ? " · not shown:" : held.length ? " · streamable positions set aside:" : "";
+  const chips = hidden.length
+    ? `<span class="chips">${hidden.map(chip).join("")}${held.length ? `<span>streamable, set aside:</span>${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button>` : ""}</span>`
+    : held.length ? `<span class="chips">${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button></span>`
+    : (streamHide ? "" : `<span class="chips"><button class="chip" data-streamtoggle>set streamable aside</button></span>`);
+  return `<span><b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""} · <b>${M.C.length} names</b> on the board${extra || ""}${tail}</span>
+    ${chips}`;
+}
+/* THE GLANCE CELLS. A tile or a chip has room for a name and one line of cost, and the one cell
+   it used to carry -- the gap now -- is the one the engine can disagree with: in 12T_ppr/mid the
+   tight end reads -58.3 now while the engine's own "both picks" cell is +6.9, and the desktop
+   calls tight end the dearest position to wait on. Across the fixture the two-pick plan reverses
+   the sign in 28 of the 72 non-leader doors, so a glance that sees "now" alone concludes wrongly
+   two times in five. The two cells that carry a conclusion are drawn together: "now", the board's
+   order, and "both picks", the two-pick plan. "at #N" is their difference and sits between them
+   in the open door. Read from costOf, never recomputed from the values beside it (#126). */
+const glanceCells = (M, b) => M.costOf(b, M.LEADER).filter(c => c.k === "now" || c.k === "both picks" || c.v === "not measured");
+const glanceHTML = (M, b) => glanceCells(M, b).map(c => `<span class="cc ${c.fav ? "fav" : ""}"><span class="ck">${c.k}</span><span class="cv">${c.v}</span></span>`).join("");
+
+/* ============================================================================================
    Chrome shared by every variant: review bar, sheets, copy, and the scroll affordance — every
    list that overflows says so ("↓ N more") so a short list over a dark fold is never mistaken
    for a failed render, and a captioned count never silently differs from what is drawn.
