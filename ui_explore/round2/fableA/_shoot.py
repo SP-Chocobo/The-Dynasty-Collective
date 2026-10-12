@@ -98,6 +98,17 @@ PROBE = """(opt) => {
   // captioned counts vs drawn rows
   r.counts = [...document.querySelectorAll('[data-list]')].filter(el => !inSheet(el)).map(el => { const rows = [...el.querySelectorAll('[data-row]')]; const drawn = rows.filter(x => vis(x)).length; return {list: el.dataset.list, rows: rows.length, drawn, more: el.dataset.more ? +el.dataset.more : 0}; });
   r.badCounts = r.counts.filter(c => c.drawn + c.more < c.rows).map(c => c.list + ' ' + c.drawn + '+' + c.more + '<' + c.rows);
+  // HORIZONTAL clipping. badScrollers only ever asked about overflowY, because on a desktop a
+  // row that runs past its box is a layout bug caught by textOverflow. On a phone it is the
+  // normal way a strip of chips fails: the lineup strip runs off the right edge and the names
+  // past the fold are simply unreachable, with nothing on screen saying so. Containers only
+  // (two or more element children), so this does not re-report what textOverflow already covers.
+  r.hClip = !MOB ? [] : all.filter(el => vis(el) && !el.closest('#rev,#hyp') && el.children.length >= 2
+      && el.scrollWidth > el.clientWidth + 2)
+    .map(el => { const cs = getComputedStyle(el);
+      const scrollable = /(auto|scroll)/.test(cs.overflowX);
+      return `${tag(el)} ${el.clientWidth}<${el.scrollWidth}px ${scrollable ? "(scrolls, needs an affordance)" : "(CLIPPED, unreachable)"}`; })
+    .slice(0, 8);
   // tap targets: a thumb needs 44px, and a control that misses it is a control that gets
   // mis-pressed under a draft clock. Asserted on mobile only -- a mouse does not care.
   r.tap = !MOB ? [] : all.filter(el => vis(el) && !el.closest('#rev,#hyp')
@@ -161,6 +172,7 @@ with sync_playwright() as p:
                 if r["pageScroll"][0]: problems.append("horizontal pageScroll")
                 if screens > SCROLL_BUDGET: problems.append(f"scroll budget: {screens:.2f} screens of travel (document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {SCROLL_BUDGET}")
                 if r["tap"]: problems.append("tap target under 44px " + json.dumps(r["tap"]))
+                if r["hClip"]: problems.append("runs off the right edge " + json.dumps(r["hClip"]))
             elif any(r["pageScroll"]): problems.append("pageScroll")
             if r["clipped"]: problems.append("clipped " + json.dumps(r["clipped"]))
             if r["textOverflow"]: problems.append("textOverflow " + json.dumps(r["textOverflow"]))
