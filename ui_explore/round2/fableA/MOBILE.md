@@ -133,7 +133,12 @@ dearest-position mark, the pool, and the position's other names as cards priced 
 board's first name, with a dashed button into the drawer for the rest. The X in the row's
 corner collapses it.
 
-Measured: «M1_MEASURED»
+Measured, 108 of 108 renders ok in the 397-render gate: 1.12 to 1.97 screens on the main
+display (bare URL, every format, every state, every viewport; the worst is HEAVY_IDP/late at
+360x800, then LIGHT_IDP 1.91 and 12T_ppr_K_DEF 1.75) against the 2.0 main-display budget, so
+the tightest case in the fixture clears it by 0.03 screens, about 24px; 1.71 to 2.47 screens
+with a door open (?open; the worst is HEAVY_IDP/early at 360x800) against 3.0. The 13-starter
+strip and the full three cells on every closed row are the reasons.
 
 Where it refused: the closed rows carry no wait line and no demand; those arrive on open, as
 the brief describes. Sonnet's suggestion that a closed row be "name + value + one cost, about
@@ -153,7 +158,11 @@ the panel under the stuck clock; the X in the panel's corner clears it and the g
 bare. An odd fifth tile spans both columns rather than leaving a hole. At 360px a name wraps
 before its availability mark, never after it.
 
-Measured: «M2_MEASURED»
+Measured, 108 of 108 renders ok in the 397-render gate: 1.00 to 1.41 screens on the main
+display (bare URL; the worst is HEAVY_IDP/late at 360x800, then LIGHT_IDP 1.35 and
+12T_ppr_K_DEF 1.25; 12T_ppr is 1.12) against 2.0; 1.42 to 2.39 screens with the panel open
+(?open; the worst is HEAVY_IDP/early at 360x800) against 3.0. The second glance cell on every
+tile cost about a line per tile against the first iteration's 1.00 to 1.30.
 
 Where it refused: a tile carries no face, so a name gets the tile's width, and no third cost
 cell, which does not fit in half a phone; the value's unit, to your roster now, is stated once
@@ -183,7 +192,12 @@ beside a button offering to show what was already shown. Doors outside the windo
 the count line by their place ("not shown: DL 6th door · DB 7th door"), as on the desktop, and
 open on a tap there; the bare ordinal that sat beside a signed gap on a dim chip went with it.
 
-Measured: «M3_MEASURED»
+Measured, 108 of 108 renders ok in the 397-render gate: 1.00 to 1.42 screens on the main
+display (bare URL; the worst is 12T_ppr_K_DEF/late at 360x800, then HEAVY_IDP 1.41 and
+4WR_TE_PREMIUM 1.30) against 2.0; 1.09 to 1.91 screens with the hero's other names open
+(?open; the worst is 12T_ppr_K_DEF/mid at 360x800) against 3.0. The hero's two action buttons
+in the main display and the second glance cell on every chip are the difference from the first
+iteration's 1.00 to 1.33; the chips drawn only for the window gave some of it back.
 
 Where it refused: a chip carries the short name and the two cells, never the slot, the points
 or the third cell; those are the hero's and the cards', one tap away. The alternatives sit
