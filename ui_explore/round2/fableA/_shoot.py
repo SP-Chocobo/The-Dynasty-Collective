@@ -109,6 +109,13 @@ PROBE = """(opt) => {
   let min = 99, minEl = '';
   all.forEach(el => { if (!vis(el)) return; const t = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); if (!t) return; const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < min) { min = fs; minEl = tag(el) + ': ' + el.textContent.trim().slice(0, 20); } });
   r.minFont = [min, minEl];
+  // WHICH BOARD LOADED. The format is carried in the URL hash and read by wireChrome, but ONLY
+  // when the surface passes {formats:true}; pass false and it silently forces the first format,
+  // so all six format renders would show the SAME board and every one of them would come back
+  // ok. That is this repo's signature failure -- a plausible render of the wrong thing -- and
+  // nothing here would have caught it. The league line names the format it actually built, so
+  // the render is made to say what it is rather than being trusted.
+  r.lg = (document.getElementById('lg') || {}).textContent || null;
   const _nm = document.querySelector('#doors .door .who .nm');
   r.nameFs = _nm ? getComputedStyle(_nm).fontSize : null;
   r.glyphOverlap = [];
@@ -162,6 +169,14 @@ with sync_playwright() as p:
             if r["badScrollers"]: problems.append("scroller without affordance " + json.dumps(r["badScrollers"]))
             if r["badCounts"]: problems.append("count mismatch " + json.dumps(r["badCounts"]))
             if r["minFont"][0] < 12: problems.append("minFont " + json.dumps(r["minFont"]))
+            if isv4:
+                # DELIMITED, not a substring: `12T_ppr` is a prefix of `12T_ppr_SF`, so a plain
+                # `in` test would have passed a render that loaded superflex when asked for PPR
+                # -- the false pass this check exists to prevent. The league line sets the format
+                # off with " \u00b7 " on both sides, so the delimiters are what make it exact.
+                want = " \u00b7 " + fmt.replace("_", " ") + " \u00b7 "
+                if not r.get("lg"): problems.append("no league line, so which board loaded cannot be read")
+                elif want not in r["lg"]: problems.append(f"WRONG BOARD: asked for {fmt}, the league line says {r['lg'][:70]!r}")
             if r["glyphOverlap"]: problems.append("text runs under a sibling " + json.dumps(r["glyphOverlap"]))
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
             if r.get("nameFs"):
