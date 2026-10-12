@@ -45,8 +45,12 @@ html,body{height:auto;overflow:visible}
 .lineup .slotc{padding:.1rem .3rem;font-size:12.5px;gap:4px;line-height:1.25}
 /* main */
 .main{display:flex;flex-direction:column;padding:8px 12px 10px;gap:8px}
-.count{font-size:.82rem;color:var(--muted);line-height:1.45}
+.count{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);line-height:1.45}
 .count b{color:var(--ink)}
+.count .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:-2px}
+.count .chip{font-family:var(--f-m);font-size:.75rem;font-weight:700;min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .65rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface)}
+.count .chip:hover{color:var(--ink);border-color:var(--dim)}
+.count .chip i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px}
 /* the hero: the desktop's open door, full width */
 .doors{display:flex;flex-direction:column}
 .door{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0;position:relative;cursor:pointer}
@@ -88,18 +92,20 @@ html,body{height:auto;overflow:visible}
 .ctx2 .dem{color:var(--dim)} .ctx2 .dem b{color:var(--muted)}
 .ctx2 .dear{display:block;color:var(--amber-b)}
 .ctx2 .tankcap{margin-top:3px}
-/* the chips: the other doors, each a position, its best name and the gap to the board's first
-   name. Thumb-sized, wrapping, never scrolling. A door the window is not showing is dim, and
-   named by its place in the board's order; a streamable door is dimmer still. */
-.chips{display:flex;flex-wrap:wrap;gap:5px}
-.chips .lbl{flex:1 1 100%;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;margin:-2px 0 -1px}
-.dchip{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .6rem 0 .5rem;border:1px solid var(--line-2);border-left:4px solid var(--pc);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:.86rem;text-align:left}
+/* the chips: the window's other doors, each a position, its best name and the two glance cells
+   against the board's first name on a second line. Two across, thumb-sized, wrapping, never
+   scrolling; an odd last chip takes the whole row rather than leaving a hole (the label is the
+   first child, so an odd count of chips ends on an even child). */
+.chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.chips .lbl{grid-column:1/-1;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:-2px 0 -1px}
+.dchip{min-height:44px;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;padding:5px .6rem 6px .5rem;border:1px solid var(--line-2);border-left:4px solid var(--pc);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:.86rem;text-align:left;min-width:0}
+.dchip:last-child:nth-child(even){grid-column:1/-1}
 .dchip:hover{border-color:var(--dim);border-left-color:var(--pc)}
 .dchip .k2{font-family:var(--f-m);font-size:.75rem;font-weight:700;color:var(--pc)}
 .dchip .nm2{font-weight:600;white-space:nowrap}
 .dchip .g{font-family:var(--f-m);font-size:.78rem;color:var(--muted);white-space:nowrap} .dchip .g.first{color:var(--gold-b);font-weight:700}
+.dchip .cost2{flex:1 1 100%;gap:2px 8px} .dchip .cost2 .cc{white-space:nowrap}
 .dchip.dim{color:var(--muted);background:var(--surface-2)} .dchip.dim .nm2{font-weight:400}
-.dchip.held{opacity:.8;border-style:dashed;border-left-style:solid}
 /* the alternatives block, under the chips: the desktop's card strip, stacked */
 .alts{border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0}
 .alts.bare{display:none}
@@ -226,17 +232,19 @@ function heroHTML(d, idx){
   const x = open ? `<button class="x" data-x="1" aria-label="Close the ${d.label} door and return to the board's first name">✕</button>` : "";
   return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}</div>${x}</section>`;
 }
-/* the chips: every other door. In the window first, in the board's order; then the doors the
-   window is not showing, dim and named by their place; then the streamable doors set aside. */
+/* the chips: the window's other doors, in the board's order, and only those -- the count line
+   says "showing N" and N is the hero plus these. The doors the window is not showing, and the
+   streamable doors set aside, are named on the count line by their place, as on the desktop and
+   the other two phones; this row used to draw them too, under a sentence that said it did not.
+   Each chip is the position, its best name, and the two glance cells against the board's first
+   name (glanceHTML in shared.js), "first" for the leader's own door. */
 function chipsHTML(w, hero){
   const L = M.LEADER, all = M.DOOR_ORDER;
-  const held = STREAM_HIDE ? all.filter(d => M.isStreamDoor(d) && !w.includes(d)) : [];
-  const hidden = all.filter(d => !w.includes(d) && !held.includes(d));
-  const chip = (d, cls) => { const b = doorBest(d), idx = all.indexOf(d);
-    const g = !b ? `<span class="g">—</span>` : b.player_id === L.player_id ? `<span class="g first">first</span>` : `<span class="g">${sgn(b.team_acquisition_value - L.team_acquisition_value)}</span>`;
-    return `<button class="dchip ${cls} ${b ? "" : "dim"}" data-door="${d.key}" style="--pc:${pc(d.key)}" data-tip="${b ? `${doorLabel(d)}, ${ordinal(idx + 1)} of ${all.length} in the board's order` : `${doorLabel(d)}: no name on the board`}"><span class="k2">${d.key}</span><span class="nm2">${b ? M.short(b.name) : `no name`}</span>${g}${cls === "dim" && b ? `<span class="g">${ordinal(idx + 1)}</span>` : ""}</button>`; };
+  const chip = d => { const b = doorBest(d), idx = all.indexOf(d);
+    const g = !b ? `<span class="g">—</span>` : b.player_id === L.player_id ? `<span class="g first">first</span>` : `<span class="cost2">${glanceHTML(M, b)}</span>`;
+    return `<button class="dchip ${b ? "" : "dim"}" data-door="${d.key}" style="--pc:${pc(d.key)}" data-tip="${b ? `${doorLabel(d)}, ${ordinal(idx + 1)} of ${all.length} in the board's order` : `${doorLabel(d)}: no name on the board`}"><span class="k2">${d.key}</span><span class="nm2">${b ? M.short(b.name) : `no name`}</span>${g}</button>`; };
   const rest = w.filter(d => d !== hero);
-  return `<span class="lbl">the other doors · against ${M.short(L.name)}, the board's first name</span>${rest.map(d => chip(d, "")).join("")}${hidden.map(d => chip(d, "dim")).join("")}${held.map(d => chip(d, "held")).join("")}${held.length ? `<button class="dchip held" data-streamtoggle><span class="nm2">show streamable</span></button>` : (STREAM_HIDE ? "" : `<button class="dchip held" data-streamtoggle><span class="nm2">set streamable aside</span></button>`)}`;
+  return `<span class="lbl">the other doors · against ${M.short(L.name)}, the board's first name</span>${rest.map(chip).join("")}`;
 }
 /* the hero's other names: the desktop's card strip, under the chips, each priced against the
    board's first name. A compound door spends its rows as the model does (doorDepth). */
@@ -254,11 +262,8 @@ function altsHTML(d){
     <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
     ${rest > 0 ? `<button class="morebtn" data-drawer="${d.key}">+ ${rest} more in the drawer ≣</button>` : ""}</div>`;
 }
-/* the count line: a window that says it is a window */
-function countHTML(w){
-  const all = M.DOOR_ORDER;
-  return `<b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${all.length > w.length ? ": the window slides as the board changes" : ""} · <b>${M.C.length} names</b> on the board`;
-}
+/* the count line is phoneCount in shared.js: one line for the three phones, and the one place
+   the doors outside the window are named, each as a chip that opens it. */
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
 function drawerHTML(){
   const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
@@ -278,7 +283,7 @@ function draw(){
   const w = windowDoors(), hero = M.DOORS.find(x => x.key === heroKey());
   document.getElementById("doors").innerHTML = heroHTML(hero, M.DOOR_ORDER.indexOf(hero));
   document.getElementById("chips").innerHTML = chipsHTML(w, hero);
-  document.getElementById("count").innerHTML = countHTML(w);
+  document.getElementById("count").innerHTML = phoneCount(M, w, STREAM_HIDE);
   const alts = document.getElementById("alts");
   alts.innerHTML = openKey ? altsHTML(hero) : ""; alts.classList.toggle("bare", !openKey); alts.style.setProperty("--pc", pc(hero.key));
   document.getElementById("slots").innerHTML = M.rosterStrip(doorBest(hero), false);
