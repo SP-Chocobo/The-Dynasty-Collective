@@ -664,6 +664,21 @@ function phoneCount(M, w, streamHide, extra){
    in the open door. Read from costOf, never recomputed from the values beside it (#126). */
 const glanceCells = (M, b) => M.costOf(b, M.LEADER).filter(c => c.k === "now" || c.k === "both picks" || c.v === "not measured");
 const glanceHTML = (M, b) => glanceCells(M, b).map(c => `<span class="cc ${c.fav ? "fav" : ""}"><span class="ck">${c.k}</span><span class="cv">${c.v}</span></span>`).join("");
+/* THE FOLD CUE. The page-level sibling of markScrollers: a phone page scrolls, and in 17 of 216
+   probed renders the first screen ended in a gutter with real content below it and nothing on
+   screen saying so -- a finished-looking page that was not finished. While the document runs on
+   below the viewport the #fold band is lit and says what is below, counted the way the scroll
+   affordance counts rows: doors first, then names, else only that there is more. Pointer-through
+   and text-free (its label is a pseudo-element), so it is a signpost over the content and never
+   content under a sibling. Each phone template calls it after a draw and on scroll and resize. */
+function phoneFold(){
+  const el = document.getElementById("fold"); if (!el) return;
+  if (!(innerHeight + scrollY < document.documentElement.scrollHeight - 6)) { el.classList.remove("on"); return; }
+  const past = sel => [...document.querySelectorAll(sel)].filter(x => !x.closest(".sheet") && x.getBoundingClientRect().top >= innerHeight - 1).length;
+  const doors = past("#doors .door, .dchip"), cards = past(".card");
+  el.dataset.cue = doors ? `↓ ${doors} more door${doors > 1 ? "s" : ""} below` : cards ? `↓ ${cards} more name${cards > 1 ? "s" : ""} below` : "↓ more below";
+  el.classList.add("on");
+}
 
 /* ============================================================================================
    Chrome shared by every variant: review bar, sheets, copy, and the scroll affordance — every

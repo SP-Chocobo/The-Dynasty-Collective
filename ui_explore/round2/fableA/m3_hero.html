@@ -382,18 +382,20 @@ html,body{height:auto;overflow:visible}
 .ctx2 .dem{color:var(--dim)} .ctx2 .dem b{color:var(--muted)}
 .ctx2 .dear{display:block;color:var(--amber-b)}
 .ctx2 .tankcap{margin-top:3px}
-/* the chips: the other doors, each a position, its best name and the gap to the board's first
-   name. Thumb-sized, wrapping, never scrolling. A door the window is not showing is dim, and
-   named by its place in the board's order; a streamable door is dimmer still. */
-.chips{display:flex;flex-wrap:wrap;gap:5px}
-.chips .lbl{flex:1 1 100%;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;margin:-2px 0 -1px}
-.dchip{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .6rem 0 .5rem;border:1px solid var(--line-2);border-left:4px solid var(--pc);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:.86rem;text-align:left}
+/* the chips: the window's other doors, each a position, its best name and the two glance cells
+   against the board's first name on a second line. Two across, thumb-sized, wrapping, never
+   scrolling; an odd last chip takes the whole row rather than leaving a hole (the label is the
+   first child, so an odd count of chips ends on an even child). */
+.chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.chips .lbl{grid-column:1/-1;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:-2px 0 -1px}
+.dchip{min-height:44px;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;padding:5px .6rem 6px .5rem;border:1px solid var(--line-2);border-left:4px solid var(--pc);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:.86rem;text-align:left;min-width:0}
+.dchip:last-child:nth-child(even){grid-column:1/-1}
 .dchip:hover{border-color:var(--dim);border-left-color:var(--pc)}
 .dchip .k2{font-family:var(--f-m);font-size:.75rem;font-weight:700;color:var(--pc)}
 .dchip .nm2{font-weight:600;white-space:nowrap}
 .dchip .g{font-family:var(--f-m);font-size:.78rem;color:var(--muted);white-space:nowrap} .dchip .g.first{color:var(--gold-b);font-weight:700}
+.dchip .cost2{flex:1 1 100%;gap:2px 8px} .dchip .cost2 .cc{white-space:nowrap}
 .dchip.dim{color:var(--muted);background:var(--surface-2)} .dchip.dim .nm2{font-weight:400}
-.dchip.held{opacity:.8;border-style:dashed;border-left-style:solid}
 /* the alternatives block, under the chips: the desktop's card strip, stacked */
 .alts{border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0}
 .alts.bare{display:none}
