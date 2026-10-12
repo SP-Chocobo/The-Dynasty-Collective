@@ -72,7 +72,7 @@ other names as cards priced against the board's first name, with a dashed button
 drawer for the rest. The X in the row's corner collapses it; the reader never loses their
 place in the list.
 
-Measured: 73 of 73 renders ok. 1.11 to 2.46 screens with a door open; 1.11 to 1.64 screens
+Measured: 73 of 73 renders ok. 1.70 to 2.46 screens with a door open; 1.11 to 1.64 screens
 collapsed on the two formats the collapsed pass covers. Measured by hand on the hardest format
 the collapsed pass does not cover, HEAVY_IDP at 360x800: 1.96 screens late, 1.68 early, under
 the 2.0 main-display budget by a hair in the late state. The 13-starter strip is the reason.
