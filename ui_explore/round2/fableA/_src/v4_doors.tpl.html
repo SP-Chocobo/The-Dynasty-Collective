@@ -15,7 +15,22 @@
 .lineup .slotc{padding:.12rem .34rem}
 .clk .who{margin-left:auto;white-space:nowrap;font-size:.86rem;color:var(--muted)} .clk .who b{color:var(--ink)}
 .clk .spanline{white-space:nowrap}
-.main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:8px 16px 8px;gap:8px}
+/* VERTICAL RHYTHM THAT SCALES WITH THE VIEWPORT, bounded at both ends.
+   The shell is a flex column in which nothing grew, so on a tall screen the whole composition sat
+   at the top with the slack pooled underneath: 214px dead at 1100, 403 at 1300, 603 at 1500.
+   Handing that slack to a section was measured and rejected. The doors cannot use it -- their
+   footer pins to the bottom edge and the list is a fixed three rows, so an already-present 95px
+   gap inside each door grew to 301px at 1100 and 690px at 1500. The card strip cannot either:
+   stretched to 300px the cards became hollow boxes with ~140px of void under their content.
+   The content is finite and will not fill a 1500px screen; inflating boxes to pretend otherwise
+   looks worse than the margin did.
+   So the slack is spent as BREATHING ROOM instead, spread across the gaps and paddings that
+   already exist, and the remainder is left as margin.
+   EACH RULE IS ANCHORED AT THE GATE: the growth term is measured FROM 900px, as
+   base + max(0, 100vh - 900px) * rate, so the value IS its old constant at 900. That makes the suite's 1440x900 gate byte-identical by
+   construction rather than by luck, and the growth appears only above it. */
+.main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  padding:8px 16px clamp(8px,calc(8px + (100vh - 900px)*0.018),20px);gap:clamp(8px,calc(8px + (100vh - 900px)*0.018),20px)}
 /* the count line: a window that says it is a window */
 .count{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.84rem;color:var(--muted);flex:0 0 auto}
 .count b{color:var(--ink)}
@@ -71,7 +86,7 @@
        --nm2:calc(var(--nm)*0.824);
        --fc:calc(var(--nm)*2.7);
        --fcf:calc(var(--nm)*0.882)}
-.doors{display:grid;gap:9px;flex:0 0 auto;align-items:stretch}.door .face{width:var(--fc,44px);height:var(--fc,44px);font-size:var(--fcf,.9rem)}
+.doors{display:grid;gap:clamp(9px,1.0vh,21px);flex:0 0 auto;align-items:stretch}.door .face{width:var(--fc,44px);height:var(--fc,44px);font-size:var(--fcf,.9rem)}
 
 .door .dact{margin-top:auto}
 .doors.all{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;grid-template-columns:repeat(auto-fill,minmax(262px,1fr))!important}
@@ -99,7 +114,7 @@
 .dh .tankcap{margin-top:3px}
 .hm{font-size:.82em;color:var(--muted);cursor:help;vertical-align:.08em}
 .hm.ok{color:var(--dim)} .hm.none{color:var(--dim)}
-.db{padding:7px 12px 6px;display:flex;flex-direction:column;gap:4px}
+.db{padding:7px 12px 6px;display:flex;flex-direction:column;gap:clamp(4px,calc(4px + (100vh - 900px)*0.022),14px)}
 .who{display:flex;align-items:center;gap:10px}
 .who .nm{font-weight:700;font-size:var(--nm,1.02rem);line-height:1.15}
 .who .sub{font-size:.78rem;color:var(--muted);margin-top:2px}
@@ -108,18 +123,18 @@
 .door .cost2{display:flex;gap:12px;flex-wrap:wrap} .door .cost2 .cc{gap:4px} .door .cost2 .cc .cv{font-size:.9rem}
 .then{border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
 .then .k{display:block;margin-bottom:2px;white-space:normal}
-.then .tr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:baseline;font-size:var(--nm2,.84rem);padding:2px 0}
+.then .tr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:baseline;font-size:var(--nm2,.84rem);padding:clamp(2px,calc(2px + (100vh - 900px)*0.012),8px) 0}
 .then .tr .rk{font-family:var(--f-m);font-size:.75rem;color:var(--dim)}
 .then .tr .nm{min-width:0}
 .then .tr .g{font-family:var(--f-m);color:var(--muted);white-space:nowrap}
 .dact{display:flex;gap:6px;padding:4px 12px;border-top:1px solid var(--line);align-items:center}
 .door .empty{padding:10px 12px;color:var(--dim);font-size:.84rem;line-height:1.5}
 /* the open door's names, side by side */
-.call{flex:0 1 auto;min-height:0;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);padding:6px 14px 6px;display:flex;flex-direction:column}
+.call{flex:0 1 auto;min-height:0;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);padding:clamp(6px,calc(6px + (100vh - 900px)*0.022),18px) 14px;display:flex;flex-direction:column}
 .call .cards{overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin;padding-bottom:2px}
 .call .ch{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;flex-wrap:wrap}
 .call .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700}
-.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,calc(10px + (100vh - 900px)*0.02),22px)}
 .card{border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;background:var(--surface-2);min-width:0}
 .card .who .nm{font-size:.95rem}
 .card ul{margin:4px 0 0;padding:0;list-style:none;font-size:.86rem;color:var(--muted);line-height:1.45}
