@@ -37,7 +37,15 @@ VIEWPORTS = _vp(__import__("os").environ.get("SHOOT_VIEWPORTS", "1440x900,1700x1
 # Tap targets are asserted on mobile and only there: a 44px floor, the one metric a thumb cares
 # about that a mouse does not.
 MOBILE_VIEWPORTS = _vp(__import__("os").environ.get("SHOOT_MOBILE_VIEWPORTS", "390x844,360x800,430x932"))
-SCROLL_BUDGET = float(__import__("os").environ.get("SHOOT_SCROLL_BUDGET", "2.5"))
+# TWO budgets, because the surface has two states and they do not make the same promise.
+# The MAIN DISPLAY is what a reader lands on and what the owner specified as "the 4-5 main
+# recommendations near the top"; it is held tight. The EXPANDED state is the detail a reader
+# asked for by tapping a door -- it must still be bounded, but bounding it at the main
+# display's figure would mean a door could never carry more than the stack it sits in.
+# Discriminated by whether a door is actually open, not by the query string, so a variant
+# that chooses to open nothing by default is measured as the main display it is.
+SCROLL_BUDGET_MAIN = float(__import__("os").environ.get("SHOOT_SCROLL_BUDGET_MAIN", "2.0"))
+SCROLL_BUDGET_OPEN = float(__import__("os").environ.get("SHOOT_SCROLL_BUDGET_OPEN", "3.0"))
 TAP_FLOOR = 44
 is_mobile = lambda f: pathlib.Path(f).name.startswith("m")
 # (file, query, [formats]) — v4 runs every format; the others are control-only
@@ -127,6 +135,7 @@ PROBE = """(opt) => {
   // nothing here would have caught it. The league line names the format it actually built, so
   // the render is made to say what it is rather than being trusted.
   r.lg = (document.getElementById('lg') || {}).textContent || null;
+  r.doorOpen = !!document.querySelector('.door.open, [data-door].open, .door[aria-expanded="true"]');
   const _nm = document.querySelector('#doors .door .who .nm');
   r.nameFs = _nm ? getComputedStyle(_nm).fontSize : null;
   r.glyphOverlap = [];
@@ -170,7 +179,10 @@ with sync_playwright() as p:
             screens = max(r["docH"], r.get("deepScroll") or 0) / max(1, r["vh"])
             if is_mobile(f):
                 if r["pageScroll"][0]: problems.append("horizontal pageScroll")
-                if screens > SCROLL_BUDGET: problems.append(f"scroll budget: {screens:.2f} screens of travel (document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {SCROLL_BUDGET}")
+                budget = SCROLL_BUDGET_OPEN if r.get("doorOpen") else SCROLL_BUDGET_MAIN
+                if screens > budget: problems.append(f"scroll budget: {screens:.2f} screens of travel "
+                    f"({'expanded, a door is open' if r.get('doorOpen') else 'MAIN DISPLAY, nothing open'}; "
+                    f"document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {budget}")
                 if r["tap"]: problems.append("tap target under 44px " + json.dumps(r["tap"]))
                 if r["hClip"]: problems.append("runs off the right edge " + json.dumps(r["hClip"]))
             elif any(r["pageScroll"]): problems.append("pageScroll")

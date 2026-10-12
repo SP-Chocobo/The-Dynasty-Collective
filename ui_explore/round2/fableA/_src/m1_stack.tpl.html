@@ -21,14 +21,15 @@ html,body{height:auto;overflow:visible}
 .rev{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;padding:5px 12px}
 .rev::-webkit-scrollbar{display:none}
 .rev .fmts{margin-left:6px;padding-left:8px} .rev .hyp{margin-left:6px}
-/* header: the wordmark and the league line share a line; the sheet buttons are one row of six,
-   icon over label, each at least 44px tall and never narrower than 32px */
+/* header: the wordmark and the league line share a line; the four sheet buttons are one row,
+   icon over label, each at least 44px tall. Resync and Settings are not draft-time actions on a
+   phone and are left to the desktop. */
 .hdr{flex-wrap:wrap;gap:4px 10px;padding:8px 12px;align-items:flex-start}
-.wm{font-size:17px;line-height:1.5}
-.lg{font-size:12.5px;line-height:1.45;flex:1 1 170px;min-width:0}
-.hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:4px}
+.wm{font-size:15px;line-height:1.5}
+.lg{font-size:12px;line-height:1.4;flex:1 1 170px;min-width:0}
+.hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:3px}
 .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.3rem .35rem;font-size:12.5px;white-space:nowrap}
-.hdr .btn{flex-direction:column;gap:2px;padding:4px 0;font-size:12px;line-height:1.2;min-height:50px} .hdr .btn i{font-style:normal;font-size:15px;line-height:1}
+.hdr .btn{flex-direction:column;gap:1px;padding:3px 0;font-size:12px;line-height:1.2;min-height:46px} .hdr .btn i{font-style:normal;font-size:15px;line-height:1}
 .btn.sm{min-height:44px;font-size:.8rem;padding:0 .7rem}
 .copy{min-height:44px;display:inline-flex;align-items:center;padding:0 .7rem}
 /* the clock: the timer and the pick on one line, the next-turn span and the seats below */
@@ -38,19 +39,19 @@ html,body{height:auto;overflow:visible}
 .clk .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk .who b{color:var(--ink)}
 /* the lineup strip wraps: every chip stays reachable, and the label leads the first line with the
    chips flowing after it rather than taking a line of its own */
-.lineup{padding:6px 12px;gap:3px 4px;flex-wrap:wrap;align-items:center}
+.lineup{padding:5px 12px;gap:3px;flex-wrap:wrap;align-items:center}
 .lineup .k{margin-right:4px}
 .lineup .slots{display:contents}
-.lineup .slotc{padding:.12rem .34rem;font-size:12.8px;gap:4px}
+.lineup .slotc{padding:.1rem .3rem;font-size:12.5px;gap:4px;line-height:1.25}
 /* main */
-.main{display:flex;flex-direction:column;padding:8px 12px 18px;gap:8px}
+.main{display:flex;flex-direction:column;padding:8px 12px 10px;gap:8px}
 .count{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);line-height:1.45}
 .count b{color:var(--ink)}
 .count .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:-2px}
 .count .chip{font-family:var(--f-m);font-size:.75rem;font-weight:700;min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 .65rem;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface)}
 .count .chip:hover{color:var(--ink);border-color:var(--dim)}
 .count .chip i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px}
-.doors{display:flex;flex-direction:column;gap:6px}
+.doors{display:flex;flex-direction:column;gap:5px}
 /* the door: the desktop's, stacked. Edge, header, body; the open one grows in place. */
 .door{border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);display:grid;grid-template-columns:18px minmax(0,1fr);min-width:0;position:relative;cursor:pointer}
 .door.open{border-color:var(--gold-b);box-shadow:0 0 0 1px rgba(247,207,74,.25),0 0 18px rgba(212,160,23,.12);cursor:default}
@@ -83,7 +84,7 @@ html,body{height:auto;overflow:visible}
 .vs .u{display:inline;margin:0;white-space:normal;text-transform:none;letter-spacing:0;font-size:.8rem}
 /* the three cells on one line where they fit: lower-case labels, no letter-spacing, and the
    "instead of" lead as a cell of its own rather than a line of its own */
-.cost2{display:flex;gap:3px 8px;flex-wrap:wrap;align-items:baseline} .cost2 .cc{gap:4px} .cost2 .cc .cv{font-size:.84rem} .cost2 .cc .ck{letter-spacing:0;text-transform:none;font-size:.78rem}
+.cost2{display:flex;gap:3px 8px;flex-wrap:wrap;align-items:baseline} .cost2 .cc{gap:4px} .cost2 .cc .cv{font-size:.8rem} .cost2 .cc .ck{letter-spacing:0;text-transform:none;font-size:.78rem}
 .cost2 .lead{font-size:.84rem;color:var(--muted)}
 .door .disp{font-size:.84rem;margin:0}
 .door .empty{padding:6px 12px 10px;color:var(--dim);font-size:.84rem;line-height:1.5}
@@ -96,21 +97,21 @@ html,body{height:auto;overflow:visible}
 .ctx2 .dear{display:block;color:var(--amber-b)}
 .ctx2 .tankcap{margin-top:3px}
 .then{border-top:1px solid var(--line);margin:4px 12px 0;padding:7px 0 9px}
-.then .ch{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700}
+.then .ch{display:block;line-height:1.45}
+.then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700;margin-right:6px}
 .cards{display:flex;flex-direction:column;gap:5px;margin-top:5px}
 /* a card is the desktop's, folded: face, name and sub on the left, the value on the right, the
    cost and one fact line under. The card itself opens the numbers; the copy button lives there. */
 .card{border:1px solid var(--line);border-radius:var(--r);padding:6px 9px;background:var(--surface-2);min-width:0;display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:2px 8px;align-items:start;cursor:pointer}
 .card:hover{border-color:var(--line-2)}
-.card .face{margin-top:2px}
+.card .face{grid-row:1/3;width:28px;height:28px;font-size:.75rem;margin-top:1px}
 .card .nm{font-weight:700;font-size:.95rem;line-height:1.2;min-width:0}
 .card .nm .rk{font-family:var(--f-m);font-size:.75rem;color:var(--dim);margin-right:2px}
-.card .sub{font-size:.78rem;color:var(--muted);margin-top:1px;display:block}
+.card .sub{font-size:.78rem;color:var(--muted);grid-column:2/-1;margin-top:-1px}
 .card .val{text-align:right;white-space:nowrap}
 .card .val .big{font-size:1.02rem;line-height:1.2;display:block}
 .card .go{font-size:.75rem;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;font-weight:700;white-space:nowrap}
-.card .cost2{grid-column:2/-1}
+.card .cost2{grid-column:1/-1}
 .card ul{grid-column:2/-1;margin:1px 0 0;padding:0;list-style:none;font-size:.82rem;color:var(--muted);line-height:1.4}
 .card li b{color:var(--ink)} .card li .mono{color:var(--ink)}
 .card.one{display:block;color:var(--dim);font-size:.84rem;line-height:1.5;cursor:default}
@@ -140,11 +141,9 @@ html,body{height:auto;overflow:visible}
 <div class="room">
   <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
   <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
-    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every<br>name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
-      <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft<br>board</button>
-      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button>
-      <button class="btn" data-tip="Not wired up
-A placeholder, so the layout is complete. This prototype reads one fixed capture, so there is nothing here to re-read; in the live room this re-pulls the draft state and moves the &quot;as of pick&quot; mark in the league line."><i>⟳</i>Resync</button><button class="btn" data-tip="Settings"><i>⚙</i>Settings</button></span></header>
+    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
+      <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft board</button>
+      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button></span></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
   <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
   <div class="main">
@@ -207,7 +206,7 @@ function altsHTML(d, best, list){
   /* against the board's first name: across positions the three cells (now, at your next turn, both
      picks); within his own position the plain gap, since the fact line already carries the drop */
   const same = c => c.position === L.position;
-  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span style="min-width:0"><span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span></span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
+  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
     <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
   return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · lasts to #${M.NEXT_NO}? <span class="wh">${WITHHELD_WORD}</span></span></div>
     <div class="cards" data-list="cards">${dep.map(card).join("")}</div>
@@ -223,7 +222,7 @@ function doorHTML(d, idx){
   else body = `<div class="db"><div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>
       ${vsLeader(best)}${M.displaced(best) ? M.dispShort(best) : ""}
       ${open ? `<div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div>` : ""}</div>`;
-  const ctx = open && best ? `<div class="ctx2">${dem ? `<div class="dem">${dem}</div>` : ""}${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}${doorTankCap(M, pos)}</div>` : "";
+  const ctx = open && best ? `<div class="ctx2">${dem ? `<div class="dem">${dem}${M.shareNote() ? " · " + M.shareNote() : ""}</div>` : ""}${M.waitLine(pos, true)}${pos === M.DEAREST && M.POS_BY_COST.length > 1 ? `<span class="dear">The dearest position to wait on right now.</span>` : ""}${doorTankCap(M, pos)}</div>` : "";
   const alts = open && best ? altsHTML(d, best, list) : "";
   const x = open ? `<button class="x" data-x="1" aria-label="Collapse the ${d.label} door">✕</button>` : "";
   return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}${ctx}${alts}</div>${x}</section>`;
@@ -240,9 +239,8 @@ function countHTML(w){
     ? `<span class="chips">${hidden.map(chip).join("")}${held.length ? `<span>streamable, set aside:</span>${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button>` : ""}</span>`
     : held.length ? `<span class="chips">${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button></span>`
     : (STREAM_HIDE ? "" : `<span class="chips"><button class="chip" data-streamtoggle>set streamable aside</button></span>`);
-  return `<span><b>${all.length} positions</b> this league can start · <b>showing ${w.length}</b>, in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""}${tail}</span>
-    ${chips}
-    <span class="note"><b>the board: ${M.C.length} names</b>${M.shareNote() ? " · " + M.shareNote() : ""}</span>`;
+  return `<span><b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""} · <b>${M.C.length} names</b> on the board${tail}</span>
+    ${chips}`;
 }
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
 function drawerHTML(){
