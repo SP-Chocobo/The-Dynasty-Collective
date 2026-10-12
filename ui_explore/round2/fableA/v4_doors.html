@@ -1134,8 +1134,10 @@ function doorVs(M, c){
   if (c.player_id !== L.player_id) return `Instead of ${M.short(L.name)}:`;
   return M.C[1] ? `<b>First on the board</b>: ${f1(L.team_acquisition_value - M.C[1].team_acquisition_value)} ahead of ${M.short(M.C[1].name)} (${M.C[1].position}).` : "<b>First on the board.</b>";
 }
-/* who: the face, the name with its availability mark, and the sub line */
-const doorWho = (M, d, best) => `<div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${best.name}${M.availMark(best)}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>`;
+/* who: the face, the name with its availability mark, and the sub line. `nameHTML` lets a
+   surface draw the name its own way (the phones glue the mark to the last word); left out, it is
+   the desktop's exact string. */
+const doorWho = (M, d, best, nameHTML) => `<div class="who">${M.face(best)}<span style="min-width:0"><div class="nm">${nameHTML === undefined ? `${best.name}${M.availMark(best)}` : nameHTML}</div><div class="sub">${d.compound ? best.position + " · " : ""}${best.team} · ${M.pts(best)} · ${M.slotShort(best)}${best.injury_status ? ` · ${M.avail(best)}` : ""}</div></span></div>`;
 
 /* ============================================================================================
    THE PHONE SURFACES' SHARED PIECES (m1-m3). Phone-only: the desktop draws its count line and
@@ -1172,6 +1174,14 @@ function phoneCount(M, w, streamHide, extra){
    in the open door. Read from costOf, never recomputed from the values beside it (#126). */
 const glanceCells = (M, b) => M.costOf(b, M.LEADER).filter(c => c.k === "now" || c.k === "both picks" || c.v === "not measured");
 const glanceHTML = (M, b) => glanceCells(M, b).map(c => `<span class="cc ${c.fav ? "fav" : ""}"><span class="ck">${c.k}</span><span class="cv">${c.v}</span></span>`).join("");
+/* a name with its availability mark, the mark glued to the last word (or to the part after the
+   last hyphen) so it can never land alone on a line of its own: at 360px "Travis Etienne / +"
+   did, in three of four tiles. text-wrap:pretty was tried first and Chromium's orphan rule does
+   not fire on a two-line name, so the glue is a span the stylesheet keeps on one line (.nw). */
+function phoneName(M, c){
+  const n = c.name, mark = M.availMark(c), i = Math.max(n.lastIndexOf(" "), n.lastIndexOf("-"));
+  return i < 0 ? `${n}${mark}` : `${n.slice(0, i + 1)}<span class="nw">${n.slice(i + 1)}${mark}</span>`;
+}
 /* the value, then the name against the board's first name: the desktop's sentence (doorVs) for
    the leader, and for anyone else the same lead-in as a cell before the model's own cells */
 function phoneVs(M, c){
@@ -1196,7 +1206,7 @@ function phoneAlts(M, d, best, list, after){
   const dep = M.doorDepth(d, best, list), rest = list.length - 1 - dep.length;
   const slotSame = [best].concat(dep).every(c => M.slotShort(c) === M.slotShort(best));
   const same = c => c.position === L.position;
-  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${c.name}${M.availMark(c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
+  const card = (c, i) => `<div class="card" data-row data-work="${c.player_id}" role="button" tabindex="0">${M.face(c, "sm")}<span class="nm"><span class="rk">${d.compound ? c.position : i + 2}</span> ${phoneName(M, c)}${M.armMark(c)}</span><span class="val"><span class="big">${f1(c.team_acquisition_value)}</span></span><span class="sub">${d.compound ? c.position + " · " : ""}${c.team} · #${c.rank} on the board · ${M.pts(c)}</span>${same(c) ? "" : `<span class="cost2">${M.costHTML(c, L)}</span>`}
     <ul>${slotSame ? "" : `<li>${M.slotPhrase(c)}</li>`}<li>${same(c) ? `<span class="mono">${sgn(c.team_acquisition_value - L.team_acquisition_value)}</span> vs ${M.short(L.name)} · ` : ""}<b>${M.tierWord(c)}</b> behind him <span class="mono">${f1(c.positional_cliff.gap)}</span> ${M.cliffTo(c)}${c.injury_status ? ` · ${M.avail(c)}` : ""} <span class="go">numbers ›</span></li></ul></div>`;
   return `<div class="then"><div class="ch"><span class="t">then at ${d.key}${d.compound ? " · best of each" : ""}</span><span class="note">${after ? `after ${M.short(best.name)} · ` : ""}against ${M.short(L.name)}, the board's first name${slotSame ? ` · all ${M.slotShort(best)}` : ""} · ${withheldAsk(M.NEXT_NO)}</span></div>
     <div class="cards" data-list="cards">${dep.map(card).join("")}</div>

@@ -93,9 +93,9 @@ html,body{height:auto;overflow:visible}
 .db{padding:5px 12px 8px;display:flex;flex-direction:column;gap:4px}
 .who{display:flex;align-items:center;gap:10px}
 .who .nm{font-weight:700;font-size:1rem;line-height:1.2}
-/* a name wraps before its availability mark, never after it: the mark is one glyph and used
-   to land alone on a line of its own at 360px ("Travis Etienne / +") */
-.who .nm,.card .nm{text-wrap:pretty}
+/* a name wraps before its availability mark, never after it: phoneName glues the mark to the
+   last word, and this keeps the two on one line ("Travis Etienne / +" was the 360px result) */
+.nw{white-space:nowrap}
 .who .sub{font-size:.78rem;color:var(--muted);margin-top:2px}
 .door .face{width:36px;height:36px;font-size:.8rem}
 .vs{font-size:.84rem;color:var(--muted);line-height:1.5;margin:0} .vs b{color:var(--ink)}
@@ -206,7 +206,7 @@ function doorHTML(d, idx){
     <div class="st ${h.need ? "need" : ""}">${h.text}</div></div>`;
   let body;
   if (!best) body = `<div class="empty">${doorHeld(M, d)} ${doorNone(M, d)}</div>`;
-  else body = `<div class="db">${doorWho(M, d, best)}
+  else body = `<div class="db">${doorWho(M, d, best, phoneName(M, best))}
       ${phoneVs(M, best)}${M.displaced(best) ? M.dispShort(best) : ""}
       ${open ? `<div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div>` : ""}</div>`;
   const ctx = open && best ? phoneCtx(M, d, pos) : "";
