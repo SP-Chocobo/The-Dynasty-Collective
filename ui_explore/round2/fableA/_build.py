@@ -78,7 +78,11 @@ css = (SRC / "shared.css").read_text()
 js = (SRC / "shared.js").read_text()
 ok = True
 jobs = []
-for tpl in sorted(SRC.glob("v*.tpl.html")):
+# Mobile templates (m*) build through the same pipeline as the desktop ones, on purpose: one
+# fixture, one vocabulary dump, one withheld strip, one shared layer. A mobile surface built
+# beside this one instead of through it would be a second source of truth for every number
+# on it (#126), and the withheld guard -- which globs this directory -- would not cover it.
+for tpl in sorted(SRC.glob("v*.tpl.html")) + sorted(SRC.glob("m*.tpl.html")):
     if tpl.name.startswith("v1_"):
         jobs.append((tpl, tpl.name.replace(".tpl.html", ".html"), "const WITH_RAIL=false;"))
         jobs.append((tpl, tpl.name.replace(".tpl.html", "_rail.html"), "const WITH_RAIL=true;"))
