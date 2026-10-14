@@ -309,7 +309,15 @@ html,body{height:auto;overflow:visible}
    below it, so a first screen that happens to end in a gutter never reads as a finished page.
    Pointer-through, and its label is a pseudo-element: a signpost over the content, never content
    under a sibling. Below the scrim (20) and the sheets (30). phoneFold in shared.js drives it. */
-.fold{position:fixed;left:0;right:0;bottom:0;height:52px;pointer-events:none;z-index:8;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:linear-gradient(180deg,rgba(18,15,10,0) 0%,rgba(18,15,10,.94) 65%);opacity:0;transition:opacity .15s}
+/* NAV LIVES AT THE BOTTOM. The four sheet buttons used to sit in the header, 56px of the first
+   screen spent on navigation before a single recommendation. A phone's bottom edge is where a
+   thumb rests and the top is where it does not, so the nav moved to the thumb and the
+   recommendations moved up into the space it left. */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:9;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:5px 10px calc(5px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line-2)}
+.dock .btn{flex-direction:column;gap:1px;padding:3px 0;font-size:12px;line-height:1.2;min-height:46px}
+.dock .btn i{font-style:normal;font-size:15px;line-height:1}
+.room{padding-bottom:68px}
+.fold{position:fixed;left:0;right:0;bottom:68px;height:52px;pointer-events:none;z-index:8;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:linear-gradient(180deg,rgba(18,15,10,0) 0%,rgba(18,15,10,.94) 65%);opacity:0;transition:opacity .15s}
 .fold.on{opacity:1}
 .fold::after{content:attr(data-cue);font-family:var(--f-m);font-size:12.5px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);padding:4px 11px}
 .scrim,.sheet{position:fixed}
@@ -323,7 +331,7 @@ html,body{height:auto;overflow:visible}
 /* header: the wordmark and the league line share a line; the four sheet buttons are one row,
    icon over label, each at least 44px tall. Resync and Settings are not draft-time actions on a
    phone and are left to the desktop. */
-.hdr{flex-wrap:wrap;gap:4px 10px;padding:8px 12px;align-items:flex-start}
+.hdr{flex-wrap:wrap;gap:4px 10px;padding:7px 12px;align-items:baseline}
 .wm{font-size:15px;line-height:1.5}
 .lg{font-size:12px;line-height:1.4;flex:1 1 170px;min-width:0}
 .hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:3px}
@@ -343,11 +351,21 @@ html,body{height:auto;overflow:visible}
 .clk2 .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk2 .who b{color:var(--ink)}
 /* what reveal() scrolls to lands just below the stuck clock rather than beneath it */
 .door,.panel,.doors{scroll-margin-top:calc(var(--clkh,42px) + 4px)}
-/* the lineup strip wraps: every chip stays reachable, and the label leads the first line with the
-   chips flowing after it rather than taking a line of its own */
-.lineup{padding:5px 12px;gap:3px;flex-wrap:wrap;align-items:center}
-.lineup .k{margin-right:4px}
-.lineup .slots{display:contents}
+/* THE LINEUP FOLDS. Wrapped pills cost three rows here and five in the 13-starter formats, all
+   of it above the first recommendation. It now leads with a summary that answers the same
+   question in one line -- how many starters are filled, which slots are open, and where the open
+   door's best would land -- and the pills themselves are one tap away. Nothing was removed from
+   the surface; it stopped costing five rows to say it. */
+.lineup{display:block;padding:0;border-bottom:1px solid var(--line-2)}
+.lsum{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:4px 12px;background:none;border:0;border-radius:0;text-align:left;font:inherit;color:var(--muted);cursor:pointer}
+.lsum .k{flex:0 0 auto}
+.lsum .v{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.3}
+.lsum .v b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.lsum .v .fills{color:var(--emerald)}
+.lsum .car{flex:0 0 auto;font-size:.8rem;color:var(--dim)}
+.lsum:hover .car{color:var(--ink)}
+.lineup .slots{display:flex;flex-wrap:wrap;gap:3px;padding:0 12px 7px}
+.lineup[data-open="0"] .slots{display:none}
 .lineup .slotc{padding:.1rem .3rem;font-size:12.5px;gap:4px;line-height:1.25}
 /* main */
 .main{display:flex;flex-direction:column;padding:8px 12px 10px;gap:8px}
@@ -405,6 +423,16 @@ html,body{height:auto;overflow:visible}
 .ctx2 .dem{color:var(--dim)} .ctx2 .dem b{color:var(--muted)}
 .ctx2 .dear{display:block;color:var(--amber-b)}
 .ctx2 .tankcap{margin-top:3px}
+/* THE OTHER NAMES AT THIS POSITION ARE A DOOR, NOT A LIST. They used to stack under the open
+   row as cards, which pushed every other door below the fold and made the open row the page.
+   The button hands them to the drawer, already filtered to this position, where the full list
+   lives anyway -- so the stack stays a stack and the override surface does the overriding. */
+/* .btn is nowrap, which a three-part label cannot be at 320px: the parts measured 358px and
+   took the whole page sideways. The label wraps, the count and the chevron do not. */
+.expand{width:100%;min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:4px 8px;padding:5px 11px;font-size:.88rem;text-align:left;white-space:normal;flex-wrap:wrap}
+.expand > span:first-child{flex:1 1 auto;min-width:0;line-height:1.25}
+.expand em{font-style:normal;font-family:var(--f-m);font-size:.78rem;color:var(--muted);font-weight:600;white-space:nowrap;flex:0 0 auto}
+.expand .car{color:var(--dim);font-size:1rem}
 .then{border-top:1px solid var(--line);margin:4px 12px 0;padding:7px 0 9px}
 .then .ch{display:block;line-height:1.45}
 .then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700;margin-right:6px}
@@ -449,13 +477,10 @@ html,body{height:auto;overflow:visible}
 </style></head><body>
 <div class="room">
   <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
-  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span>
-    <span class="r"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
-      <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft board</button>
-      <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button></span></header>
+  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span></div>
   <div class="clk2"><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
-  <div class="lineup"><span class="k">Your lineup</span><div class="slots" id="slots"></div></div>
+  <div class="lineup" id="lineup" data-open="0"><button class="lsum" id="lsum" aria-expanded="false" aria-controls="slots"></button><div class="slots" id="slots"></div></div>
   <div class="main">
     <div class="count" id="count"></div>
     <div class="doors" id="doors"></div>
@@ -466,6 +491,9 @@ html,body{height:auto;overflow:visible}
   <section class="sheet top" id="shRosters" aria-hidden="true"><div class="sh"><span class="t">Rosters</span><span class="note" id="rosterNote"></span><button class="x" data-close="1">close ✕</button></div><div class="sc"><div class="rosterGrid" id="allRosters"></div></div></section>
   <section class="sheet top" id="shBoard" aria-hidden="true"><div class="sh"><span class="t">Draft board</span><span class="note">every pick made so far; the rest are coordinates</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="dbHost"></div></section>
   <section class="sheet right" id="shDebate" aria-hidden="true"><div class="sh"><span class="t">Debate</span><button class="x" data-close="1">close ✕</button></div><div class="sc" id="debate"></div></section>
+  <nav class="dock"><button class="btn" data-sheet="shAll" aria-expanded="false"><i>≣</i>Every name</button><button class="btn" data-sheet="shRosters" aria-expanded="false"><i>▤</i>Rosters</button>
+    <button class="btn" data-sheet="shBoard" aria-expanded="false"><i>▦</i>Draft board</button>
+    <button class="btn paid" data-sheet="shDebate" aria-expanded="false" data-tip="Billed, and only while you are on the clock."><i>⚑</i>Debate</button></nav>
   <div class="fold" id="fold" data-cue="" aria-hidden="true"></div>
 </div>
 <script>
@@ -1390,7 +1418,9 @@ function doorHTML(d, idx){
       ${phoneVs(M, best)}${M.displaced(best) ? M.dispShort(best) : ""}
       ${open ? `<div class="acts">${M.copyBtn(best)}<button class="btn sm" data-work="${best.player_id}">numbers</button></div>` : ""}</div>`;
   const ctx = open && best ? phoneCtx(M, d, pos) : "";
-  const alts = open && best ? phoneAlts(M, d, best, list) : "";
+  const rest = Math.max(0, list.length - 1);
+  const alts = !(open && best) ? "" : `<div class="then"><button class="btn expand" data-expand="${d.key}">
+      <span>Expanded ${doorLabel(d)} options</span><em>${rest ? `${rest} more ${rest === 1 ? "name" : "names"}` : "no other name"}</em><span class="car">&rsaquo;</span></button></div>`;
   const x = open ? `<button class="x" data-x="1" aria-label="Collapse the ${d.label} door">✕</button>` : "";
   return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}${ctx}${alts}</div>${x}</section>`;
 }
@@ -1417,12 +1447,35 @@ function draw(){
   document.getElementById("doors").innerHTML = w.map(d => doorHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
   document.getElementById("count").innerHTML = phoneCount(M, w, STREAM_HIDE);
   const d = openKey ? M.DOORS.find(x => x.key === openKey) : null, b = d ? doorBest(d) : M.LEADER;
-  document.getElementById("slots").innerHTML = M.rosterStrip(b, false);
+  drawLineup(b);
   document.getElementById("debate").innerHTML = M.squad(openKey ? `the ${openKey} door against the board's first name` : `the board's first name against the field`);
   document.getElementById("allRosters").innerHTML = M.allRosters();
   document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
   drawerHTML();
   requestAnimationFrame(markScrollers); requestAnimationFrame(phoneFold);
+}
+/* The pills in a sentence. Counts come from the model's own roster (M.STARTERS, filled and
+   open), never recounted from the markup, and the lit slot is the one rosterStrip would light
+   -- so the summary and the pills under it cannot disagree about what you hold. */
+function lineupSummary(c){
+  const filled = M.STARTERS.filter(r => r.p).length, total = M.STARTERS.length;
+  const openSlots = M.STARTERS.filter(r => !r.p).map(r => r.slot);
+  const tally = openSlots.reduce((m, k) => (m[k] = (m[k] || 0) + 1, m), {});
+  const openText = openSlots.length
+    ? Object.keys(tally).map(k => tally[k] > 1 ? `${tally[k]} ${k}` : k).join(", ") + " open"
+    : "every starting slot filled";
+  const s = c ? M.slotFor(c) : null;
+  const lands = s && s.kind !== "bench" && s.row && !s.row.p
+    ? ` · <span class="fills">${M.short(c.name)} &rarr; ${s.row.slot}</span>` : "";
+  return `<span class="k">Your lineup</span><span class="v"><b>${filled} of ${total}</b> starters · ${openText}${lands}</span><span class="car"></span>`;
+}
+function drawLineup(c){
+  const host = document.getElementById("lineup"), btn = document.getElementById("lsum");
+  const open = host.dataset.open === "1";
+  btn.innerHTML = lineupSummary(c);
+  btn.querySelector(".car").textContent = open ? "hide \u25b4" : "show \u25be";
+  btn.setAttribute("aria-expanded", String(open));
+  document.getElementById("slots").innerHTML = M.rosterStrip(c, false);
 }
 function reveal(key){ const el = document.querySelector(`.door[data-door="${key}"]`); if (el) el.scrollIntoView({block:"start", behavior:"smooth"}); }
 function load(key, fmt){
@@ -1436,6 +1489,13 @@ function load(key, fmt){
 const ui = wireChrome({formats:true, tag:"m1 · STACK", sub:"phone · the doors as a stack, one opens in place", hypothesis:`<b>What this is.</b> The phone side of the doors room. The same ${WINDOW} doors surface in the board's order, as a vertical stack of compact rows; each closed row still carries who, the value, and first-on-the-board or instead-of, so the stack answers without a tap. Tap a row and it opens in place with what the desktop's open door and its card strip carry: the wait line, the pool, and the position's other names priced against the board's first name. The X in its corner collapses it; the reader never loses their place. The drawer (≣) is the override, every name at any position. The bare URL lands on the stack with no door open; <code>?open</code> lands with the leader's door open.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); document.getElementById("workCopy").innerHTML = M.copyBtn(c); ui.open("shWork"); return; }
+  const ls = e.target.closest("#lsum");
+  if (ls) { const host = document.getElementById("lineup");
+    host.dataset.open = host.dataset.open === "1" ? "0" : "1";
+    const d = openKey ? M.DOORS.find(x => x.key === openKey) : null;
+    drawLineup(d ? doorBest(d) : M.LEADER); requestAnimationFrame(phoneFold); return; }
+  const ex = e.target.closest("[data-expand]");
+  if (ex) { filt = ex.dataset.expand; drawerHTML(); ui.open("shAll"); requestAnimationFrame(markScrollers); return; }
   const bn = e.target.closest("[data-bench]");
   if (bn) { const seat = bn.dataset.bench;
     M.benchToggled.has(seat) ? M.benchToggled.delete(seat) : M.benchToggled.add(seat);

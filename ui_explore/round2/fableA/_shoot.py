@@ -106,7 +106,11 @@ PROBE = """(opt) => {
     const rects = el.getClientRects(); const b = rects.length ? rects[0] : el.getBoundingClientRect();
     // elementFromPoint answers only for the viewport, so below-fold rows are not asked about
     if (MOB && (b.top < 0 || b.bottom > innerHeight)) return false; const x = Math.min(innerWidth - 1, Math.max(0, b.left + Math.min(b.width, 40) / 2)), y = Math.min(innerHeight - 1, Math.max(0, b.top + b.height / 2));
-    const hit = document.elementFromPoint(x, y); if (!hit) return false; return !(hit === el || el.contains(hit) || hit.contains(el)) && !hit.classList.contains('scrim') && !hit.closest('.sheet'); }).map(el => tag(el) + ': ' + el.textContent.trim().slice(0, 30)).slice(0, 12);
+    const hit = document.elementFromPoint(x, y); if (!hit) return false; // A fixed nav bar or fold cue painted over content is a DELIBERATE overlay, the same class of
+    // thing as the scrim, not an accidental sibling. What a fixed bar can genuinely break is
+    // different and is asserted separately below: content TRAPPED under it, unreachable at any
+    // scroll position. Exempting it here without that assertion would be a hole.
+    return !(hit === el || el.contains(hit) || hit.contains(el)) && !hit.classList.contains('scrim') && !hit.closest('.sheet,.dock,.fold'); }).map(el => tag(el) + ': ' + el.textContent.trim().slice(0, 30)).slice(0, 12);
   // cut off by the viewport: a text element not inside any scroller/clipper whose box runs past the fold
   const clippedByAncestor = el => { let a = el.parentElement; while (a && a !== document.body) { const acs = getComputedStyle(a); if (acs.overflow !== 'visible' || acs.overflowY !== 'visible') return a; a = a.parentElement; } return null; };
   r.cutOff = all.filter(el => { const cs = getComputedStyle(el); if (cs.display === 'none') return false; const hasText = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); if (!hasText) return false;
@@ -125,6 +129,18 @@ PROBE = """(opt) => {
       const scrollable = /(auto|scroll)/.test(cs.overflowX);
       return `${tag(el)} ${el.clientWidth}<${el.scrollWidth}px ${scrollable ? "(scrolls, needs an affordance)" : "(CLIPPED, unreachable)"}`; })
     .slice(0, 8);
+  // TRAPPED UNDER THE DOCK. A fixed bottom bar hides whatever is behind it at every scroll
+  // position, so the document must carry at least the bar's height of clearance below its
+  // lowest content -- otherwise the last row can never be scrolled out from under it and is
+  // unreachable rather than merely covered.
+  r.dockTrap = null;
+  if (MOB) { const dock = document.querySelector('.dock');
+    if (dock) { const dh = dock.getBoundingClientRect().height, sy = scrollY;
+      let low = 0;
+      all.forEach(el => { if (el.closest('.dock,.fold') || !el.textContent.trim()) return;
+        const b = el.getBoundingClientRect(); if (b.width > 0 && b.height > 0) low = Math.max(low, b.bottom + sy); });
+      const clear = document.documentElement.scrollHeight - low;
+      if (clear < dh - 1) r.dockTrap = `lowest content ends ${Math.round(clear)}px above the document bottom, under a ${Math.round(dh)}px dock`; } }
   // tap targets: a thumb needs 44px, and a control that misses it is a control that gets
   // mis-pressed under a draft clock. Asserted on mobile only -- a mouse does not care.
   r.tap = !MOB ? [] : all.filter(el => vis(el) && !el.closest('#rev,#hyp')
@@ -199,6 +215,7 @@ with sync_playwright() as p:
                     f"document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {budget}")
                 if r["tap"]: problems.append("tap target under 44px " + json.dumps(r["tap"]))
                 if r["hClip"]: problems.append("runs off the right edge " + json.dumps(r["hClip"]))
+                if r.get("dockTrap"): problems.append("content trapped under the dock: " + r["dockTrap"])
                 if r.get("foldMissing"): problems.append("the page runs on below the fold and nothing at the fold says so")
             elif any(r["pageScroll"]): problems.append("pageScroll")
             if r["clipped"]: problems.append("clipped " + json.dumps(r["clipped"]))
