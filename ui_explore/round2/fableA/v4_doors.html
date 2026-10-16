@@ -1161,7 +1161,15 @@ function phoneCount(M, w, streamHide, extra){
     ? `<span class="chips">${hidden.map(chip).join("")}${held.length ? `<span>streamable, set aside:</span>${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button>` : ""}</span>`
     : held.length ? `<span class="chips">${held.map(chip).join("")}<button class="chip" data-streamtoggle>show them</button></span>`
     : (streamHide ? "" : `<span class="chips"><button class="chip" data-streamtoggle>set streamable aside</button></span>`);
-  return `<span><b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${all.length > w.length && !tail ? ": the window slides as the board changes" : ""} · <b>${M.C.length} names</b> on the board${extra || ""}${tail}</span>
+  /* The window sentence explains a window. When every door the league can start IS on the
+     surface there is no window to explain -- "4 positions this league can start, showing 4"
+     costs two lines on a phone to say nothing the reader can act on. It is kept in full
+     wherever a door is actually held back, which is where it earns its length. */
+  const windowed = all.length > w.length;
+  const lead = windowed
+    ? `<b>${all.length} positions</b> this league can start, <b>showing ${w.length}</b> in the board's order${!tail ? ": the window slides as the board changes" : ""}`
+    : `<b>${w.length} doors</b> in the board's order`;
+  return `<span>${lead} · <b>${M.C.length} names</b> on the board${extra || ""}${tail}</span>
     ${chips}`;
 }
 /* THE GLANCE CELLS. A tile or a chip has room for a name and one line of cost, and the one cell

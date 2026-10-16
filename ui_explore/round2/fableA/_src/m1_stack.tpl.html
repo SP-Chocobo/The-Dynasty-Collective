@@ -41,9 +41,13 @@ html,body{height:auto;overflow:visible}
 /* header: the wordmark and the league line share a line; the four sheet buttons are one row,
    icon over label, each at least 44px tall. Resync and Settings are not draft-time actions on a
    phone and are left to the desktop. */
-.hdr{flex-wrap:wrap;gap:4px 10px;padding:7px 12px;align-items:baseline}
-.wm{font-size:15px;line-height:1.5}
-.lg{font-size:12px;line-height:1.4;flex:1 1 170px;min-width:0}
+/* NO HEADER BAND ON A PHONE. The wordmark and the league settings took 70px and two rules
+   above the clock, and neither decides a pick: the product's name, the team count and the
+   scoring are the same on every screen of the draft. They moved into the context fold below,
+   where they are one tap away and cost nothing at rest. */
+.hdr{display:none}
+.wm{font-size:14px;line-height:1.4;display:block;margin-bottom:2px}
+.lg{font-size:12.5px;line-height:1.45;display:block}
 .hdr .r{flex:1 1 100%;margin-left:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:3px}
 .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.3rem .35rem;font-size:12.5px;white-space:nowrap}
 .hdr .btn{flex-direction:column;gap:1px;padding:3px 0;font-size:12px;line-height:1.2;min-height:46px} .hdr .btn i{font-style:normal;font-size:15px;line-height:1}
@@ -56,9 +60,21 @@ html,body{height:auto;overflow:visible}
    with the page, in .clk2 under it. Below the scrim (20) and the sheets (30). */
 .clk{position:sticky;top:0;z-index:6;flex-wrap:nowrap;gap:12px;padding:5px 12px;font-size:14px}
 .timer{font-size:20px} .upnow{font-size:15px}
-.clk2{display:flex;flex-wrap:wrap;gap:2px 12px;padding:4px 12px 6px;border-bottom:1px solid var(--line-2);background:var(--surface);font-size:13px;color:var(--muted)}
-.clk2 .spanline{flex:1 1 100%;flex-wrap:wrap;gap:4px 10px;font-size:13px}
-.clk2 .who{display:block;flex:1 1 100%;font-size:13px;color:var(--muted)} .clk2 .who b{color:var(--ink)}
+/* THE CONTEXT FOLDS, the same way the lineup does. At rest one line answers the only question
+   here that moves a pick -- when your next turn comes and how long the wait is. The seats, the
+   board's last pick, the league's own settings and the capture's provenance are all real and
+   all still here, one tap down, where they stop competing with the recommendations for the
+   first screen. Two folds with one behaviour rather than two bands with none. */
+.clk2{display:block;padding:0;border-bottom:1px solid var(--line-2);background:var(--surface)}
+.csum{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:4px 12px;background:none;border:0;text-align:left;font:inherit;color:var(--muted);cursor:pointer}
+.csum .v{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.3}
+.csum .v b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.csum .car{flex:0 0 auto;font-size:.8rem;color:var(--dim)}
+.csum:hover .car{color:var(--ink)}
+.cbody{padding:0 12px 7px;font-size:13px;color:var(--muted);line-height:1.5}
+.clk2[data-open="0"] .cbody{display:none}
+.cbody .spanline{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:13px;margin-top:2px}
+.cbody .who{display:block;font-size:13px;color:var(--muted);margin-top:2px} .cbody .who b{color:var(--ink)}
 /* what reveal() scrolls to lands just below the stuck clock rather than beneath it */
 .door,.panel,.doors{scroll-margin-top:calc(var(--clkh,42px) + 4px)}
 /* THE LINEUP FOLDS. Wrapped pills cost three rows here and five in the 13-starter formats, all
@@ -187,9 +203,10 @@ html,body{height:auto;overflow:visible}
 </style></head><body>
 <div class="room">
   <div class="rev" id="rev"></div><div class="hypbox" id="hyp" hidden></div>
-  <header class="hdr"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span></header>
+  <header class="hdr"></header>
   <div class="clk"><span class="timer"><small>clock</small>1:27</span><span class="upnow" id="upnow"></span></div>
-  <div class="clk2"><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div>
+  <div class="clk2" id="clk2" data-open="0"><button class="csum" id="csum" aria-expanded="false" aria-controls="cbody"></button>
+    <div class="cbody" id="cbody"><span class="wm">Gold Wyrm</span><span class="lg" id="lg"></span><span class="spanline" id="spanline"></span><span class="who" id="boardn"></span></div></div>
   <div class="lineup" id="lineup" data-open="0"><button class="lsum" id="lsum" aria-expanded="false" aria-controls="slots"></button><div class="slots" id="slots"></div></div>
   <div class="main">
     <div class="count" id="count"></div>
@@ -267,12 +284,29 @@ function draw(){
   document.getElementById("doors").innerHTML = w.map(d => doorHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
   document.getElementById("count").innerHTML = phoneCount(M, w, STREAM_HIDE);
   const d = openKey ? M.DOORS.find(x => x.key === openKey) : null, b = d ? doorBest(d) : M.LEADER;
-  drawLineup(b);
+  drawLineup(b); drawContext();
   document.getElementById("debate").innerHTML = M.squad(openKey ? `the ${openKey} door against the board's first name` : `the board's first name against the field`);
   document.getElementById("allRosters").innerHTML = M.allRosters();
   document.getElementById("rosterNote").innerHTML = `every roster as a lineup · the rosters picking before #${M.NEXT_NO} are lit`;
   drawerHTML();
   requestAnimationFrame(markScrollers); requestAnimationFrame(phoneFold);
+}
+/* The one line of context that moves a pick: which round, and how long until you act again.
+   Both come from the model (S.round/S.rounds, NEXT_PICK, AFTER_ME), never restated here. */
+function contextSummary(){
+  // S.intervening, not a count of my own: M.waitShort() already publishes this number in the
+  // expanded body right below, and two counts of the same gap that can disagree is the defect
+  // this repo keeps paying for. nextLabel is a value on the model, not a function.
+  const away = M.S.intervening;
+  return `<span class="v"><b>Round ${M.S.round} of ${M.S.rounds}</b> \u00b7 next turn <b>${M.nextLabel}</b> \u00b7 `
+    + `${away} ${away === 1 ? "pick" : "picks"} away</span><span class="car"></span>`;
+}
+function drawContext(){
+  const host = document.getElementById("clk2"), btn = document.getElementById("csum");
+  const open = host.dataset.open === "1";
+  btn.innerHTML = contextSummary();
+  btn.querySelector(".car").textContent = open ? "less \u25b4" : "more \u25be";
+  btn.setAttribute("aria-expanded", String(open));
 }
 /* The pills in a sentence. Counts come from the model's own roster (M.STARTERS, filled and
    open), never recounted from the markup, and the lit slot is the one rosterStrip would light
@@ -309,6 +343,10 @@ function load(key, fmt){
 const ui = wireChrome({formats:true, tag:"m1 · STACK", sub:"phone · the doors as a stack, one opens in place", hypothesis:`<b>What this is.</b> The phone side of the doors room. The same ${WINDOW} doors surface in the board's order, as a vertical stack of compact rows; each closed row still carries who, the value, and first-on-the-board or instead-of, so the stack answers without a tap. Tap a row and it opens in place with what the desktop's open door and its card strip carry: the wait line, the pool, and the position's other names priced against the board's first name. The X in its corner collapses it; the reader never loses their place. The drawer (≣) is the override, every name at any position. The bare URL lands on the stack with no door open; <code>?open</code> lands with the leader's door open.`, onState:load});
 document.addEventListener("click", e => {
   const w = e.target.closest("[data-work]"); if (w) { const c = M.get(w.dataset.work); document.getElementById("workT").textContent = `The numbers · ${c.name}`; document.getElementById("work").innerHTML = M.working(c); document.getElementById("workCopy").innerHTML = M.copyBtn(c); ui.open("shWork"); return; }
+  const cs = e.target.closest("#csum");
+  if (cs) { const host = document.getElementById("clk2");
+    host.dataset.open = host.dataset.open === "1" ? "0" : "1";
+    drawContext(); requestAnimationFrame(phoneFold); return; }
   const ls = e.target.closest("#lsum");
   if (ls) { const host = document.getElementById("lineup");
     host.dataset.open = host.dataset.open === "1" ? "0" : "1";
