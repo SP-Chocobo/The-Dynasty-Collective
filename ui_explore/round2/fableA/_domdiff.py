@@ -49,8 +49,16 @@ def dump(directory, out, viewports="1440x900,1700x1100"):
     formats = list(json.loads(FIXTURE.read_text()).keys())
     rows = {}
     with sync_playwright() as p:
-        exe = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome")
-               + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell"))[0]
+        # The pre-provisioned layout is NOT stable across container images: this directory has been
+        # `chrome-linux/chrome` on one and `chrome-linux64/chrome` on another, and a glob knowing only
+        # the first raises IndexError -- the whole gate refusing to start for a reason that has nothing
+        # to do with the surfaces it measures. Match either, and fail with a sentence rather than a
+        # subscript on an empty list.
+        _cands = sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome")
+                        + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux*/headless_shell"))
+        if not _cands:
+            raise RuntimeError("no pre-provisioned chromium under /opt/pw-browsers")
+        exe = _cands[0]
         b = p.chromium.launch(executable_path=exe)
         for f in sorted(D.glob("v*.html")):
             if f.name.startswith("_"):

@@ -182,8 +182,18 @@ html,body{height:auto;overflow:visible}
 .morebtn:hover{color:var(--ink);border-color:var(--dim)}
 .arm{font-size:.75rem}
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
-.drawer .filt{display:flex;gap:4px;flex-wrap:wrap;padding:8px 10px 6px}
-.filt button{min-height:44px;min-width:44px;padding:0 .6rem}
+/* BALANCED ROWS, NOT A FLEX WRAP WITH AN ORPHAN. Eight chips flowing at 390px put seven on
+   the first row and ONE on the second, which reads as a mistake rather than a layout. The
+   column count is chosen per door count so the rows come out even: rows = ceil(n/4), then
+   columns = ceil(n/rows). Five chips go 3+2, seven go 4+3, eight go 4+4, nine go 3+3+3.
+   ORDER IS DELIBERATELY NOT the board's. The stack orders doors by value and that order MOVES
+   every pick -- measured across the fixture, all six formats reshuffle, and 12T_ppr_K_DEF runs
+   "RB WR TE QB DEF K" early to "K DEF RB QB TE WR" late. Sorting a row of tap targets that way
+   would move every control under the reader's thumb between picks, which is the type-resize
+   glitch one level worse. The chips keep the league's own slot order and stay put; the filtered
+   context below states the board ordinal, so the two orders reconcile where it matters. */
+.drawer .filt{display:grid;grid-template-columns:repeat(var(--fc,4),minmax(0,1fr));gap:5px;padding:8px 10px 6px}
+.filt button{min-height:44px;min-width:44px;padding:0 .5rem;display:inline-flex;align-items:center;justify-content:center}
 .ctx{margin:0 10px 8px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface-2);padding:8px 10px;display:grid;grid-template-columns:18px minmax(0,1fr);gap:0 10px}
 .ctx .edge{border-radius:2px;position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line-2)}
 .ctx .edge::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
@@ -267,7 +277,10 @@ function doorHTML(d, idx){
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
 function drawerHTML(){
   const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
-  document.getElementById("allFilt").innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
+  const host = document.getElementById("allFilt");
+  const rows = Math.ceil(keys.length / 4);                       // at most four across at phone widths
+  host.style.setProperty("--fc", Math.ceil(keys.length / rows)); // then even them out
+  host.innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
   const d = M.DOORS.find(x => x.key === filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
   let ctx = "";
   if (d) { const pos = posOf(d), h = holdText(d), inWin = windowDoors().includes(d), idx = M.DOOR_ORDER.indexOf(d);
