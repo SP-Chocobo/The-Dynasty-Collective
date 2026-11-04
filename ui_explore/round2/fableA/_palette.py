@@ -21,6 +21,33 @@ two tokens that must never be confused and records anything under ~26 as a squee
 SAME token name on two surfaces, a dE of 0 is convergence and anything above about 2 is a
 visible difference a reader could catch with both surfaces in front of them.
 
+WHAT IT MEASURED ON ITS FIRST RUN, kept here because an instrument should carry its own number
+-- a reader who opens this file should not have to go to a commit message to find out what it
+found, and the figure in a brief is a quotation rather than a record.
+
+    37 prototype tokens, 29 app tokens, 27 share a name
+    26 of 27 shared names carry a visibly different colour (dE > 2); NONE are identical
+
+      18.37  violet     #6d3fd6 -> #9457d4        3.71  bg         #0c0a07 -> #15120b
+      16.20  sky        #1356c9 -> #1466c4        4.58  surface    #17130d -> #1f1a11
+      15.15  emerald    #0b8f57 -> #1a9e4b        3.51  surface-2  #120f0a -> #1a1610
+       7.57  dim        #897c61 -> #776d5a        2.41  ink        #f2ead9 -> #ece3d2
+
+IT CORRECTED A CLAIM MADE WITHOUT IT. A design note had said the prototype shares the app's three
+grounds, written from reading the two files and seeing similar-looking hex. It does not: the
+prototype's grounds are measurably darker, and not one of the twenty-seven shared names is the
+same colour. That is the whole argument for having this file rather than an opinion.
+
+The position pills diverge further, and there the difference is a CAPABILITY rather than a
+preference: the app's POSITION_PILL_TOKENS has six entries and falls back to K's neutral for
+anything unmapped, so an IDP league draws DL, LB and DB in one colour where the prototype gives
+each a hue. Two of the fixture's six formats are IDP leagues.
+
+And the three FACES are identical, Cinzel included -- which settled a question that had been
+posed backwards. design_system.py already defines FONT_DISPLAY with a written rule ("the wordmark
+and top-level headings ONLY -- never for data"); the prototype follows it on door headers, and
+app.py is the side not using its own token. Nothing to adopt, nothing to drop.
+
 Run from the repo root:
     python3 ui_explore/round2/fableA/_palette.py
 """
