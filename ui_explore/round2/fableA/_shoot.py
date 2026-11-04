@@ -365,12 +365,14 @@ with sync_playwright() as p:
 # URL, so a URL describing a different board is a board switch the user never asked for, one
 # gesture away at all times.
 #
-# This was measured before it was asserted, and it FAILS today: shared.js writes the URL with
-# history.replaceState and nothing in the directory listens for popstate or hashchange, so the
-# URL is write-only. Editing the hash moves the address bar and leaves the board where it was;
-# Back moves it again and still leaves the board where it was. The fix is a real state payload
-# pushed on each transition and restored in a popstate handler. Asserting it here is what stops
-# that from being a paragraph somebody has to remember.
+# MEASURED BEFORE IT WAS ASSERTED, ASSERTED BEFORE IT WAS FIXED, and it is the assertion that
+# keeps it fixed. When this went in it failed on all four surfaces: shared.js wrote the URL with
+# history.replaceState and nothing in the directory listened for popstate or hashchange, so the
+# URL was write-only -- editing the hash moved the address bar and left the board where it was,
+# and Back moved it again and still left the board where it was. wireChrome's applyHash now runs
+# the same parse it already ran on load, so all four pass. What is still NOT asserted, because no
+# standalone page can answer it, is returning to a LIVE draft: scroll position, which door was
+# open, the clock. That needs an app around the board, and the record below names the gap.
 print("\n--- away and return: does the URL ever name a board that is not drawn? ---")
 NAV_BAD = 0
 with sync_playwright() as _p:
@@ -437,18 +439,45 @@ else:
 # the commit in front of them. This names the source commit, the exact bytes, the axes covered,
 # and the clock -- which is what makes a green run checkable rather than merely reassuring.
 import subprocess as _sp
-def _git(*a):
+def _git(*a, empty_ok=False):
+    """Git output, or None when git could not answer. `empty_ok` keeps an EMPTY answer as "".
+
+    THAT FLAG EXISTS BECAUSE ITS ABSENCE MADE THIS RECORD LIE, in the small way that is hardest
+    to notice: `or None` was written so a missing commit would read as null, and on a CLEAN tree
+    `git status --porcelain` returns "" -- falsy -- so it returned None too. The field was then
+    `_git(...) == ""`, which is False for None and False for a dirty tree alike, so
+    `source_tree_clean` was CONSTANT FALSE and never once reported a clean tree. It read
+    plausibly in every run ("tree DIRTY") and meant nothing. Caught by noticing the record say
+    DIRTY on a tree deliberately kept clean for it -- which is the only reason a constant field
+    gets caught at all.
+
+    So: "" and None are different answers and this stops collapsing them. The three states are
+    kept apart below rather than flattened into a boolean that cannot say "git did not answer".
+    """
     try:
-        return _sp.run(["git"] + list(a), cwd=str(HERE), capture_output=True, text=True,
-                       timeout=20).stdout.strip() or None
+        out = _sp.run(["git"] + list(a), cwd=str(HERE), capture_output=True, text=True,
+                      timeout=20).stdout.strip()
+        return out if (out or empty_ok) else None
     except Exception:
         return None
+
+
+# Nothing is excluded from this, INCLUDING the record file this run is about to overwrite: two
+# gate runs without a commit in between genuinely leave a dirty tree, and a cleanliness field
+# that quietly forgives its own side effects is the next version of the bug above.
+_dirty = _git("status", "--porcelain", empty_ok=True)
 _record = {
     "gate": "ui_explore/round2/fableA/_shoot.py",
     "finished_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
                       .isoformat(timespec="seconds"),
     "source_commit": _git("rev-parse", "HEAD"),
-    "source_tree_clean": _git("status", "--porcelain") == "",
+    # Tri-state on purpose: True clean, False dirty, null when git could not be asked.
+    "source_tree_clean": None if _dirty is None else (_dirty == ""),
+    # split(maxsplit=1), not l[3:]: `_git` strips its output, so the FIRST porcelain line has
+    # lost the leading status space the others keep, and a fixed column slice eats a character
+    # off exactly one path. maxsplit=1 keeps a path containing spaces intact.
+    "source_tree_dirty_paths": None if _dirty is None
+        else [l.split(maxsplit=1)[-1] for l in _dirty.splitlines() if l.strip()][:20],
     "snapshot_sha256_12": dict(sorted(_DIGESTS.items())),
     "snapshot_verified_unchanged": not _moved,
     "renders": TOTAL, "renders_failed": RENDER_BAD, "renders_ok": TOTAL - RENDER_BAD,
@@ -474,5 +503,5 @@ _record = {
 (HERE / "_certification.json").write_text(json.dumps(_record, indent=1, sort_keys=True) + "\n")
 print(f"certification record -> {HERE / '_certification.json'}"
       f"  (commit {(_record['source_commit'] or '?')[:9]}"
-      f"{'' if _record['source_tree_clean'] else ', tree DIRTY'})")
+      f"{'' if _record['source_tree_clean'] else ', tree DIRTY: ' + ' '.join((_record['source_tree_dirty_paths'] or ['(git did not answer)'])[:3])})")
 sys.exit(1 if bad else 0)

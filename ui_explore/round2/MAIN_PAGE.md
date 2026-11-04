@@ -338,10 +338,10 @@ more specific than the general requirement suggests:
 - **The board's own in-page state beyond the drawer** — scroll position, which door is open,
   which detail panel is expanded. The prototypes hold these in page JS, where a Streamlit rerun
   does not reach. This is the one that needs new work.
-- **Browser back and forward.** Now tested, and the result is a two-gesture bug rather than an
-  abstraction. **The URL is write-only:** `shared.js` writes it with `history.replaceState` and
-  there is not one `popstate` or `hashchange` listener in the directory, so the address bar is a
-  label the page never reads back. Measured on `m1_stack` at 390×664:
+- **Browser back and forward.** Tested, found broken, and now fixed on the prototype side.
+  **The URL was write-only:** `shared.js` wrote it with `history.replaceState` and there was not
+  one `popstate` or `hashchange` listener in the directory, so the address bar was a label the
+  page never read back. Measured on `m1_stack` at 390×664:
 
   ```
   on load                      url #12T_ppr/mid     board 12T ppr round 5    open: none
@@ -356,12 +356,18 @@ more specific than the general requirement suggests:
   is `null` at every step, so there would be nothing to restore from even if something were
   listening.
 
-  The fix has a clear shape and it is the mechanism the whole state-preservation requirement
-  reduces to in a browser: push a real state payload on each transition (`{format, state, door,
-  filter, scroll}`) and restore from it in a `popstate` handler. Until then `replaceState` is
-  the safer of the two halves — it at least does not manufacture entries for the app's own
-  state changes — but a user-driven hash change creates one anyway, which is how the two sides
-  drift apart in the trace above.
+  **The prototype half is fixed** (`d806700`): `wireChrome`'s `applyHash` runs the same parse it
+  already ran on load, on `popstate` and `hashchange`, so the four surfaces now agree at every
+  step and the render gate asserts it. Verified as a listener-only change — 0 of 402 roles across
+  the four surfaces changed what they draw on a fresh load.
+
+  **The product half is still open, and it is the interesting half.** `replaceState` is kept on
+  purpose: whether a board change should PUSH a history entry is the difference between Back
+  stepping through your board states and Back leaving the app, and that belongs with the
+  application's routing. The full mechanism the state-preservation requirement reduces to in a
+  browser is a real state payload per transition (`{format, state, door, filter, scroll}`)
+  restored in `popstate` — which is the same question as returning to a live draft, and needs an
+  app around the board to answer.
 - **Any on-the-clock indication outside the Draft Room.** There is none. If the clock is the
   reason the draft takes priority, then every other view needs to be able to say so, and the
   route back has to be one tap from wherever you are.
