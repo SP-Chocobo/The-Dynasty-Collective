@@ -23,11 +23,19 @@ this same defect.
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import sleeper_client as sc
+import freshness
 import ui_source
 
+
+
+class _NothingLoaded:
+    """A merger with no vendor file loaded, so only the manifest's UNCONDITIONAL rows appear."""
+
+    is_loaded = is_free_agents_loaded = is_trade_values_loaded = False
 
 def _coverage(answered, failed=(), requested=18, error=None):
     return {"season": "2026", "season_type": "regular", "weeks_requested": requested,
@@ -268,12 +276,30 @@ class TheManifestSaysWhetherTheSumsAreWholeTests(unittest.TestCase):
         self.assertIsNone(days)
 
     def test_the_manifest_actually_appends_it(self):
-        """A row nothing adds is a row nobody reads."""
-        app = ui_source.text()
-        self.assertIn("sleeper_client.season_projection_freshness_entry(snapshot)", app)
-        rows = app[app.index("entries.append(sleeper_client.players_freshness_entry())"):]
-        self.assertLess(rows.index("season_projection_freshness_entry"), rows.index("entries.sort("),
-                        "the row is added after the manifest has already been sorted")
+        """A row nothing adds is a row nobody reads.
+
+        Asserted by CALLING the manifest. This read `ui_source.text()` for the literal call site
+        while `build_freshness_manifest` lived in `app.py`; `#300` moved it to `freshness.py`,
+        which is importable, so the row can be looked for where a reader would see it instead of
+        where the source happens to spell it.
+        """
+        entries = freshness.build_freshness_manifest({}, _NothingLoaded())
+        self.assertIn(sc.season_projection_freshness_entry({})[0],
+                      [label for label, _, _ in entries],
+                      "the season-projection row never reaches the manifest")
+
+    def test_the_row_is_appended_before_the_sort_that_orders_it(self):
+        """The property the old source-order check was a proxy for. Appending after the sort
+        would leave an undated row at the TOP, which is the opposite of what a None days column
+        asks for."""
+        with mock.patch.object(sc, "season_projection_freshness_entry",
+                               return_value=("Season sums (never fetched)", None, None)), \
+             mock.patch.object(sc, "players_freshness_entry",
+                               return_value=("Players", "2026-11-01", 3)):
+            entries = freshness.build_freshness_manifest({}, _NothingLoaded())
+        self.assertEqual([label for label, _, _ in entries],
+                         ["Players", "Season sums (never fetched)"])
+        self.assertIsNone(entries[-1][2])
 
 
 class ASyncThatCameBackWithLessSaysSoTests(unittest.TestCase):

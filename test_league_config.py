@@ -15,6 +15,7 @@ Two properties carry the weight:
 from __future__ import annotations
 
 import ast
+import time
 import unittest
 from pathlib import Path
 
@@ -87,11 +88,26 @@ class ConfigAgeIsReportedAtTheRightResolutionTests(unittest.TestCase):
         self.assertTrue(lc.admits_decision(CLEAN)[0])
 
     def test_the_manifest_itself_carries_the_real_age(self):
-        """Non-vacuity for the whole fix: the module could be perfect and unread. Source-scanned
-        through ui_source, as every app-level contract here is."""
-        import ui_source
-        block = ui_source.block("synced_at = snapshot.get", until="entries.sort")
-        self.assertIn("describe_config_age", block,
+        """Non-vacuity for the whole fix: the module could be perfect and unread.
+
+        This used to source-scan `app.py` through `ui_source` for the string
+        `describe_config_age`, because the manifest lived in a module that could not be imported.
+        `#300` moved it to `freshness.py`, so the claim is now checked the way a reader
+        experiences it: an eleven-hour-old config must say ELEVEN HOURS in the row's own label,
+        not merely cause a function name to appear in a block of source. The name being present
+        never proved its RESULT reached the label.
+        """
+        import freshness
+
+        class _NothingLoaded:
+            is_loaded = is_free_agents_loaded = is_trade_values_loaded = False
+
+        eleven_hours_ago = time.time() - 11 * 3600
+        entries = freshness.build_freshness_manifest(
+            {"synced_at": eleven_hours_ago}, _NothingLoaded())
+        sync = [label for label, _, _ in entries if label.startswith("Sleeper league sync")]
+        self.assertEqual(len(sync), 1, [label for label, _, _ in entries])
+        self.assertIn("11 hours ago", sync[0],
                       "the freshness manifest no longer carries the real age -- it is back to "
                       "a calendar-date difference for a quantity that changes hourly")
 

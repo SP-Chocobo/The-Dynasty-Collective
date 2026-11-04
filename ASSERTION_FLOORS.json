@@ -1422,17 +1422,17 @@
       }
     },
     "test_a_partial_season_is_not_a_season.py": {
-      "test_methods": 31,
+      "test_methods": 32,
       "asserts": {
-        "assertEqual": 11,
+        "assertEqual": 12,
         "assertFalse": 8,
         "assertGreater": 1,
         "assertGreaterEqual": 1,
         "assertIn": 23,
         "assertIs": 1,
-        "assertIsNone": 14,
+        "assertIsNone": 15,
         "assertIsNotNone": 3,
-        "assertLess": 2,
+        "assertLess": 1,
         "assertNotEqual": 1,
         "assertNotIn": 3,
         "assertTrue": 5
@@ -1514,8 +1514,11 @@
           "assertIsNone": 2
         },
         "TheManifestSaysWhetherTheSumsAreWholeTests.test_the_manifest_actually_appends_it": {
-          "assertIn": 1,
-          "assertLess": 1
+          "assertIn": 1
+        },
+        "TheManifestSaysWhetherTheSumsAreWholeTests.test_the_row_is_appended_before_the_sort_that_orders_it": {
+          "assertEqual": 1,
+          "assertIsNone": 1
         },
         "TheRefusalCarriesItsReasonTests.test_a_complete_sum_prices_untouched": {
           "assertIs": 1,
@@ -9557,7 +9560,7 @@
     "test_league_config.py": {
       "test_methods": 20,
       "asserts": {
-        "assertEqual": 8,
+        "assertEqual": 9,
         "assertFalse": 2,
         "assertIn": 11,
         "assertIsNone": 3,
@@ -9610,6 +9613,7 @@
           "assertEqual": 1
         },
         "ConfigAgeIsReportedAtTheRightResolutionTests.test_the_manifest_itself_carries_the_real_age": {
+          "assertEqual": 1,
           "assertIn": 1
         },
         "ConfirmationIsThreeStateAndOnlyOneBlocksTests.test_a_clean_unreviewed_config_is_INFERRED_and_does_not_block": {
