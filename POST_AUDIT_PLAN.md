@@ -16383,3 +16383,18 @@ That is the fourth and fifth surviving arm of the night, and the split held: **o
 missing test, one mutation that changed nothing.** The lesson is the same each time — a surviving
 arm is a question, not a verdict, and answering it costs less than either believing it or
 dismissing it.
+
+### `#309` CERTIFIED
+
+```
+Ran 4318 tests in 1939.882s
+FAILED (failures=1, skipped=2, expected failures=1)      errors=0
+```
+
+4318 is 4311 plus the 7 reachability tests. `errors=0`, `skipped=2` unchanged, and the single
+failure is still `#305`'s stale `3.0` bound — the one thing in this repository that is failing on
+purpose, pending a ruling.
+
+**The budget turned over.** Five measurements in one day: 301 -> 396 -> 462 -> 457 -> **449ms** per
+test, while the count went 4235 -> 4318. The rise stopped and has begun easing, so the figure to
+carry forward is a plateau, not a trend. `close-register-item` holds the table.

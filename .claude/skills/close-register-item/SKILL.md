@@ -88,11 +88,11 @@ $PY -m unittest $mods          # 54 modules, 1082 tests, 104 seconds
 That is the whole risk class for any `#137` extraction at one seventeenth of a full suite's cost.
 Grepping for the symbol you moved is NOT this check and is not a substitute for it.
 
-**Budget it from a measurement that carries its own date.** The last one: **4311 tests in
-1968.7s** at `b4dbffb` (2026-11-04), measured with `__pycache__` cleared first per `#240`.
-**Size a timeout from 1968.7s.**
+**Budget it from a measurement that carries its own date.** The last one: **4318 tests in
+1939.9s** at `d781af2` (2026-11-04), measured with `__pycache__` cleared first per `#240`.
+**Size a timeout from 1939.9s.**
 
-Four measurements the same day, which is more useful than any one of them:
+Five measurements the same day, which is far more useful than any one of them:
 
 | tests | seconds | per test | commit |
 |---|---|---|---|
@@ -100,10 +100,11 @@ Four measurements the same day, which is more useful than any one of them:
 | 4248 | 1682.7 | 396ms | `96bb4a8` |
 | 4276 | 1976.7 | 462ms | `029b31e` |
 | 4311 | 1968.7 | 457ms | `b4dbffb` |
+| 4318 | 1939.9 | 449ms | `d781af2` |
 
-The per-test cost rose 301 -> 396 -> 462ms and then stopped; the last run added 35 tests and got
-8s FASTER. So the thing to carry forward is that **the suite got ~50% more expensive per test over
-one day and has now plateaued**, not that it is still climbing. Part of the rise is accounted for
+The per-test cost rose 301 -> 396 -> 462ms and then turned over: 457, then 449, while the test
+count kept climbing. So the thing to carry forward is that **the suite got ~50% more expensive per
+test over one day and has PLATEAUED and begun easing**, not that it is still climbing. Part of the rise is accounted for
 -- `#299` un-skipped 15 browser-executing tests, and `#308` made 34 more reachable -- but those
 modules cost 30.2s, 1.8s and ~0.2s standalone, nowhere near the ~660s of total growth. **The
 remainder is unattributed and is not claimed.** Do not extrapolate from the trend; re-measure.
