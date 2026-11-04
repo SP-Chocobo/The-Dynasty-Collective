@@ -78,6 +78,27 @@ blind to all four by construction: the markup never changes, only the cascade do
 gap this instrument exists to cover, and the rule it suggests is one line -- if shared.js emits
 the class, shared.css owns the rule.
 
+THE RESULT, re-measured after the last fix (the figure 49510d0 promised rather than asserted,
+because its harvest was still running when that commit landed).
+
+`report`, desktop against phone: 0 unruled findings, 7 ruled differences honoured, 0 stale
+rulings, across 72 shared roles.
+
+`moved`, from the commit before this work to the end of it -- every role whose drawn appearance
+changed, named, with nothing left over:
+
+    v4_doors.html   0 of 104    the desktop did not move for ANY of the five changes
+    m1_stack.html   8 of  87    b@div.tankcap, 3x span.hm, and 4 keys from .v -> .sline
+    m2_sheet.html   4 of 105    b@div.tankcap, 3x span.hm
+    m3_hero.html    4 of 107    b@div.tankcap, 3x span.hm
+
+AND `b@div.dem` IS IN NONE OF THEM, which is the quietest line here and the most reassuring. The
+`.dem` work removed four duplicate rules and ended where it started on every surface: the shared
+default gives each one exactly what its own template had been giving it separately. A role that
+should always have had one home, moved into that home, drawing the same thing afterwards. The
+m2/m3 excursion to --ink in the middle of that was a transient this instrument caught and the
+`.ctx2 b` hoist closed; it is not in the before-and-after because it was never in either end.
+
 Usage, from this directory:
     python3 _converge.py harvest . after.json      # or any built directory
     python3 _converge.py report after.json         # desktop against phone
