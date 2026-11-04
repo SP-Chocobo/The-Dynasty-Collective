@@ -28,31 +28,34 @@
    "1700x1100"
   ],
   "viewports_mobile": [
-   "390x664"
+   "390x664",
+   "360x780",
+   "428x746"
   ]
  },
  "expected_failures": [
   "m1_stack.html [HEAVY_IDP/late@390x664]",
   "m1_stack.html [LIGHT_IDP/late@390x664]"
  ],
- "failures_total": 1,
- "finished_utc": "2026-11-04T02:04:30+00:00",
+ "failures_total": 0,
+ "finished_utc": "2026-11-04T02:12:11+00:00",
  "gate": "ui_explore/round2/fableA/_shoot.py",
- "renders": 36,
+ "renders": 396,
  "renders_failed": 2,
- "renders_ok": 34,
+ "renders_ok": 394,
  "snapshot_sha256_12": {
-  "m1_stack.html": "fcca1881beac"
+  "m1_stack.html": "fcca1881beac",
+  "m2_sheet.html": "486ee46103af",
+  "m3_hero.html": "cc9982716e3b",
+  "v1_ledger.html": "fc881ed4d6c1",
+  "v1_ledger_rail.html": "0c35d86155f1",
+  "v2_lanes.html": "0d3aecf33883",
+  "v4_doors.html": "df868590ed5f"
  },
  "snapshot_verified_unchanged": true,
- "source_commit": "475294f7b544fa4eb6272d6d2dfd50eda88aa88d",
- "source_tree_clean": false,
- "source_tree_dirty_paths": [
-  "ui_explore/round2/fableA/_certification.json",
-  "ui_explore/round2/fableA/_shoot.py"
- ],
- "stale_expectations": [
-  "m1_stack.html [12T_ppr/mid@390x664]"
- ],
- "verdict": "FAIL"
+ "source_commit": "49d72d60c1116a508676c6989d398c6dc1eab31a",
+ "source_tree_clean": true,
+ "source_tree_dirty_paths": [],
+ "stale_expectations": [],
+ "verdict": "PASS"
 }
