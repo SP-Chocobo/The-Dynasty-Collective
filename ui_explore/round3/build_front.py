@@ -93,6 +93,93 @@ def num(value, digits, why):
     return esc(out) if out is not None else absent(why)
 
 
+def style_css():
+    """The page's whole style block, so BOTH states of the front page wear one stylesheet.
+
+    Lifted verbatim out of `build`'s own f-string for `build_empty.py` to import. The reason
+    it is shared rather than copied is measured, not aesthetic: `_palette.py` compared the
+    round-2 prototypes against the app and found 26 of 27 shared token names carrying a
+    visibly different colour, with NOT ONE identical -- including three page grounds a design
+    note had claimed were shared. Two states of one page defining `.fact` and `.claim`
+    separately would drift exactly that way, and the drift would be invisible until someone
+    put the two screenshots side by side.
+
+    Verified byte-identical: rebuilding `front.html` after this lift reproduces the committed
+    file's sha256 exactly, which is the only reason a refactor of a certified file is safe to
+    make at all.
+    """
+    return f"""{ds.root_css_block()}
+:root{{ --f-d:{ds.FONT_DISPLAY}; --f-s:{ds.FONT_SANS}; --f-m:{ds.FONT_MONO}; }}
+*{{box-sizing:border-box}}
+/* WRAP RATHER THAN CLIP OR PUSH. With no break rule a single 40-character token blew the page
+   open by 2,112px at 390 wide, and `.facts{{overflow:hidden}}` threw text away with no
+   scrollbar, no ellipsis and no horizontal scroll to detect it -- a silent failure that defeats
+   the very check a gate would run. */
+.claim h3,.claim p,.fact .k,.fact .v,.wk,.prov,.more,.door{{overflow-wrap:anywhere}}
+.fact>*{{min-width:0}}
+:root{{color-scheme:dark}}
+body{{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-s);line-height:1.5}}
+.page{{max-width:52rem;margin:0 auto;padding:18px 16px 56px}}
+.wm{{margin:0;font-family:var(--f-d);font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    font-size:.95rem;color:var(--gold-b)}}
+.who{{color:var(--muted);font-size:.84rem;margin:2px 0 20px}}
+.who .absent,.who .made-up{{font-size:.78rem}}
+h2{{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+   font-size:.78rem;color:var(--muted);margin:26px 0 8px}}
+.claims{{display:flex;flex-direction:column;gap:8px}}
+.claim{{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-2);
+       border-radius:4px;padding:11px 13px}}
+.claim h3{{margin:0 0 3px;font-size:1rem;font-weight:700}}
+.claim p{{margin:0;color:var(--muted);font-size:.85rem}}
+.claim b{{color:var(--ink);font-family:var(--f-m);font-weight:600}}
+.claim.hole{{border-left-color:var(--crimson-b)}}
+.claim.bye{{border-left-color:var(--amber-b)}}
+.claim.thin{{border-left-color:var(--sky-b)}}
+.claim.none{{border-left-color:var(--emerald-b)}}
+/* A LINK, AT THE TAP FLOOR. This was a <span> styled gold-and-monospace with a chevron -- it
+   read exactly like a link, was 18.7px tall, was not in the tab order, and did nothing when
+   tapped. It is the "so do something" half of every card. */
+.route{{display:inline-flex;align-items:center;min-height:44px;margin-top:2px;font-size:.78rem;
+       color:var(--gold-b);font-family:var(--f-m);letter-spacing:.03em;text-decoration:none}}
+.route:hover,.route:focus-visible{{text-decoration:underline}}
+.more{{color:var(--muted);font-size:.78rem;margin:8px 0 0}}
+.facts{{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
+       border:1px solid var(--line);border-radius:4px;overflow:hidden}}
+.fact{{display:flex;justify-content:space-between;gap:12px;background:var(--surface);
+      padding:8px 12px;font-size:.85rem}}
+.fact .k{{color:var(--muted)}}
+.fact .v{{font-family:var(--f-m);text-align:right}}
+.fact .v b{{font-weight:600}}
+/* --muted, NOT --dim. design_system documents dim as the one recede-into-the-page role held
+   to AA-LARGE and deliberately below 4.5:1 -- measured 3.39:1 on --surface. These four roles are
+   all 12-13.6px, i.e. normal text, so they need 4.5. The absence marker is the worst place to
+   lose contrast: the glyph whose only job is to say "not measured" was the least legible text on
+   the page. --muted measures 6.25:1 on surface. */
+.absent{{color:var(--muted);cursor:help;font-family:var(--f-m)}}
+.made-up{{color:var(--amber-b);font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;
+         cursor:help;margin-left:6px;font-family:var(--f-s)}}
+.prof{{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}}
+.wk{{background:var(--surface-2);border:1px solid var(--line);border-radius:3px;
+    padding:3px 7px;font-family:var(--f-m);font-size:.76rem;color:var(--muted)}}
+.wk em{{display:block;font-style:normal;color:var(--muted);font-size:.75rem}}
+.wk.hot{{border-color:var(--amber);color:var(--amber-b)}}
+/* 3x2, not auto-fit: six items in a 4-wide auto-fit grid renders 4+2 with two empty cells. */
+.doors{{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}}
+@media (max-width:560px){{ .doors{{grid-template-columns:repeat(2,1fr)}} }}
+.door{{display:block;background:var(--surface);border:1px solid var(--line-2);border-radius:4px;
+      padding:13px 12px;color:var(--ink);text-decoration:none;font-size:.88rem;min-height:44px}}
+.door:hover{{border-color:var(--gold);color:var(--gold-b)}}
+.prov{{margin-top:26px;color:var(--muted);font-size:.75rem;border-top:1px solid var(--line);
+      padding-top:10px}}
+.prov b{{color:var(--muted);font-weight:600}}
+/* NOTHING BELOW 12px. The draft-room render gate asserts a 12px minimum resident font and this
+   page is held to the same floor. Measured 10.56px on the first render -- `.wk em` at .66rem,
+   with `.made-up` and `.prov` also under -- which is an accessibility defect rather than a
+   stylistic choice, and it was invisible until the page was measured instead of looked at. */
+@media (max-width:420px){{ .page{{padding:14px 16px 40px}} }}
+"""
+
+
 def build(fx):
     # EVERY top-level read is tolerant. A fixture is hand-maintainable and this file's own
     # docstring invites editing it, so a missing key must not be a traceback: a page that fails
@@ -289,76 +376,7 @@ def build(fx):
 <meta name="description" content="A triage surface: what needs you, why, what it costs to ignore, and what can wait.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap">
 <style>
-{ds.root_css_block()}
-:root{{ --f-d:{ds.FONT_DISPLAY}; --f-s:{ds.FONT_SANS}; --f-m:{ds.FONT_MONO}; }}
-*{{box-sizing:border-box}}
-/* WRAP RATHER THAN CLIP OR PUSH. With no break rule a single 40-character token blew the page
-   open by 2,112px at 390 wide, and `.facts{{overflow:hidden}}` threw text away with no
-   scrollbar, no ellipsis and no horizontal scroll to detect it -- a silent failure that defeats
-   the very check a gate would run. */
-.claim h3,.claim p,.fact .k,.fact .v,.wk,.prov,.more,.door{{overflow-wrap:anywhere}}
-.fact>*{{min-width:0}}
-:root{{color-scheme:dark}}
-body{{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-s);line-height:1.5}}
-.page{{max-width:52rem;margin:0 auto;padding:18px 16px 56px}}
-.wm{{margin:0;font-family:var(--f-d);font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-    font-size:.95rem;color:var(--gold-b)}}
-.who{{color:var(--muted);font-size:.84rem;margin:2px 0 20px}}
-.who .absent,.who .made-up{{font-size:.78rem}}
-h2{{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-   font-size:.78rem;color:var(--muted);margin:26px 0 8px}}
-.claims{{display:flex;flex-direction:column;gap:8px}}
-.claim{{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-2);
-       border-radius:4px;padding:11px 13px}}
-.claim h3{{margin:0 0 3px;font-size:1rem;font-weight:700}}
-.claim p{{margin:0;color:var(--muted);font-size:.85rem}}
-.claim b{{color:var(--ink);font-family:var(--f-m);font-weight:600}}
-.claim.hole{{border-left-color:var(--crimson-b)}}
-.claim.bye{{border-left-color:var(--amber-b)}}
-.claim.thin{{border-left-color:var(--sky-b)}}
-.claim.none{{border-left-color:var(--emerald-b)}}
-/* A LINK, AT THE TAP FLOOR. This was a <span> styled gold-and-monospace with a chevron -- it
-   read exactly like a link, was 18.7px tall, was not in the tab order, and did nothing when
-   tapped. It is the "so do something" half of every card. */
-.route{{display:inline-flex;align-items:center;min-height:44px;margin-top:2px;font-size:.78rem;
-       color:var(--gold-b);font-family:var(--f-m);letter-spacing:.03em;text-decoration:none}}
-.route:hover,.route:focus-visible{{text-decoration:underline}}
-.more{{color:var(--muted);font-size:.78rem;margin:8px 0 0}}
-.facts{{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
-       border:1px solid var(--line);border-radius:4px;overflow:hidden}}
-.fact{{display:flex;justify-content:space-between;gap:12px;background:var(--surface);
-      padding:8px 12px;font-size:.85rem}}
-.fact .k{{color:var(--muted)}}
-.fact .v{{font-family:var(--f-m);text-align:right}}
-.fact .v b{{font-weight:600}}
-/* --muted, NOT --dim. design_system documents dim as the one recede-into-the-page role held
-   to AA-LARGE and deliberately below 4.5:1 -- measured 3.39:1 on --surface. These four roles are
-   all 12-13.6px, i.e. normal text, so they need 4.5. The absence marker is the worst place to
-   lose contrast: the glyph whose only job is to say "not measured" was the least legible text on
-   the page. --muted measures 6.25:1 on surface. */
-.absent{{color:var(--muted);cursor:help;font-family:var(--f-m)}}
-.made-up{{color:var(--amber-b);font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;
-         cursor:help;margin-left:6px;font-family:var(--f-s)}}
-.prof{{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}}
-.wk{{background:var(--surface-2);border:1px solid var(--line);border-radius:3px;
-    padding:3px 7px;font-family:var(--f-m);font-size:.76rem;color:var(--muted)}}
-.wk em{{display:block;font-style:normal;color:var(--muted);font-size:.75rem}}
-.wk.hot{{border-color:var(--amber);color:var(--amber-b)}}
-/* 3x2, not auto-fit: six items in a 4-wide auto-fit grid renders 4+2 with two empty cells. */
-.doors{{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}}
-@media (max-width:560px){{ .doors{{grid-template-columns:repeat(2,1fr)}} }}
-.door{{display:block;background:var(--surface);border:1px solid var(--line-2);border-radius:4px;
-      padding:13px 12px;color:var(--ink);text-decoration:none;font-size:.88rem;min-height:44px}}
-.door:hover{{border-color:var(--gold);color:var(--gold-b)}}
-.prov{{margin-top:26px;color:var(--muted);font-size:.75rem;border-top:1px solid var(--line);
-      padding-top:10px}}
-.prov b{{color:var(--muted);font-weight:600}}
-/* NOTHING BELOW 12px. The draft-room render gate asserts a 12px minimum resident font and this
-   page is held to the same floor. Measured 10.56px on the first render -- `.wk em` at .66rem,
-   with `.made-up` and `.prov` also under -- which is an accessibility defect rather than a
-   stylistic choice, and it was invisible until the page was measured instead of looked at. */
-@media (max-width:420px){{ .page{{padding:14px 16px 40px}} }}
-</style></head>
+{style_css()}</style></head>
 <body><div class="page">
 <h1 class="wm">Gold Wyrm</h1>
 <p class="who">{identity}</p>

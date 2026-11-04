@@ -1,0 +1,32 @@
+{
+  "_comment": "Registered skip GATES per test module -- see skip_gates.py. A gate is a place the suite is allowed to decline to prove something. GROWTH is the regression: a new gate must be registered here, in the same commit, with the reason in the commit message. Shrinkage is free. Regenerate with `python3 skip_gates.py --write`.",
+  "total": 46,
+  "modules": {
+    "test_216_displacement.py": 1,
+    "test_216_room_integrity.py": 3,
+    "test_216_value_board_falsification.py": 5,
+    "test_a_flex_slot_is_not_an_unlimited_bench.py": 2,
+    "test_a_roster_the_solver_never_saw_whole.py": 1,
+    "test_battery_pricing_path.py": 1,
+    "test_board_order_honours_the_backstops.py": 1,
+    "test_board_renders_absence.py": 1,
+    "test_config_space.py": 1,
+    "test_data_merger.py": 2,
+    "test_data_semantics_boundary.py": 1,
+    "test_draft_board_ui.py": 1,
+    "test_draft_room.py": 7,
+    "test_identity_partition_boundary.py": 4,
+    "test_instruments_check_rather_than_count.py": 1,
+    "test_kdst_integration.py": 3,
+    "test_one_eligibility_vocabulary_everywhere.py": 1,
+    "test_one_identity_one_answer.py": 1,
+    "test_parser_integrity.py": 1,
+    "test_prefix_arms.py": 1,
+    "test_replacement_anchor_boundary.py": 1,
+    "test_replacement_basis_vocabulary.py": 1,
+    "test_report_fields_mean_their_names.py": 1,
+    "test_resume_join.py": 1,
+    "test_risk_adj_absence.py": 2,
+    "test_snapshot_identity_boundary.py": 1
+  }
+}

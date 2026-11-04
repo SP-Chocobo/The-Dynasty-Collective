@@ -29,7 +29,7 @@
                             and the exact bytes, because "397 ok" identifies no artifact.
 
    A green count is only worth what the weakest of those three is worth."""
-import sys, glob, pathlib, json, os, atexit, signal, shutil, tempfile, hashlib
+import sys, pathlib, json, os, atexit, signal, shutil, tempfile, hashlib
 from playwright.sync_api import sync_playwright
 HERE = pathlib.Path(__file__).resolve().parent
 SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
@@ -38,6 +38,13 @@ SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
 # which this was twelve lines in each file and the two copies disagreed about the file format.
 sys.path.insert(0, str(HERE))
 import _gatelock
+#: `#302`: the chromium lookup has one home. These three tools each carried their own glob and
+#: each had the CURRENT version of the knowledge (`chrome-linux*`, both layouts) -- the two that
+#: gated TESTS had the oldest, which is what `#299` cost 15 silently-skipped tests to find. One
+#: home means a fourth consumer cannot inherit a stale copy.
+_BB_ROOT = pathlib.Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_BB_ROOT))
+import browser_binary
 
 LOCK = HERE / ".gate.lock"
 
@@ -321,11 +328,9 @@ with sync_playwright() as p:
     # the first raises IndexError -- the whole gate refusing to start for a reason that has nothing
     # to do with the surfaces it measures. Match either, and fail with a sentence rather than a
     # subscript on an empty list.
-    _cands = sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome")
-                    + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux*/headless_shell"))
-    if not _cands:
-        raise RuntimeError("no pre-provisioned chromium under /opt/pw-browsers")
-    exe = _cands[0]
+    exe = browser_binary.find_chromium()
+    if not exe:
+        raise RuntimeError(browser_binary.why_not())
     b = p.chromium.launch(executable_path=exe)
     bad = 0
     TOTAL = RENDER_BAD = 0   # renders walked, and renders with a problem

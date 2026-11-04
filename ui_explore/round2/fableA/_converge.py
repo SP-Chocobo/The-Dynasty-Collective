@@ -104,7 +104,14 @@ Usage, from this directory:
     python3 _converge.py report after.json         # desktop against phone
     python3 _converge.py moved before.json after.json   # what changed between two harvests
 """
-import sys, glob, json, re, pathlib, collections
+import sys, json, re, pathlib, collections
+
+#: `#302`: one home for the chromium lookup -- see browser_binary.py. This file had the
+#: current knowledge (`chrome-linux*`); the two that gated TESTS had the oldest, which is
+#: what `#299` cost 15 silently-skipped tests to find.
+_BB_ROOT = pathlib.Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_BB_ROOT))
+import browser_binary
 
 STATES = ["mid", "early", "late"]
 FIXTURE = pathlib.Path(__file__).resolve().parents[2] / "fixture.json"
@@ -178,11 +185,10 @@ def harvest(directory, out):
     formats = list(json.loads(FIXTURE.read_text()).keys())
     rows = collections.defaultdict(list)
     with sync_playwright() as p:
-        _c = sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome")
-                    + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux*/headless_shell"))
-        if not _c:
-            raise RuntimeError("no pre-provisioned chromium under /opt/pw-browsers")
-        b = p.chromium.launch(executable_path=_c[0])
+        _exe = browser_binary.find_chromium()
+        if not _exe:
+            raise RuntimeError(browser_binary.why_not())
+        b = p.chromium.launch(executable_path=_exe)
         for name, W, H in SURFACES:
             f, side = D / name, name
             phone = name.startswith("m")

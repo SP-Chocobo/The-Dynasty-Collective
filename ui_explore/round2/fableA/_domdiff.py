@@ -36,7 +36,15 @@ Mobile surfaces are deliberately NOT dumped: they are compared by the render gat
 viewports, and including them here would make the two sides non-comparable across a commit that
 adds one.
 """
-import sys, glob, json, hashlib, pathlib
+import sys, json, hashlib, pathlib
+
+#: `#302`: the chromium lookup has one home. These three tools each carried their own glob and
+#: each had the CURRENT version of the knowledge (`chrome-linux*`, both layouts) -- the two that
+#: gated TESTS had the oldest, which is what `#299` cost 15 silently-skipped tests to find. One
+#: home means a fourth consumer cannot inherit a stale copy.
+_BB_ROOT = pathlib.Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_BB_ROOT))
+import browser_binary
 
 STATES = ["mid", "early", "late"]
 FIXTURE = pathlib.Path(__file__).resolve().parents[2] / "fixture.json"
@@ -54,11 +62,9 @@ def dump(directory, out, viewports="1440x900,1700x1100"):
         # the first raises IndexError -- the whole gate refusing to start for a reason that has nothing
         # to do with the surfaces it measures. Match either, and fail with a sentence rather than a
         # subscript on an empty list.
-        _cands = sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome")
-                        + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux*/headless_shell"))
-        if not _cands:
-            raise RuntimeError("no pre-provisioned chromium under /opt/pw-browsers")
-        exe = _cands[0]
+        exe = browser_binary.find_chromium()
+        if not exe:
+            raise RuntimeError(browser_binary.why_not())
         b = p.chromium.launch(executable_path=exe)
         for f in sorted(D.glob("v*.html")):
             if f.name.startswith("_"):

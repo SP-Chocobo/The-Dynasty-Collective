@@ -15615,6 +15615,73 @@
         "early_returns": 0
       }
     },
+    "test_skip_gates.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 18,
+        "assertIn": 6,
+        "assertIs": 1
+      },
+      "by_method": {
+        "ADamagedRegistryHoldsNothingAndSaysSo.test_a_damaged_registry_loads_as_empty_rather_than_raising": {
+          "assertEqual": 1
+        },
+        "ADamagedRegistryHoldsNothingAndSaysSo.test_a_missing_registry_loads_as_empty": {
+          "assertEqual": 1
+        },
+        "ADamagedRegistryHoldsNothingAndSaysSo.test_everything_reads_as_new_against_an_empty_registry": {
+          "assertEqual": 1
+        },
+        "AllThreeSpellingsAreFound.test_a_RUNTIME_skipTest_is_found_too": {
+          "assertEqual": 1
+        },
+        "AllThreeSpellingsAreFound.test_a_decorator_gate_is_found": {
+          "assertEqual": 1
+        },
+        "AllThreeSpellingsAreFound.test_a_module_with_no_gate_is_omitted_not_recorded_as_zero": {
+          "assertEqual": 1
+        },
+        "AllThreeSpellingsAreFound.test_an_unparseable_module_does_not_take_the_scan_down": {
+          "assertEqual": 1
+        },
+        "AllThreeSpellingsAreFound.test_skipIf_is_found": {
+          "assertEqual": 1
+        },
+        "GrowthFailsAndShrinkageIsFree.test_a_gate_in_a_WHOLLY_NEW_module_is_reported": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
+        "GrowthFailsAndShrinkageIsFree.test_a_new_gate_in_a_registered_module_is_reported": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
+        "GrowthFailsAndShrinkageIsFree.test_an_unchanged_tree_reports_nothing": {
+          "assertEqual": 1
+        },
+        "GrowthFailsAndShrinkageIsFree.test_removing_ONE_OF_SEVERAL_gates_is_also_free": {
+          "assertEqual": 3
+        },
+        "GrowthFailsAndShrinkageIsFree.test_removing_a_module_s_LAST_gate_is_free": {
+          "assertEqual": 1
+        },
+        "ItReportsWhereAndWhat.test_each_gate_comes_back_with_its_line_and_its_condition": {
+          "assertEqual": 2,
+          "assertIn": 2
+        },
+        "ThePopulationHasOneHome.test_the_glob_is_the_same_object_assertion_floors_uses": {
+          "assertIs": 1
+        },
+        "ThePopulationHasOneHome.test_the_real_registry_is_current": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_sleeper_client.py": {
       "test_methods": 58,
       "asserts": {

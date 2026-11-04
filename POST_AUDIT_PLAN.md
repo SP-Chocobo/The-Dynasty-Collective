@@ -15815,3 +15815,182 @@ The front page itself is not built. This removes the stated blocker — the cont
 without Streamlit — but the empty-state page is a design question, and the four questions in
 `ui_explore/round2/MAIN_PAGE.md` are still open for the owner. What `#300` establishes is that
 when those are answered, the answer does not require importing the app to render a date.
+
+## #301 — THE PAGE THE APP ACTUALLY SHOWS TODAY, BUILT FROM MEASURED DATA
+
+`#300` established that the freshness manifest is reachable without Streamlit. This builds the
+page that needs it.
+
+### Why it is a second page and not the first one with holes in it
+
+`app.py` has exactly ONE `st.stop()`, at 3667, guarded by `if not snapshot`. The five-option view
+picker (3742) and all five view branches sit BELOW it. So with no league synced, none of the
+synced front page's claims — lineup holes, bye damage, thin positions — has a SUBJECT to be
+about. Rendering them with absent stamps would be a dashboard of em dashes, and that is `#187`
+used as an excuse rather than honoured: the absence contract is for a quantity that could not be
+measured, not for one that does not yet have anything to measure.
+
+### What the page says, measured on this machine
+
+```
+       71d  2026-08-25   Draft Sharks Dynasty Rankings
+       76d  2026-08-20   Draft Sharks Trade Value Chart
+         -  -            Sleeper player database            never fetched on this machine
+         -  -            Sleeper season projections         never fetched
+
+recency_grade(76) = 'Aging'
+```
+
+Four bands, nothing more: **is this ready** (the grade and the oldest age), **on disk now**,
+**arrives when you sync**, **do this** (the one action, with its cost — until a sync the board
+cannot price to the league's rules, because the player universe and the league-scored projections
+both arrive with it).
+
+### THE SPLIT IS THE DESIGN, and it is the one thing these tests really guard
+
+Two of the four rows are undated, and they do NOT mean what the two dated ones mean. Before a
+sync, "never fetched on this machine" is the EXPECTED state of a machine with no league. After
+one it would be damage. A page that renders them identically in both states is lying in one of
+them, so the fixture sorts them into `have` and `on_sync` keyed on the STATE, and the renderer
+never has to guess.
+
+The stamp stays `ABSENT -- <reason>` either way. The framing comes from the section heading, not
+from corrupting the basis.
+
+### Three defects the real browser found that reading the source did not
+
+1. **`no_league_synced` was on the page.** A machine identifier, visible to a person.
+2. **The pending rows said "absent" twice** — once as a `.prov` stamp and once by implication from
+   the heading — which made an early state read as a broken one. `_row` now takes `stamp=None` to
+   mean "the heading already said what these are".
+3. **The reason was hover-only.** `absent()` renders an em dash with its reason in `title=`, which
+   is right when a NUMBER is missing: the dash stands in for the figure and the tooltip explains.
+   These rows have no number missing — the measurement has not been taken — so the reason is the
+   content, and it is now visible text. That also removed two 18px focusable spans that the tap
+   floor flags.
+
+Rendered after the fixes, both viewports: **0 console errors, no horizontal scroll, 1.0 screens,
+min font 12px, no literal `None`/`NaN`/`undefined`, nothing under the 44px tap floor.**
+
+### One stylesheet for both states, and the measurement that demands it
+
+`build_front.style_css()` is lifted verbatim out of `build`'s own f-string and imported by
+`build_empty`. Not aesthetics: `_palette.py` compared the round-2 prototypes against the app and
+found **26 of 27 shared token names carrying a visibly different colour, with NOT ONE identical**,
+including three page grounds a design note had claimed were shared. Two STATES of one page
+defining `.fact` and `.claim` separately would drift exactly that way, invisibly, until someone
+put the screenshots side by side.
+
+**The lift is verified byte-identical.** `front.html`'s sha256 before and after is
+`7e485f83ba63fb956802b26045ffc125af8089ef7971d8e6c88a985b93e3e3ff`, and the build was confirmed
+deterministic first (a rebuild of the untouched tree reproduced the committed file exactly), which
+is the only reason refactoring a certified file is safe to do at all. Its 18 tests still pass.
+
+### Mutation-checked, 7 arms, all caught
+
+Reason hidden in a tooltip again `1`; pending rows stamped again `1`; the grade hardcoded `1`;
+`worst_days` stringified instead of going through `ds.figure` `3`; the raw state key back on the
+page `1`; a second stylesheet instead of the shared one `2`; the label no longer escaped `1`.
+
+**The fourth arm survived its first run, and that one was a real gap, not a bad arm.** With the
+fixture's `worst_days = 76`, `ds.figure(76, 0)` and `str(76)` both give `"76"` — the mutation is
+invisible for the only input the tests used. Measured where they diverge rather than guessing:
+`ds.figure(76.5, 0)` is `"77"` against `"76.5"`, and NaN/inf return `None` (so the caller picks
+the wording) against the machine words `"nan"`/`"inf"`. Two tests added for exactly those, and the
+arm now fires on three. A test that only exercises the input where two functions AGREE proves
+nothing about which one ran.
+
+## #302 — THE CHROMIUM LOOKUP HAS ONE HOME, AND THE DEFERRED HALF OF `#299` IS CLOSED
+
+`#299` left this named rather than done: `_shoot.py`, `_domdiff.py` and `_converge.py` kept their
+own copy of the browser glob. They were **correct** — they held the current knowledge
+(`chrome-linux*`, both layouts) — and they are the certified render gate, so unifying them meant
+re-running it. That is what this does.
+
+All three now call `browser_binary.find_chromium()` and raise `why_not()`. Removing the inline
+globs retired a dead `import glob` from each.
+
+**Re-certification IN FLIGHT at the time this entry was written: 294 of 397 renders ok, 0 FAIL**,
+with the browser resolved through the shared lookup. The full number lands in its own commit. That
+number is the only thing that licenses this change — a refactor of the gate verified by anything
+BUT the gate is a claim about the gate made without running it — so this entry states the count it
+actually had rather than the one it expected. What 294 already proves is the part most likely to
+break: Chromium launches through `browser_binary` and every render so far is clean.
+
+What this buys that the old copies did not: both directory layouts, the stable
+`/opt/pw-browsers/chromium` symlink tried FIRST so a version bump does not matter, numeric build
+sort (every copy reached for `sorted(glob(...))[-1]`, which picks build 999 over build 1243
+because `"1243" < "999"`), `headless_shell` ranked below a full `chrome` and never substituted
+silently, and `None` rather than a path that fails later (`#187`).
+
+## #303 — EVERY PLACE THE SUITE MAY DECLINE IS NOW REGISTERED
+
+`#299` ended by naming a gap and not closing it: `skipped=17` meant 15 of MISSING INFRASTRUCTURE
+and 2 of a DATA CONDITION, nothing could tell them apart, and no instrument held either count.
+
+`skip_gates.py` registers **46 gates across 26 modules**. Growth is the regression; shrinkage is
+free. The fix for a legitimate new gate is to register it with a reason, which is the bargain
+`boundary_census` already strikes — and it converts a skip gate from something that appears in a
+diff nobody reads into something that cannot appear without a sentence explaining itself.
+
+**Why it counts GATES and not SKIPS, stated because the obvious design is the other one.** A
+runtime skip count needs a 28-minute suite to measure, so the recorded number could only be
+refreshed at enormous cost; and it is environment-dependent by nature, so a developer without a
+browser would fail the ratchet for something that is not a code change. The set of PLACES a skip
+can happen is static, cheap and environment-independent.
+
+**What it cannot see, and this is the honest limit: whether a registered gate FIRES.** An
+always-true gate and an always-false one look identical here. `#299`'s was always-false for an
+unknown period and this file would NOT have said so. It would only have required that the gate be
+registered in the first place — a weaker and much cheaper guarantee than the one a reader might
+assume from the name.
+
+Mutation-checked, 8 arms, all caught: `skipTest` dropped from the vocabulary `2`; `skipIf`
+dropped `2`; a wholly new module's gates ignored `2`; shrinkage reported as a problem `1`; a
+damaged registry raising `1`; `TEST_GLOB` restated locally `1`; zero-gate modules recorded `2`;
+the line number dropped `1`.
+
+**The fourth arm survived its first run — another real gap.** The test removed a module's LAST
+gate, which makes `scan()` omit the module entirely, so the comparison never visits it and `!=`
+looks identical to `>`. The direction only shows when a module stays present with a SMALLER
+number. A 2-gates-to-1 test was added and the arm fires.
+
+## #304 — THE EASY `#137` WINS ARE DONE: 0 OF app.py's 41 REMAINING REACHES IS LIFTABLE
+
+Recorded so the next session does not repeat the hunt. `#297` (census 5 -> 4) and `#300`
+(43 -> 41) both worked the same way: a top-level function that touched NO Streamlit and happened
+to hold data-layer reaches could be lifted whole, taking its reaches out of the hull. **There is
+no third such function.**
+
+Measured by ABLATION against `boundary_census`'s own scanner — remove all 21 streamlit-free
+top-level functions from a copy of `app.py` and re-count:
+
+```
+app.py as it stands:            41 reaches
+streamlit-free top-level defs:  21
+with all 21 of them removed:    41 reaches
+reaches inside a streamlit-free function:  0
+```
+
+So further census shrinkage is a different and much larger job: splitting UI from logic INSIDE
+functions (`build_context`, `sync_leagues`, `activate_league` each hold some), or moving
+module-scope code, of which there is the most. The 21 streamlit-free functions are still logic in
+the wrong file and still worth lifting for `#137`'s end state — but lifting them moves no ratchet,
+and the record should not imply otherwise.
+
+**A method correction, because the first answer was wrong.** My first pass reimplemented the
+census predicate instead of calling it and reported **23** reaches where the real number is 41 —
+it matched attribute accesses whose key was in `CENSUS` and missed the
+`from data_merger import f; f()` shape entirely, which the real scanner handles with its
+`name_to_module` table. `engine-measurement`'s rule applies exactly: observe the production
+quantity, never reconstruct it. The ablation above calls `boundary_census.reaches` itself.
+
+### Also found, and NOT fixed, because it is shared and pre-existing
+
+`absent()` gives every absence marker `tabindex="0"`, making an ~18px span focusable — below the
+44px tap floor. The certified `front.html` carries two of them. Changing `absent()` would alter
+the certified page and is a real accessibility judgement (a `title` tooltip is not reliably shown
+on keyboard focus anyway, so the `tabindex` buys little). `#301`'s pending rows avoid it by
+rendering their reason as visible text, which needs no focus affordance — but the shared helper is
+untouched, because fixing it in one page only would reintroduce the exact drift `#301`'s shared
+stylesheet exists to prevent. Owner's call.

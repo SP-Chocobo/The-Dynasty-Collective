@@ -26,6 +26,9 @@ open, because the next reader believes it.
    is not necessarily that interpreter and in this container it is not. Do not touch the tree
    OR the index while it runs; both void it, and nothing in the output will say so.
 6. `$PY suite_reach.py --check && $PY assertion_floors.py --write && $PY assertion_floors.py --check`
+   then `$PY skip_gates.py --check` — and `--write` it in the SAME commit if a new gate is
+   deliberate, with the reason in the message (`#303`). It is the third ratchet and it
+   rations the one number the summary line gives you for two different things.
 7. `POST_AUDIT_PLAN.md` entry, task update, commit, push.
 
 **Step 4 is where the one real process failure happened.** `#144` was committed and pushed after
@@ -68,6 +71,22 @@ Then use `$PY` for the suite, the floors, and every probe. `suite_reach.py --che
 test (`test_suite_reach.py`), so a wrong-interpreter run fails loudly from inside the suite even
 if this step gets skipped — which is the point, since step-skipping is this file's one recorded
 process failure.
+
+**BEFORE LIFTING ANYTHING OUT OF `app.py`, RUN THE TESTS THAT READ ITS SOURCE (`#300`).** A
+test does not have to name the function you moved to depend on where it lives. `#300` moved
+`build_freshness_manifest` out of the hull; I grepped the suite for that NAME, found three
+modules, fixed the one that failed, and pushed. Two others failed the full suite — both scan
+`app.py`'s source for a STRING INSIDE the moved span (a call site, an assignment), and the
+function's name appears in neither assertion. The pre-flight that actually covers it is
+mechanical:
+
+```bash
+mods=$(grep -ln 'ui_source\.\|Path("app.py")\|open("app.py"' test_*.py | sed 's/\.py$//')
+$PY -m unittest $mods          # 54 modules, 1082 tests, 104 seconds
+```
+
+That is the whole risk class for any `#137` extraction at one seventeenth of a full suite's cost.
+Grepping for the symbol you moved is NOT this check and is not a substitute for it.
 
 **Budget it from a measurement that carries its own date.** The last one: **4248 tests in
 1682.7s** at `96bb4a8` (2026-11-04), measured with `__pycache__` cleared first per `#240`. The
