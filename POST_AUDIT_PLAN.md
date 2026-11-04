@@ -15676,3 +15676,34 @@ stale glob and the hardcoded build 1194 were both real, and `browser_binary.py` 
   406s slower, 32%. The 15 recovered tests each launch Chromium and are part of it; measured
   standalone those two modules cost 30.2s and 1.8s, which does NOT account for 406s, so the rest
   is unattributed and is not claimed. Budget from the total, as that file already says.
+
+### The 2 remaining skips, named — and the distinction that makes them fine
+
+Measured by running all 26 modules that carry a skip gate, individually:
+
+| module | why it skips |
+|---|---|
+| `test_draft_room` | "no max-positive-trajectory player in the current real pool is also thin-bpa and non-negative while healthy" — and the message goes on to print the best candidate's `bpa` against the computed thin bound, so a reader can see HOW FAR the real pool was from the condition |
+| `test_kdst_integration` | "no contested row is in the projection-only slice on this baseline" |
+
+Per-module total: **2**. Suite total: **2**. They agree, so neither skip is ordering-dependent —
+worth checking rather than assuming, because a skip that only fires in full-suite context would
+mean the per-module number could never be trusted again.
+
+**And this is the distinction `#299` was really about, which nothing had stated:**
+
+* A skip whose reason names a **DATA CONDITION** is informative. The real pool genuinely contains
+  no instance of the case, the test declines rather than fabricating one, and the message carries
+  the measurement that proves it. That is the absence contract (`#187`) applied to coverage: the
+  test says "not measured, and here is why" instead of inventing a fixture that would make the
+  assertion vacuous. Both survivors are this kind.
+* A skip whose reason names **MISSING INFRASTRUCTURE** is a silent coverage loss. Nothing about
+  the subject under test changed; the harness simply could not reach it. The 15 browser skips
+  were this kind, and they are indistinguishable from the first kind in the summary line, which
+  is the entire reason they sat unnoticed through an unknown number of runs.
+
+The summary line gives one number for both kinds. `skipped=17` was 15 of the second kind and 2
+of the first, and no instrument in the repository could tell them apart. `browser_binary.why_not()`
+is a small step against a recurrence — a skip reason that names the four places searched reads as
+infrastructure rather than as data — but the general case is open and is NOT fixed here: nothing
+classifies a skip, and nothing holds a floor under the count of either kind.
