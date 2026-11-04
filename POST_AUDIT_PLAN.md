@@ -15910,12 +15910,39 @@ re-running it. That is what this does.
 All three now call `browser_binary.find_chromium()` and raise `why_not()`. Removing the inline
 globs retired a dead `import glob` from each.
 
-**Re-certification IN FLIGHT at the time this entry was written: 294 of 397 renders ok, 0 FAIL**,
-with the browser resolved through the shared lookup. The full number lands in its own commit. That
-number is the only thing that licenses this change — a refactor of the gate verified by anything
-BUT the gate is a claim about the gate made without running it — so this entry states the count it
-actually had rather than the one it expected. What 294 already proves is the part most likely to
-break: Chromium launches through `browser_binary` and every render so far is clean.
+### RE-CERTIFIED, and these are the record's own numbers rather than mine
+
+The run finished after the commit that carried this entry. `_certification.json`, written by the
+gate itself:
+
+```
+verdict                      PASS_WITH_KNOWN_FAILURES
+renders                      396        renders_ok 395     renders_failed 1
+failures_total               0
+expected_failures            ['m1_stack.html [HEAVY_IDP/late@390x664]']
+stale_expectations           []
+snapshot_verified_unchanged  True
+source_tree_clean            True
+source_commit                e454460c61f2c412324fcc8189768962faa3b849
+```
+
+402 `ok` lines in all — 395 renders plus the url/Back/Forward agreement on three surfaces, the
+name-size identity across 126 (file, format, viewport) groups, the known-failure reconciliation,
+and the end-of-run snapshot re-hash.
+
+Four of those lines matter more than the count. `failures_total 0` with `renders_failed 1` is the
+known-failure machinery working: the HEAVY_IDP/late scroll budget is still 8px over at 2.01 and
+still deliberately not chased (`#56` — a bound is not a threshold). `stale_expectations []` means
+no listed failure has quietly started passing. `snapshot_verified_unchanged True` means the gate
+re-hashed the seven builds at the end and nothing was rebuilt underneath it (`#298`'s sibling
+failure, which cost two runs earlier in this session). And `source_tree_clean True` with
+`source_commit e454460` means the record names the exact commit it certifies.
+
+**A correction to the figure this repository has been quoting.** Several earlier entries and task
+notes say "397 gate" or "397 renders". The gate's own record says **396 renders**; the number a
+reader sees scrolling the output is **402 ok lines**, which is renders plus the non-render
+assertions. Neither is 397. The three figures are different quantities and the loose one has been
+standing in for all three.
 
 What this buys that the old copies did not: both directory layouts, the stable
 `/opt/pw-browsers/chromium` symlink tried FIRST so a version bump does not matter, numeric build
