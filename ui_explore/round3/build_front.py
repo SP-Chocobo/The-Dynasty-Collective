@@ -123,6 +123,23 @@ def build(fx):
                        "Roster Maintenance"))
 
     bp = fx.get("bye_profile") or {}
+    # THE RUNG'S REASON IS FUTURITY, so a claim that cannot establish futurity must not borrow
+    # the urgency. With a known current week, rank on the worst week STILL AHEAD and say so; with
+    # none, the same numbers are a season-shape fact and the copy says that instead of implying a
+    # deadline. The first version had no concept of now and would happily have put a week already
+    # played second on the page -- which is the one thing a triage surface must never do, because
+    # it spends the reader's trust in the whole band.
+    now = fx.get("current_week")
+    weeks_all = bp.get("weeks") or {}
+    if now is not None:
+        ahead = {w: v for w, v in weeks_all.items()
+                 if str(w).lstrip("-").isdigit() and int(w) >= int(now)}
+        if ahead:
+            worst = max(ahead, key=lambda w: ahead[w])
+            bp = {**bp, "worst_week": int(worst), "worst_week_loss": ahead[worst],
+                  "weeks": ahead, "_ahead_only": True}
+        else:
+            bp = {**bp, "worst_week": None, "_ahead_only": True}
     if bp.get("worst_week") is not None and bp.get("worst_week_loss") is not None:
         share, detail = bp.get("concentration"), (bp.get("worst_week_detail") or {})
         # A FLOOR IS NOT A TOTAL, and the floor's magnitude is part of saying so. bye_collision
@@ -135,8 +152,13 @@ def build(fx):
         floor = (f" These are floors: {esc(unknown)} player"
                  f"{'s' if (unknown or 0) != 1 else ''} on this roster has no known bye."
                  if partial else "")
+        # Say which kind of claim this is, rather than letting the reader assume the urgent one.
+        when = ("" if bp.get("_ahead_only") else
+                " This counts the whole season, including weeks already played &mdash; the app "
+                "does not know today's week here.")
         out = detail.get("starters_out")
-        who = (f"<b>{esc(out)}</b> of your starters sit that week. " if out is not None else "")
+        who = (f"<b>{esc(out)}</b> of your starters "
+               f"{'sits' if str(out) == '1' else 'sit'} that week. " if out is not None else "")
         # concentration is None, NEVER 0.0 -- bye_concentration says so, because a roster with
         # nothing to lose has no shape and 0.0 would rank it as maximally staggered. `or 0` here
         # rendered that as a measured "0%", eight lines under a docstring forbidding exactly it.
@@ -147,7 +169,7 @@ def build(fx):
                        f"Week <b>{esc(bp['worst_week'])}</b> costs you "
                        f"<b>{ge}{num(bp['worst_week_loss'], 0, 'the worst week was not measured')} "
                        f"{esc(ds.VALUE_UNIT_SHORT)}</b>",
-                       f"{who}{shape_txt}.{floor}", "Matchup"))
+                       f"{who}{shape_txt}.{floor}{when}", "Matchup"))
 
     # Ranked WITHIN the rung by how close the room is to empty, not by the alphabet. The capture
     # emits positions in sorted() order, so without this the order was Q-before-T -- which in one
@@ -234,9 +256,20 @@ def build(fx):
         groups.setdefault(stamp_kind(stamp), []).append(fname.replace("_", " "))
     parts = [f"{', '.join(v)} {'is' if len(v) == 1 else 'are'} <b>{k}</b>"
              for k, v in sorted(groups.items())]
+    # No format slugs, no strategy enums, no "seat", no "universe rows" -- four pieces of
+    # internal jargon on a consumer page, naming a battery arm the reader has no concept of.
     prov_sentence = ("; ".join(parts) + ". " if parts else "") + (
-        f"Replayed from a recorded battery, {esc(fx['_provenance'].get('universe_rows'))} "
-        f"players in the pool.")
+        f"{esc(fx['_provenance'].get('universe_rows'))} players in the pool.")
+
+    # WHOSE COMMAND CENTER IS THIS. The page said "Gold Wyrm" -- the brand -- and then named a
+    # battery arm in the footer. A dynasty manager is in three to six leagues at once, and the
+    # design argument this page is built from specifically faults the phone draft room for being
+    # unable to say which league or view you are looking at. The lede it replaces was thirteen
+    # words of mission statement that told the reader nothing they could act on.
+    team_html = field(esc(fx.get("team") or ""), basis.get("team"), "no team recorded")
+    league_html = field(esc(fx.get("league_name") or ""), basis.get("league_name"),
+                        "no league name recorded")
+    identity = f"{team_html} &middot; {league_html}"
 
     weeks = bp.get("weeks") or {}
     # int(kv[0]) raised ValueError on any non-numeric key and took the whole page with it.
@@ -270,7 +303,8 @@ body{{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-s);line
 .page{{max-width:52rem;margin:0 auto;padding:18px 16px 56px}}
 .wm{{margin:0;font-family:var(--f-d);font-weight:700;letter-spacing:.12em;text-transform:uppercase;
     font-size:.95rem;color:var(--gold-b)}}
-.lede{{color:var(--muted);font-size:.84rem;margin:2px 0 20px}}
+.who{{color:var(--muted);font-size:.84rem;margin:2px 0 20px}}
+.who .absent,.who .made-up{{font-size:.78rem}}
 h2{{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;
    font-size:.78rem;color:var(--muted);margin:26px 0 8px}}
 .claims{{display:flex;flex-direction:column;gap:8px}}
@@ -327,7 +361,7 @@ h2{{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:u
 </style></head>
 <body><div class="page">
 <h1 class="wm">Gold Wyrm</h1>
-<p class="lede">What needs you, why, what it costs to ignore, and what can wait.</p>
+<p class="who">{identity}</p>
 
 <h2>Needs you</h2>
 <div class="claims">{cards}</div>

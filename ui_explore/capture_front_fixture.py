@@ -168,6 +168,18 @@ def main() -> int:
                 "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no "
                           "capture in data/league_captures/ holds a roster's contents or a "
                           "result. Rendered per the absence contract, never as 0-0",
+                # WITHOUT THIS, THE BYE CLAIM CAN NAME A WEEK ALREADY PLAYED. The ladder's bye
+                # rung justifies itself on futurity -- "a known FUTURE week with a measured cost,
+                # and planning only works in advance" -- and nothing in the pipeline knew what
+                # week it was, so the page could rank a dead week second-highest. A live app reads
+                # it from Sleeper's NFL state (season/week/season_type); a replayed draft has no
+                # point in a season at all, which is a genuine absence rather than an oversight.
+                "current_week": "ABSENT -- a replayed draft has no point in the season. A live "
+                                "league reads season/week from Sleeper's NFL state; without it "
+                                "the bye claim cannot assert that a week is still ahead",
+                "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's "
+                        "team name. A live league has the real one",
+                "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
             },
         },
         "league": {"roster_positions": roster_positions, "starting_slots": len(slots)},
@@ -183,6 +195,9 @@ def main() -> int:
                         "unknown_byes": unknown_byes,
                         "worst_week_detail": weeks.get(shape.get("worst_week")) if shape.get("worst_week") else None},
         "starters": starters,
+        "current_week": None,
+        "team": me,
+        "league_name": None,
         "roster": mine,
         "record": None,
     }

@@ -147,5 +147,41 @@ class HostileFixturesDoNotCrashOrInject(unittest.TestCase):
                 self.fail(f"a fixture missing {key!r} crashed the builder: {exc!r}")
 
 
+
+class TheLadderKnowsWhatWeekItIs(unittest.TestCase):
+    """The bye rung justifies itself on futurity -- "a known FUTURE week ... planning only works
+    in advance" -- and the first version of this page had no concept of now, so it would rank a
+    week already played second-highest. Nothing erodes a triage surface faster."""
+
+    WEEKS = {"5": 11.0, "6": 95.0, "9": 40.0, "13": 60.0}
+
+    def _bye(self, **over):
+        return {**BASE["bye_profile"], "weeks": dict(self.WEEKS), "worst_week": 6,
+                "worst_week_loss": 95.0, **over}
+
+    def test_with_a_known_week_it_ranks_the_worst_week_still_AHEAD(self):
+        html = render(bye_profile=self._bye(), current_week=10)
+        self.assertIn("Week <b>13</b>", html, "it did not re-rank onto the worst remaining week")
+        self.assertNotIn("Week <b>6</b>", html, "it named a week already played")
+
+    def test_a_past_week_is_dropped_from_the_strip_entirely(self):
+        html = render(bye_profile=self._bye(), current_week=10)
+        self.assertIn("wk 13", html)
+        for dead in ("wk 5", "wk 6", "wk 9"):
+            self.assertNotIn(dead, html, f"{dead} is behind us and still on the page")
+
+    def test_with_every_bye_behind_us_the_claim_does_not_fire(self):
+        html = render(bye_profile=self._bye(), current_week=14)
+        self.assertNotIn("costs you", html, "it claimed a bye cost with no bye week left")
+
+    def test_without_a_known_week_it_says_so_instead_of_implying_a_deadline(self):
+        html = render(bye_profile=self._bye(), current_week=None)
+        self.assertIn("does not know today's week", html)
+
+    def test_the_page_says_whose_it_is(self):
+        html = render(team="Team 1", league_name=None)
+        self.assertIn("Team 1", html)
+        self.assertIn('class="who"', html)
+
 if __name__ == "__main__":
     unittest.main()

@@ -49,7 +49,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-s);line-
 .page{max-width:52rem;margin:0 auto;padding:18px 16px 56px}
 .wm{margin:0;font-family:var(--f-d);font-weight:700;letter-spacing:.12em;text-transform:uppercase;
     font-size:.95rem;color:var(--gold-b)}
-.lede{color:var(--muted);font-size:.84rem;margin:2px 0 20px}
+.who{color:var(--muted);font-size:.84rem;margin:2px 0 20px}
+.who .absent,.who .made-up{font-size:.78rem}
 h2{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;
    font-size:.78rem;color:var(--muted);margin:26px 0 8px}
 .claims{display:flex;flex-direction:column;gap:8px}
@@ -106,10 +107,10 @@ h2{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:up
 </style></head>
 <body><div class="page">
 <h1 class="wm">Gold Wyrm</h1>
-<p class="lede">What needs you, why, what it costs to ignore, and what can wait.</p>
+<p class="who">Team 1 <span class="made-up" tabindex="0" title="the seat&#x27;s label in a replayed battery, not an owner&#x27;s team name. A live league has the real one">constructed</span> &middot; <span class="absent" title="a format label is a battery arm, not a league&#x27;s name" tabindex="0">&mdash;</span></p>
 
 <h2>Needs you</h2>
-<div class="claims"><article class="claim bye"><h3>Week <b>6</b> costs you <b>95 UV pts</b></h3><p><b>1</b> of your starters sit that week. 40% of your season's bye damage lands in that one week.</p><a class="route" href="#matchup">Matchup &rsaquo;</a></article><article class="claim thin"><h3>Thin at <b>DEF</b></h3><p><b>1</b> rostered &mdash; bottom of this league at the position.</p><a class="route" href="#league">League &rsaquo;</a></article><article class="claim thin"><h3>Thin at <b>TE</b></h3><p><b>2</b> rostered &mdash; bottom of this league at the position. Priced depth only: 1 of 2 could be priced, so that comparison is a floor.</p><a class="route" href="#league">League &rsaquo;</a></article></div>
+<div class="claims"><article class="claim bye"><h3>Week <b>6</b> costs you <b>95 UV pts</b></h3><p><b>1</b> of your starters sits that week. 40% of your season's bye damage lands in that one week. This counts the whole season, including weeks already played &mdash; the app does not know today's week here.</p><a class="route" href="#matchup">Matchup &rsaquo;</a></article><article class="claim thin"><h3>Thin at <b>DEF</b></h3><p><b>1</b> rostered &mdash; bottom of this league at the position.</p><a class="route" href="#league">League &rsaquo;</a></article><article class="claim thin"><h3>Thin at <b>TE</b></h3><p><b>2</b> rostered &mdash; bottom of this league at the position. Priced depth only: 1 of 2 could be priced, so that comparison is a floor.</p><a class="route" href="#league">League &rsaquo;</a></article></div>
 
 
 <h2>This week</h2>
@@ -119,5 +120,5 @@ h2{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:up
 <h2>Everything else</h2>
 <div class="doors"><a class="door" href="#">Matchup</a><a class="door" href="#">Roster Maintenance</a><a class="door" href="#">Draft Room</a><a class="door" href="#">League</a><a class="door" href="#">Import Audit</a><a class="door" href="#">The Prytaneum</a></div>
 
-<p class="prov"><b>Where these numbers come from.</b> record is <b>absent</b>; starters is <b>constructed</b>; bye profile, structural holes, thin positions are <b>measured</b>. Replayed from a recorded battery, 5357 players in the pool.</p>
+<p class="prov"><b>Where these numbers come from.</b> current week, league name, record are <b>absent</b>; starters, team are <b>constructed</b>; bye profile, structural holes, thin positions are <b>measured</b>. 5357 players in the pool.</p>
 </div></body></html>
