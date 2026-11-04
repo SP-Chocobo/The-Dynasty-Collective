@@ -431,13 +431,21 @@ Two corrections were applied, and it matters that **neither is a rescue**:
 After both, the certified run reads:
 
 ```
-396 ok, 6 failed
-!! m1_stack.html [HEAVY_IDP/late@390x664]  screens=2.04   document 1357px, budget 1328px, over by 29
-!! m1_stack.html [LIGHT_IDP/late@390x664]  screens=2.01   document 1333px, over by 5
-   + 4 navigation failures, one per surface, on the write-only URL described above
+verdict PASS_WITH_KNOWN_FAILURES   (certificate: e0061b4, clean tree, 396 renders)
+
+!! [known] m1_stack.html [HEAVY_IDP/late@390x664]  screens=2.04   1357px against a 1328px budget, over by 29
+!! [known] m1_stack.html [LIGHT_IDP/late@390x664]  screens=2.01   1333px, over by 5
+ok  no other failure in 396 renders, and no stale expectation
+ok  url and board agree at every step on all four surfaces (load / hash edit / back / forward)
 ok  name size is identical across draft states for all 126 (file, format, viewport) groups
 ok  the snapshot is byte-identical to what was certified (7 builds re-hashed)
 ```
+
+The four navigation failures that first appeared beside these two are **closed** — `d806700` made
+the URL readable and the gate asserts it. These two are the only ones left, they are listed as
+known so a new failure is still visible against them, and the listing is reconciled in both
+directions: if either ever starts passing, the run fails on that instead, because something would
+have changed that nobody measured.
 
 So `HEAVY_IDP/late` is over by 29px and `LIGHT_IDP/late` by 5. The remaining levers all change how the variant looks, on the variant the owner chose,
 so they are costed here rather than taken:
