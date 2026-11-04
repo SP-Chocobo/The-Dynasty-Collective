@@ -88,15 +88,25 @@ $PY -m unittest $mods          # 54 modules, 1082 tests, 104 seconds
 That is the whole risk class for any `#137` extraction at one seventeenth of a full suite's cost.
 Grepping for the symbol you moved is NOT this check and is not a substitute for it.
 
-**Budget it from a measurement that carries its own date.** The last one: **4248 tests in
-1682.7s** at `96bb4a8` (2026-11-04), measured with `__pycache__` cleared first per `#240`. The
-figure before it, **4235 tests in 1276.5s** at `dbae709`, was taken THE SAME DAY: 13 more tests
-and 406s slower, 32%, with the per-test cost going 301ms -> 396ms. That is a real slowdown and
-not growth, so unlike the entries below it this one does not get explained away -- 15 of those
-tests are browser-EXECUTING tests that `#299` un-skipped and each launches Chromium, but measured
-standalone the two modules holding them cost 30.2s and 1.8s, which does not account for 406s. The
-remainder is unattributed and is not claimed. Size a timeout from 1682.7s, not from the gap's
-cause.
+**Budget it from a measurement that carries its own date.** The last one: **4311 tests in
+1968.7s** at `b4dbffb` (2026-11-04), measured with `__pycache__` cleared first per `#240`.
+**Size a timeout from 1968.7s.**
+
+Four measurements the same day, which is more useful than any one of them:
+
+| tests | seconds | per test | commit |
+|---|---|---|---|
+| 4235 | 1276.5 | 301ms | `dbae709` |
+| 4248 | 1682.7 | 396ms | `96bb4a8` |
+| 4276 | 1976.7 | 462ms | `029b31e` |
+| 4311 | 1968.7 | 457ms | `b4dbffb` |
+
+The per-test cost rose 301 -> 396 -> 462ms and then stopped; the last run added 35 tests and got
+8s FASTER. So the thing to carry forward is that **the suite got ~50% more expensive per test over
+one day and has now plateaued**, not that it is still climbing. Part of the rise is accounted for
+-- `#299` un-skipped 15 browser-executing tests, and `#308` made 34 more reachable -- but those
+modules cost 30.2s, 1.8s and ~0.2s standalone, nowhere near the ~660s of total growth. **The
+remainder is unattributed and is not claimed.** Do not extrapolate from the trend; re-measure.
 
 The `dbae709` entry is in turn the one that proves this paragraph's point. The figure before IT said **3347 tests in
 878.3s** at `3bb81a7` (2026-09-20) and had gone six weeks without a re-measure: the suite grew by
