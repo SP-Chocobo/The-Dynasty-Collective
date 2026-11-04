@@ -28,29 +28,31 @@
    "1700x1100"
   ],
   "viewports_mobile": [
-   "390x664",
-   "360x780",
-   "428x746"
+   "390x664"
   ]
  },
- "failures_total": 2,
- "finished_utc": "2026-11-04T02:00:18+00:00",
+ "expected_failures": [
+  "m1_stack.html [HEAVY_IDP/late@390x664]",
+  "m1_stack.html [LIGHT_IDP/late@390x664]"
+ ],
+ "failures_total": 1,
+ "finished_utc": "2026-11-04T02:04:30+00:00",
  "gate": "ui_explore/round2/fableA/_shoot.py",
- "renders": 396,
+ "renders": 36,
  "renders_failed": 2,
- "renders_ok": 394,
+ "renders_ok": 34,
  "snapshot_sha256_12": {
-  "m1_stack.html": "fcca1881beac",
-  "m2_sheet.html": "486ee46103af",
-  "m3_hero.html": "cc9982716e3b",
-  "v1_ledger.html": "fc881ed4d6c1",
-  "v1_ledger_rail.html": "0c35d86155f1",
-  "v2_lanes.html": "0d3aecf33883",
-  "v4_doors.html": "df868590ed5f"
+  "m1_stack.html": "fcca1881beac"
  },
  "snapshot_verified_unchanged": true,
- "source_commit": "2ed5563ed1a25616d9fa6687ee4784b0338f1ee8",
- "source_tree_clean": true,
- "source_tree_dirty_paths": [],
+ "source_commit": "475294f7b544fa4eb6272d6d2dfd50eda88aa88d",
+ "source_tree_clean": false,
+ "source_tree_dirty_paths": [
+  "ui_explore/round2/fableA/_certification.json",
+  "ui_explore/round2/fableA/_shoot.py"
+ ],
+ "stale_expectations": [
+  "m1_stack.html [12T_ppr/mid@390x664]"
+ ],
  "verdict": "FAIL"
 }
