@@ -1350,6 +1350,38 @@ function wireChrome(opts){
     room.querySelectorAll("[data-sheet]").forEach(b => b.setAttribute("aria-expanded", "false")); const sc = room.querySelector(".scrim"); if (sc) sc.dataset.open = "0"; };
   const open = id => { const s = document.getElementById(id); if (!s) return; const was = s.dataset.open === "1"; closeAll(); if (was) return;
     s.dataset.open = "1"; s.setAttribute("aria-hidden", "false"); room.querySelectorAll(`[data-sheet="${id}"]`).forEach(b => b.setAttribute("aria-expanded", "true")); const sc = room.querySelector(".scrim"); if (sc) sc.dataset.open = "1"; requestAnimationFrame(markScrollers); };
+  /* THE URL WAS WRITE-ONLY, AND THAT IS A TWO-GESTURE BUG. setHash() above writes the hash and
+     nothing read it back after load, so editing the address bar moved the URL and left the board
+     where it was, and browser Back moved it again and still left the board where it was -- the
+     address bar naming a board nobody is looking at. That is not cosmetic: a reload is one
+     keystroke and a reload resolves the URL, so a disagreement is a board switch the user never
+     asked for, one gesture away at all times. Measured on m1_stack at 390x664 before this was
+     written, and now asserted by the render gate's away-and-return phase on all four surfaces.
+
+     The fix is to make the URL READABLE, not to change what writes it. This runs the same path a
+     click on a state or format button runs -- sync the pressed states, close any sheet, re-render
+     through opts.onState -- minus writing the hash back, since the hash is already what we are
+     following. The early return makes a double fire harmless, which matters because a hash-only
+     back/forward raises BOTH events in Chrome.
+
+     WHAT IS DELIBERATELY NOT CHANGED: setHash still uses replaceState, so the review bar's own
+     state switches create no history entries. Whether a board change should PUSH one is a
+     product-routing decision -- it is the difference between Back stepping through your board
+     states and Back leaving the app -- and it belongs with the app's navigation, not with a
+     prototype's dev chrome. See ui_explore/round2/MAIN_PAGE.md on draft continuity. */
+  const applyHash = () => {
+    const parts = (location.hash || "").replace("#", "").split("/");
+    const wantFmt = opts.formats && FORMAT_KEYS.includes(parts[0]) ? parts[0] : FORMAT_KEYS[0];
+    const wantKey = STATE_KEYS.includes(parts[parts.length - 1]) ? parts[parts.length - 1] : "mid";
+    if (wantFmt === fmt && wantKey === key) return;
+    fmt = wantFmt; key = wantKey;
+    bar.querySelectorAll("[data-state]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.state === key)));
+    bar.querySelectorAll("[data-fmt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fmt === fmt)));
+    closeAll();
+    opts.onState(key, fmt);
+  };
+  addEventListener("popstate", applyHash);
+  addEventListener("hashchange", applyHash);
   document.addEventListener("click", e => {
     const st = e.target.closest("[data-state]"); if (st) { key = st.dataset.state; bar.querySelectorAll("[data-state]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.state === key))); closeAll(); setHash(); opts.onState(key, fmt); return; }
     const fb = e.target.closest("[data-fmt]"); if (fb) { fmt = fb.dataset.fmt; bar.querySelectorAll("[data-fmt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fmt === fmt))); closeAll(); setHash(); opts.onState(key, fmt); return; }
