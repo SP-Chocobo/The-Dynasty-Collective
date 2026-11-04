@@ -38,7 +38,7 @@
   "m1_stack.html [LIGHT_IDP/late@390x664]"
  ],
  "failures_total": 0,
- "finished_utc": "2026-11-04T02:12:11+00:00",
+ "finished_utc": "2026-11-04T02:20:18+00:00",
  "gate": "ui_explore/round2/fableA/_shoot.py",
  "renders": 396,
  "renders_failed": 2,
@@ -53,9 +53,9 @@
   "v4_doors.html": "df868590ed5f"
  },
  "snapshot_verified_unchanged": true,
- "source_commit": "49d72d60c1116a508676c6989d398c6dc1eab31a",
+ "source_commit": "e0061b49576b491024319e51c12dab828110b56d",
  "source_tree_clean": true,
  "source_tree_dirty_paths": [],
  "stale_expectations": [],
- "verdict": "PASS"
+ "verdict": "PASS_WITH_KNOWN_FAILURES"
 }
