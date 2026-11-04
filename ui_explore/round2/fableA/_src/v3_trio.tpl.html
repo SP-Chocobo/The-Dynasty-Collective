@@ -104,7 +104,7 @@ function trioHTML(){
   if (cs.some(c => c.injury_status)) rows.push(`<div class="drow" data-row><div class="lab">Designation<br><small>carried, not priced</small></div>${cell(c => c.injury_status ? M.avail(c) : "none", -1)}</div>`);
   if (cs.some(c => M.depth(c).n)) rows.push(`<div class="drow" data-row><div class="lab">Depth insurance</div>${cell(c => M.depth(c).n ? `<span class="mono">${M.depth(c).n}</span> <span class="note">measured</span>` : `<span class="note">${M.depth(c).why}</span>`, -1)}</div>`);
   return `<div class="heads">${heads}</div><div class="rows">${rows.join("")}</div>
-    <div class="foot">${cs.map(c => M.copyBtn(c)).join("")}<button class="btn sm" data-work="${A.player_id}">numbers · ${M.short(A.name)}</button><span class="note" style="margin-left:auto">how long any of them lasts: <span class="wh">withheld</span></span></div>`;
+    <div class="foot">${cs.map(c => M.copyBtn(c)).join("")}<button class="btn sm" data-work="${A.player_id}">numbers · ${M.short(A.name)}</button><span class="note" style="margin-left:auto">how long any of them lasts: <span class="wh">${WITHHELD_WORD}</span></span></div>`;
 }
 function poolHTML(){
   const row = c => { const inn = LET.find(L => slots[L] === c.player_id);

@@ -26,7 +26,7 @@
      The SEMANTIC roles are unchanged and still reserved: gold is now/selected/yours, amber is
      caution and assumption, emerald is the slot a pick would fill, violet is withheld. */
   --bg:#0c0a07; --surface:#17130d; --surface-2:#120f0a; --line:#2a2318; --line-2:#443823;
-  --ink:#f2ead9; --muted:#b0a28a; --dim:#7d7259;
+  --ink:#f2ead9; --muted:#b0a28a; --dim:#897c61;  /* WCAG AA. #7d7259 measured 4.03:1 on the page ground and 3.90:1 on --surface, under the       4.5 normal-text floor, and --dim is the whole quiet tier -- 616 elements on one phone       screen alone (.small .rk .i .note .sl .u .ck .hint .car .dem .tankcap). Solved against       --surface, the LIGHTEST ground it is drawn on and therefore the binding case; a first       attempt solved against the page ground instead and landed at 4.36:1, still failing.       Hue and saturation are untouched: the same colour, lighter. 4.51:1 on --surface. */
   --emerald:#0b8f57; --emerald-b:#2fd08b; --gold:#c9961a; --gold-b:#f5c93f;
   --violet:#6d3fd6; --violet-b:#b593f5; --crimson:#a60f3a; --crimson-b:#f2546e;
   --sky:#1356c9; --sky-b:#56a0fa; --amber:#d4700a; --amber-b:#f8a52a;
@@ -34,7 +34,13 @@
   --pure:#efe5cd; --tie:#6f6550; --tie-b:#a1947b;
   /* the starter-band hatch. one home: it was a hardcoded rgba() of a gold that no longer exists. */
   --hatch:rgba(245,201,63,.70);
-  --qb:#7b5cf0; --rb:#0fa877; --wr:#2f7df0; --te:#e0661f; --k:#8d7350; --def:#c21f4d; --dl:#e35d7a; --lb:#b08cf5; --db:#d9a21c; --idp:#c21f4d;
+  --qb:#8366f1; --rb:#0fa877; --wr:#2f7df0; --te:#e0661f; --k:#947954; --def:#e0406d; --dl:#e35d7a; --lb:#b08cf5; --db:#d9a21c; --idp:#e0406d;
+  /* WCAG AA on the position palette. Six of these ten already cleared 4.5:1 comfortably
+     (WR 4.68, TE 5.36, DL 5.38, RB 6.07, LB 6.97, DB 8.05); QB 4.08, K 4.14 and DEF/IDP
+     3.17 did not, failing both as text and as the ground under a pill's dark label.
+     Raised to the floor with hue and saturation held, so each stays the same colour and
+     the three outliers join the majority rather than the palette being restyled.
+     DEF and IDP share a hex deliberately and still do. */
   --f-d:"Cinzel",Georgia,serif; --f-s:"Segoe UI",system-ui,sans-serif;
   --f-m:"JetBrains Mono","DejaVu Sans Mono",monospace; --r:2px; color-scheme:dark;
 }
@@ -286,7 +292,8 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .rcard .sg.bn .sl.bh:hover{color:var(--ink)}
 .rcard .sg.bn .sl.bh em{font-style:normal;margin-left:auto;color:var(--dim)}
 .rcard.foldbn .sg.bn .bnrow{display:none}
-.rcard .sg.bn .sl i{color:var(--tie)}
+/* --tie is the FILL colour -- four backgrounds use it -- and this was its only use as TEXT,   where it measured 3.22:1, the worst contrast on any surface. The palette already ships   --tie-b for exactly this, the same bright-variant convention as --gold-b and --amber-b.   Not a new colour; the one the token set already provided for text. */
+.rcard .sg.bn .sl i{color:var(--tie-b)}
 [data-tip].chip,[data-tip] button,button[data-tip]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 
@@ -1292,7 +1299,7 @@ function trioHTML(){
   if (cs.some(c => c.injury_status)) rows.push(`<div class="drow" data-row><div class="lab">Designation<br><small>carried, not priced</small></div>${cell(c => c.injury_status ? M.avail(c) : "none", -1)}</div>`);
   if (cs.some(c => M.depth(c).n)) rows.push(`<div class="drow" data-row><div class="lab">Depth insurance</div>${cell(c => M.depth(c).n ? `<span class="mono">${M.depth(c).n}</span> <span class="note">measured</span>` : `<span class="note">${M.depth(c).why}</span>`, -1)}</div>`);
   return `<div class="heads">${heads}</div><div class="rows">${rows.join("")}</div>
-    <div class="foot">${cs.map(c => M.copyBtn(c)).join("")}<button class="btn sm" data-work="${A.player_id}">numbers · ${M.short(A.name)}</button><span class="note" style="margin-left:auto">how long any of them lasts: <span class="wh">withheld</span></span></div>`;
+    <div class="foot">${cs.map(c => M.copyBtn(c)).join("")}<button class="btn sm" data-work="${A.player_id}">numbers · ${M.short(A.name)}</button><span class="note" style="margin-left:auto">how long any of them lasts: <span class="wh">${WITHHELD_WORD}</span></span></div>`;
 }
 function poolHTML(){
   const row = c => { const inn = LET.find(L => slots[L] === c.player_id);
