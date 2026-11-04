@@ -1,8 +1,12 @@
 """Interaction pass: clicks, state switches, sheets — collect page errors."""
-import glob, pathlib
+import pathlib, sys
 from playwright.sync_api import sync_playwright
+_BB_ROOT = pathlib.Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_BB_ROOT))
+import browser_binary  # one home for where this container keeps Chromium (#299)
 HERE = pathlib.Path(__file__).parent
-exe = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome"))[0]
+exe = browser_binary.find_chromium()
+assert exe, browser_binary.why_not()
 FLOWS = {
  "v1_ledger.html": [".crow[data-id]:nth-child(3)", "#posToggle", ".door .bst", ".alt[data-id]", "[data-p='QB']", "[data-sheet='shRosters']", ".sheet[data-open='1'] [data-close]", ".pk.past", "[data-state='late']", ".crow[data-id]:nth-child(2)", "[data-state='early']", "#posToggle"],
  "v2_doors.html": ["[data-door='QB']", ".crow[data-id]:nth-child(5)", "[data-door='TE']", "[data-p='RB']", "[data-sheet='shBoard']", ".sheet[data-open='1'] [data-close]", "[data-state='late']", "[data-door='QB']", "[data-state='early']", "[data-door='WR']"],

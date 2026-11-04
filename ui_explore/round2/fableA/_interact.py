@@ -1,5 +1,8 @@
-import glob, pathlib
+import pathlib, sys
 from playwright.sync_api import sync_playwright
+_BB_ROOT = pathlib.Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_BB_ROOT))
+import browser_binary  # one home for where this container keeps Chromium (#299)
 HERE = pathlib.Path(__file__).resolve().parent; SH = HERE / "_shots"
 STEPS = {
  "v1_ledger.html": [("click", "#posBtn", "v1_posgrid"), ("click", "[data-state=late]", None), ("click", ".row[data-id='12526']", None), ("click", "[data-state=mid]", None), ("click", ".alt[data-id]", None), ("click", "[data-work]", "v1_numbers")],
@@ -7,7 +10,8 @@ STEPS = {
  "v4_doors.html": [("click", "[data-door=QB]", "v4_qb_open"), ("click", "[data-state=late]", "v4_late_resorted"), ("click", "[data-sheet=shAll]", "v4_sheet"), ("click", "[data-open=QB]", None), ("click", "[data-state=mid]", None), ("click", "[data-sheet=shRosters]", "v4_rosters"), ("click", "#shRosters [data-close]", None), ("click", "[data-fmt=\"HEAVY_IDP\"]", None), ("click", "[data-state=late]", None), ("click", ".count .chip", "v4_idp_chip_opened"), ("click", "[data-sheet=shAll]", None), ("click", "[data-f=TE]", "v4_idp_drawer_te"), ("click", "#shAll [data-close]", None), ("click", "[data-fmt=\"12T_ppr_K_DEF\"]", None), ("click", "[data-sheet=shAll]", None), ("click", "[data-f=K]", "v4_kdef_drawer_k"), ("click", "#shAll [data-close]", None), ("click", "[data-fmt=\"12T_ppr_SF\"]", None), ("click", "[data-state=early]", "v4_sf_early")],
 }
 with sync_playwright() as p:
-    exe = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome") + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell"))[0]
+    exe = browser_binary.find_chromium()
+    assert exe, browser_binary.why_not()
     b = p.chromium.launch(executable_path=exe)
     for f, steps in STEPS.items():
         pg = b.new_page(viewport={"width": 1440, "height": 900}); errs = []

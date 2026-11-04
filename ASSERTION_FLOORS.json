@@ -16416,6 +16416,67 @@
         "early_returns": 0
       }
     },
+    "test_suite_reach.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 8,
+        "assertGreater": 1,
+        "assertIn": 14,
+        "assertIs": 1
+      },
+      "by_method": {
+        "ADeadModuleContributesNoTestCases.test_the_count_excludes_the_synthetic_failure_unittest_substitutes": {
+          "assertEqual": 1
+        },
+        "AModuleTheRunnerCannotReachIsNamed.test_a_clean_tree_reports_nothing": {
+          "assertEqual": 1
+        },
+        "AModuleTheRunnerCannotReachIsNamed.test_a_missing_dependency_is_reported_with_the_name_it_is_missing": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
+        "AModuleTheRunnerCannotReachIsNamed.test_a_module_that_exits_at_import_is_caught_not_propagated": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "TheCommandLineFailsLoudly.test_check_exits_nonzero_on_a_module_that_cannot_be_imported": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "ThePopulationHasOneHome.test_both_instruments_see_the_same_modules": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
+        "ThePopulationHasOneHome.test_the_glob_is_the_same_object_assertion_floors_uses": {
+          "assertIs": 1
+        },
+        "TheReportAndTheExitCodeShareOneMeasurement.test_the_report_renders_the_measurement_it_is_handed": {
+          "assertIn": 2
+        },
+        "TheReportNamesTheThingToFix.test_a_broken_tree_lists_every_dead_module_and_its_reason": {
+          "assertIn": 4
+        },
+        "TheReportNamesTheThingToFix.test_a_clean_tree_says_so_with_its_total": {
+          "assertIn": 1
+        },
+        "TheReportNamesTheThingToFix.test_it_names_the_interpreter_because_that_is_usually_the_cause": {
+          "assertIn": 2
+        },
+        "TheRootParameterIsActuallyRead.test_a_module_only_present_under_root_is_found_and_imported": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "TheRootParameterIsActuallyRead.test_root_is_taken_back_off_sys_path": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_suite_taxonomy.py": {
       "test_methods": 8,
       "asserts": {

@@ -15335,3 +15335,273 @@ prose names something that exists nowhere, and it reported
 `{'_load_function': ['test_positional_depth_coverage.py:38']}` — a comment I had just written to
 explain what the old loader did, naming the function I had deleted in the same change. Reworded.
 That test is the reason this entry describes the loader without backticking it.
+
+## #298 — `python3` ON THIS BOX REACHES 1,059 OF 4,235 TESTS, AND EVERY RATCHET SAYS IT IS FINE
+
+Found while re-checking two of the three "pre-existing failures" `#297` recorded. Both turned out
+to be about the environment rather than the code, and chasing the second one surfaced something
+larger: **there are two pythons in this container and `python3` resolves to the one that cannot
+run this repository.**
+
+### The measurement
+
+Same tree, same minute, 2026-11-04, 238 root test modules:
+
+| interpreter | `-V` | collects | test modules that fail to import | declared requirements present |
+|---|---|---|---|---|
+| `/usr/local/bin/python3` | 3.11.17 | **1,059** | **180 of 238** | 1 of 11 |
+| `/usr/bin/python3` | 3.13.17 | **4,235** | 0 of 238 | 9 of 11 |
+
+`python3` resolves to the first. The 4,235 figure matches `#297`'s suite exactly, so every
+certified number this repository holds — the test count, the 1,276.5s budget — was measured on the
+second, which nothing in the procedure said to use.
+
+### Why the broken run does not look broken
+
+`unittest` does not drop a module whose import dies. It substitutes one synthetic
+`unittest.loader._FailedTest`, so 180 dead modules report as:
+
+```
+Ran 1059 tests ... FAILED (errors=180)
+```
+
+`failures=0`. `engine-measurement`'s own shell-hazards section instructs
+`grep -n "^FAIL:" -A 25 suite.txt`, and that grep returns **nothing** here. 3,176 test cases that
+never ran are reported as 180 lines of a different word, under a summary line whose first number
+reads like a healthy suite. This is the `#201` family exactly: not a crash, a plausible number
+about something else.
+
+**And both ratchets agree with it.** On 3.11.17, at the same tree:
+
+```
+$ python3 assertion_floors.py --check
+no guarantee has shrunk (238 modules held to a floor)
+exit=0
+```
+
+238 modules held to a floor; 180 of them unreachable; exit 0. The floors are not wrong. They are
+`ast.parse` over `root.glob(TEST_GLOB)` — they answer a question about the SOURCE TREE, and
+reachability is a different question that nothing was asking. Same shape as
+`ui_explore/round2/fableA/_domdiff.py` hashing markup and therefore being blind to CSS: a
+boundary, not a bug, and one that had never been written down.
+
+### What it rules out
+
+* **Not a `PATH` accident in one shell.** The suite task, the app launch and the interactive
+  shells all resolve `python3` the same way; the app only worked because `pip3`'s shebang is
+  `#!/usr/bin/python3`, so the install landed on 3.13 and `streamlit run` found it there.
+* **Not the missing provider SDKs.** `anthropic` and `openai` are absent from 3.13 too, and cost
+  **zero** tests: no test module imports either, and every provider call in the suite is stubbed
+  (`test_version_boundary`'s own comment says so). The 2 missing distributions under the good
+  interpreter are genuinely free.
+* **Not `streamlit` being imported by the suite.** Measured: after importing all 238 test modules
+  under 3.13, `'streamlit' in sys.modules` is **False**. No test module imports it at module
+  scope. Its absence cost exactly 2 tests, both of which only read its *metadata* — see the
+  correction below.
+* **Not `dotenv` being stubbed by a sibling module.** An early hypothesis here was that
+  `test_version_boundary` only imports during discovery because something else puts `dotenv` in
+  `sys.modules` first. Wrong, and simpler than that: `dotenv` is installed under 3.13 and absent
+  under 3.11, and the standalone run that failed was simply on the wrong interpreter. Recorded
+  because the wrong explanation was the more interesting one and would have sent the next reader
+  looking for stub machinery that does not exist.
+
+### CORRECTION to `#297` — two of its three "pre-existing failures" were the environment
+
+`#297` recorded "suite 4235 tests, 3 pre-existing failures". That count stands; its composition
+does not. Measured after this session installed `streamlit` 1.66.1 into 3.13:
+
+```
+$ /usr/bin/python3 -m unittest test_version_boundary
+Ran 26 tests ... OK
+```
+
+* `test_an_installed_distribution_reports_its_real_version` — **was** `[] != ['streamlit']`
+* `test_a_partially_reporting_environment_still_records_what_it_can` — **was**
+  `'streamlit' not found in {}`
+
+Both now pass. Neither was ever a code defect: both patch `_PROVIDER_SDK_DISTRIBUTIONS` to
+`("streamlit",)` and read `importlib.metadata.version`, on the premise stated in the test's own
+comment — *"streamlit is a hard dependency of this app and is installed wherever the suite
+runs."* **That premise was false in this container**, and the test was right to say so. It is the
+only instrument in the repository that noticed, and it noticed by accident, from one layer down.
+
+So the honest restatement is: **one** code-level failure, `test_data_merger`'s stale `3.0` bound
+(still open, still the owner's ruling — `#56`: the behaviour matches the test's prose and the
+constant does not), plus two environment artifacts now resolved.
+
+### The guard: `suite_reach.py`
+
+Every module in `assertion_floors.TEST_GLOB`'s population must be importable, zero tolerance. Two
+design decisions are the whole value:
+
+1. **The expectation is DERIVED, not recorded.** No floor file, nothing to regenerate, nothing to
+   go stale. A new test module raises the population and asks nothing of anybody. The glob is
+   *imported* from `assertion_floors` rather than restated, and `test_suite_reach` asserts
+   `assertIs`, not `assertEqual`, so a second spelling of `test_*.py` fails the suite (`#126`).
+2. **It imports nothing that needs a declared requirement**, so it survives — and fails loudly
+   under — precisely the interpreter it exists to detect. A check that dies with the thing it is
+   checking is not a check. On 3.11 it answers in 0.54s with the cause (`No module named
+   'pandas'`) and the interpreter, rather than 180 buried `ERROR:` lines.
+
+The collected-case count is **reported and never asserted on**. It is the figure a reader wants,
+and it also moves every time anyone writes a test, so holding it to a floor would be the
+reflexive-repair trap `assertion_floors`' own docstring rejects.
+
+**A defect found in the guard before it shipped, recorded because the repo keeps finding this
+class:** the first draft globbed `root` and then resolved imports against `sys.path`, so every
+`root` except `.` silently answered about a different population than the one it had just listed.
+A parameter half-honoured is worse than one not offered, because the caller is told it was read.
+Caught by writing the test that passes a temporary directory — not by reading the diff.
+
+Mutation-checked, 7 arms, all caught: glob restated locally `1`; root never put on `sys.path`
+`5`; `except BaseException` narrowed to `except Exception` `1`; `_FailedTest` filter removed `1`;
+`report` re-measuring instead of rendering what it was handed `1`; `--check` always succeeding
+`1`; root left on `sys.path` `1`. Baseline and restored both green.
+
+### What is NOT fixed
+
+* **The missing requirements are not installed into 3.11, deliberately.** The fix belongs in the
+  environment's setup script (`cd The-Dynasty-Collective && pip install -r requirements.txt`),
+  which is the owner's to change and outlives the container; this session's `pip install` does
+  not. Installing them here would also mask the finding rather than guard it, and the guard is
+  the durable half.
+* **`close-register-item` now derives the interpreter rather than naming one.** A path with
+  `3.13` in it would be the `ui-authority-pass` mistake in a new costume — that skill already
+  carries the scar of a hardcoded name going stale. `engine-measurement` points at it and
+  restates nothing (`#126`).
+
+## #299 — SIXTEEN BOARD-EXECUTING TESTS HAD BEEN SKIPPING, AND `requirements.txt` HAD WARNED ABOUT IT IN PROSE
+
+Found immediately after `#298`, hunting the suite's 17 skips. The same family — a count nobody
+holds to a floor — with a different cause and a complete fix.
+
+### The measurement
+
+This container provisions `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`. The two test
+modules that EXECUTE the board looked for it like this:
+
+| file | what it looked for | result |
+|---|---|---|
+| `test_216_room_integrity.py` | `glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome")` | missed by the `64` |
+| `test_board_renders_absence.py` | `CHROME = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"` | missed by the `64` **and** by 49 builds |
+
+Both gates therefore read "no browser here":
+
+```
+test_216_room_integrity        12 run, 10 skipped  ->  22 run, 0 skipped, OK
+test_board_renders_absence      2 run,  6 skipped  ->   8 run, 0 skipped, OK
+```
+
+**All 16 pass.** The board renders correctly and always did; the tests that prove it were not
+running. 16 of the suite's 17 skips were this.
+
+### The lesson had already been learned ten feet away
+
+`ui_explore/round2/fableA/_shoot.py:320` carries this comment, in the repository, today:
+
+> `chrome-linux/chrome` on one and `chrome-linux64/chrome` on another, and a glob knowing only
+> [one] …
+
+and globs `chrome-linux*/chrome` accordingly. `_domdiff.py` and `_converge.py` learned it too.
+**The knowledge never reached the two files where it gated tests** — which is the argument for
+`#126` stated as a measurement rather than a principle: the same fact lived in eight files, three
+of them had the current version of it, and the two that mattered most had the oldest.
+
+`requirements.txt` also already warned, in its `playwright` comment: *"a reclaimed container ran
+the suite 14 tests lighter and reported OK. A freeze must be licensed by a suite that ran, not
+one that quietly stood down."* That warning was live, pointed at the right thing, and nobody was
+looking — because **a skip is not a failure**, and the number it moves is the one number in the
+summary line that no ratchet holds.
+
+### `browser_binary.py` — one home, and three things no scattered copy had
+
+* **Both directory layouts** (`chrome-linux*`), which is the part `_shoot.py` knew.
+* **The stable symlink first.** `/opt/pw-browsers/chromium` points at the real binary and survives
+  a version bump; trying it first makes the version sort a fallback rather than the mechanism.
+* **Version suffixes sort NUMERICALLY.** Every copy in this repo reached for
+  `sorted(glob(...))[-1]`, which is right for `chromium-1194` vs `chromium-1243` and wrong the
+  moment a three-digit build appears: `"1243" < "999"`, so lexical `[-1]` picks build 999 over
+  build 1243. No copy had hit it yet. Cheaper to fix than to wait for.
+* **`headless_shell` ranked below a full `chrome`, never substituted silently** — it is a
+  different product, not another spelling.
+* **Returns `None`, never a path that will fail later** (`#187`), because callers differ: a test
+  module wants to skip with a named reason, a render gate wants to die loudly. `why_not()` gives
+  either one a sentence that names the four places searched, and names `requirements.txt` as the
+  authority on not running `playwright install` to "fix" it.
+
+Wired into the two test modules and the three `ui_explore` scripts that were broken by the same
+stale glob (`fableA/_interact.py`, `fableB/_shot.py`, `fableB/_interact.py` — each would have
+raised `IndexError` on an empty glob today). Removing the inline lookup also retired
+`test_216_room_integrity`'s now-unused `glob` and `shutil` imports.
+
+### What is NOT fixed, and why
+
+`_shoot.py`, `_domdiff.py` and `_converge.py` still carry their own copy of the lookup. They are
+**correct today** — they are the ones that had the current knowledge — and they are the certified
+render gate: `#297`-era certification rests on a 397-render run through `_shoot.py`, and changing
+how it finds its browser means re-running that gate to re-license it. Deferred on purpose, named
+here so it is a decision and not an oversight. Unifying those three is the follow-up; it should be
+done in a commit whose only content is that change, with the gate re-run beside it.
+
+### A process failure in this session, recorded rather than tidied away
+
+The first full-suite run for `#298` was launched and then **voided by my own edits while it ran.**
+Python imports test modules once at discovery, so editing them mid-run does not change what
+executes — but this repository is full of tests that read SOURCE FROM DISK at runtime
+(`assertion_floors`, `prose_names`, `ui_source`, `boundary_census`, and several that `open()` a
+module and parse it). Those tests saw a tree that existed at no commit. The run was killed by PID
+and discarded, and the certification below is a clean run on the final tree.
+
+This is the second time this shape has cost a run in this session — the first was rebuilding a
+prototype mid-gate, which is what `_gatelock.py` and the immutable snapshot were built for. The
+gate learned it; the suite had not. **The suite has no equivalent of `_gatelock`**, and that is
+now a known gap rather than a surprise: nothing stops a session from editing the tree under a
+running `unittest discover`, and nothing in the output would say it happened.
+
+### And a SECOND process finding, which is the more useful one: the git INDEX is part of the tree
+
+The clean re-run was voided too, by something that is not an edit at all. Nine test modules
+reach for `git ls-files` rather than globbing the filesystem:
+
+```
+prose_names.py   doc_index.py   test_doc_index.py   test_ordinal_registers.py
+test_superseded_proposals.py   + test_denial_basis, test_engine_baseline,
+test_instruments_check_rather_than_count, test_threshold_reachability,
+test_the_four_undefended_repairs (all via the first two)
+```
+
+Two consequences, and neither was written down anywhere:
+
+1. **A new module's prose is UNCHECKED until it is staged.** `suite_reach.py`, `browser_binary.py`
+   and `test_suite_reach.py` sat untracked through an entire full-suite run, and
+   `test_prose_names` reported OK without reading one line of them. `assertion_floors` did see
+   `test_suite_reach.py` -- it globs the filesystem -- so the two instruments disagreed about
+   whether the file existed, and only the stricter-looking one was blind.
+2. **`git add` is therefore a change the suite can observe**, with no file modified. Staging
+   mid-run changed what those nine modules measured, which voided the run as surely as editing
+   a source file would have.
+
+And the check earned its keep immediately. Staging first, then re-running those nine:
+
+```
+test_prose_names   FAILED (failures=1)
+AssertionError: {'KeyboardInterrupt': ['suite_reach.py:93']} != {}
+```
+
+A builtin, backticked in a docstring I had just written, in a file the full suite had already
+passed over. `test_prose_names` holds backticked names to things that exist in THIS repository,
+which is the correct rule and one I had walked straight into -- the sibling name in the same
+sentence survived only because `test_suite_reach.py` happens to carry it as a string literal,
+which that module's own docstring says lands in the haystack. Reworded, and the reason is now
+written into the sentence so the next reader does not reintroduce it.
+
+**So the order in `close-register-item` was wrong, and is now fixed.** Staging was step 6, beside
+the commit. It has to come BEFORE step 4, because nine of the checks step 4 runs cannot see an
+unstaged file:
+
+    git add -A  ->  read git status --short  ->  FULL SUITE  ->  commit
+
+This does not relax the staging rules that section already carries -- never name files, never
+silence `git add`, read `git status --short` rather than trusting an exit code. It moves them
+earlier, which is also where they do the most good: a broken commit caught before a 21-minute
+run costs nothing.

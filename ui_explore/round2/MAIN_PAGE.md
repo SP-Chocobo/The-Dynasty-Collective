@@ -238,14 +238,43 @@ actually carries, read off the templates:
 |---|---|---|
 | desktop `v4_doors` | a wordmark (`Gold Wyrm`) and a league line | no nav, no back, no commands |
 | phone `m1_stack` | four bottom-dock buttons — Every name, Rosters, Draft board, Debate | **no wordmark, no league name, no view, no way out** |
-| the real app | `st.segmented_control` over six views, `app.py:3806` | — |
+| the real app | `st.segmented_control` over five views, `app.py:3742` — and it is BELOW the empty-state `st.stop()` at `app.py:3667` | no nav at all until a league is synced |
+
+**CORRECTION, 2026-11-04 — this table said "six views, `app.py:3806`" and both halves were
+wrong, and so was the count I reported from the running app.** Measured against `app.py` and
+against the app actually serving on :8787:
+
+* The picker carries **five** options, not six — `MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW,
+  LEAGUE_VIEW, IMPORT_VIEW` — declared **unconditionally** at `app.py:3742`. `3806` is near the
+  `if main_view ==` branch chain that consumes it, not the control.
+* I then reported "the view picker renders only 3 buttons, because most views are gated behind a
+  synced league." **Both clauses were false.** Nothing gates the picker. What I counted was the
+  single `stButtonGroup` in the DOM, and it is **in the sidebar** (`inSidebar: true`, three
+  buttons) — a different control entirely. The view picker was not in the page at all.
+* The reason it was not in the page is the finding worth keeping: `app.py:3667` runs
+  `st.title(...)`, `st.info("Sync a Sleeper username ...")`, `st.stop()` when `not snapshot`.
+  **Unsynced, the app renders zero view-picker buttons**, because the picker is seventy-five
+  lines below a `stop`.
+
+That sharpens the brief's own premise rather than softening it. The front page is meant to
+replace that two-line empty state — so it cannot be a sixth view, or a branch of the existing
+`if main_view ==` chain, or anything else below `app.py:3667`. Every one of those positions is
+unreachable in exactly the state the page exists to serve. It has to live ABOVE the stop, which
+makes "where does it go" a structural question about `app.py`'s top, not a navigation question.
+
+The method note, since this is the second time in this session a count was reported before it was
+understood: the number came from a selector I had not checked the provenance of. Source said five,
+my own instrument said three, and the honest reading was that one of them was measuring something
+else — which is what it turned out to be. `.claude/skills/engine-measurement/SKILL.md` already
+names this family ("not a crash, a plausible number about something else"); it applies to DOM
+queries exactly as it does to engine probes.
 
 Two things follow from that table.
 
 **The prototypes were briefed as a view and built as if they were the app.** In production the
 view picker sits *above* the board, supplied by Streamlit, so the board never needed one. That
-works on the desktop. On the phone it does not: a six-item picker at the top, a 68px dock at the
-bottom and the board between them is chrome at both ends — and a six-item picker at the top is
+works on the desktop. On the phone it does not: a five-item picker at the top, a 68px dock at the
+bottom and the board between them is chrome at both ends — and a five-item picker at the top is
 precisely the "very busy at the top" that the header cleanup was asked to fix. The cleanup also
 removed the only place a wordmark or a back could have lived, so **the phone currently cannot
 say which league or which view you are looking at.**

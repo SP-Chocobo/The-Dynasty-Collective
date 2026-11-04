@@ -35,13 +35,12 @@ is caught by the same path a user hits.
 from __future__ import annotations
 
 import ast
-import glob
 import inspect
 import re
-import shutil
 import unittest
 from pathlib import Path
 
+import browser_binary
 import data_merger as dm
 import design_system
 import draft_battery as db
@@ -56,20 +55,13 @@ from pick_synthesis import CandidateSnapshot, PickSnapshot
 CAPTURE = rdb.CAPTURE_PATH
 
 
-def _find_chrome():
-    for pattern in ("/opt/pw-browsers/chromium-*/chrome-linux/chrome",
-                    str(Path.home() / ".cache/ms-playwright/chromium-*/chrome-linux/chrome")):
-        hits = sorted(glob.glob(pattern))
-        if hits:
-            return hits[-1]
-    for name in ("chromium", "chromium-browser", "google-chrome", "chrome"):
-        found = shutil.which(name)
-        if found:
-            return found
-    return None
-
-
-CHROME = _find_chrome()
+#: This file used to carry its own `_find_chrome`, globbing `chromium-*/chrome-linux/chrome`.
+#: Playwright renamed that directory to `chrome-linux64`, so on this container the glob found
+#: nothing, `shutil.which` found nothing, and the ten tests below -- the ones that EXECUTE the
+#: board rather than reading its source -- skipped. The module reported OK and proved nothing.
+#: `ui_explore/round2/fableA/_shoot.py` had already learned this and globs `chrome-linux*`; the
+#: lesson never reached here, which is the argument for one home (`#299`, `#126`).
+CHROME = browser_binary.find_chromium()
 try:
     from playwright.sync_api import sync_playwright  # noqa: F401
     HAVE_PLAYWRIGHT = True
@@ -77,7 +69,7 @@ except Exception:  # pragma: no cover -- environment without playwright
     HAVE_PLAYWRIGHT = False
 
 _EXECUTABLE = unittest.skipUnless(CHROME and HAVE_PLAYWRIGHT,
-                                  "needs playwright and a Chromium binary to EXECUTE the board")
+                                  "cannot EXECUTE the board: " + browser_binary.why_not())
 
 _ROW_READER = """els => els.map(e => ({
   name: e.querySelector('.name').textContent,

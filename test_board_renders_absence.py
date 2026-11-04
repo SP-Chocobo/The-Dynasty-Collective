@@ -26,14 +26,26 @@ import os
 import re
 import unittest
 
+import browser_binary
 import draft_board_ui as ui
 import pick_synthesis as ps
 
-CHROME = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+#: RESOLVED, not spelled. The literal that used to sit here --
+#: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` -- missed this container's browser on two
+#: counts: the directory is `chrome-linux64` and the build is 1243. So `_has_browser()` returned
+#: False, the six tests below skipped, and this file reported `OK (skipped=6)` while proving none
+#: of the three things its own docstring says it exists to prove (`#299`). One home for the
+#: lookup; `browser_binary` carries both layouts and ranks the candidates.
+CHROME = browser_binary.find_chromium()
 
 
 def _has_browser() -> bool:
-    if not os.path.exists(CHROME):
+    """Both halves, because either one absent means the board cannot be EXECUTED.
+
+    `playwright` being importable is not the same question as a browser existing, and this
+    container has had each without the other.
+    """
+    if not CHROME:
         return False
     try:
         import playwright  # noqa: F401
@@ -96,7 +108,8 @@ class ThePayloadCarriesAbsenceAsNullTests(unittest.TestCase):
         self.assertEqual(re.findall(r"\|\|\s*0[^\w]", js), [])
 
 
-@unittest.skipUnless(_has_browser(), "needs the bundled Chromium")
+@unittest.skipUnless(_has_browser(),
+                     "cannot EXECUTE the board: " + browser_binary.why_not())
 class TheRenderedBoardShowsNoMachineWordsTests(unittest.TestCase):
     """THE ONE THAT MATTERS. Execute the page and read what a person would see."""
 

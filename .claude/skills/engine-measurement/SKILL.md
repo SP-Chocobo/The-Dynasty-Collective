@@ -172,6 +172,18 @@ provenance when Y runs three times with three different meanings. And check the 
 a cached call (`_ANCHOR_CACHE`) may not fire at all on the build you are watching, so a spy that
 sees two calls where you expected three has told you something, not failed.
 
+## Which python — ask this before every figure in this file (`#298`)
+
+`python3` is not necessarily an interpreter that can import this repo. Measured 2026-11-04 in
+this container, `python3` resolved to one carrying 1 of the 11 distributions `requirements.txt`
+declares: 180 of 238 test modules died on `import pandas`, and every probe in this file would
+have failed the same way — a fixture error of the sixth class, arriving as `ModuleNotFoundError`
+if you are lucky and as a silently smaller run if you are not.
+
+**One home, and it is not here (`#126`):** `close-register-item` keeps the measurement and the
+derivation snippet. `python3 suite_reach.py --check --no-count` is the two-second answer, and a
+non-zero exit means the probe you are about to write is going to measure something else.
+
 ## Runtime budgets — set timeouts from these, not from hope
 
 | what | cost |

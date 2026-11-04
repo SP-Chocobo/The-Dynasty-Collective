@@ -1,11 +1,15 @@
 """Render every built variant in every state at 1440x900: PNG + probes (page scroll, clipping,
 console errors, minimum resident font size, rail window). Usage: python3 _shot.py [v1_ledger.html ...]"""
-import glob, pathlib, sys
+import pathlib, sys
 from playwright.sync_api import sync_playwright
+_BB_ROOT = pathlib.Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_BB_ROOT))
+import browser_binary  # one home for where this container keeps Chromium (#299)
 HERE = pathlib.Path(__file__).parent
 OUT = HERE / "_shots"; OUT.mkdir(exist_ok=True)
 files = sys.argv[1:] or sorted(str(p) for p in HERE.glob("v*.html") if "_src" not in p.name)
-exe = (glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome") + glob.glob("/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell"))[0]
+exe = browser_binary.find_chromium()
+assert exe, browser_binary.why_not()
 PROBE = """() => {
   const r = {};
   r.docScroll = document.documentElement.scrollHeight > innerHeight + 1 || document.documentElement.scrollWidth > innerWidth + 1;

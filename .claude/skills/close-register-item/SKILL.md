@@ -16,14 +16,58 @@ open, because the next reader believes it.
 2. **Tests that fail on the old behaviour.** A test that passes before and after guards nothing.
 3. **Mutation-check them.** Break the code the test defends and confirm the test fires. Record
    the counts (`3/2/2`, `4/2/37`). This is what keeps the suite honest.
-4. **FULL SUITE. Not a subset.** ← the step that has already been skipped once
-5. `python3 assertion_floors.py --write && python3 assertion_floors.py --check`
-6. `POST_AUDIT_PLAN.md` entry, task update, commit, push.
+4. **`git add -A`, then read `git status --short`** — BEFORE the suite, not beside the commit.
+   Nine test modules read `git ls-files`, so an unstaged new file is invisible to them: three new
+   modules once sailed through a full suite with `test_prose_names` reporting OK having read none
+   of them, and it failed the moment they were staged (`#299`). Staging is a change the suite can
+   observe. The rules in "Staging" below apply here, just earlier.
+5. **FULL SUITE. Not a subset.** ← the step that has already been skipped once,
+   **and run it with the interpreter `suite_reach.py --check` passes on** — see below; `python3`
+   is not necessarily that interpreter and in this container it is not. Do not touch the tree
+   OR the index while it runs; both void it, and nothing in the output will say so.
+6. `$PY suite_reach.py --check && $PY assertion_floors.py --write && $PY assertion_floors.py --check`
+7. `POST_AUDIT_PLAN.md` entry, task update, commit, push.
 
 **Step 4 is where the one real process failure happened.** `#144` was committed and pushed after
 verifying six targeted modules (183 tests, all green). The full suite then failed on
 `test_assertion_floors` — a file I had not thought to run. Targeted runs are for iterating;
 **the full suite is what licenses a push.** Background it and wait.
+
+**ESTABLISH THE INTERPRETER BEFORE YOU SPEND 21 MINUTES (`#298`).** This is step 0 and it
+costs two seconds. A container can carry more than one python, and the one `python3` resolves to
+is not necessarily the one that can run this repo. Measured 2026-11-04, same tree, same moment:
+
+    interpreter                          collects   test modules that fail to import
+    /usr/local/bin/python3  3.11.17         1,059          180 of 238
+    /usr/bin/python3        3.13.17         4,235            0 of 238
+
+`python3` resolved to the FIRST of those. It carries 1 of the 11 distributions
+`requirements.txt` declares, so 180 modules die on `import pandas` — and the run does not look
+broken, because `unittest` replaces each dead module with one synthetic `_FailedTest`:
+
+    Ran 1059 tests ... FAILED (errors=180)
+
+`failures=0`. Grepping `^FAIL:` — which is what the "two shell hazards" section of
+`engine-measurement` tells you to do — finds **nothing**, and 3,176 test cases that never ran are
+reported as 180 lines of a different word. Worse, `assertion_floors --check` printed
+`no guarantee has shrunk (238 modules held to a floor)` and exited 0 on that same interpreter,
+because it is `ast.parse` over the source and reachability is not a question it asks.
+
+So derive the interpreter rather than trusting `python3`, and never hardcode a version here — a
+path with `3.13` in it is the `ui-authority-pass` mistake in a new costume:
+
+```bash
+for cand in /usr/bin/python3 /usr/local/bin/python3 python3; do
+  command -v "$cand" >/dev/null 2>&1 || continue
+  "$cand" suite_reach.py --check --no-count >/dev/null 2>&1 && { PY=$cand; break; }
+done
+echo "${PY:?no interpreter on this box can import all 238 test modules -- run suite_reach.py to see why}"
+```
+
+Then use `$PY` for the suite, the floors, and every probe. `suite_reach.py --check` is also a
+test (`test_suite_reach.py`), so a wrong-interpreter run fails loudly from inside the suite even
+if this step gets skipped — which is the point, since step-skipping is this file's one recorded
+process failure.
 
 **Budget it from a measurement that carries its own date.** The last one: **4235 tests in
 1276.5s** at `dbae709` (2026-11-04), measured with `__pycache__` cleared first per `#240` -- and
