@@ -1,0 +1,55 @@
+{
+ "axes": {
+  "draft_states": [
+   "mid",
+   "early",
+   "late"
+  ],
+  "formats": [
+   "12T_ppr",
+   "12T_ppr_SF",
+   "HEAVY_IDP",
+   "12T_ppr_K_DEF",
+   "4WR_TE_PREMIUM",
+   "LIGHT_IDP"
+  ],
+  "navigation_consistency_failures": 4,
+  "navigation_states": [
+   "fresh load",
+   "hash edit",
+   "browser back",
+   "browser forward"
+  ],
+  "navigation_states_not_covered": [
+   "return to a live draft (scroll, open door, clock)"
+  ],
+  "viewports_desktop": [
+   "1440x900",
+   "1700x1100"
+  ],
+  "viewports_mobile": [
+   "390x664",
+   "360x780",
+   "428x746"
+  ]
+ },
+ "failures_total": 6,
+ "finished_utc": "2026-11-04T01:34:14+00:00",
+ "gate": "ui_explore/round2/fableA/_shoot.py",
+ "renders": 396,
+ "renders_failed": 2,
+ "renders_ok": 394,
+ "snapshot_sha256_12": {
+  "m1_stack.html": "0be5e9f602af",
+  "m2_sheet.html": "1de745e7e3a6",
+  "m3_hero.html": "046308a43ebe",
+  "v1_ledger.html": "f64371eba073",
+  "v1_ledger_rail.html": "f20b565d4861",
+  "v2_lanes.html": "81cf253d54c9",
+  "v4_doors.html": "d1c328773f6c"
+ },
+ "snapshot_verified_unchanged": true,
+ "source_commit": "c06d48b3dbaa414c98dac0aa95713944d622339a",
+ "source_tree_clean": false,
+ "verdict": "FAIL"
+}

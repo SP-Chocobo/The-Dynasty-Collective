@@ -263,6 +263,41 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .tank .fill{position:absolute;left:0;right:0;bottom:0;background:var(--dim)}
 .tank .fill.st{background:var(--emerald)}
 .tank .mark{position:absolute;left:-1px;right:-1px;height:2px;background:var(--ink);z-index:2}
+/* The alternatives header, hoisted for the same reason .hm above was: phoneAlts() in
+   shared.js emits `.then .ch` and `.then .ch .t`, and three phone templates each carried a
+   byte-identical copy of the rules for it -- while m1, which stopped calling phoneAlts when
+   the card list became the "Expanded [Position] options" button, carried a copy that styled
+   markup it no longer draws. A shared emitter's style belongs beside the emitter. */
+.then .ch{display:block;line-height:1.45}
+.then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700;margin-right:6px}
+/* The demand line, and a correction made in the same pass that found .hm. Scoping `.ctx2 b`
+   so it stopped overriding nested components was right, but it was done by DELETING the two
+   hand-carved exceptions -- and the `.dem` one was not noise. It was the only thing on the
+   phone giving `.dem b` its --muted, because shared.css had no `.dem` rule at all: the markup
+   comes from shared.js (doorCtx) and from the desktop template, and all four surfaces styled
+   it separately, each arriving at mono-and-muted by a different route. Removing the carve-out
+   left the phone's demand bold at --dim in the body face against the desktop's --muted in
+   mono, and _converge.py reported it on the same run that confirmed the fixes. The default
+   that was missing lives here now, and the four copies are gone. */
+/* SCOPED, NOT CARVED -- and in ONE home, which is the second half of the same lesson. A bare
+   `.ctx2 b` rule is more specific than the shared `.tankcap b` and `.dem b` rules below, so
+   every component nested inside the phone's context line had its own bold voice overwritten by
+   this one. `.dem` had already been carved back by hand in each template; _converge.py then
+   caught `.tankcap` losing both its body face and its --muted to the same rule, which is the
+   phone drawing a shared caption in a different voice from the desktop. Two hand-carved
+   exceptions mean the selector was wrong, not that a third was needed -- so this names the
+   components that bring their own styling once, and a fourth added tomorrow keeps its voice
+   with no edit here.
+
+   AND IT HAD THREE HOMES THAT DISAGREED. m1 was scoped; m2 and m3 kept the unscoped blanket. So
+   when `.dem b` finally got the shared default it needs, m1 picked it up and m2 and m3 overrode
+   it back to --ink -- one fix landing correctly on one surface and wrongly on two. _converge.py's
+   `moved` mode is what caught that: the desktop-against-phone report compares v4 with m1 and is
+   structurally blind to m2 and m3, while `moved` watches every surface across a change. Two
+   modes, two questions, and this one needed the second. */
+.ctx2 :not(.dem,.tankcap) > b, .ctx2 > b{font-family:var(--f-m);color:var(--ink);font-weight:600}
+.dem{color:var(--dim)}
+.dem b{color:var(--muted);font-family:var(--f-m);font-weight:600}
 .tankcap{font-size:.75rem;color:var(--dim);line-height:1.3}
 .tankcap b{color:var(--muted);font-weight:600}
 .tankcap .gone{color:var(--amber-b)}
@@ -287,6 +322,17 @@ p.say .rule{color:var(--dim);font-size:.8rem}
 .tip.pinned{pointer-events:auto;border-color:var(--dim)}
 .tip .pin{display:block;margin-top:6px;color:var(--dim);font-size:.72rem;font-family:var(--f-m)}
 [data-tip]:not([data-tip=""]){cursor:help}
+/* The availability marker, and the reason it lives here rather than in the desktop template.
+   The three glyphs are emitted by shared.js (availHTML: U+25CC withheld, U+2713 clear,
+   U+271A flagged), which every surface in this directory calls -- but the RULES were left
+   behind in v4_doors.tpl.html when the emitter was hoisted, and none of the three phone
+   templates ever carried a copy. So the phones drew the marker at their parent's full --ink
+   and full size while the desktop drew it quiet and small: a recessive marker on one surface
+   and a loud one on the other, from one shared function. Found by _converge.py, which is the
+   whole reason that instrument exists -- a hoist that moves markup without its style is
+   invisible to a markup diff by construction. */
+.hm{font-size:.82em;color:var(--muted);cursor:help;vertical-align:.08em}
+.hm.ok{color:var(--dim)} .hm.none{color:var(--dim)}
 .sheet.top .rcard .sg.bn{border-top:1px solid var(--line);margin-top:4px;padding-top:3px}
 .rcard .sg.bn .sl.bh{color:var(--muted);cursor:pointer;width:100%;text-align:left;font:inherit;background:none;border:none;padding:0;display:flex;align-items:center;gap:6px}
 .rcard .sg.bn .sl.bh:hover{color:var(--ink)}

@@ -26,7 +26,13 @@ html,body{height:auto;overflow:visible}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:9;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:5px 10px calc(5px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line-2)}
 .dock .btn{flex-direction:column;gap:1px;padding:3px 0;font-size:12px;line-height:1.2;min-height:46px}
 .dock .btn i{font-style:normal;font-size:15px;line-height:1}
-.room{padding-bottom:68px}
+/* 61, not 68: the dock measures 57px, so this cleared it by eleven -- which cost nothing while
+   the gate was measuring against a 390x844 phone screen that no browser gives a page, and costs
+   exactly eleven pixels of a scroll budget now that it measures the real 390x664. Pure slack:
+   the number exists only to keep content out from under the dock, and four pixels does that as
+   well as eleven. The rest of the overage at that viewport is NOT slack and is not changed here
+   -- see the brief's note on what it would cost. */
+.room{padding-bottom:61px}
 .fold{position:fixed;left:0;right:0;bottom:68px;height:52px;pointer-events:none;z-index:8;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:linear-gradient(180deg,rgba(18,15,10,0) 0%,rgba(18,15,10,.94) 65%);opacity:0;transition:opacity .15s}
 .fold.on{opacity:1}
 .fold::after{content:attr(data-cue);font-family:var(--f-m);font-size:12.5px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);padding:4px 11px}
@@ -67,8 +73,8 @@ html,body{height:auto;overflow:visible}
    first screen. Two folds with one behaviour rather than two bands with none. */
 .clk2{display:block;padding:0;border-bottom:1px solid var(--line-2);background:var(--surface)}
 .csum{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:4px 12px;background:none;border:0;text-align:left;font:inherit;color:var(--muted);cursor:pointer}
-.csum .v{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.3}
-.csum .v b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.csum .sline{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.3}
+.csum .sline b{color:var(--ink);font-family:var(--f-m);font-weight:600}
 .csum .car{flex:0 0 auto;font-size:.8rem;color:var(--dim)}
 .csum:hover .car{color:var(--ink)}
 .cbody{padding:0 12px 7px;font-size:13px;color:var(--muted);line-height:1.5}
@@ -85,9 +91,9 @@ html,body{height:auto;overflow:visible}
 .lineup{display:block;padding:0;border-bottom:1px solid var(--line-2)}
 .lsum{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:4px 12px;background:none;border:0;border-radius:0;text-align:left;font:inherit;color:var(--muted);cursor:pointer}
 .lsum .k{flex:0 0 auto}
-.lsum .v{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.3}
-.lsum .v b{color:var(--ink);font-family:var(--f-m);font-weight:600}
-.lsum .v .fills{color:var(--emerald)}
+.lsum .sline{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.3}
+.lsum .sline b{color:var(--ink);font-family:var(--f-m);font-weight:600}
+.lsum .sline .fills{color:var(--emerald)}
 .lsum .car{flex:0 0 auto;font-size:.8rem;color:var(--dim)}
 .lsum:hover .car{color:var(--ink)}
 .lineup .slots{display:flex;flex-wrap:wrap;gap:3px;padding:0 12px 7px}
@@ -145,8 +151,6 @@ html,body{height:auto;overflow:visible}
    the position's other names as the desktop's cards, stacked */
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
 .ctx2{border-top:1px solid var(--line);margin:0 12px;padding:6px 0 4px;font-size:.82rem;color:var(--muted);line-height:1.45}
-.ctx2 b{font-family:var(--f-m);color:var(--ink);font-weight:600}
-.ctx2 .dem{color:var(--dim)} .ctx2 .dem b{color:var(--muted)}
 .ctx2 .dear{display:block;color:var(--amber-b)}
 .ctx2 .tankcap{margin-top:3px}
 /* THE OTHER NAMES AT THIS POSITION ARE A DOOR, NOT A LIST. They used to stack under the open
@@ -160,8 +164,6 @@ html,body{height:auto;overflow:visible}
 .expand em{font-style:normal;font-family:var(--f-m);font-size:.78rem;color:var(--muted);font-weight:600;white-space:nowrap;flex:0 0 auto}
 .expand .car{color:var(--dim);font-size:1rem}
 .then{border-top:1px solid var(--line);margin:4px 12px 0;padding:7px 0 9px}
-.then .ch{display:block;line-height:1.45}
-.then .ch .t{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);font-weight:700;margin-right:6px}
 .cards{display:flex;flex-direction:column;gap:5px;margin-top:5px}
 /* a card is the desktop's, folded: face, name and sub on the left, the value on the right, the
    cost and one fact line under. The card itself opens the numbers; the copy button lives there. */
@@ -295,7 +297,7 @@ function contextSummary(){
   // expanded body right below, and two counts of the same gap that can disagree is the defect
   // this repo keeps paying for. nextLabel is a value on the model, not a function.
   const away = M.S.intervening;
-  return `<span class="v"><b>Round ${M.S.round} of ${M.S.rounds}</b> \u00b7 next turn <b>${M.nextLabel}</b> \u00b7 `
+  return `<span class="sline"><b>Round ${M.S.round} of ${M.S.rounds}</b> \u00b7 next turn <b>${M.nextLabel}</b> \u00b7 `
     + `${away} ${away === 1 ? "pick" : "picks"} away</span><span class="car"></span>`;
 }
 function drawContext(){
@@ -318,7 +320,7 @@ function lineupSummary(c){
   const s = c ? M.slotFor(c) : null;
   const lands = s && s.kind !== "bench" && s.row && !s.row.p
     ? ` · <span class="fills">${M.short(c.name)} &rarr; ${s.row.slot}</span>` : "";
-  return `<span class="k">Your lineup</span><span class="v"><b>${filled} of ${total}</b> starters · ${openText}${lands}</span><span class="car"></span>`;
+  return `<span class="k">Your lineup</span><span class="sline"><b>${filled} of ${total}</b> starters · ${openText}${lands}</span><span class="car"></span>`;
 }
 function drawLineup(c){
   const host = document.getElementById("lineup"), btn = document.getElementById("lsum");
