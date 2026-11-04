@@ -69,9 +69,17 @@ test (`test_suite_reach.py`), so a wrong-interpreter run fails loudly from insid
 if this step gets skipped — which is the point, since step-skipping is this file's one recorded
 process failure.
 
-**Budget it from a measurement that carries its own date.** The last one: **4235 tests in
-1276.5s** at `dbae709` (2026-11-04), measured with `__pycache__` cleared first per `#240` -- and
-it is the entry that proves this paragraph's point. The figure before it said **3347 tests in
+**Budget it from a measurement that carries its own date.** The last one: **4248 tests in
+1682.7s** at `96bb4a8` (2026-11-04), measured with `__pycache__` cleared first per `#240`. The
+figure before it, **4235 tests in 1276.5s** at `dbae709`, was taken THE SAME DAY: 13 more tests
+and 406s slower, 32%, with the per-test cost going 301ms -> 396ms. That is a real slowdown and
+not growth, so unlike the entries below it this one does not get explained away -- 15 of those
+tests are browser-EXECUTING tests that `#299` un-skipped and each launches Chromium, but measured
+standalone the two modules holding them cost 30.2s and 1.8s, which does not account for 406s. The
+remainder is unattributed and is not claimed. Size a timeout from 1682.7s, not from the gap's
+cause.
+
+The `dbae709` entry is in turn the one that proves this paragraph's point. The figure before IT said **3347 tests in
 878.3s** at `3bb81a7` (2026-09-20) and had gone six weeks without a re-measure: the suite grew by
 888 tests and 398s in that time, so a `timeout` sized from the old number would have killed a
 healthy run at 70% complete. Note the per-test cost barely moved (262ms -> 301ms) while the total

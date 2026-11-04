@@ -15605,3 +15605,74 @@ This does not relax the staging rules that section already carries -- never name
 silence `git add`, read `git status --short` rather than trusting an exit code. It moves them
 earlier, which is also where they do the most good: a broken commit caught before a 21-minute
 run costs nothing.
+
+## #299 CORRECTED — IT WAS 15 SKIPS, NOT 16, AND THE WRONG NUMBER CAME FROM MY OWN INSTRUMENT
+
+`#299` above states "**16 board-EXECUTING tests** had been skipping" and "16 of the suite's 17
+skips were this", and the table reports `test_216_room_integrity` going from "12 run, 10 skipped"
+to 22. **The measured answer is 15, and 13 run / 9 skipped.** Commit `96bb4a8` carries the wrong
+figure in both its register entry and its commit message; this entry is the correction, published
+rather than edited in place.
+
+### What the certification run actually says
+
+Clean full suite at `96bb4a8`, `/usr/bin/python3` 3.13.17, `__pycache__` cleared first per
+`#240`:
+
+```
+Ran 4248 tests in 1682.734s
+FAILED (failures=1, skipped=2, expected failures=1)      errors=0
+```
+
+The baseline runs either side of `#297` both reported `skipped=17`. 17 - 2 = **15 recovered**.
+
+### Where the 16 came from, which is the same failure this whole pass is about
+
+The 16 was never measured. It was COUNTED, by an AST pass I wrote to total the tests behind a
+browser gate, and that pass made two errors that nearly cancelled:
+
+| | effect |
+|---|---|
+| treated **every** `skipUnless` as the browser gate | wrongly included the 2 tests behind `skipUnless(CAPTURE.exists())` at `test_216_room_integrity.py:435` — a different gate, on a condition that is TRUE here, so those 2 were never skipping |
+| looked only at DECORATORS | missed the runtime gate at `:455`, where `test_python_and_the_browser_round_the_boundary_class_identically` calls `self.skipTest` from inside the method body after testing the same condition |
+
+8 genuinely decorator-gated + 2 wrongly included = 10. 8 + 1 runtime = **9**, the truth. The two
+errors differed by one, so the total looked plausible and sat one away from correct — which is
+precisely why it survived being written into a register entry and a commit message.
+
+**A decorator census is not a skip measurement.** I used one as the other.
+
+### The measurement that should have been taken first
+
+Patching `find_chromium` to return `None` before the test module is imported reproduces the
+stale glob's exact effect, because the skip decision is made at class-decoration time:
+
+```
+test_216_room_integrity:     ran 22, skipped 9  (9 on the browser, 0 on anything else)
+test_board_renders_absence:  ran  8, skipped 6  (6 on the browser, 0 on anything else)
+```
+
+9 + 6 = 15, matching 17 -> 2 exactly. So the corrected table for `#299` is:
+
+| module | before | after |
+|---|---|---|
+| `test_216_room_integrity` | 13 run, **9** skipped | 22 run, 0 skipped, OK |
+| `test_board_renders_absence` | 2 run, 6 skipped | 8 run, 0 skipped, OK |
+
+Everything else in `#299` stands: all 15 pass, the board renders correctly and always did, the
+stale glob and the hardcoded build 1194 were both real, and `browser_binary.py` is the fix.
+
+### What the certification confirms, and the one failure left
+
+* **`errors=0`** — every one of the 239 test modules imported, which is `#298`'s guard reporting
+  from inside the suite rather than from a preflight.
+* **`failures=1`** — `test_data_merger.CompositePoolSizeDampeningTests`, `3.3999999999999986 not
+  less than 3.0`. `#297`'s two `test_version_boundary` failures are GONE, confirming they were
+  the absent `streamlit` and not code. One code-level failure remains, and it remains the
+  owner's ruling: the behaviour matches the test's prose (a 3.40 move on a 37.5 half-gap is
+  9.1% of it) and the hardcoded `3.0` does not. `#56` — a bound is not a threshold.
+* **The budget moved and is re-dated in `close-register-item`**: **4248 tests in 1682.734s** at
+  `96bb4a8` (2026-11-04), against **4235 in 1276.5s** at `dbae709` the same day. 13 more tests,
+  406s slower, 32%. The 15 recovered tests each launch Chromium and are part of it; measured
+  standalone those two modules cost 30.2s and 1.8s, which does NOT account for 406s, so the rest
+  is unattributed and is not claimed. Budget from the total, as that file already says.
