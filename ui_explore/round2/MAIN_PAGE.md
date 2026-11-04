@@ -463,6 +463,59 @@ the design has to be shorter on a shorter screen. But the number itself was set 
 viewport that does not exist, and whether 2.0 is still the right figure at 664px is the owner's
 call, not something to quietly adjust after measuring against it.
 
+## Why there is nothing about dynasty on it, and the three reasons are not the same
+
+The sharpest criticism of the built page is that **nothing on it is about dynasty** — no rookie
+picks, no taxi squad, no pending trade offers — which makes a Command Center for a dynasty league
+read as a redraft page with a bye-week chart. That is fair. But the three missing things are
+missing for three different reasons, and only one of them is a gap to fill.
+
+### 1. Rookie pick VALUE is withheld by a ruling, and must stay withheld
+
+The most-wanted dynasty claim is "what are my picks worth". `rookie_draft.estimate_future_pick_value`
+computes exactly that, and **it is wired to nothing but its own test** — confirmed by grep: every
+reference outside `rookie_draft.py` is in `test_rookie_draft.py`. Its own audit note says why:
+
+> across 400 simulated 12-team seasons the mean absolute slot error is **1.89 of 12** (17% of the
+> range) … it placed the worst team within half a slot of 1.01 in **0 of 400 leagues**.
+
+So a card reading "your 2027 1st is worth 29" would be the front page reaching past a documented
+withholding to publish a number the engine refuses to publish — the same contract `#187` keeps on
+`survival_probability`, which was measured, failed, and withheld everywhere. **This is not a
+feature to build. A front page that prices picks is a regression**, and it is the single most
+likely way someone later "fills the dynasty gap" and breaks the thing four surfaces protect.
+
+What a page MAY say about picks is the countable part: how many you hold and in which rounds.
+That is a fact, not a valuation.
+
+### 2. Which picks you own is syncable TODAY and simply is not shown
+
+`sleeper_client.get_traded_picks` exists and the sync already calls it — `"traded_picks":
+self.get_traded_picks(league_id)` is in the league payload. So a live league already knows which
+picks moved, which means "you own three 2027 firsts" and "you owe your 2028 second" are available
+without one line of new estimation. Nothing in the app surfaces it. Same for the **taxi squad**:
+membership comes straight off `roster.get("taxi")` and `app.py` already labels those rows TAXI,
+and the front page ignores the one roster concept that only exists in dynasty.
+
+**This is the gap worth building**, and it is cheap. It is also the honest answer to "make it feel
+like dynasty": the facts that distinguish dynasty from redraft are pick ownership and the taxi
+squad, and both are already in the payload.
+
+### 3. Pending trade OFFERS are not synced at all
+
+The adversarial review's top dynasty want was a pending offer — the one thing with a real deadline
+and a rival waiting, and the only candidate that would genuinely satisfy the ladder's top rung.
+`get_traded_picks` returns picks that have already moved; there is no offers or transactions call
+in `sleeper_client`. So this needs new sync work before any surface can show it, and saying that
+is more useful than designing a card for data nobody fetches.
+
+### Why the fixture cannot demonstrate any of it
+
+`data/league_captures/*.json` hold a league's RULES — scoring, roster_positions, format axes —
+and carry no taxi, pick or trade keys at all (checked: zero matching keys). A replayed battery has
+no traded picks because no picks were traded. So items 2 and 3 are only demonstrable against a
+live synced league, which is the same boundary that keeps the record absent.
+
 ## Four questions for the owner
 
 1. **Does the claim band cap at three?** Three is my recommendation: a capped list is a ranked
