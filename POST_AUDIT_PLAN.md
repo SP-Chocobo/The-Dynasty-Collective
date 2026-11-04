@@ -15707,3 +15707,111 @@ of the first, and no instrument in the repository could tell them apart. `browse
 is a small step against a recurrence — a skip reason that names the four places searched reads as
 infrastructure rather than as data — but the general case is open and is NOT fixed here: nothing
 classifies a skip, and nothing holds a floor under the count of either kind.
+
+## #300 — THE FRESHNESS MANIFEST LEAVES THE HULL, AND A TEST THAT PREDICTED ITS OWN BREAKAGE WAS RIGHT
+
+A scoped piece of `#137`, chosen because it is the one thing the front page needs that the app can
+honestly show with no league synced.
+
+### Why this function
+
+`app.py` called `build_freshness_manifest(st.session_state.league_snapshot or {}, merger)`. The
+`or {}` is deliberate — the comment beside it says the grade is *"informational only, not a
+gate"*, and the caption under it says *"nothing here blocks the app"*. So the Data Freshness grade
+is the one real claim available in the empty state, which `#299`-adjacent work established is the
+state the front page exists to replace: `app.py` has exactly ONE `st.stop()`, at 3667, and
+everything below it — the five-option view picker included — is unreachable until a league exists.
+
+A front-page fixture could not compute it, because reaching it meant importing a module whose
+import runs `st.set_page_config`.
+
+### What moved, and what it cost
+
+Verbatim, by AST span — not retyped. Every comment moved with it (`#140` on the calendar-date
+boundary, `#118` on the players database, MANDATE 2.1(c) on the season sums), because each records
+a measurement that is the reason a line exists. `recency_grade` already lived in `data_merger` and
+is not duplicated.
+
+| | before | after |
+|---|---|---|
+| `app.py` | 7,377 lines | 7,337 |
+| `boundary_census` | **43** reaches (ceiling 43) | **41** (ceiling tightened to 41) |
+
+The two reaches that left are `sleeper_client.players_freshness_entry` and
+`sleeper_client.season_projection_freshness_entry`. Both are **delisted** rather than set to 0 —
+an entry at 0 asserts "this reach is expected to be absent", and nothing in that file wants to
+claim that about a function it no longer knows. The ceiling tightens in the same commit as the
+removal, which is the precedent the `#297` comment in that file already set.
+
+Measured, in a subprocess, because this process's own `sys.modules` would decide the answer:
+importing `freshness` pulls in `league_config`, `player_universe`, `sleeper_client`, `store_io` —
+and **not** `streamlit`, **not** `app`, **not** `pandas`, and **not** `data_merger`. The last one
+is the `TYPE_CHECKING` guard working: `DataMerger` is needed for the signature and nothing else.
+
+### A TEST PREDICTED THIS EXACT BREAKAGE, IN WRITING, AND IT PAID OFF
+
+`test_sleeper_client.TheManifestActuallyAppendsThePlayersRowTests` read the manifest's SOURCE
+through `ui_source` rather than off `app.py`, and said why:
+
+> "the manifest is a candidate for #137's hull extraction, and a raw app.py read would stop
+> covering it the moment the view moves — silently, with the test still green."
+
+The extraction happened. `ui_source` searches only modules with a top-level `import streamlit`,
+and the entire point of this move is that freshness is NOT UI — so the read did not follow the
+function. **It failed loudly**, with `no UI module contains 'def build_freshness_manifest' --
+searched app.py`. That is precisely what choosing `ui_source` over a raw read bought, and it is
+worth recording as an instrument working rather than as breakage.
+
+The repair goes one better than restoring the read. The function is now IMPORTABLE, which it was
+not before, so both guarantees are asserted BEHAVIOURALLY:
+
+* "the players row reaches the manifest" → call it and look for the row.
+* "appended before the sort" → assert an UNDATED row sorts **last**, which is the property the
+  source-order check was a proxy for. Its own docstring said so: an absent cache's `None` row
+  landing at the top is "the exact opposite of what that column asks for."
+
+A behavioural assertion cannot go silently green when the function moves again, from anywhere to
+anywhere. That is strictly stronger than what the docstring was reaching for.
+
+### The ratchet fired, as designed
+
+```
+A guarantee got smaller.
+  test_sleeper_client.py: self.assertLess 1 -> 0
+  test_sleeper_client.py: test method ...test_build_freshness_manifest_appends_the_players_entry is gone
+  test_sleeper_client.py: test method ...test_the_entry_is_appended_before_the_sort_that_orders_it is gone
+```
+
+This is the SUBSTITUTION case `assertion_floors`' own docstring describes — it cannot tell a
+weakening from a strengthening, so it fails either way and asks a human to look. Looked at: the
+`assertLess` was `body.index(a) < body.index(b)` over source text, and it is gone because the
+thing it indexed is gone. The two methods were renamed when they became behavioural. Coverage went
+UP — 2 source-reading tests became 2 behavioural ones, plus 11 new in `test_freshness.py`.
+Regenerated in this same commit so the drop is reviewable rather than incidental.
+
+Removing the lookup also retired `test_sleeper_client`'s now-unused `import ui_source`.
+
+### Mutation-checked, 7 arms — and one of them was MY ARM that was wrong, not the coverage
+
+Counts, all caught: `DataMerger` imported at runtime `1`; a top-level `import streamlit` added
+`1`; the unconditional players row dropped `8`; the sort removed `2`; **the sort moved before the
+unconditional appends `2`**; the league sync row made unconditional `11`; the days column changed
+to elapsed hours `1`. Baseline and restored both green.
+
+The fifth arm — the `#118` defect itself, the one that matters most — reported **NOT CAUGHT** on
+its first run, which read as my behavioural replacement being weaker than the source-order test it
+replaced. It was not. **The arm was built wrong**: it inserted a sort before the appends while
+leaving the real sort at the end, so the list was still sorted correctly and the mutation was a
+no-op. Rebuilt to genuinely MOVE the sort — remove it from the end, place it before both appends —
+it fires on 2 tests.
+
+Recorded because the first reading was the alarming one and the instinct it produced was wrong.
+A mutation arm is an instrument too, and `engine-measurement`'s rule applies to it unchanged: when
+ON and OFF look identical, find out why before concluding.
+
+### What is NOT done
+
+The front page itself is not built. This removes the stated blocker — the content is now reachable
+without Streamlit — but the empty-state page is a design question, and the four questions in
+`ui_explore/round2/MAIN_PAGE.md` are still open for the owner. What `#300` establishes is that
+when those are answered, the answer does not require importing the app to render a date.

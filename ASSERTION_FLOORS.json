@@ -8403,6 +8403,60 @@
         "early_returns": 0
       }
     },
+    "test_freshness.py": {
+      "test_methods": 11,
+      "asserts": {
+        "assertEqual": 9,
+        "assertIn": 3,
+        "assertIsNone": 1,
+        "assertNotIn": 5
+      },
+      "by_method": {
+        "EachRowIsBehindItsOwnCondition.test_a_synced_at_adds_the_league_row_and_describes_its_age": {
+          "assertEqual": 2
+        },
+        "EachRowIsBehindItsOwnCondition.test_all_three_flags_give_all_three_rows": {
+          "assertEqual": 1
+        },
+        "EachRowIsBehindItsOwnCondition.test_each_vendor_flag_adds_exactly_its_own_row": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "ItCanBeImportedWithoutTheUI.test_importing_it_does_not_drag_in_streamlit_or_the_app": {
+          "assertNotIn": 2
+        },
+        "ItCanBeImportedWithoutTheUI.test_the_annotation_only_dependency_stays_deferred": {
+          "assertNotIn": 1
+        },
+        "TheEmptySnapshotCaseTheFrontPageNeeds.test_an_empty_snapshot_still_yields_the_two_unconditional_rows": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "TheEmptySnapshotCaseTheFrontPageNeeds.test_no_league_sync_row_without_a_synced_at": {
+          "assertNotIn": 1
+        },
+        "TheEmptySnapshotCaseTheFrontPageNeeds.test_no_vendor_row_appears_when_nothing_is_loaded": {
+          "assertNotIn": 1
+        },
+        "TheOrderingIsTheWholePointOfTheSort.test_an_undated_row_sorts_last": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        },
+        "TheOrderingIsTheWholePointOfTheSort.test_rows_are_freshest_first": {
+          "assertEqual": 1
+        },
+        "TheSyncRowKeepsItsCalendarDayColumn.test_the_days_column_is_a_calendar_date_difference_not_an_elapsed_hours_value": {
+          "assertEqual": 1,
+          "assertIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_harness_league_format_hygiene.py": {
       "test_methods": 1,
       "asserts": {
@@ -15561,11 +15615,10 @@
       "test_methods": 58,
       "asserts": {
         "assertAlmostEqual": 4,
-        "assertEqual": 50,
+        "assertEqual": 51,
         "assertFalse": 3,
         "assertIn": 11,
-        "assertIsNone": 9,
-        "assertLess": 1,
+        "assertIsNone": 10,
         "assertNotIn": 4,
         "assertRaises": 2,
         "assertTrue": 3
@@ -15711,11 +15764,12 @@
         "PlayersDatabaseFreshnessIsDisclosedTests.test_the_state_is_derived_every_call_never_remembered": {
           "assertEqual": 2
         },
-        "TheManifestActuallyAppendsThePlayersRowTests.test_build_freshness_manifest_appends_the_players_entry": {
-          "assertIn": 1
+        "TheManifestActuallyAppendsThePlayersRowTests.test_an_undated_row_sorts_LAST_not_first": {
+          "assertEqual": 1,
+          "assertIsNone": 1
         },
-        "TheManifestActuallyAppendsThePlayersRowTests.test_the_entry_is_appended_before_the_sort_that_orders_it": {
-          "assertLess": 1
+        "TheManifestActuallyAppendsThePlayersRowTests.test_the_players_entry_reaches_the_manifest": {
+          "assertIn": 1
         },
         "TheTwoWeeklyEndpointsShareOneImplementationTests.test_a_DICT_payload_still_normalises": {
           "assertEqual": 1

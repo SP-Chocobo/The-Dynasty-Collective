@@ -64,6 +64,7 @@ from data_merger import (
     horizon_gap_lines, load_projection_file, recency_grade, remove_alias, save_alias,
 )
 from depth_chart import depth_value_label, positional_depth
+from freshness import build_freshness_manifest
 import league_config
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -1725,47 +1726,6 @@ def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
     return ledger
 
 
-def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:
-    """(label, as-of date, days old) for every dated source in this context, freshest first."""
-    entries = []
-    if merger.is_loaded:
-        entries.append(("Draft Sharks Dynasty Rankings", merger.freshest_date, merger.staleness_days))
-    if merger.is_free_agents_loaded:
-        entries.append(("Draft Sharks Free Agent Finder", merger.free_agents_freshest_date, merger.free_agents_staleness_days))
-    if merger.is_trade_values_loaded:
-        entries.append(("Draft Sharks Trade Value Chart", merger.trade_values_freshest_date, merger.trade_values_staleness_days))
-    synced_at = snapshot.get("synced_at")
-    if synced_at:
-        sync_dt = datetime.fromtimestamp(synced_at)
-        # #140: the DAYS column is a difference of calendar dates, which is wrong in both
-        # directions at the boundary -- measured: a 9am sync read at 8pm reports "0 days" for
-        # an eleven-hour-old config, and a 23:59 sync read at 00:01 reports "1 day" for a
-        # two-minute-old one. League config changes on an hours timescale (a commissioner
-        # edits scoring or a roster slot), so the label carries the real age at a resolution
-        # that can express it. The days column keeps its existing meaning and sort order --
-        # every other row in this manifest is a source with a genuine per-DAY date, and
-        # changing the column's unit for one row would make the sort compare two things.
-        entries.append((
-            f"Sleeper league sync (rosters + native weekly projections) — "
-            f"{league_config.describe_config_age(snapshot)}",
-            sync_dt.date().isoformat(),
-            (datetime.now().date() - sync_dt.date()).days,
-        ))
-    # #118: the players database decides who exists, what position they play, and whether they
-    # are hurt -- an input to every board on every screen, and the one input this manifest did
-    # not mention. Silence here is not neutral: get_players falls back to an arbitrarily old
-    # cache when a live fetch fails, so "the app is running" never implied "the player universe
-    # is current". Unconditional, ABSENT included; sleeper_client owns what each state means.
-    entries.append(sleeper_client.players_freshness_entry())
-    # MANDATE 2.1(c): the SUMS the board prices from, not just the sync that fetched them. This
-    # manifest listed the sync as the freshest input on the page while the totals that sync
-    # returned could be nine weeks of eighteen -- and a board priced from those is a different
-    # board (measured: 30 of the top 40 rows move 3+ places). Unconditional, for the same reason
-    # the players row above is: an input that is silently missing looks exactly like one that is
-    # fine. sleeper_client owns what each state means.
-    entries.append(sleeper_client.season_projection_freshness_entry(snapshot))
-    entries.sort(key=lambda e: (e[2] is None, e[2]))
-    return entries
 
 
 RECENT_TURNS_IN_CONTEXT = 16  # ~3 debate rounds worth of raw messages fed back verbatim

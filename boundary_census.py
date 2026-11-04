@@ -67,9 +67,13 @@ CENSUS: dict[str, int] = {
     "sleeper_client.compute_points_from_stats": 1,
     "sleeper_client.find_roster_for_user": 1,
     "sleeper_client.league_format_summary": 2,
-    "sleeper_client.players_freshness_entry": 1,
+    # 43 -> 41: both freshness entries left the hull with `build_freshness_manifest` when it
+    # moved to freshness.py (#300, another scoped piece of #137). Delisted rather than set to 0,
+    # which is the same choice `drops` makes for a module that disappears: an entry at 0 reads as
+    # "this reach is expected to be absent", and nothing in this file wants to assert that about a
+    # function it no longer knows. The ceiling tightens in the same commit as the removal, for the
+    # reason the #137 comment above gives -- slack left behind is slack the hull re-widens into.
     "sleeper_client.priceable_season_projections": 1,
-    "sleeper_client.season_projection_freshness_entry": 1,
     # ADMIN SURFACE -- wants its own auth, not an endpoint on the product API.
     "merger.reload": 2,
     "merger.composite_capable_source_names": 1,

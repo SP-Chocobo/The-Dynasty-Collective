@@ -5,8 +5,8 @@ import time
 import unittest
 from unittest import mock
 
+import freshness
 import sleeper_client as sc
-import ui_source
 
 
 class ComputePointsFromStatsTests(unittest.TestCase):
@@ -359,23 +359,49 @@ class TheManifestActuallyAppendsThePlayersRowTests(unittest.TestCase):
     """Non-vacuity at the consumer. Everything above can pass while the manifest never calls it,
     which is exactly the shape #118 is an instance of: a quantity that exists and reaches nobody.
 
-    Read through ui_source rather than off app.py directly (#136): the manifest is a candidate
-    for #137's hull extraction, and a raw app.py read would stop covering it the moment the view
-    moves -- silently, with the test still green. This module's first draft did read app.py, and
-    test_ui_source failed it."""
+    THIS CLASS PREDICTED ITS OWN BREAKAGE AND WAS RIGHT. It used to read the manifest's SOURCE
+    through `ui_source` (#136), and said why: "the manifest is a candidate for #137's hull
+    extraction, and a raw app.py read would stop covering it the moment the view moves --
+    silently, with the test still green."
 
-    def _manifest(self):
-        return ui_source.block("def build_freshness_manifest", until="\ndef ")
+    The extraction happened (`#300`): `build_freshness_manifest` now lives in `freshness.py`.
+    `ui_source` searches only modules with a top-level `import streamlit`, and the whole point of
+    the move is that freshness is NOT UI -- so the source read did not follow it. It failed
+    LOUDLY rather than going green, which is exactly what choosing `ui_source` over a raw app.py
+    read bought.
 
-    def test_build_freshness_manifest_appends_the_players_entry(self):
-        self.assertIn("players_freshness_entry", self._manifest(),
+    The fix honours that intent by going one better: the function is now IMPORTABLE, which it was
+    not while it sat inside a module whose import runs `st.set_page_config`. So these two
+    guarantees are asserted BEHAVIOURALLY instead of read out of source text. A behavioural
+    assertion cannot go silently green when the function moves again, from anywhere to anywhere,
+    which is a stronger version of the property the docstring was reaching for."""
+
+    class _NothingLoaded:
+        """A merger with no vendor file loaded, so only the UNCONDITIONAL rows appear.
+
+        The three vendor rows are each behind an `is_*_loaded` flag; the players row and the
+        season-projection row are not. Stubbing the flags False is what isolates the two rows
+        #118 and MANDATE 2.1(c) added.
+        """
+        is_loaded = is_free_agents_loaded = is_trade_values_loaded = False
+
+    def test_the_players_entry_reaches_the_manifest(self):
+        entries = freshness.build_freshness_manifest({}, self._NothingLoaded())
+        labels = [label for label, _, _ in entries]
+        self.assertIn(sc.players_freshness_entry()[0], labels,
                       "the players database is computed but never reaches the manifest")
 
-    def test_the_entry_is_appended_before_the_sort_that_orders_it(self):
-        """Appending after the sort would leave the row wherever it landed -- for an absent
-        cache, the top of the list, the exact opposite of what its None days column asks for."""
-        body = self._manifest()
-        self.assertLess(body.index("players_freshness_entry"), body.index("entries.sort("))
+    def test_an_undated_row_sorts_LAST_not_first(self):
+        """The real property the old source-order check was a proxy for. Appending after the sort
+        would leave an absent cache's row wherever it landed -- for `None` days, the TOP of the
+        list, the exact opposite of what that column asks for."""
+        with mock.patch.object(sc, "players_freshness_entry",
+                               return_value=("Players (absent)", None, None)), \
+             mock.patch.object(sc, "season_projection_freshness_entry",
+                               return_value=("Season sums", "2026-11-01", 3)):
+            entries = freshness.build_freshness_manifest({}, self._NothingLoaded())
+        self.assertEqual([label for label, _, _ in entries], ["Season sums", "Players (absent)"])
+        self.assertIsNone(entries[-1][2], "the undated row must be last, not first")
 
 
 if __name__ == "__main__":
