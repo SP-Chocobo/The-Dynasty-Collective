@@ -28,34 +28,36 @@
    "1700x1100"
   ],
   "viewports_mobile": [
-   "390x664",
-   "360x780",
-   "428x746"
+   "390x664"
   ]
  },
  "expected_failures": [
-  "m1_stack.html [HEAVY_IDP/late@390x664]",
-  "m1_stack.html [LIGHT_IDP/late@390x664]"
+  "m1_stack.html [HEAVY_IDP/late@390x664]"
  ],
  "failures_total": 0,
- "finished_utc": "2026-11-04T02:20:18+00:00",
+ "finished_utc": "2026-11-04T03:29:17+00:00",
  "gate": "ui_explore/round2/fableA/_shoot.py",
- "renders": 396,
- "renders_failed": 2,
- "renders_ok": 394,
+ "renders": 36,
+ "renders_failed": 1,
+ "renders_ok": 35,
  "snapshot_sha256_12": {
-  "m1_stack.html": "fcca1881beac",
-  "m2_sheet.html": "486ee46103af",
-  "m3_hero.html": "cc9982716e3b",
-  "v1_ledger.html": "fc881ed4d6c1",
-  "v1_ledger_rail.html": "0c35d86155f1",
-  "v2_lanes.html": "0d3aecf33883",
-  "v4_doors.html": "df868590ed5f"
+  "m1_stack.html": "86d8326ac763"
  },
  "snapshot_verified_unchanged": true,
- "source_commit": "e0061b49576b491024319e51c12dab828110b56d",
- "source_tree_clean": true,
- "source_tree_dirty_paths": [],
+ "source_commit": "dbae709ba922d68a2c9d1c373aee492f58af7099",
+ "source_tree_clean": false,
+ "source_tree_dirty_paths": [
+  "app.py",
+  "boundary_census.py",
+  "test_positional_depth_coverage.py",
+  "ui_explore/round2/fableA/_shoot.py",
+  "ui_explore/round2/fableA/_src/m1_stack.tpl.html",
+  "ui_explore/round2/fableA/m1_stack.html",
+  "depth_chart.py",
+  "test_depth_chart_is_importable.py",
+  "ui_explore/capture_front_fixture.py",
+  "ui_explore/round3/"
+ ],
  "stale_expectations": [],
  "verdict": "PASS_WITH_KNOWN_FAILURES"
 }

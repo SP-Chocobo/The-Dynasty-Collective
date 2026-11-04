@@ -443,7 +443,12 @@ html,body{height:auto;overflow:visible}
 .lineup[data-open="0"] .slots{display:none}
 .lineup .slotc{padding:.1rem .3rem;font-size:12.5px;gap:4px;line-height:1.25}
 /* main */
-.main{display:flex;flex-direction:column;padding:8px 12px 10px;gap:8px}
+/* Spacing only, to fit the 2.0-screen budget on a real 390x664 phone viewport. The gap
+   goes 8->6 and the block's own padding 8/10->6/8; no element moved, no word changed, no
+   information removed. The budget was being missed by 29px in HEAVY_IDP/late and 5px in
+   LIGHT_IDP/late, measured after the review bar was excluded and the dock's over-clearing
+   reclaimed -- see MAIN_PAGE.md, which costed these levers rather than taking them. */
+.main{display:flex;flex-direction:column;padding:6px 12px 8px;gap:6px}
 .count{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);line-height:1.45}
 .count b{color:var(--ink)}
 .count .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:-2px}
@@ -473,7 +478,7 @@ html,body{height:auto;overflow:visible}
 .dh .st{font-size:.8rem;color:var(--muted);margin-top:2px;line-height:1.4} .dh .st.need{color:var(--amber-b)}
 .door .x{position:absolute;top:4px;right:4px;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line-2);border-radius:var(--r);color:var(--muted);background:var(--surface-2);font-size:1.05rem;z-index:1}
 .door .x:hover{color:var(--ink);border-color:var(--dim)}
-.db{padding:5px 12px 8px;display:flex;flex-direction:column;gap:4px}
+.db{padding:4px 12px 6px;display:flex;flex-direction:column;gap:4px}
 .who{display:flex;align-items:center;gap:10px}
 .who .nm{font-weight:700;font-size:1rem;line-height:1.2}
 /* a name wraps before its availability mark, never after it: phoneName glues the mark to the

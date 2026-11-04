@@ -5976,6 +5976,37 @@
         "early_returns": 0
       }
     },
+    "test_depth_chart_is_importable.py": {
+      "test_methods": 5,
+      "asserts": {
+        "assertEqual": 4,
+        "assertIn": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "DepthChartHasOneImportableHome.test_both_names_are_reachable_and_callable": {
+          "assertTrue": 1
+        },
+        "DepthChartHasOneImportableHome.test_it_imports_nothing_at_runtime": {
+          "assertEqual": 1
+        },
+        "DepthChartHasOneImportableHome.test_it_imports_without_pulling_in_streamlit": {
+          "assertEqual": 2
+        },
+        "DepthChartHasOneImportableHome.test_the_ui_surface_does_not_define_them_again": {
+          "assertEqual": 1
+        },
+        "DepthChartHasOneImportableHome.test_the_ui_surface_imports_them_from_here": {
+          "assertIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_depth_exposure.py": {
       "test_methods": 37,
       "asserts": {
@@ -18589,6 +18620,48 @@
         "TheSystemPromptsDoNotInviteItTests.test_the_skeptic_is_not_told_to_pressure_test_a_model_it_cannot_see": {
           "assertIn": 1,
           "assertNotIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_withheld_values_never_reach_the_prototype.py": {
+      "test_methods": 8,
+      "asserts": {
+        "assertEqual": 8,
+        "assertGreater": 3,
+        "assertGreaterEqual": 1
+      },
+      "by_method": {
+        "NoBuiltArtifactCarriesAWithheldValueTests.test_no_committed_artifact_carries_a_withheld_value_anywhere_in_its_payload": {
+          "assertEqual": 1
+        },
+        "NoBuiltArtifactCarriesAWithheldValueTests.test_the_directory_holds_artifacts_to_check": {
+          "assertGreaterEqual": 1
+        },
+        "NoBuiltArtifactCarriesAWithheldValueTests.test_the_strip_is_targeted_and_leaves_the_shown_quantities_alone": {
+          "assertGreater": 1
+        },
+        "NoBuiltArtifactCarriesAWithheldValueTests.test_the_withheld_names_survive_so_the_panel_says_withheld_and_not_nothing": {
+          "assertEqual": 1
+        },
+        "TheReasonForWithholdingHasOneHomeTests.test_every_artifact_carries_the_engine_sentence_verbatim": {
+          "assertEqual": 2
+        },
+        "TheReasonForWithholdingHasOneHomeTests.test_the_hand_written_sentence_has_not_come_back": {
+          "assertEqual": 2,
+          "assertGreater": 1
+        },
+        "TheSourceFixtureActuallyCarriesWhatTheArtifactMustNotTests.test_every_candidate_in_the_fixture_carries_the_withheld_family_as_numbers": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
+        "TheSourceFixtureActuallyCarriesWhatTheArtifactMustNotTests.test_the_fixture_takes_the_family_from_the_engine_and_not_from_a_second_list": {
+          "assertEqual": 1
         }
       },
       "disabled": {

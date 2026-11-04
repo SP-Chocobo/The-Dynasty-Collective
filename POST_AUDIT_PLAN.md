@@ -15187,3 +15187,151 @@ not soften because the error was measured rather than guessed.
 
 Evidence: `evidence/forfeit_calibration/` — `calibrate_forfeit.py` (re-runnable from the repo
 root), `forfeit_calibration.json` (every row plus the summary), `RESULT.md`.
+
+## #297 — THE FRONT PAGE'S FIRST REAL COST WAS AN IMPORT, NOT A LAYOUT; AND TWO OF ITS SIX
+## CLAIMS CANNOT BE MEASURED FROM A DRAFT AT ALL
+
+The owner asked for a main page, and `ui_explore/round2/MAIN_PAGE.md` argues the shape: a triage
+surface answering "what needs you, why, what it costs to ignore, what can wait" — the draft
+room's own constraint applied to a week instead of a pick. Building it turned up two things the
+design argument could not have known, and both are about what the engine can and cannot say.
+
+### The first cost was `positional_depth`, and it was a scoped piece of `#137`
+
+`positional_depth` — the function behind "thin at TE", and behind the Trade Calculator and the
+League Depth Map — lived in `app.py`, which carries 69 top-level Streamlit calls and no
+`__main__` guard. Importing it runs the application, so a quantity three surfaces depend on had
+no reader outside the app. Two workarounds had grown around that, each documented as one:
+
+- `test_positional_depth_coverage` reached the function by PARSING the UI surface and exec-ing a
+  single `FunctionDef` out of it, its own docstring conceding that "the alternative — moving it
+  into an importable module — is the hull extraction (`#137`)".
+- `depth_value_label` exists as a named top-level function rather than an inline ternary
+  *because* that was the only way a test could reach the behaviour at all.
+
+Both moved to `depth_chart.py`, lifted by AST span rather than retyped, so there is no
+transcription to audit. The module imports nothing at runtime — the posture `draft_state.py` and
+`content_hash.py` take, for the same stated reason. `app.py` imports the two names, so its six
+call sites read exactly as before and `test_maintenance_view_wiring`'s anchor is untouched.
+
+**Measured, and the architecture welcomed it:**
+
+| | before | after |
+|---|---|---|
+| `app.py` | 7,441 lines | 7,377 |
+| `app.py`'s direct `merger.merge_player` reaches | 5 | **4** |
+| `boundary_census --check` | 44 allowed, 44 found | "1 fewer than recorded — that is progress" |
+
+`boundary_census` reports shrinkage as progress by design: "a reach going away is the whole point
+of the work this file guards." The ceiling was tightened 5 → 4 **in the same change**, because a
+ceiling left at the old number is slack the hull can re-widen into without the file saying a
+word — the same reason `assertion_floors` is regenerated rather than left high after a real drop.
+
+`test_depth_chart_is_importable` pins what the move bought: the module imports without dragging
+in Streamlit or `app` (checked in a SUBPROCESS, because by the time it runs in the full suite
+something else has long since imported Streamlit and an in-process check would pass on someone
+else's import), `app.py` does not define either name again, and the runtime import list stays
+empty. **Mutation-checked 4/1/1/1** — a planted `import streamlit` fires three failures and an
+error, a planted `import pandas` one, `app.py` re-defining the function one, `app.py` dropping
+the import one — with an unplanted control passing and both files verified byte-identical after.
+
+### What rules OUT: two of the front page's claims cannot be fixtured, and the reason is the same
+
+`compute_readiness` counts `slot == "Starter"`, and `slot` is assigned at `app.py:3792` from
+**Sleeper's own `starters` array** — the lineup a human submitted. A drafted roster has players
+and no submitted lineup. So "7 of 9 starters set" and the material-injury claim, which the brief
+had listed as the cheapest claims on the page because `compute_readiness` is already wired, are
+**not measurable from a replayed draft**. Nor is the record: `team_standings` reads
+`settings.wins/losses`, and nothing in `data/league_captures/` holds a roster's contents or a
+result — those files capture a league's RULES, which is what they were built for.
+
+A fixture generator and a renderer were written to carry that distinction —
+`ui_explore/capture_front_fixture.py` stamping every field `measured`, `CONSTRUCTED` or `ABSENT`,
+and `ui_explore/round3/build_front.py` drawing a constructed number with its marker and an absent
+one as an em dash carrying its reason (`#187`).
+
+**NEITHER IS COMMITTED, BECAUSE THREE ADVERSARIAL PASSES ESTABLISHED THAT BOTH ARE WRONG IN WAYS
+THAT PUT FALSE CLAIMS ON SCREEN.** The findings are recorded here because the architecture
+argument above survives them and the two implementations do not:
+
+1. **The fixture generator cannot run at all.** `lineup_optimizer.optimize_lineup` requires
+   `{"id", "value", "eligible"}` and indexes both directly; the script builds
+   `{"id", "name", "position", "team", "bye", "uv"}`. It raises `KeyError: 'eligible'` on the
+   first player, so `bye_concentration`, `bye_collision` and `optimize_lineup` are all
+   unreachable. `ui_explore/front_fixture.json` does not exist and never did. Eligibility must
+   come from `player_universe.player_eligible_positions` rather than the single-bucket
+   `player_position`, per MANDATE 2.6 / `#172`.
+2. **The claim that "editing the fixture by hand cannot promote a demo value into a
+   measurement" is FALSE.** The renderer reads two of five stamps, both only into `title=`
+   tooltips, and the footer sentence asserting "thin positions, structural holes and the bye
+   profile are measured" is hardcoded prose. Stamping all three `CONSTRUCTED` changes nothing on
+   the page. The one failure mode the design claimed to have engineered away is the one that
+   produced the artifact under review.
+3. **Structural holes are derived from a fail-open free-agent filter.**
+   `league_usable_positions` EXPANDS flex slots by design — its docstring says so — so a
+   standard league with a FLEX and no dedicated TE slot reports TE as a slot "nobody you own can
+   fill, at any price", in crimson, at the top of the page. On empty `roster_positions` it
+   returns every known position, which is correct fail-open behaviour for a free-agent filter and
+   maximally wrong for a cannot-field-a-lineup claim. `lineup_optimizer.slot_coverage` is the
+   function built for the counting question.
+4. `(share or 0) * 100` renders a `None` concentration as **"0%"** — a fabricated zero eight
+   lines below an `absent()` helper whose docstring reads "Never a zero standing in for one",
+   and directly against `bye_concentration`'s "It is None, never 0.0".
+5. The single-hole branch interpolates a position code **unescaped** while the multi-hole branch
+   escapes it; position codes come from a league capture, so that is injection from upstream data.
+6. `BYE_UNKNOWN` renders as the affirmative "no concentrated bye week", and `BYE_PARTIAL` floors
+   are announced in the card body while the week strip and the footer contradict them.
+7. `depth_value_label` formats with `f"{...:.0f}"` (half-to-EVEN) rather than
+   `design_system.figure()` (half-away-from-zero), so a sum landing on 16.5 renders 16 here and
+   17 in the Draft Room — the exact two-answers defect `_HALF_AWAY_FROM_ZERO` exists to close,
+   reproduced on a new surface. That one belongs in `depth_chart.py`, not the page.
+
+The passes also found the page's routes are `<span>`s at 18.7px rather than links at the 44px tap
+floor, the ladder has no concept of the current week (its week-9 claim is about a week already
+played), and four text roles use `--dim` at 12px where the design system documents that token as
+deliberately below the AA normal-text threshold.
+
+**What IS measured, from a replayed VDS sequence:** thin positions (`positional_depth` +
+`depth_ratings.depth_label`, the same judgment the Trade Calculator uses), structural holes, and
+the bye profile (`bye_collision` / `bye_concentration` — value lost rather than bodies lost, and
+what share of a season's damage lands in one week).
+
+The page's palette is DERIVED, not copied: it calls `design_system.root_css_block()`, the one
+place the app's hex values are spelled out. Round 2's prototypes hand-wrote theirs and
+`_palette.py` later measured the result — 26 of 27 shared token names visibly different, **none
+identical**, including three page grounds a design note had claimed were shared. Numbers go
+through `design_system.figure()` so the page cannot become a third answer to a `.5` rounding the
+module exists to settle once.
+
+### What is NOT fixed
+
+- **The four questions in `MAIN_PAGE.md` are still the owner's** — the claim-band cap, whether
+  "nothing needs you" is an acceptable primary state, whether the phone dock holds views or board
+  tools, and how far the palette moves. The page is built to one reading of them, not to a ruling.
+- **`HEAVY_IDP/late` still misses the phone scroll budget by 8px**, at 2.01 screens against 2.0.
+  The spacing levers `MAIN_PAGE.md` costed reclaimed 21px of genuine slack and closed
+  `LIGHT_IDP/late` outright — its entry is GONE from the render gate's known-failure table rather
+  than kept, which is the first time that table has shrunk. The last 8px would come out of spacing
+  that is no longer slack, and is NOT TAKEN on `#56`'s rule that a bound is not a threshold: 2.0
+  screens was authored against an 844px phone screen no browser gives a page, so sizing a change
+  to cross 1328px would be fitting it to a number whose own calibration is the open question.
+
+### Corrections, and a suite budget that had gone stale
+
+**The recorded full-suite budget was wrong by 45%.** `close-register-item` carried "3347 tests in
+878.3s at `3bb81a7` (2026-09-20)". Measured now, `__pycache__` cleared first per `#240`:
+**4235 tests in 1276.5s** — 888 more tests and 398s more wall clock. The skill's own instruction
+is to re-measure rather than trust a figure older than the work, and this is why: a `timeout`
+sized from the old number would have killed a healthy run at 70% complete.
+
+**Three suite failures are PRE-EXISTING, established rather than assumed.** All three reproduce
+identically on a clean `git archive` of HEAD with none of this work present:
+`test_version_boundary` ×2 (`'streamlit' not found in {}` — Streamlit is not installed in this
+container, so the version recorder has nothing to report) and
+`test_data_merger.CompositePoolSizeDampeningTests` (3.3999999999999986 against a 3.0 bound).
+
+**A fourth was mine, and the repo caught it.** `test_prose_names` fires when a backticked name in
+prose names something that exists nowhere, and it reported
+`{'_load_function': ['test_positional_depth_coverage.py:38']}` — a comment I had just written to
+explain what the old loader did, naming the function I had deleted in the same change. Reworded.
+That test is the reason this entry describes the loader without backticking it.

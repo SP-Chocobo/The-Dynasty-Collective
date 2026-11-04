@@ -27,41 +27,36 @@ Same shape as horizon_basis (#166), availability_basis (#191) and depth_basis (#
 
 from __future__ import annotations
 
-import ast
 import unittest
 
 import ui_source
 
+from depth_chart import depth_value_label, positional_depth
 
-def _load_function(name: str):
-    """Lift ONE function out of app.py and compile it alone.
+# A PLAIN IMPORT, WHERE THIS FILE USED TO PARSE THE SURFACE AND EXEC ONE NODE OUT OF IT.
+#
+# The loader this file used to carry lifted a single FunctionDef out of `ui_source.text()` and
+# compiled it alone, because `app.py` is a top-level Streamlit script: importing it executes page code and
+# dies on a missing snapshot. That was legitimate and it was also a workaround, and this file's
+# own docstring said what the real answer was -- "moving it into an importable module is the hull
+# extraction (#137), a tracked refactor a test file has no business doing on its own."
+#
+# The move happened (see depth_chart.py), so the workaround goes. What that buys is not tidiness:
+#   - the test now exercises the SAME OBJECT production imports, not a recompiled copy of its
+#     source, so a decorator, a closure or a module-level constant could no longer diverge
+#     between the two without something failing;
+#   - it stops depending on `app.py` having a particular SHAPE. The exec trick required the
+#     function to close over nothing and to be at top level, which is a constraint a test was
+#     silently imposing on production code;
+#
+# `ui_source` IS STILL READ HERE, for one assertion, and the distinction is the point. The
+# BEHAVIOUR is now tested against the imported object; what the surface scan still checks is that
+# `app.py` actually CALLS it -- a function that is correct and unwired passes every arithmetic
+# test in this file. Those are two different questions and they want two different instruments,
+# which is only visible once the first one stops going through the source. (A comment here
+# briefly claimed the file no longer read `ui_source` at all; the suite said otherwise
+# immediately, which is the behaviour you want from a wiring assertion.)
 
-    The UI surface is a top-level Streamlit script -- importing it executes page code and dies
-    on a missing snapshot, which is why every other app-level test in this suite SOURCE-SCANS
-    it rather than importing. Source-scanning proves a string is present; it cannot prove the
-    arithmetic is right, and #190 is an arithmetic defect.
-
-    So: parse the surface, take the single FunctionDef under test, and exec that one node in a
-    clean namespace. It closes over nothing (its only collaborator is the merger it is handed),
-    which is what makes this legitimate here and would not be for a function that reached for
-    module state. The alternative -- moving it into an importable module -- is the hull
-    extraction (#137), a tracked refactor a test file has no business doing on its own.
-
-    READ THROUGH ui_source.text(), NEVER app.py OFF DISK. test_ui_source enforces that, and it
-    caught the first version of this file: a test that reads app.py directly stops covering
-    anything the moment #137 moves the view into its own module, and it does so silently.
-    """
-    tree = ast.parse(ui_source.text())
-    fn = next(n for n in tree.body
-              if isinstance(n, ast.FunctionDef) and n.name == name)
-    fn.decorator_list = []          # @st.cache_data and friends need a live Streamlit
-    ns: dict = {}
-    exec(compile(ast.Module(body=[fn], type_ignores=[]), "app.py", "exec"), ns)
-    return ns[name]
-
-
-positional_depth = _load_function("positional_depth")
-depth_value_label = _load_function("depth_value_label")
 
 
 class _Merger:

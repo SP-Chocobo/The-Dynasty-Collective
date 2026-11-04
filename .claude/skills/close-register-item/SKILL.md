@@ -25,8 +25,14 @@ verifying six targeted modules (183 tests, all green). The full suite then faile
 `test_assertion_floors` — a file I had not thought to run. Targeted runs are for iterating;
 **the full suite is what licenses a push.** Background it and wait.
 
-**Budget it from a measurement that carries its own date.** The last one: **3347 tests in
-878.3s** at `3bb81a7` (2026-09-20), measured with `__pycache__` cleared first per `#240`. The
+**Budget it from a measurement that carries its own date.** The last one: **4235 tests in
+1276.5s** at `dbae709` (2026-11-04), measured with `__pycache__` cleared first per `#240` -- and
+it is the entry that proves this paragraph's point. The figure before it said **3347 tests in
+878.3s** at `3bb81a7` (2026-09-20) and had gone six weeks without a re-measure: the suite grew by
+888 tests and 398s in that time, so a `timeout` sized from the old number would have killed a
+healthy run at 70% complete. Note the per-test cost barely moved (262ms -> 301ms) while the total
+grew 45%: growth, not regression, and the total is what a timeout has to clear. The run before it
+was **3091 tests in 860.9s** at `#283` (2026-09-17), same method. The
 one before it: **3091 tests in 860.9s** at `#283` (2026-09-17), same method -- so in three days
 the suite grew by 256 tests and got 2% slower, i.e. the per-test cost FELL while the total
 barely moved. Growth, not regression; budget from the total. Before it,

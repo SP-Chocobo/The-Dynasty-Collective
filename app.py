@@ -63,6 +63,7 @@ from data_merger import (
     EXTERNAL_VALUES_DIR, GLOBAL_PROJECTIONS_DIR, PROJECTIONS_DIR, DataMerger, external_upload_targets,
     horizon_gap_lines, load_projection_file, recency_grade, remove_alias, save_alias,
 )
+from depth_chart import depth_value_label, positional_depth
 import league_config
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -1722,71 +1723,6 @@ def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
         ledger.setdefault(current, {"acquired": [], "given_away": []})["acquired"].append(pick)
         ledger.setdefault(original, {"acquired": [], "given_away": []})["given_away"].append(pick)
     return ledger
-
-
-def positional_depth(player_universe: list[dict], merger: DataMerger) -> dict[str, dict[str, dict]]:
-    """team -> position -> {"count": n, "value": sum or None}.
-
-    Count alone treats a pile of backups the same as three stacked stars at the same
-    position -- real depth is about quality, not just bodies. `value` sums each
-    player's Draft Sharks trade_value (Dynasty Rankings) where a match exists, so a
-    QB room with Mahomes/Dak/Lamar reads very differently from three replacement-level
-    arms even though both are "3 QBs." Only computed when merger.is_loaded -- with no
-    Draft Sharks data at all, value stays None for every cell and callers fall back to
-    count alone, per this app's usual "work with whatever is loaded" rule.
-
-    `valued_count` IS THE SCOPE OF `value`, AND IT IS NOT `count` (#190). Every rostered
-    player raises `count`; only the ones the merger could price raise `value`. The two
-    therefore describe DIFFERENT SETS while sitting in one cell, and a reader who takes
-    `value` for the room's total is reading a floor as a sum. Measured against the real
-    capture on a synthetic 12-team league: 33 of 96 cells had 0 < valued_count < count, the
-    worst a seven-man WR room whose entire value came from ONE priced player.
-
-    The number is NOT withdrawn when coverage is partial -- a partial sum is real evidence,
-    and three priced stars still outrank three priced scrubs. What changes is that the cell
-    carries what the sum COVERS, so a consumer can say "at least" instead of "is". Same shape
-    as horizon_basis (#166), availability_basis (#191) and depth_basis (#174): the quantity
-    was fine, it was crossing without the thing that scopes it.
-    """
-    depth: dict[str, dict[str, dict]] = {}
-    for row in player_universe:
-        if row.get("ownership") != "ROSTERED":
-            continue
-        team_label = row.get("owner_name") or f"Roster {row.get('roster_id', '?')}"
-        position = row["position"]
-        cell = depth.setdefault(team_label, {}).setdefault(
-            position, {"count": 0, "value": None, "valued_count": 0})
-        cell["count"] += 1
-        if merger.is_loaded:
-            match = merger.merge_player(row["name"], position=position, team=row.get("team"))
-            trade_value = match.get("trade_value")
-            if trade_value is not None:
-                cell["valued_count"] += 1
-                cell["value"] = (cell["value"] or 0) + trade_value
-    return depth
-
-
-def depth_value_label(cell: dict) -> str:
-    """The parenthetical after a depth count -- "at least", not "is", when the sum is partial.
-
-    #190: `count` rises for every rostered player and `value` only for the ones the merger
-    could price, so the two describe different sets inside one cell. A chair handed `WR 7 (7)`
-    reads seven receivers worth seven points; the truth was seven receivers of whom ONE could
-    be priced, at seven points. Measured on the real capture: 33 of 96 cells were partial, the
-    worst a seven-man room carrying one man's value.
-
-    A FUNCTION RATHER THAN AN INLINE TERNARY, and for a reason a mutation found: written
-    inline, a guard could only check that the format string was PRESENT in app.py, which a
-    mutation that disabled the branch left untouched -- the test passed while a partial sum
-    rendered as a plain total again. app.py cannot be imported (it is a Streamlit script), so
-    a named top-level function is what makes the behaviour reachable by a test at all.
-    """
-    if cell.get("value") is None:
-        return ""
-    covered = cell.get("valued_count")
-    if covered is not None and covered < cell.get("count", 0):
-        return f" (>={cell['value']:.0f}, {covered} of {cell['count']} priced)"
-    return f" ({cell['value']:.0f})"
 
 
 def build_freshness_manifest(snapshot: dict, merger: DataMerger) -> list[tuple[str, Optional[str], Optional[int]]]:

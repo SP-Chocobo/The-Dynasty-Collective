@@ -143,12 +143,16 @@ def _jobs_for(f):
 # The key is (file, query, format, state, viewport). The value is what was measured and why.
 KNOWN_FAILURES = {
     ("m1_stack.html", "", "HEAVY_IDP", "late", (390, 664)):
-        "scroll budget 2.04 (1357px against 1328px). Five doors in the late window plus the "
-        "folds; over by 29px. Measured 2026-11-04 at 2ed5563. Levers costed in MAIN_PAGE.md; "
-        "all of them change how the variant looks, so they are the owner's ruling.",
-    ("m1_stack.html", "", "LIGHT_IDP", "late", (390, 664)):
-        "scroll budget 2.01 (1333px against 1328px). Over by 5px -- the .room padding reclaim "
-        "took it from 2.07 to here. Measured 2026-11-04 at 2ed5563. Same ruling as above.",
+        "scroll budget 2.01 (1336px against a 1328px allowance), over by 8px. It was 2.04 at "
+        "1357px: the spacing levers MAIN_PAGE.md had costed -- .main gap 8->6 and its padding "
+        "8/10->6/8, .db padding 5/8->4/6 -- reclaimed 21px of genuine slack, which closed "
+        "LIGHT_IDP/late outright, so its entry is GONE from this table rather than kept. "
+        "HEAVY_IDP is the seven-door format, the densest shape the fixture carries, and the "
+        "last 8px would have to come out of spacing that is no longer slack. NOT TAKEN, on "
+        "#56's rule that a bound is not a threshold: sizing a change to cross 1328 would be "
+        "fitting it to a number whose own calibration is the open question, since 2.0 screens "
+        "was authored against an 844px phone screen that no browser gives a page. "
+        "Measured 2026-11-04.",
 }
 SEEN_FAILURES = set()
 

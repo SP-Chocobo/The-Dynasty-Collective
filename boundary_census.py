@@ -46,7 +46,12 @@ DATA_INSTANCES = frozenset({"merger", "client"})
 #: under any edit and the set of distinct questions the hull asks does not.
 CENSUS: dict[str, int] = {
     # EXPOSE -- the API must answer these. See evidence/boundary_audit/.
-    "merger.merge_player": 5,
+    # 5 -> 4: the depth chart's direct call left the hull with `positional_depth` when it
+    # moved to depth_chart.py (a scoped piece of #137). The ceiling is tightened in the same
+    # commit as the removal, because a ceiling left at the old number is slack the hull can
+    # re-widen into without this file saying a word -- the same reason assertion_floors is
+    # regenerated rather than left high after a genuine drop.
+    "merger.merge_player": 4,
     "merger.pick_value": 4,
     "merger.composite_player_score": 1,
     "merger.external_player_values": 1,
