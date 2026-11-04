@@ -786,6 +786,34 @@ function phoneFold(){
    list that overflows says so ("↓ N more") so a short list over a dark fold is never mistaken
    for a failed render, and a captioned count never silently differs from what is drawn.
    ============================================================================================ */
+/* THE DRAWER, ONCE. Four templates carried a drawerHTML whose bodies were ~95% identical: the
+   same filter row, the same filtered context, the same row list, the same caption. They differed
+   in four places and in nothing else -- the phone's balanced chip grid, two calls that went
+   through v4's wrappers instead of these functions (the same code either way), and "click one"
+   against "tap one". Four homes for one surface is what the "instead of" sentence already cost
+   this prototype, and this is the last of that family.
+   The varying bits are parameters. `verb` is the pointer's own word; `balance` sets an even
+   column count for a phone and is left alone on a desktop, where the chips fit one row. */
+function doorDrawer(M, o){
+  const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
+  const host = document.getElementById("allFilt");
+  if (o.balance) {
+    const rows = Math.ceil(keys.length / 4);                       // at most four across at phone widths
+    host.style.setProperty("--fc", Math.ceil(keys.length / rows)); // then even them out
+  }
+  host.innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === o.filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
+  const d = M.DOORS.find(x => x.key === o.filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
+  let ctx = "";
+  if (d) { const b = M.doorBest(d), pos = b ? b.position : d.positions[0], h = doorHold(M, d);
+    const inWin = o.window.includes(d), idx = M.DOOR_ORDER.indexOf(d);
+    ctx = `<div class="ctx">${doorTank(M, pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${b ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
+      <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
+      <p>${b ? M.waitLine(pos) : doorNone(M, d, ", so nothing to wait on is measured.")}${b && doorDear(M, pos) ? " " + doorDear(M, pos) : ""}</p>
+      ${b ? doorTankCap(M, pos).replace("tankcap", "note") : ""}</div></div>`; }
+  document.getElementById("allCtx").innerHTML = ctx;
+  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? doorNoun(d) : "name"} in the board's top ${M.C.length}.</p>`;
+  document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · ${o.verb} one to open his door`;
+}
 function markScrollers(){
   document.querySelectorAll("[data-list]").forEach(el => {
     let more = el.parentElement.querySelector(":scope > .more"); if (!more) { more = document.createElement("div"); more.className = "more"; el.parentElement.appendChild(more); }

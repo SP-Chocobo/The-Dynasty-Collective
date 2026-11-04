@@ -248,20 +248,7 @@ function panelHTML(d){
    the one place its tiles' unit is stated. */
 const countExtra = () => ` · values to your roster now, cost against ${M.short(M.LEADER.name)}, the board's first name`;
 /* the drawer: a filter per door; when filtered, the position's context sits above the list */
-function drawerHTML(){
-  const keys = ["ALL"].concat(M.DOORS.map(d => d.key));
-  document.getElementById("allFilt").innerHTML = keys.map(k => `<button data-f="${k}" aria-pressed="${k === filt}" style="${k !== "ALL" ? `border-color:${pc(k)}` : ""}">${k}</button>`).join("");
-  const d = M.DOORS.find(x => x.key === filt), list = d ? M.C.filter(c => d.positions.includes(c.position)) : M.C;
-  let ctx = "";
-  if (d) { const pos = posOf(d), h = holdText(d), inWin = windowDoors().includes(d), idx = M.DOOR_ORDER.indexOf(d);
-    ctx = `<div class="ctx">${doorTank(M, pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${doorBest(d) ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
-      <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
-      <p>${doorBest(d) ? M.waitLine(pos) : doorNone(M, d, ", so nothing to wait on is measured.")}${doorBest(d) && doorDear(M, pos) ? " " + doorDear(M, pos) : ""}</p>
-      ${doorBest(d) ? doorTankCap(M, pos).replace("tankcap", "note") : ""}</div></div>`; }
-  document.getElementById("allCtx").innerHTML = ctx;
-  document.getElementById("allList").innerHTML = list.map(x => `<div class="srow" data-open="${M.doorOf(x.position).key}" role="button" tabindex="0"><span class="rk">${x.rank}</span>${M.pill(x.position)}<span class="meta"><span class="nm">${x.name}${M.availMark(x)}${M.armMark(x)}<small>${x.team} · ${M.pts(x)}</small></span><span class="v">${f1(x.team_acquisition_value)}<small>${x.player_id === M.LEADER.player_id ? "first" : sgn(x.team_acquisition_value - M.LEADER.team_acquisition_value)}</small></span><span class="tk">${M.slotShort(x)} · ${M.tierWord(x)} behind (${f1(x.positional_cliff.gap)}, ${M.cliffTo(x)})${x.injury_status ? ` · ${M.avail(x)}` : ""}</span></span></div>`).join("") || `<p class="note" style="padding:10px">No ${d ? doorNoun(d) : "name"} in the board's top ${M.C.length}.</p>`;
-  document.getElementById("allNote").innerHTML = `${list.length} of ${M.C.length} names · tap one to open his door`;
-}
+function drawerHTML(){ doorDrawer(M, {filt, window: windowDoors(), verb: "tap", balance: false}); }   // no --fc rule in this template's own styles, so nothing would read it
 function draw(){
   const w = windowDoors();
   document.getElementById("doors").innerHTML = w.map(d => tileHTML(d, M.DOOR_ORDER.indexOf(d))).join("");
