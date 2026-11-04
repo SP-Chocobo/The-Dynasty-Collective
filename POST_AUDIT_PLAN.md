@@ -16021,3 +16021,304 @@ on keyboard focus anyway, so the `tabindex` buys little). `#301`'s pending rows 
 rendering their reason as visible text, which needs no focus affordance — but the shared helper is
 untouched, because fixing it in one page only would reintroduce the exact drift `#301`'s shared
 stylesheet exists to prevent. Owner's call.
+
+## #305 — THE `3.0` BOUND IS STALE, BUT THE PROSE IT CITES IS VACUOUS, WHICH IS THE WORSE HALF
+
+`test_data_merger.CompositePoolSizeDampeningTests.test_single_finding_barely_moves_the_composite`
+has been the suite's one standing failure for this whole session, held open for the owner's ruling
+on `#56`'s rule (a bound is not a threshold). Measured now, so the ruling has numbers.
+
+### Everything the assertion is standing between
+
+```
+draftsharks    raw 25.0   percentile  25.0   pool 369   weight 0.5341
+bot_research   raw  1.0   percentile 100.0   pool   1   weight 0.0250   (= base 0.5 x 1/20)
+
+weighted mean, unrounded                              28.353612
+score as reported                                     28.4            <- rounded to 1dp
+TRUE move                                              3.353612
+move the assertion actually sees                       3.4000
+the constant                                           3.0
+```
+
+**First finding: the 3.4 is partly a rounding artifact.** `composite_player_score` rounds its
+score to one decimal, so 28.353612 is reported as 28.4 and the move reads 3.4000 when it is
+really 3.3536. The failure is NOT caused by that rounding — 3.3536 is over 3.0 either way — but
+every previous note in this session quoted 3.40 as the measured move, and the measured move is
+3.3536.
+
+### Second finding, and it is the one that matters: THE PROSE'S BOUND WOULD PASS WITH THE BUG RESTORED
+
+The comment above the assertion defines the bound:
+
+> "well under half of the gap between draftsharks' own trade_value-as-score reading and a naive
+> 100th percentile reading of the untrusted single-row pool"
+
+Those are both measurable. gap = 100.0 - 25.0 = **75.0**, so the prose's bound is **37.5**, and the
+true move is 8.94% of it. I was about to propose implementing exactly that — replace the magic
+`3.0` with `0.5 * gap`, derived from the components, nothing invented. **That would have been
+wrong, and the measurement is what stopped it:**
+
+CONFIRMED BY ABLATION, not by the weight formula. The first draft of this entry computed the
+undamped figure from `w_bot/(w_ds + w_bot)` -- a reconstruction of a production quantity, which is
+the class of error this repository has withdrawn two published findings for (`#222`). Re-measured
+by toggling the one constant in one process, which is the only honest A/B:
+
+```
+COMPOSITE_MIN_TRUSTED_POOL_SIZE   before   after     move    bot weight
+                             20     25.0    28.4   3.4000    0.025      <- as shipped
+                              1     25.0    61.3  36.3000    0.500      <- damping neutralised
+```
+
+(`min(1.0, pool_size / 1)` is 1.0 for a pool of one, so setting the constant to 1 removes the
+damping without touching the arithmetic around it.)
+
+```
+MEASURED move WITH the damping       3.4000   (3.3536 unrounded)
+MEASURED move WITHOUT the damping   36.3000  (36.2635 unrounded)  <- the bug this class prevents
+reduction                           10.68x
+the prose's bound                   37.5
+```
+
+**36.3 < 37.5.** The formula had it right, but the claim is now measured rather than derived. A test asserting the prose would pass with `COMPOSITE_MIN_TRUSTED_POOL_SIZE`
+dampening removed entirely — the exact defect the class's own docstring says it exists to stop
+regressing ("EVERY finding read as the 100th percentile regardless of its actual rank, confirmed
+live"). The sentence has been sitting above a strong assertion for long enough that nobody checked
+whether it described one.
+
+So the situation is not "stale constant, good prose". It is: **a pin that has gone stale, above
+prose that was never a bound at all.** Replacing the first with the second would have swapped a
+failing test for a vacuous one, which is strictly worse — `#38`/`#41`'s mutation pass exists
+because this repository has shipped tests that could not fail.
+
+### What the quantity actually is
+
+A pool-of-1 finding always reads percentile 100 (a pool of one ranks its only member first), so
+its move is not approximately but EXACTLY:
+
+    gap * w_bot / (w_ds + w_bot)     with w_bot = COMPOSITE_SOURCE_WEIGHTS['bot_research'] / COMPOSITE_MIN_TRUSTED_POOL_SIZE
+
+3.353612 is that expression evaluated. Which means an assertion against it is a PIN on the
+formula, not a bound on behaviour — it would fail on any reweighting, including a deliberate one,
+and it restates the implementation rather than constraining it.
+
+The behavioural quantity with real content is the RATIO: damping takes the move from 36.2635 to
+3.3536, a **10.8x reduction**. And that ratio is `1/COMPOSITE_MIN_TRUSTED_POOL_SIZE` scaled by the
+weight mix — which the SIBLING test already pins directly and non-vacuously:
+`test_weight_ramps_back_up_as_pool_grows_to_the_trusted_threshold` asserts the bot weight equals
+`base * recency` exactly at `pool == COMPOSITE_MIN_TRUSTED_POOL_SIZE`.
+
+### Three options, the trade-off of each, and no recommendation of a magnitude
+
+1. **Bound the move against the UNDAMPED move**, both computed in the test
+   (`move < undamped / 2`, i.e. 3.35 < 18.13). Derived, cannot go stale under reweighting, and
+   fails loudly if damping is removed or halved. Costs: the test has to compute the undamped
+   figure, so it knows one more thing about the mechanism than it does today.
+2. **Delete this test and lean on the sibling**, which already pins the weight ramp
+   non-vacuously. Costs: nothing then asserts the end-to-end consequence on `score`, and this
+   class's docstring is about the consequence.
+3. **Raise the constant to 3.5 and date it.** Honest about being a pin, cheapest, and `#56`
+   explicitly forbids sizing it to the sample — which is what this is. Costs: stale again the
+   next time the weights move, with nothing saying so.
+
+`#56` is why none of these is applied here: "if a repair needs a magnitude nobody has argued
+for, that is the finding — say so and stop." The finding is that the prose cannot be the
+magnitude. The choice between 1, 2 and 3 is the owner's.
+
+**What is NOT in doubt:** the engine's behaviour is correct. Damping works, it reduces a
+thin-pool finding's influence 10.8x, and the composite moves 3.35 on a 75-point gap. Nothing here
+argues for changing `data_merger`.
+
+## #306 — WHY A PICK COUNT CANNOT BE SHOWN YET, stated precisely rather than as "needs a live league"
+
+`b998806` recorded that nothing on the front page is about dynasty, with pick COUNTS described as
+"syncable via `get_traded_picks` but unshown". Checked what is actually on disk, because "needs a
+live league" is the kind of claim that goes unexamined.
+
+**The captures do not hold rosters or picks at all.** `data/league_captures/*.json` are SCORING
+AND FORMAT transcriptions — `fourth_and_forever.json`'s 19 keys are `scoring_settings_observed`
+(30 categories), `roster_positions` (29 slots), `draft_math`, `headline_format`,
+`categories_with_no_stat_data`, plus provenance (`capture_method`: "transcribed from Sleeper
+Scoring Settings screenshots", `captured`: 2026-09-09). No roster contents, no players, no picks.
+`test_version_boundary` already says as much for standings ("no capture in
+`data/league_captures/` holds a roster's contents or a result").
+
+**The client can fetch them; nothing has.** `sleeper_client.get_traded_picks` is a one-line
+passthrough to `/league/{league_id}/traded_picks`. It is not called from `app.py` — `boundary_census`
+would list it if it were.
+
+**And this is the part worth writing down.** Two things the captures DO hold are
+`league_type: 'dynasty'` and `total_rosters: 12`, from which a pick count is trivially derivable:
+12 teams, four rounds, every team owns its own. That derivation is available today, it would
+render with a `CONSTRUCTED` stamp per `#301`'s machinery, and **it should not be built.**
+
+The derivation is correct only if no pick has ever been traded, and in a DYNASTY league that is
+the single assumption most likely to be false — trading future picks is most of what distinguishes
+the format. A count that is right for a league nobody plays in is worse than an absence: the
+absence says "ask Sleeper", while the number says "you have four firsts" to someone who traded two
+of them away. `#187`'s distinction applies exactly — this is not a quantity that could not be
+measured, it is one that CAN be measured and has not been, and those render differently.
+
+So the gap is not "needs a live league" in general. It is one specific, already-written API call
+away, and the reason to wait for it rather than derive around it is that the derivation is
+plausible, cheap, and wrong in precisely the case the product exists to serve.
+
+## #307 — TWO SIBLING SIMULATORS, ONE CALLS THE ONE HOME, AND THE GUARD ENUMERATES ITS WAY PAST THE OTHER
+
+Found while auditing which of this repo's instruments state their blind spots. `#126`'s round
+arithmetic has one home, `league_config.round_of`, and a guard that says it is spelled nowhere
+else. Both are true of the modules the guard names.
+
+### The occurrence nothing was looking for
+
+`draft_simulation.py:180`, inside `simulate_full_draft`:
+
+```python
+num_teams = len(set(str(r) for r in pick_order))     # :167
+round_no = idx // num_teams + 1                      # :180  -- spelled inline
+pick_label = f"{round_no}.{(idx % num_teams) + 1:02d}"
+```
+
+`draft_simulation.py` does not import `league_config` at all. Its sibling simulator does:
+`draft_room.simulate_opponent_picks:5162` stamps a pick the same way and carries the comment
+`MANDATE 4 / #126: same rule, same home.`
+
+**Two simulators, the same operation, one of them routed through the one home.**
+
+### A CORRECTION TO MY OWN FIRST READING, which was wrong in a way worth recording
+
+I first wrote that `round_of`'s docstring "names a site it never converted", because it says it
+consolidated "once in the Draft Room's own round label, twice in the engine (the round that
+decides `use_upside`, and the round stamped on a simulated pick)" and `draft_simulation` stamps
+simulated picks. Checked each one instead of assuming:
+
+| the docstring's phrase | the actual site | converted? |
+|---|---|---|
+| the Draft Room's own round label | `app.py:5161`, `app.py:5524` | yes |
+| the round that decides `use_upside` | `pick_synthesis._round_being_decided:820` | yes |
+| the round stamped on a simulated pick | `draft_room.simulate_opponent_picks:5162` | yes |
+
+All three named sites ARE converted. The docstring is accurate about what it did. So the finding
+is not a broken promise — it is that **an inventory which counted three occurrences found three,
+a fourth existed in a module nobody had enumerated, and no instrument was asking the question in
+a form that could have found it.** That is a cleaner illustration of the same problem and it does
+not require anyone to have been careless.
+
+### Why the guard could not catch it
+
+`test_three_derivations_of_one_number.test_the_arithmetic_is_spelled_nowhere_else` checks three
+hand-named engine modules plus the UI surface:
+
+```python
+for module in ("draft_room.py", "pick_synthesis.py", "draft_strategy.py"):
+    self.assertNotIn("// num_teams + 1", _source(module), ...)
+self.assertNotIn("// num_teams + 1", ui_source.text(), "the UI spells the round arithmetic again")
+```
+
+`draft_simulation.py` is not named in that file anywhere. And `ui_source.py`'s own docstring is
+the argument against exactly this: *"THE MODULE LIST IS DERIVED, NOT ENUMERATED. A hand-kept list
+is a list someone has to remember to extend."* It solved that for the UI side; the engine side of
+the same guard still hand-keeps three names.
+
+### Severity: no defect today, and the risk is the one the home's docstring already records
+
+The arithmetic is identical (`round_of` is `int(picks_completed) // int(num_teams) + 1`), and
+`num_teams` here comes from `len(set(...))` over a non-empty `pick_order`, so the `None` branch is
+unreachable at this site. Nothing is miscomputed.
+
+What makes it worth fixing rather than noting is `round_of`'s own stated reason for existing:
+*"`#52` phase 6 records a version that lagged by one at every round boundary, which switched
+`mode="auto"` to upside scoring a pick late and made a battery report a split the trajectory did
+not produce."* `draft_simulation` is the module that RUNS the battery, so it is the copy whose
+drift would be hardest to see and most expensive to misread.
+
+### The census that scopes the fix
+
+Of every tracked root `.py` holding `// num_teams + 1`:
+
+```
+PRODUCTION modules    1   draft_simulation.py
+probe harnesses       8   run_216_bench_probe, run_216_fix_probe, run_216_qb_price_probe,
+                          run_216_review_probe, run_projection_rank_probe, run_roster_proof,
+                          run_roster_shape_probe, run_smoke_seats
+test modules          3   quoting the pattern as a string -- legitimate
+```
+
+So a guard DERIVED over production modules (tracked root `.py`, excluding `test_*`, `run_*` and
+the home itself) flags exactly one file, and once that file calls `lc.round_of` it passes — while
+covering `depth_chart.py`, `freshness.py` and every future `#137` extraction for free rather than
+waiting to be remembered.
+
+**The 8 probe harnesses are deliberately left alone.** Whether a measurement harness may
+re-derive a production quantity is a real question — `engine-measurement` says it may not, and
+these predate that rule — but it is a separate judgement about eight files, and not one to make
+in the same change as a one-line production fix.
+
+### `#307` CLOSED — the fix, and the two arms that prove the new guard works
+
+`draft_simulation.py:180` now calls `lc.round_of(idx, num_teams)`. Equivalence checked at the
+round boundaries that matter (`round_of(0,12)=1`, `(12,12)=2`, `(23,12)=2`, identical to the
+inline form), and `league_config` was already in this module's transitive imports via
+`draft_room`, so the import adds nothing to the graph.
+
+The guard beside it is now DERIVED over production modules rather than three hand-named ones.
+Two mutation arms, both caught:
+
+| arm | result |
+|---|---|
+| the fourth copy restored (`draft_simulation.py` back to the inline spelling) | **CAUGHT**, and only by the NEW test — the enumerated one stayed green, which is the blindness demonstrated rather than argued |
+| the pattern planted in `freshness.py`, a module younger than the guard | **CAUGHT** — which is the guard's actual claim: it covers modules added after it was written |
+
+## #308 — THE FRONT PAGE'S GUARD HAS NEVER RUN IN A CERTIFICATION SUITE, AND THE INSTRUMENT I BUILT TONIGHT TO CATCH THAT MISSED IT
+
+The worst finding of the night, and the most ironic.
+
+### The measurement
+
+```
+tracked test_*.py anywhere        243
+  at the repo root                241   held by assertion_floors, suite_reach AND the suite
+  in ui_explore/round3/             2   held by NOTHING
+
+    ui_explore/round3/test_front_renders_its_basis.py    18 tests   package? False
+    ui_explore/round3/test_empty_state_renders.py        16 tests   package? False
+```
+
+`unittest discover` will not recurse into a directory that is not a package, and neither
+`ui_explore/` nor `ui_explore/round3/` had an `__init__.py`. So 34 tests existed, passed when run
+by hand, and were collected by no certification run at all.
+
+**`test_front_renders_its_basis.py` has been in that state since it was written.** It is the front
+page's entire guard — the file whose own docstring says "WHY THIS FILE EXISTS, and it is not a
+formality. The page it guards shipped a screenshot whose..." — and the suite has never once run it.
+Every "18 tests OK" in this session's notes and task list was a hand-run.
+
+**And `suite_reach.py`, which I wrote tonight for exactly this failure mode, does not catch it.**
+Its population is `assertion_floors.TEST_GLOB` globbed at the root, non-recursively. I then put 16
+new tests one directory down, inheriting the invisibility I had just built an instrument to detect.
+The instrument is not wrong about what it checks; it checks a population that excludes the case.
+Same shape as `assertion_floors` being blind to reachability, one level over, and I walked into it
+the same day I documented it.
+
+### The fix, and what it measured
+
+Two `__init__.py` files, each carrying its reason:
+
+```
+collected before   4276
+collected after    4310       (+34, exactly the two modules)
+loader failures       0
+```
+
+### What is NOT fixed, with the cost stated
+
+The three ratchets are still root-scoped: `assertion_floors`, `suite_reach` and `skip_gates` all
+take their population from `TEST_GLOB` globbed at the root, so those 2 modules carry no assertion
+floor and no registered skip gate. The suite now runs them, which is the half that matters — a
+test that executes in certification is held by the run itself.
+
+Making the glob recursive is a bigger change than it looks and was NOT done at this hour:
+`assertion_floors` keys its JSON by `path.name`, so a recursive population needs relative paths as
+keys instead, which rewrites all 241 existing keys. `drops()` compares by key, so every one of
+them would read as "module is gone" alongside 243 new entries — a migration that wants a human
+awake to review it. Named here as a decision, with the reason, rather than left as an oversight.

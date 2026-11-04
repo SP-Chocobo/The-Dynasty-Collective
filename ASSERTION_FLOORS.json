@@ -17532,10 +17532,11 @@
       }
     },
     "test_three_derivations_of_one_number.py": {
-      "test_methods": 20,
+      "test_methods": 21,
       "asserts": {
-        "assertEqual": 17,
+        "assertEqual": 18,
         "assertFalse": 2,
+        "assertGreater": 1,
         "assertIn": 2,
         "assertIs": 1,
         "assertIsNone": 2,
@@ -17549,6 +17550,10 @@
         },
         "TheRoundNumberHasOneDerivationTests.test_the_arithmetic_is_spelled_nowhere_else": {
           "assertNotIn": 2
+        },
+        "TheRoundNumberHasOneDerivationTests.test_the_arithmetic_is_spelled_nowhere_else_IN_ANY_PRODUCTION_MODULE": {
+          "assertEqual": 1,
+          "assertGreater": 1
         },
         "TheRoundNumberHasOneDerivationTests.test_the_engine_keeps_its_own_fallback_at_its_own_site": {
           "assertIn": 1

@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import draft_board_ui
+import league_config as lc
 import draft_room as dr
 import pick_synthesis
 from data_merger import DataMerger
@@ -177,7 +178,16 @@ def simulate_full_draft(
 
     for idx in range(len(pick_order)):
         roster_id = str(pick_order[idx])
-        round_no = idx // num_teams + 1
+        # `#126` / `#307`: ONE HOME for `n // teams + 1`. This site spelled it inline while
+        # its sibling simulator (`draft_room.simulate_opponent_picks`) called `round_of` --
+        # two simulators, the same operation, one of them routed. `num_teams` is
+        # `len(set(pick_order))` over a non-empty order, so the `None` branch is
+        # unreachable here and the arithmetic is identical; what changes is that a drift in
+        # the rule can no longer happen in this copy only. `round_of`'s own docstring says
+        # why that matters: `#52` phase 6 lagged by one at every round boundary and made a
+        # battery report a split the trajectory did not produce -- and this is the module
+        # that runs the battery.
+        round_no = lc.round_of(idx, num_teams)
         pick_label = f"{round_no}.{(idx % num_teams) + 1:02d}"
         snap = pick_synthesis.build_snapshot(
             merger, players_db, picks, pick_order, idx, roster_id, league,

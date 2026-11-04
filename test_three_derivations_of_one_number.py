@@ -107,6 +107,43 @@ class TheRoundNumberHasOneDerivationTests(unittest.TestCase):
         self.assertNotIn("// num_teams + 1", ui_source.text(),
                          "the UI spells the round arithmetic again")
 
+    def test_the_arithmetic_is_spelled_nowhere_else_IN_ANY_PRODUCTION_MODULE(self):
+        """DERIVED, not enumerated -- which is the whole reason this test exists beside the one
+        above it.
+
+        That test names three modules. `draft_simulation.py` was never one of them, and it spelled
+        `idx // num_teams + 1` inline for as long as this guard has existed while its sibling
+        simulator called `round_of` (`#307`). Nothing was wrong with the inventory that found three
+        copies; a fourth lived in a module nobody had thought to list, and no instrument was asking
+        the question in a form that could find it.
+
+        `ui_source.py`'s own docstring is the argument: "THE MODULE LIST IS DERIVED, NOT
+        ENUMERATED. A hand-kept list is a list someone has to remember to extend." It solved that
+        for the UI side; this does it for the engine side.
+
+        SCOPE, stated because it is a choice and not an oversight. Production modules only --
+        tracked, at the repo root, excluding `test_*` (which quote the pattern as a string, as
+        this very file does), `run_*` (measurement harnesses: 8 of them spell it, which is its own
+        question about whether a probe may re-derive a production quantity, and not this test's to
+        settle), and `league_config.py` itself, which is the home.
+        """
+        import subprocess
+
+        home = "league_config.py"
+        tracked = [t for t in subprocess.run(
+            ["git", "ls-files", "-z", "*.py"], capture_output=True, text=True,
+            cwd=str(_HERE)).stdout.split("\0") if t and "/" not in t]
+        self.assertGreater(len(tracked), 200, "git ls-files returned almost nothing; wrong cwd?")
+
+        production = [t for t in tracked
+                      if t != home and not t.startswith(("test_", "run_"))]
+        offenders = [t for t in production
+                     if "// num_teams + 1" in (_HERE / t).read_text(encoding="utf-8")]
+        self.assertEqual(offenders, [],
+                         "a production module spells the round arithmetic instead of calling "
+                         "league_config.round_of. Every module here is covered automatically, "
+                         "including ones added after this test was written.")
+
     def test_the_engine_keeps_its_own_fallback_at_its_own_site(self):
         """Reading a pick's recorded round is a DIFFERENT source and is not round_of's business --
         so the fallback stays where the caller that has it lives."""
