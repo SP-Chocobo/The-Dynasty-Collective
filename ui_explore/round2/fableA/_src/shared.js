@@ -273,7 +273,13 @@ M.doorDepth = (d, best, list) => {
   M.DOORS = NAMED.map(p => ({key:p, label:POS[p], positions:[p], compound:false}))
     .concat(FLEX_ONLY.filter(p => !IDP.has(p)).map(p => ({key:p, label:POS[p], positions:[p], compound:false})));
   const idpFlexOnly = FLEX_IDP;
-  if (idpFlexOnly.length) M.DOORS.push({key:"IDP", label:"defense (" + idpFlexOnly.join(" / ") + ")", positions:idpFlexOnly, compound:true});
+  /* The compound door's label is DERIVED from POS like every other door's, not written here.
+     It used to read "defense (DB / DL / LB)" while POS.IDP said "defender", PLUR.IDP said
+     "defenders" and DOOR_SHORT.IDP said "Defenders" -- the same drift that got the old
+     DOOR_LABEL map deleted for saying "Receiver" where POS said "wide receiver". Worse than a
+     style slip: "defense" IS another position here (POS.DEF), so in a league that starts both,
+     this door's tooltip named a different door. */
+  if (idpFlexOnly.length) M.DOORS.push({key:"IDP", label:POS.IDP + " (" + idpFlexOnly.join(" / ") + ")", positions:idpFlexOnly, compound:true});
   M.doorOf = pos => M.DOORS.find(d => d.positions.includes(pos)) || null;
   M.POSITIONS = M.LINEUP_ORDER.filter(p => C.some(c => c.position === p));
   M.DEMAND = S.demand || {}; M.SHARE_BASIS = S.slot_share_basis || null;
