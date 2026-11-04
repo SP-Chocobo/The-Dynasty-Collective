@@ -539,7 +539,12 @@ _record = {
     "failures_total": bad,   # renders, plus the cross-render assertions -- EXCLUDING known ones
     "expected_failures": [f"{k[0]} [{k[2]}/{k[3]}@{k[4][0]}x{k[4][1]}]" for k in _expected],
     "stale_expectations": [f"{k[0]} [{k[2]}/{k[3]}@{k[4][0]}x{k[4][1]}]" for k in _stale],
-    "verdict": "PASS" if bad == 0 else "FAIL",
+    # THREE WORDS, NOT TWO. A bare "PASS" sitting next to `renders_failed: 2` is accurate and
+    # coarse: it is the field a reader quotes out of context, and it should not be able to carry
+    # "this surface has no failures" when two renders fail by design. So a run with nothing wrong
+    # at all and a run whose only failures are the listed ones get different words.
+    "verdict": "PASS" if (bad == 0 and not _expected)
+               else ("PASS_WITH_KNOWN_FAILURES" if bad == 0 else "FAIL"),
     "axes": {
         "viewports_desktop": [f"{w}x{h}" for w, h in VIEWPORTS],
         "viewports_mobile": [f"{w}x{h}" for w, h in MOBILE_VIEWPORTS],
