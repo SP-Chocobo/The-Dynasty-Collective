@@ -7,11 +7,40 @@
    - scrollers: every region that scrolls must carry a visible "↓ scroll · N more" affordance
    - a captioned count ("N names") never exceeds the rows actually drawn + the "more" count
    - minimum resident font 12px
-   Then a PNG per render, to be looked at."""
-import sys, glob, pathlib, json
+   Then a PNG per render, to be looked at.
+
+   THREE INDEPENDENT THINGS ARE BEING CERTIFIED HERE, and conflating them is how a green count
+   comes to mean less than it looks like it means:
+
+     FUNCTIONAL INTEGRITY   does each surface still draw correctly -- the asserts above, over
+                            every format, draft state, viewport and open/closed combination.
+     VISUAL CONVERGENCE     do the surfaces follow ONE design contract. Not this file's job:
+                            _converge.py measures it (desktop against phone, four axes) and
+                            _palette.py measures the palette against design_system.py.
+     PROCESS INTEGRITY      is the artifact being certified the artifact being shipped. This is
+                            the one that was missing, and its absence cost two voided runs in a
+                            single session -- a rebuild landing mid-walk gave the first N renders
+                            one build and the rest another, and both runs still printed a clean
+                            verdict. It is answered three ways now: a lock (_gatelock.py, with
+                            its own ten-arm test) stops the common accident, an immutable
+                            snapshot makes the uncommon one unobservable, and the snapshot is
+                            RE-HASHED at the end so immutability is demonstrated rather than
+                            assumed. The run writes _certification.json naming the source commit
+                            and the exact bytes, because "397 ok" identifies no artifact.
+
+   A green count is only worth what the weakest of those three is worth."""
+import sys, glob, pathlib, json, os, atexit, signal, shutil, tempfile, hashlib
 from playwright.sync_api import sync_playwright
 HERE = pathlib.Path(__file__).resolve().parent
 SHOTS = HERE / "_shots"; SHOTS.mkdir(exist_ok=True)
+
+# The lock, and the reason it is a module: see _gatelock.py, which also records the hour in
+# which this was twelve lines in each file and the two copies disagreed about the file format.
+sys.path.insert(0, str(HERE))
+import _gatelock
+
+LOCK = HERE / ".gate.lock"
+
 import json
 FORMATS = list(json.loads(pathlib.Path("/home/user/The-Dynasty-Collective/ui_explore/fixture.json").read_text()).keys())
 STATES = ["mid", "early", "late"]
@@ -36,7 +65,29 @@ VIEWPORTS = _vp(__import__("os").environ.get("SHOOT_VIEWPORTS", "1440x900,1700x1
 #   - "cut off" is measured against the document's own height, which is what a reader can reach.
 # Tap targets are asserted on mobile and only there: a 44px floor, the one metric a thumb cares
 # about that a mouse does not.
-MOBILE_VIEWPORTS = _vp(__import__("os").environ.get("SHOOT_MOBILE_VIEWPORTS", "390x844,360x800,430x932"))
+# PHONE VIEWPORTS ARE NOT PHONE SCREENS, and this gate had them wrong from the day it grew a
+# mobile path. 390x844, 360x800 and 430x932 are DEVICE SCREENS in points -- what a spec sheet
+# says -- and a phone browser never hands a page that height: the tab bar and the toolbar take a
+# fixed bite out of the top and bottom. Playwright ships the real numbers in its own device
+# registry, and they are not close:
+#
+#     iPhone 12 / 13 / 14         390x664    (was being rendered at 390x844, +180px, +27%)
+#     iPhone 13 / 12 Pro Max      428x746    (was 430x932, +186px)
+#     Galaxy S24                  360x780    (was 360x800)
+#     Pixel 7                     412x839    -- the tallest real one, and still short of 844
+#
+# So every mobile verdict taken before this line changed -- "screens=1.00", "the first door
+# lands at y=194", "four doors on the first screen" -- was measured against about a quarter more
+# height than a real browser shows, which is the house failure mode: a plausible number about
+# something else. The owner's own aside is what prompted the check ("a desktop-first draft
+# interface compressed onto a phone isn't necessarily a usable mobile draft interface"), and
+# the registry rather than memory is what settled it.
+#
+# These three are the BINDING cases, not a spread: the modal iPhone, the narrowest current
+# Android, and the widest iPhone -- which is also, counter-intuitively, shorter than the Pixel.
+# Pixel 7's 412x839 is the most forgiving real viewport and is deliberately left out; a surface
+# certified on the short ones fits the tall one for free, and the reverse is what went wrong.
+MOBILE_VIEWPORTS = _vp(__import__("os").environ.get("SHOOT_MOBILE_VIEWPORTS", "390x664,360x780,428x746"))
 # TWO budgets, because the surface has two states and they do not make the same promise.
 # The MAIN DISPLAY is what a reader lands on and what the owner specified as "the 4-5 main
 # recommendations near the top"; it is held tight. The EXPANDED state is the detail a reader
@@ -78,10 +129,46 @@ else:
     JOBS.append((str(HERE / "v4_doors.html"), "notank", [FORMATS[0]]))
     for f in sorted(str(p) for p in HERE.glob("m*.html")):
         JOBS += _jobs_for(f)
+# ---------------------------------------------------------------------------------------
+_gatelock.take(LOCK)
+
+# CERTIFY A SNAPSHOT, NOT A DIRECTORY. The lock above stops the common accident, but it is a
+# convention: it only works because _build.py agrees to check it, and nothing stops a stray
+# editor, a git checkout or a second tool from rewriting these files mid-walk. So the gate
+# stops reading the working directory at all. It copies the builds it is about to certify into
+# a temp directory and renders from there, which makes an accidental rebuild IMPOSSIBLE to
+# observe rather than merely unlikely -- the run is reading bytes nothing else has a path to.
+#
+# And it prints the digest of each, which is the part that makes a verdict defensible later.
+# "397 ok" names no artifact; a reader cannot tell whether the run certified the commit in front
+# of them. These twelve hex characters tie the verdict to exact bytes, so a green run can be
+# checked against the tree it claims to be about. Cost: about 10 MB of temp space, removed on
+# exit (and on SIGTERM, through the same handler the lock registers).
+SNAP = pathlib.Path(tempfile.mkdtemp(prefix="gate-snapshot-"))
+_gatelock.also_remove(SNAP)   # released with the lock, on exit AND on signal
+_DIGESTS = {}
+for _src in sorted({pathlib.Path(j[0]) for j in JOBS}):
+    shutil.copy2(_src, SNAP / _src.name)
+    _DIGESTS[_src.name] = hashlib.sha256((SNAP / _src.name).read_bytes()).hexdigest()[:12]
+JOBS = [(str(SNAP / pathlib.Path(f).name), q, fmts) for f, q, fmts in JOBS]
+print(f"certifying a snapshot of {len(_DIGESTS)} builds (nothing else can reach these bytes):")
+for _n, _h in sorted(_DIGESTS.items()):
+    print(f"    {_h}  {_n}")
+
 PROBE = """(opt) => {
   const r = {}, MOB = !!(opt && opt.mobile);
   r.pageScroll = [document.documentElement.scrollWidth > innerWidth + 1, document.documentElement.scrollHeight > innerHeight + 1];
-  r.docH = document.documentElement.scrollHeight; r.vh = innerHeight;
+  // THE HARNESS IS NOT THE PRODUCT. `.rev` is this directory's own review bar -- the variant
+  // tag, the early/mid/late buttons, the format picker, the hypothesis toggle -- injected by
+  // wireChrome() so a human can drive the prototype. It is 36px tall on a phone and it will not
+  // exist in the app, and it was being counted into the scroll budget as though a user had to
+  // scroll past it. Measured, and stated because it matters that the correction is not a rescue:
+  // taking it out moves HEAVY_IDP/late from 2.11 screens to 2.05 and LIGHT_IDP/late from 2.07 to
+  // 2.02, so both still FAIL the 2.0 budget at 390x664. An instrument fix that made the failure
+  // disappear would be worth distrusting; this one does not.
+  r.harnessH = [...document.querySelectorAll('.rev, .hypbox')]
+      .reduce((m, el) => m + Math.round(el.getBoundingClientRect().height), 0);
+  r.docH = document.documentElement.scrollHeight - r.harnessH; r.vh = innerHeight;
   // On mobile the reachable surface is the DOCUMENT, not the window: content below the fold is
   // content a reader scrolls to, so it is checked rather than skipped as "offscreen".
   const BOT = MOB ? Math.max(innerHeight, document.documentElement.scrollHeight) : innerHeight;
@@ -186,6 +273,10 @@ PROBE = """(opt) => {
   if (now) { const nb = now.getBoundingClientRect(), xb = nxt ? nxt.getBoundingClientRect() : null; r.rail = {now: nb.left >= 0 && nb.right <= innerWidth, next: xb ? xb.left >= 0 && xb.right <= innerWidth : null, namedPast: [...document.querySelectorAll('.pk')].filter(p => { const b = p.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && !p.classList.contains('between') && !p.classList.contains('future') && !p.classList.contains('now') && !p.classList.contains('next'); }).length}; }
   return r; }"""
 NAME_FS = {}   # (file, query, format, viewport) -> {state: computed name size}
+
+
+
+
 with sync_playwright() as p:
     # The pre-provisioned layout is NOT stable across container images: this directory has been
     # `chrome-linux/chrome` on one and `chrome-linux64/chrome` on another, and a glob knowing only
@@ -199,6 +290,7 @@ with sync_playwright() as p:
     exe = _cands[0]
     b = p.chromium.launch(executable_path=exe)
     bad = 0
+    TOTAL = RENDER_BAD = 0   # renders walked, and renders with a problem
     for f, q, fmts in JOBS:
       for fmt in fmts:
         for st in STATES:
@@ -221,7 +313,8 @@ with sync_playwright() as p:
                 budget = SCROLL_BUDGET_OPEN if r.get("doorOpen") else SCROLL_BUDGET_MAIN
                 if screens > budget: problems.append(f"scroll budget: {screens:.2f} screens of travel "
                     f"({'expanded, a door is open' if r.get('doorOpen') else 'MAIN DISPLAY, nothing open'}; "
-                    f"document {r['docH']}px, deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {budget}")
+                    f"document {r['docH']}px excluding {r.get('harnessH', 0)}px of review bar, "
+                    f"deepest scroller {r.get('deepScroll')}px, viewport {r['vh']}px), over {budget}")
                 if r["tap"]: problems.append("tap target under 44px " + json.dumps(r["tap"]))
                 if r["hClip"]: problems.append("runs off the right edge " + json.dumps(r["hClip"]))
                 if r.get("dockTrap"): problems.append("content trapped under the dock: " + r["dockTrap"])
@@ -246,7 +339,7 @@ with sync_playwright() as p:
             if r.get("rail") and (not r["rail"]["now"] or r["rail"]["next"] is False): problems.append("rail " + json.dumps(r["rail"]))
             if r.get("nameFs"):
                 NAME_FS.setdefault((pathlib.Path(fpath).name, q, fmt, (W, H)), {})[st] = r["nameFs"]
-            bad += bool(problems)
+            bad += bool(problems); TOTAL += 1; RENDER_BAD += bool(problems)
             print(("!! " if problems else "ok ") + f"{pathlib.Path(fpath).name}{'?' + q if q else ''} [{fmt if (isv4 or is_mobile(f)) else 'ctrl'}/{st}@{W}x{H}]  screens={screens:.2f} scrollers={[s['id'] + ':' + str(s['more']) for s in r['scrollers']]} counts={r['counts']} minFont={r['minFont'][0]} rail={r.get('rail')}")
             for pr in problems: print("     ", pr)
             pg.close()
@@ -258,6 +351,65 @@ with sync_playwright() as p:
 # that resizes between picks reads as a glitch. This asserts the invariant rather than
 # trusting it: if doors are ever made to appear or disappear mid-draft, this fails here
 # instead of the type quietly breathing on the owner's screen.
+# ---------------------------------------------------------------------------------------
+# AWAY AND RETURN. Every render above is a FRESH LOAD, and a draft interface that works until
+# somebody leaves the page and comes back is not certified. This is the cheapest honest version
+# of that axis for a standalone prototype: drive the URL the way a browser does, and assert the
+# one property that has to hold however history is used --
+#
+#   THE URL MUST NEVER NAME A BOARD THAT IS NOT ON SCREEN.
+#
+# Not "Back must restore everything" -- these pages are not an app and cannot be held to that
+# yet. Just that the address bar and the board agree. The reason it is the load-bearing property
+# is that a disagreement is not cosmetic: a reload is one keystroke, and a reload resolves the
+# URL, so a URL describing a different board is a board switch the user never asked for, one
+# gesture away at all times.
+#
+# This was measured before it was asserted, and it FAILS today: shared.js writes the URL with
+# history.replaceState and nothing in the directory listens for popstate or hashchange, so the
+# URL is write-only. Editing the hash moves the address bar and leaves the board where it was;
+# Back moves it again and still leaves the board where it was. The fix is a real state payload
+# pushed on each transition and restored in a popstate handler. Asserting it here is what stops
+# that from being a paragraph somebody has to remember.
+print("\n--- away and return: does the URL ever name a board that is not drawn? ---")
+NAV_BAD = 0
+with sync_playwright() as _p:
+    _b = _p.chromium.launch(executable_path=exe)
+    A, B = FORMATS[0], ("HEAVY_IDP" if "HEAVY_IDP" in FORMATS else FORMATS[-1])
+    for _f, _q, _fmts in [(j[0], j[1], j[2]) for j in JOBS if len(j[2]) > 1 and not j[1]]:
+        W, H = (MOBILE_VIEWPORTS if is_mobile(_f) else VIEWPORTS)[0]
+        pg = _b.new_page(viewport={"width": W, "height": H})
+        pg.goto("about:blank")                       # give Back somewhere to go
+        pg.goto("file://" + _f + "#" + A + "/mid", wait_until="load"); pg.wait_for_timeout(600)
+        def _seen():
+            lg = pg.evaluate("() => (document.getElementById('lg')||{}).textContent || ''") or ""
+            url = pg.evaluate("() => location.hash") or ""
+            named = next((x for x in FORMATS if " \u00b7 " + x.replace("_", " ") + " \u00b7 " in lg), None)
+            asked = url.replace("#", "").split("/")[0] or None
+            return asked, named
+        steps = []
+        steps.append(("on load", *_seen()))
+        pg.evaluate(f"() => {{ location.hash = '#{B}/late'; }}"); pg.wait_for_timeout(500)
+        steps.append(("hash edited", *_seen()))
+        pg.go_back(); pg.wait_for_timeout(600)
+        steps.append(("browser Back", *_seen()))
+        pg.go_forward(); pg.wait_for_timeout(600)
+        steps.append(("browser Forward", *_seen()))
+        wrong = [(w, a, n) for w, a, n in steps if a and n and a != n]
+        name = pathlib.Path(_f).name
+        if wrong:
+            NAV_BAD += 1
+            print(f"!! {name}: the URL names a board that is not drawn")
+            for w, a, n in steps:
+                mark = "  <-- URL says one board, screen shows another" if (a and n and a != n) else ""
+                print(f"      {w:<18} url says {str(a):<16} screen shows {str(n):<16}{mark}")
+        else:
+            print(f"ok {name}: url and board agree at every step "
+                  + " / ".join(f"{w}={a}" for w, a, n in steps))
+        pg.close()
+    _b.close()
+bad += NAV_BAD
+
 drift = {k: v for k, v in NAME_FS.items() if len(set(v.values())) > 1}
 for k, v in sorted(drift.items(), key=lambda kv: str(kv[0])):
     print(f"!! name size moves between draft states  {k[0]}{'?' + k[1] if k[1] else ''} [{k[2]} @ {k[3][0]}x{k[3][1]}]  {v}")
@@ -265,4 +417,62 @@ bad += len(drift)
 print(f"ok  name size is identical across draft states for all {len(NAME_FS)} (file, format, viewport) groups"
       if not drift else
       f"!! name size MOVES between draft states in {len(drift)} of {len(NAME_FS)} (file, format, viewport) groups")
+# ---------------------------------------------------------------------------------------
+# DEMONSTRATE IMMUTABILITY, DO NOT ASSUME IT. The snapshot was taken so that nothing could
+# change the bytes under this run -- but "nothing could" is a claim about a temp directory, and
+# the whole reason this machinery exists is that a claim of that shape was wrong twice today.
+# So the digests are taken again now and compared with the ones printed at the start. If they
+# match, the run certified one artifact and the record below names it. If they do not, the run
+# is void and says so rather than printing a verdict about bytes that moved underneath it.
+_moved = {n: h for n, h in _DIGESTS.items()
+          if hashlib.sha256((SNAP / n).read_bytes()).hexdigest()[:12] != h}
+if _moved:
+    print(f"!! THE SNAPSHOT MOVED under this run: {sorted(_moved)} -- this verdict is VOID")
+    bad += len(_moved)
+else:
+    print(f"ok  the snapshot is byte-identical to what was certified ({len(_DIGESTS)} builds re-hashed)")
+
+# A CERTIFICATION RECORD, so a verdict outlives the terminal it was printed in. "397 ok" names
+# no artifact and no source: a reader six weeks later cannot tell whether a green run was about
+# the commit in front of them. This names the source commit, the exact bytes, the axes covered,
+# and the clock -- which is what makes a green run checkable rather than merely reassuring.
+import subprocess as _sp
+def _git(*a):
+    try:
+        return _sp.run(["git"] + list(a), cwd=str(HERE), capture_output=True, text=True,
+                       timeout=20).stdout.strip() or None
+    except Exception:
+        return None
+_record = {
+    "gate": "ui_explore/round2/fableA/_shoot.py",
+    "finished_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+                      .isoformat(timespec="seconds"),
+    "source_commit": _git("rev-parse", "HEAD"),
+    "source_tree_clean": _git("status", "--porcelain") == "",
+    "snapshot_sha256_12": dict(sorted(_DIGESTS.items())),
+    "snapshot_verified_unchanged": not _moved,
+    "renders": TOTAL, "renders_failed": RENDER_BAD, "renders_ok": TOTAL - RENDER_BAD,
+    "failures_total": bad,   # renders, plus the cross-render assertions below them
+    "verdict": "PASS" if bad == 0 else "FAIL",
+    "axes": {
+        "viewports_desktop": [f"{w}x{h}" for w, h in VIEWPORTS],
+        "viewports_mobile": [f"{w}x{h}" for w, h in MOBILE_VIEWPORTS],
+        "formats": FORMATS,
+        "draft_states": STATES,
+        # NAVIGATION IS AN AXIS NOW, and both halves of it are recorded: which states were
+        # driven, and how many surfaces failed the one property asserted of them (the URL must
+        # never name a board that is not on screen). A record that listed the states without
+        # the failure count would read as coverage when it is a measurement of a known defect.
+        "navigation_states": ["fresh load", "hash edit", "browser back", "browser forward"],
+        "navigation_consistency_failures": NAV_BAD,
+        # Still not covered, and named so this record cannot imply otherwise: returning to a
+        # LIVE draft after leaving the page -- scroll position, which door was open, the clock.
+        # Those need an app around the board; these prototypes are standalone pages.
+        "navigation_states_not_covered": ["return to a live draft (scroll, open door, clock)"],
+    },
+}
+(HERE / "_certification.json").write_text(json.dumps(_record, indent=1, sort_keys=True) + "\n")
+print(f"certification record -> {HERE / '_certification.json'}"
+      f"  (commit {(_record['source_commit'] or '?')[:9]}"
+      f"{'' if _record['source_tree_clean'] else ', tree DIRTY'})")
 sys.exit(1 if bad else 0)

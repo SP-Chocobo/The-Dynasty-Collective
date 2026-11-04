@@ -7,6 +7,19 @@ DATA = {formats: {<format>: {slots, teams, rounds, rail, states}}, vocab: {...},
 Adding a format (LIGHT_IDP) is data: it lands in fixture.json and appears in the switcher."""
 import json, pathlib, re, subprocess, sys
 
+_HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE))
+import _gatelock
+
+_held = _gatelock.describe(_HERE / ".gate.lock")
+if _held:
+    raise SystemExit(f"{_held} and is reading these builds; rebuilding now would hand it two "
+                     f"different builds. Wait for it, or remove {_HERE / '.gate.lock'} if you "
+                     f"know it is dead.")
+# FIRST, before the fixture, the vocabularies and the gauge are loaded. A refusal after half a
+# minute of work reads like a crash; a refusal on line nine reads like a guard.
+
+
 HERE = pathlib.Path(__file__).resolve().parent
 SRC = HERE / "_src"
 REPO = pathlib.Path("/home/user/The-Dynasty-Collective")
@@ -91,6 +104,13 @@ for tpl in sorted(SRC.glob("v*.tpl.html")) + sorted(SRC.glob("m*.tpl.html")):
 # A template is tens of KB. A megabyte-scale one is not a big template, it is a runaway write --
 # which happened: `m1_stack.tpl.html` was once overwritten with one function repeated 29,339
 # times, 45 MB of it, and the build below printed `ok ... 44008 KB` and exited 0.
+import os
+
+
+# REFUSE TO WRITE UNDER A RUNNING GATE. _shoot.py holds .gate.lock for the twelve minutes it
+# spends reading these files; overwriting them mid-walk hands it two different builds and a
+# clean-looking verdict about neither. See the long note at that lock's definition.
+
 TPL_MAX = 250_000
 # The payload alone is ~1.1 MB, so every artifact lands near it. A build far outside this band
 # either lost the payload or inlined it more than once.

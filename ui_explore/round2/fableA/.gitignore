@@ -1,1 +1,7 @@
 _shots/
+
+# Runtime only: the render gate writes this while it holds the build snapshot, and releases
+# it on exit and on signal (_gatelock.py). It names a pid on this machine and means nothing
+# anywhere else, so it is never committed -- unlike _certification.json beside it, which is
+# the evidence a run produces and IS kept.
+.gate.lock
