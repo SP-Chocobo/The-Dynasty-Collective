@@ -16322,3 +16322,64 @@ Making the glob recursive is a bigger change than it looks and was NOT done at t
 keys instead, which rewrites all 241 existing keys. `drops()` compares by key, so every one of
 them would read as "module is gone" alongside 243 new entries — a migration that wants a human
 awake to review it. Named here as a decision, with the reason, rather than left as an oversight.
+
+## #309 — THE INSTRUMENT THAT MISSED `#308` NOW DETECTS IT
+
+`#308` found 34 tests collected by nothing and noted, as the sharpest thing in it, that
+`suite_reach.py` — written hours earlier for exactly that failure mode — could not see them. Its
+population is `assertion_floors.TEST_GLOB` globbed at the ROOT, so the files sat one directory
+below its own reach. This closes that.
+
+### The question it was not asking
+
+`unreachable()` asks *"of the modules the suite collects, which fail to import?"* It can only
+answer about modules already in the population. The missing question is *"which test files are
+not in the population at all?"* — and `unittest discover` will not recurse into a directory that
+is not a package, so the answer was not zero.
+
+`undiscoverable()` asks it. For every `test_*.py` below the root, every directory between root and
+file must be a package; the FIRST one that is not is named, because that is where the
+`__init__.py` has to go. Root-level files are skipped: `discover` collects those by construction.
+Caches and hidden directories are skipped as noise, not as a judgement about them.
+
+`--check` now fails on a stranded file as well as on a dead import. Those are separate code paths
+and both are tested, for a reason the mutation pass supplied — see below.
+
+### Verified against the real defect
+
+Removing the two `__init__.py` files `#308` added, i.e. restoring the exact state the repository
+was in:
+
+```
+2 test FILE(S) the suite cannot collect at all -- they pass when run by hand and appear in no
+certification run:
+    ui_explore/round3/test_empty_state_renders.py: unittest discover cannot recurse into
+        ui_explore: no __init__.py, so this file is collected by nothing
+    ui_explore/round3/test_front_renders_its_basis.py: ...
+exit=1
+```
+
+Restored: exit 0. The instrument now reports the condition that embarrassed it.
+
+### Mutation-checked, 6 arms, and the two that survived split the same way as every other pass tonight
+
+Final counts, all caught: root-level files reported too `2`; the deepest missing package named
+instead of the first `1`; caches and hidden directories no longer skipped `1`; a stranded file no
+longer failing `--check` `1`; the report no longer naming stranded files `1`;
+`undiscoverable` always returning nothing `3`.
+
+Two arms survived their first run and the diagnosis differed:
+
+* **A REAL GAP.** Dropping `undiscoverable()` from `--check`'s return expression survived, because
+  the test asserted on the REPORT TEXT and never called `main`. The report complained and the exit
+  code said success — and a check whose text complains while its status passes is not a check.
+  `test_the_EXIT_CODE_fails_on_a_stranded_file_too` now exercises that path separately.
+* **A BAD ARM.** Removing the root-level skip looked like it should produce noise, and produced
+  nothing: for a one-part path the loop `range(len(rel.parts) - 1)` is already empty, so the guard
+  it removed was redundant with the loop bound. Rebuilt to make the root directory itself get
+  checked, it fires on 2 tests.
+
+That is the fourth and fifth surviving arm of the night, and the split held: **one genuinely
+missing test, one mutation that changed nothing.** The lesson is the same each time — a surviving
+arm is a question, not a verdict, and answering it costs less than either believing it or
+dismissing it.

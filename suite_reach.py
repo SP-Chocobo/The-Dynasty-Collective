@@ -90,6 +90,48 @@ def population(root: Path = Path(".")) -> list[str]:
     return sorted(p.stem for p in root.glob(TEST_GLOB))
 
 
+#: Directories that are not part of the suite and are skipped when looking for stranded test
+#: files -- caches, VCS internals, and anything hidden. Not a judgement about their contents.
+SKIP_DIRS = frozenset({"__pycache__", ".git", ".venv", "venv", "node_modules", ".pytest_cache"})
+
+
+def undiscoverable(root: Path = Path(".")) -> dict[str, str]:
+    """{relative path: why} for every test file `unittest discover` CANNOT COLLECT AT ALL.
+
+    A DIFFERENT QUESTION FROM `unreachable`, and the one that was missing (`#308`). That function
+    asks "of the modules the suite collects, which fail to import?" -- it can only answer about
+    modules already in the population. This asks "which test files are not in the population at
+    all?", and the answer is not zero: `unittest discover` will not recurse into a directory that
+    is not a package, so a `test_*.py` under a folder with no `__init__.py` is collected by
+    nothing. It passes when run by hand and appears in no certification run.
+
+    THAT IS EXACTLY HOW THIS MODULE EMBARRASSED ITSELF. `population` is root-scoped by design --
+    it is the floors' population, imported from `assertion_floors` so the two cannot disagree
+    (`#126`) -- and I wrote this file to catch unreachable tests, then put 16 new tests one
+    directory down, where its own glob could not see them. `ui_explore/round3/` held 34 tests in
+    that state, 18 of them the front page's entire guard, since the day they were written.
+
+    Root-level files are skipped: `discover` finds those by construction. For anything deeper,
+    every directory between `root` and the file must be a package, and the FIRST one that is not
+    is named -- that is the directory an `__init__.py` has to go in.
+    """
+    out: dict[str, str] = {}
+    for path in sorted(root.rglob(TEST_GLOB)):
+        rel = path.relative_to(root)
+        if any(part in SKIP_DIRS or part.startswith(".") for part in rel.parts[:-1]):
+            continue
+        if len(rel.parts) == 1:
+            continue  # at the root; discover collects it without a package
+        for depth in range(len(rel.parts) - 1):
+            folder = root.joinpath(*rel.parts[: depth + 1])
+            if not (folder / "__init__.py").exists():
+                out[str(rel)] = (f"unittest discover cannot recurse into "
+                                 f"{'/'.join(rel.parts[: depth + 1])}: no __init__.py, so this "
+                                 f"file is collected by nothing")
+                break
+    return out
+
+
 def unreachable(root: Path = Path(".")) -> dict[str, str]:
     """{module name: one-line reason} for every test module this interpreter cannot import.
 
@@ -163,6 +205,11 @@ def report(dead: dict[str, str], root: Path = Path("."), *, count_cases: bool = 
     lines = [f"interpreter: {interpreter()}", f"test modules: {total}"]
     if count_cases:
         lines.append(f"collected test cases: {collected(root)}")
+    stranded = undiscoverable(root)
+    if stranded:
+        lines.append(f"{len(stranded)} test FILE(S) the suite cannot collect at all -- they pass "
+                     f"when run by hand and appear in no certification run:")
+        lines += [f"    {name}: {why}" for name, why in sorted(stranded.items())]
     if not dead:
         lines.append(f"every one of the {total} test modules imports")
         return "\n".join(lines)
@@ -181,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     dead = unreachable()
     print(report(dead, count_cases=not args.no_count))
-    return 1 if (args.check and dead) else 0
+    return 1 if (args.check and (dead or undiscoverable())) else 0
 
 
 if __name__ == "__main__":

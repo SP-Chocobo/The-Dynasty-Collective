@@ -16542,12 +16542,13 @@
       }
     },
     "test_suite_reach.py": {
-      "test_methods": 13,
+      "test_methods": 20,
       "asserts": {
-        "assertEqual": 8,
+        "assertEqual": 14,
         "assertGreater": 1,
-        "assertIn": 14,
-        "assertIs": 1
+        "assertIn": 19,
+        "assertIs": 1,
+        "assertNotIn": 1
       },
       "by_method": {
         "ADeadModuleContributesNoTestCases.test_the_count_excludes_the_synthetic_failure_unittest_substitutes": {
@@ -16563,6 +16564,30 @@
         "AModuleTheRunnerCannotReachIsNamed.test_a_module_that_exits_at_import_is_caught_not_propagated": {
           "assertEqual": 1,
           "assertIn": 1
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_a_properly_packaged_chain_is_not_reported": {
+          "assertEqual": 1
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_a_root_level_file_is_never_reported": {
+          "assertEqual": 1
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_a_test_file_under_a_non_package_directory_is_reported": {
+          "assertEqual": 1,
+          "assertIn": 2
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_caches_and_hidden_directories_are_skipped": {
+          "assertEqual": 1
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_it_names_the_FIRST_directory_missing_its_init": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_the_EXIT_CODE_fails_on_a_stranded_file_too": {
+          "assertEqual": 1
+        },
+        "ATestFileTheSuiteCannotCollectAtAll.test_the_report_names_a_stranded_file_even_when_every_module_imports": {
+          "assertEqual": 1,
+          "assertIn": 2
         },
         "TheCommandLineFailsLoudly.test_check_exits_nonzero_on_a_module_that_cannot_be_imported": {
           "assertEqual": 1,

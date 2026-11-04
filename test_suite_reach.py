@@ -93,6 +93,81 @@ class TheRootParameterIsActuallyRead(_Tree):
         self.assertEqual(sys.path, before, "the check left its own directory on sys.path")
 
 
+class ATestFileTheSuiteCannotCollectAtAll(_Tree):
+    """`#308`. A DIFFERENT question from "does it import": is it in the population at all?
+
+    `unittest discover` will not recurse into a non-package directory, so a `test_*.py` under a
+    folder with no `__init__.py` is collected by nothing -- it passes by hand and appears in no
+    certification run. This module shipped without asking that, and 34 tests sat in exactly that
+    state one directory below its own glob.
+    """
+
+    def test_a_test_file_under_a_non_package_directory_is_reported(self):
+        (self.root / "sub").mkdir()
+        (self.root / "sub" / "test_srfix_stranded.py").write_text(GOOD)
+        out = suite_reach.undiscoverable(self.root)
+        self.assertEqual(set(out), {"sub/test_srfix_stranded.py"})
+        self.assertIn("cannot recurse into sub", out["sub/test_srfix_stranded.py"])
+        self.assertIn("__init__.py", out["sub/test_srfix_stranded.py"])
+
+    def test_a_properly_packaged_chain_is_not_reported(self):
+        (self.root / "pkg").mkdir()
+        (self.root / "pkg" / "__init__.py").write_text("")
+        (self.root / "pkg" / "test_srfix_ok.py").write_text(GOOD)
+        self.assertEqual(suite_reach.undiscoverable(self.root), {})
+
+    def test_a_root_level_file_is_never_reported(self):
+        """`discover` collects those by construction, package or not."""
+        self.write("test_srfix_root", GOOD)
+        self.assertEqual(suite_reach.undiscoverable(self.root), {})
+
+    def test_it_names_the_FIRST_directory_missing_its_init(self):
+        """The one an `__init__.py` has to go in. Naming the deepest would send the reader to a
+        folder whose parent is the actual problem."""
+        (self.root / "a").mkdir()
+        (self.root / "a" / "b").mkdir(parents=True)
+        (self.root / "a" / "b" / "__init__.py").write_text("")
+        (self.root / "a" / "b" / "test_srfix_deep.py").write_text(GOOD)
+        out = suite_reach.undiscoverable(self.root)
+        self.assertIn("cannot recurse into a:", out["a/b/test_srfix_deep.py"])
+        self.assertNotIn("recurse into a/b", out["a/b/test_srfix_deep.py"])
+
+    def test_caches_and_hidden_directories_are_skipped(self):
+        for folder in ("__pycache__", ".tox"):
+            (self.root / folder).mkdir()
+            (self.root / folder / "test_srfix_noise.py").write_text(GOOD)
+        self.assertEqual(suite_reach.undiscoverable(self.root), {})
+
+    def test_the_report_names_a_stranded_file_even_when_every_module_imports(self):
+        """The #308 shape exactly: nothing is broken, something is simply not being run."""
+        self.write("test_srfix_fine", GOOD)
+        (self.root / "sub").mkdir()
+        (self.root / "sub" / "test_srfix_stranded.py").write_text(GOOD)
+        self.assertEqual(suite_reach.unreachable(self.root), {})      # all imports fine
+        text = suite_reach.report({}, self.root, count_cases=False)
+        self.assertIn("cannot collect at all", text)
+        self.assertIn("appear in no certification run", text)
+
+    def test_the_EXIT_CODE_fails_on_a_stranded_file_too(self):
+        """Separate from the report wording, and it has to be, because they are separate code
+        paths: a mutation that dropped `undiscoverable()` from `--check`'s return expression
+        survived while the report still named the file. A check whose text complains and whose
+        exit code says success is not a check.
+        """
+        import contextlib, io, os
+        self.write("test_srfix_fine", GOOD)
+        (self.root / "sub").mkdir()
+        (self.root / "sub" / "test_srfix_stranded.py").write_text(GOOD)
+        cwd = Path.cwd()
+        os.chdir(self.root)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = suite_reach.main(["--check", "--no-count"])
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(code, 1, "a stranded test file must fail --check, not just be mentioned")
+
+
 class TheReportNamesTheThingToFix(_Tree):
     def test_it_names_the_interpreter_because_that_is_usually_the_cause(self):
         text = suite_reach.report({}, self.root, count_cases=False)
