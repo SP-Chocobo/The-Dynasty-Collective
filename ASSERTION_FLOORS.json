@@ -247,10 +247,10 @@
       }
     },
     "test_216_room_integrity.py": {
-      "test_methods": 28,
+      "test_methods": 29,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 35,
+        "assertEqual": 38,
         "assertFalse": 1,
         "assertGreater": 3,
         "assertGreaterEqual": 8,
@@ -258,7 +258,8 @@
         "assertIsNone": 1,
         "assertIsNotNone": 1,
         "assertLess": 1,
-        "assertNotIn": 11,
+        "assertNotEqual": 1,
+        "assertNotIn": 12,
         "assertTrue": 5
       },
       "by_method": {
@@ -300,6 +301,11 @@
           "assertEqual": 2,
           "assertIn": 1,
           "assertNotIn": 2
+        },
+        "TheBuiltPagesWearDesignSystemsPillsTests.test_an_absent_or_unknown_position_wears_the_absence_marker": {
+          "assertEqual": 3,
+          "assertNotEqual": 1,
+          "assertNotIn": 1
         },
         "TheBuiltPagesWearDesignSystemsPillsTests.test_every_built_page_carries_design_systems_pills_exactly": {
           "assertEqual": 1,

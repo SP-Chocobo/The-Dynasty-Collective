@@ -777,6 +777,78 @@ class TheBuiltPagesWearDesignSystemsPillsTests(unittest.TestCase):
                 if p.name not in _FROZEN_CARRIERS]
 
     @_EXECUTABLE
+    def test_an_absent_or_unknown_position_wears_the_absence_marker(self):
+        """`#325`. `#311` ruled that an unmapped position gets `POSITION_PILL_ABSENT`, a quiet
+        non-colour, rather than borrowing a real position's hue. `#320` emitted `--absent` into
+        the prototype's CSS and NOTHING READ IT, so the ruling never reached the surface.
+
+        Measured on the shipped page before the fix, by calling the page's own `pc()`:
+
+            pc('')    -> var(--k)    -> rgb(250,184,126)  the KICKER's colour
+            pc(null)  -> var(--k)    -> rgb(250,184,126)
+            pc('XYZ') -> var(--xyz)  -> rgb(242,234,217)  = --ink, THE TEXT COLOUR
+
+        The second is the worse one and was not in the original diagnosis: an unknown position
+        is not falsy, so it skipped the `|| "k"` branch entirely and asked for a variable that
+        does not exist. That is invalid at computed-value time, so the element INHERITED -- a
+        pill wearing the colour of the prose around it, which is the exact condition `#311`'s
+        quiet-text rule exists to forbid.
+
+        This calls `pc()` itself rather than re-deriving what it ought to return. `#222` cost
+        two withdrawn findings to learn that a reconstruction of a production quantity is a
+        second implementation, and a second implementation is a second source of truth.
+        """
+        from playwright.sync_api import sync_playwright
+
+        absent = design_system.POSITION_PILL_ABSENT.lower()
+        page_file = next((p for p in self._built_pages() if p.name == "v4_doors.html"),
+                         self._built_pages()[0])
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+            page = browser.new_page()
+            page.goto(page_file.resolve().as_uri())
+            self.assertEqual(page.evaluate("typeof pc"), "function",
+                             "the page does not expose pc(); this test is measuring nothing")
+            resolved = page.evaluate("""args => {
+                const out = {};
+                for (const a of args) {
+                    const e = document.createElement('span');
+                    e.style.color = pc(a === '__null__' ? null : a);
+                    document.body.appendChild(e);
+                    out[a] = getComputedStyle(e).color;
+                    e.remove();
+                }
+                return out;
+            }""", ["__null__", "", "XYZ", "RB"])
+            ink = page.evaluate(
+                "getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()")
+            browser.close()
+
+        def as_hex(css_rgb):
+            nums = [int(n) for n in re.findall(r"\d+", css_rgb)[:3]]
+            return "#" + "".join(f"{n:02x}" for n in nums)
+
+        positions = {v.lower() for v in design_system.POSITION_PILL_TOKENS.values()}
+        for arg in ("__null__", "", "XYZ"):
+            got = as_hex(resolved[arg])
+            with self.subTest(argument=arg):
+                self.assertNotIn(got, positions,
+                                 f"pc({arg!r}) resolves to {got}, which is a REAL POSITION's "
+                                 f"colour -- the pre-`#311` fallback this rule exists to end")
+                self.assertNotEqual(got, ink.lower(),
+                                    f"pc({arg!r}) resolves to {got}, the colour of the text "
+                                    f"around it -- an undefined var() inherits")
+                self.assertEqual(got, absent,
+                                 f"pc({arg!r}) resolves to {got}, want the absence marker "
+                                 f"{absent}")
+        # non-vacuity: a known position must still get its own pill, or the rule above could be
+        # satisfied by a pc() that returned the absence marker for everything.
+        self.assertEqual(as_hex(resolved["RB"]),
+                         design_system.POSITION_PILL_TOKENS["RB"].lower(),
+                         "pc('RB') no longer yields the RB pill; the fallback has eaten the "
+                         "normal case")
+
+    @_EXECUTABLE
     def test_the_pills_are_IN_EFFECT_on_the_root_element_not_merely_present(self):
         """`#324`. The arm `#323` was missing, and its absence let a real defect reach origin.
 

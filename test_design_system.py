@@ -262,7 +262,12 @@ class PositionPillTests(unittest.TestCase):
         # THE actual co-occurrence: app.py renders a position pill and an injury pill in one
         # table row, so a TE pill the color of a Questionable pill says two things at once.
         # The Questionable pill is amber-b since the 2026-09-06 ruling (it was gold-b); the
-        # nearest pill to it is TE at dE 39.8, measured when the move was made.
+        # `#326`: WHICH pill is nearest is not stated here any more. This line used to end
+        # "the nearest pill to it is TE at dE 39.8, measured when the move was made" -- the
+        # hedge scoped the NUMBER to history but left the IDENTITY in the present tense, and
+        # the identity rotted too: `#311` moved K to #fab87e, which is now nearest at 33.17,
+        # and `#318` moved TE to 46.78. The floor below is the contract; which pill happens to
+        # be closest to it is an output of this loop, not a fact worth asserting in a comment.
         for position, value in ds.POSITION_PILL_TOKENS.items():
             for injury in ("amber-b", "crimson-b"):
                 with self.subTest(position=position, injury=injury):

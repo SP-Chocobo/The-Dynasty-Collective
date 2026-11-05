@@ -94,8 +94,19 @@ TOKENS: dict[str, str] = {
     # instrument the repaint used:
     #   "attention" (the Questionable injury pill, the warn chips, the stale-values pill, the
     #     EST pick badge) -> amber, which already meant "system notice": one hue, one meaning.
-    #     amber-b sits >= 39.8 from every position pill it shares a roster row with (TE is the
-    #     nearest; it was 57.2 from gold-b) and 69.0 from crimson-b, the other injury colour.
+    #     amber-b is held 25.0 from every position pill it shares a roster row with, enforced
+    #     by test_design_system.test_pills_are_separable_from_the_injury_colours.
+    #
+    #     `#326` TOOK THE MARGINS OUT OF THIS SENTENCE. It used to read "amber-b sits >= 39.8
+    #     from every position pill ... (TE is the nearest; it was 57.2 from gold-b)". Both
+    #     halves are false now: the nearest is K at 33.17 and TE is 46.78. The RULE never
+    #     broke -- 33.17 clears the enforced 25.0 comfortably -- but the sentence had written an
+    #     OBSERVED MARGIN in the grammar of a GUARANTEE, so it read as a contract and went stale
+    #     the moment a pill moved. That is `#56` ("a bound is not a threshold") in prose.
+    #     `#311` moved K and recorded the breakage at POST_AUDIT_PLAN.md:16948 without changing
+    #     this file; `#318` then moved TE, so both surviving figures described a hex that exists
+    #     nowhere in the repo. Updating them would only schedule the next rot: the floor is a
+    #     constant and belongs here, the margins are measured by the test and belong there.
     #   Beat chair -> cliff. The role family's tightest pair moves from gold/amber 25.8 to
     #     violet/sky 36.7 (base tokens; 22.2 -> 30.8 on the "-b" text colours, and that 30.8
     #     is the pre-existing Contrarian/Summary pair, untouched here). Beat's own nearest

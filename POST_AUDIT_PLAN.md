@@ -17443,3 +17443,122 @@ coloured by the player's POSITION or by something else — the initials themselv
 spectacular bug, since "TE" and "LB" are both initials AND positions — is not yet established. A
 first probe guessed at class names and matched nothing; the selectors must come from the source.
 Recorded as open rather than guessed at.
+
+---
+
+## `#325` `#326` `#327` — THE ABSENCE CONTRACT NEVER REACHED THE PROTOTYPE, AND `#322` FIXED ONE HOME OF A TWO-HOME SENTENCE
+
+Found by looking at a render and by an adversarial pass, not by re-reading. Both of the things
+that found these were instruments I had not yet pointed at the question.
+
+### `#325` — `pc()` had TWO holes, and `#320` claimed to have closed one of them
+
+`shared.js:41` read `const pc = p => \`var(--${(p || "k").toLowerCase()})\`;`. Measured by
+calling the page's OWN `pc()` in Chromium against the shipped build:
+
+| call | returned | resolved to | |
+|---|---|---|---|
+| `pc('RB')` | `var(--rb)` | `#0ca89c` | correct |
+| `pc('')` / `pc(null)` | `var(--k)` | `#fab87e` | **the KICKER's real colour** |
+| `pc('XYZ')` | `var(--xyz)` | `#f2ead9` | **`--ink` — the colour of the text** |
+
+The first hole is the pre-`#311` fallback that `POSITION_PILL_ABSENT` was created to end. **The
+second was not in the original diagnosis and is worse**: an unknown position is not falsy, so it
+never reaches the `|| "k"` branch and asks for a variable that does not exist. That is invalid at
+computed-value time, so the element INHERITS — a pill wearing the colour of the prose around it,
+which is exactly the condition `#311`'s quiet-text rule exists to forbid.
+
+**`#320` emitted `--absent` and nothing read it.** A grep for any consumer returns empty. So this
+claim in `#320`'s own docstring was false as shipped, and is corrected rather than dropped:
+
+> "`--absent` is emitted too, because `#311` gave the absence marker its own token and the
+> prototype has no word for it: an unmapped position there still falls back to a POSITION's
+> colour, **which is the defect `POSITION_PILL_ABSENT` exists to end.**"
+
+Emitting a variable nothing reads ends nothing. The repair uses CSS's own `var()` fallback, so no
+list of known positions is duplicated into JS (`#126`):
+
+```js
+const pc = p => `var(--${(p || "absent").toLowerCase()}, var(--absent))`;
+```
+
+After: `pc(null)` → `#a79a83`, `pc('XYZ')` → `#a79a83`, `pc('RB')` → the RB pill. Mutation arms,
+run against scratch copies of all 8 built pages so the repo tree stayed clean:
+
+| arm | failures |
+|---|---|
+| unmutated | 0 |
+| revert to `(p \|\| "k")` | **3** |
+| keep `"absent"` but drop the `var(…, var(--absent))` tail | **1** — only the unknown-position arm |
+
+The test calls `pc()` itself rather than re-deriving what it should return (`#222`).
+
+### `#326` — a false assertion in the palette's one home, recorded at `#311` and never repaired
+
+`design_system.py:97` stated: *"amber-b sits >= 39.8 from every position pill it shares a roster
+row with (TE is the nearest; it was 57.2 from gold-b)."* Measured today:
+
+```
+  K   33.17   <-- NEAREST, and BELOW the asserted 39.8
+  TE  46.78     IDP 49.15     DEF 91.48 ... rest 91.5-141.1
+  amber-b vs crimson-b = 68.97  ("69.0" still holds)
+```
+
+Both halves false. **The rule never broke** — `test_design_system.py:269` enforces **25.0**, and
+33.17 clears it comfortably. What broke is the SHAPE of the prose: it wrote an OBSERVED MARGIN in
+the grammar of a GUARANTEE, so it read as a contract and rotted the moment a pill moved. That is
+`#56` ("a bound is not a threshold") applied to a sentence.
+
+`#311` moved K, **recorded this exact breakage at `POST_AUDIT_PLAN.md:16948`, and never changed
+the file.** `#318` then moved TE, so both surviving figures described a hex that exists nowhere in
+the repo. The margins are therefore REMOVED rather than updated — updating them only schedules
+the next rot. The floor is a constant and stays in the comment; the margins are measured by the
+test that enforces them. `test_design_system.py:265` carried the same defect in milder form: its
+hedge ("measured when the move was made") scoped the NUMBER to history but left the IDENTITY
+("TE is the nearest") in the present tense, and the identity rotted too.
+
+### `#327` — `MAIN_PAGE.md` is the second home of the sentence `#322` repaired
+
+`MAIN_PAGE.md:157-160` carries, in the present tense, the identical claim `#322` fixed in
+`_palette.py`: six entries, a fallback to K's neutral, "a capability the prototype has and the app
+does not". `#322` repaired one home and nobody grepped for the other — **`#126` sitting underneath
+the stale-prose defect**. Struck in place with its evidence, per house style, not rewritten.
+
+Two more in the same document:
+
+- the pill divergence table (`#8f86f0` as "app QB"; "app NO ENTRY" for DL/LB/DB, which have had
+  entries since `#311`) — after `#320` all ten measure **dE 0.00** prototype-vs-app.
+- **"37 prototype tokens"** → now **27**. `#320` moved the ten pills out of the prototype's
+  `:root`; 37 − 10 = 27 exactly.
+
+### A CORRECTION I OWE THE ADVERSARIAL PASS
+
+The agent reported the token count as 27. I ran a regex of my own over the same file, got **32**,
+and published that its figure was wrong. **Mine was wrong.** My regex counted `--f-d`, `--f-m`,
+`--f-s`, `--r` and `--hatch` — fonts, a radius and an rgba — as colour tokens. `_palette.py`
+already computes this number and reports 27.
+
+I reconstructed a quantity the instrument computes, got a different answer, and used the
+reconstruction to overrule the instrument — the precise error `#222` cost two withdrawn findings
+to learn, committed while writing up a batch about that error. The figure published above is read
+from `_palette.py`'s output.
+
+### Verified
+
+```
+pc(null) #a79a83   pc('XYZ') #a79a83   pc('RB') the RB pill  (measured in Chromium)
+135 targeted tests across 6 modules: OK
+mutation arms: 0 / 3 / 1 as tabled above
+all seven ratchets PASS; floors 242 modules / 7605 assertions
+```
+
+### Still open
+
+- **`#328` — `mockups/`**, verified and deliberately NOT taken in this batch. `c_variants.py:394`
+  hand-writes `const FACET = { QB: "#8f86f0", RB: "#17bfa0", TE: "#e8683f", K: "#a09480",
+  DL/LB/DB: "#a09480" }` in SOURCE, so no rebuild repairs it — four superseded hexes, no IDP, and
+  DL/LB/DB sharing the old K neutral, which re-implements in code the exact defect `#311` ended.
+  `common.py:119-121` re-emits DL/LB/DB a second time, dead since `#311` widened the dict. 28 built
+  pages under `mockups/` carry superseded hexes and have no output guard (the `#323` class). It is
+  a separate surface and a separate decision; recorded with its evidence rather than half-done.
+- **`#312`** — still the item that collapses `#321`'s two-home loop.

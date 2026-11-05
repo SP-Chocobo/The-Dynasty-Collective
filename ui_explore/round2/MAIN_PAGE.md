@@ -132,7 +132,12 @@ them in CIE Lab ΔE using `test_design_system._delta_e`, which is where that fun
 lives:
 
 ```
-37 prototype tokens, 29 app tokens, 27 share a name
+27 prototype tokens, 29 app tokens, 27 share a name
+(`#327`: was "37 prototype tokens". `#320` moved the ten position pills out of the prototype's
+ `:root` block and 37-10=27 exactly. This figure is read from `_palette.py`'s own output rather
+ than recomputed -- an independent regex over the same file returned 32 because it counted the
+ font and radius properties as tokens, and that reconstruction was briefly used to call the
+ instrument's correct number wrong. Observe the production quantity, never rebuild it.)
 26 of 27 shared token names carry a visibly different colour (dE > 2); 0 are identical.
 
  18.37  violet     #6d3fd6 -> #9457d4        3.71  bg         #0c0a07 -> #15120b
@@ -146,6 +151,12 @@ prototype's are measurably darker, and not one of the twenty-seven shared token 
 the same colour on both sides. That claim was written from reading the two files and seeing
 similar-looking hex; the instrument disagreed, which is the whole argument for having one.
 
+**SUPERSEDED (`#327`): the pill table below no longer measures anything.** `#320` made the
+prototype's pills DERIVED from `design_system`, so all ten now measure **dE 0.00** prototype-vs-app
+(read from the built `v4_doors.html`). The table's "app NO ENTRY" rows for DL, LB and DB have had
+entries since `#311` (`#4cec4c`, `#ff45ed`, `#6ad8f0`), and its "app QB `#8f86f0`" was superseded
+by `#318` (`#2a81fc`). Kept as the record of what the divergence was before it was closed.
+
 The position pills diverge further, and there the difference is functional rather than cosmetic:
 
 ```
@@ -154,10 +165,23 @@ The position pills diverge further, and there the difference is functional rathe
  22.83  QB   #8366f1 -> #8f86f0      --  DB   prototype #d9a21c, app NO ENTRY
 ```
 
-The app's `POSITION_PILL_TOKENS` has six entries and falls back to K's neutral for anything
-unmapped — so in an IDP league the app draws DL, LB and DB in one colour, and the prototype
-gives each a hue. Two of the fixture's six formats are IDP leagues. That is not a palette
-preference to reconcile; it is a capability the prototype has and the app does not.
+> **SUPERSEDED (`#327`).** The paragraph below was true when written and every clause of it is
+> false now. It is kept rather than rewritten because a published claim that was wrong is
+> restated with its evidence, not quietly edited.
+>
+> `#311` took `POSITION_PILL_TOKENS` from six entries to ten, giving DL, LB, DB and IDP their
+> own hues, and replaced the K fallback with `POSITION_PILL_ABSENT` (`#a79a83`), a deliberately
+> quiet non-colour. **The capability gap is closed**, and the direction of the remaining
+> difference is the opposite of what this says.
+>
+> This is the SECOND HOME of this sentence. `#322` repaired the identical claim in
+> `ui_explore/round2/fableA/_palette.py` and nobody grepped for the other copy — a `#126`
+> duplication sitting underneath the stale-prose defect. It was found by an adversarial pass.
+>
+> ~~The app's `POSITION_PILL_TOKENS` has six entries and falls back to K's neutral for anything
+> unmapped — so in an IDP league the app draws DL, LB and DB in one colour, and the prototype
+> gives each a hue. Two of the fixture's six formats are IDP leagues. That is not a palette
+> preference to reconcile; it is a capability the prototype has and the app does not.~~
 
 **The front page is the right place to resolve that, and the resolution is one-directional:**
 `design_system.py` is the system of record. It has the discipline, the instrument, and the
