@@ -16756,3 +16756,101 @@ A 31% drop in per-test cost while the count rose by 24. `#309` recorded the rise
 plateaued; it has now reversed, and the figure is back to where it was at `dbae709`. Not
 extrapolated — `close-register-item` keeps the dated table and the rule there is to re-measure
 rather than trust the trend, in either direction.
+
+### `#310` AND `#311` CERTIFIED TOGETHER
+
+```
+Ran 4344 tests in 1374.970s
+FAILED (failures=1, skipped=2, expected failures=1)      errors=0
+```
+
+One failure, and it is `#305`'s stale `3.0` bound — the one thing in this repository failing on
+purpose. The dead `_find_chrome` name that `#310`'s own suite caught is gone. **This run is the
+full-suite licence for BOTH items**; `#310` was pushed before its verdict and is not certified
+alone, which `7ba33cc` already said and this repeats so the record cannot be misread.
+
+Per test: 1374.970 / 4344 = **316ms**, against `#310`'s 309ms. The plateau at ~310ms holds; the
+449ms excursion is not returning. `close-register-item` keeps the dated table.
+
+---
+
+## `#313` A RULE THE PROTOTYPE STATES IN PROSE, THAT NOTHING ENFORCES — AND `#312` WOULD TRIPLE ITS VIOLATIONS
+
+`ui_explore/round2/fableA/_src/shared.css` lines 20-22:
+
+> "The SEMANTIC roles are unchanged and still reserved: gold is now/selected/yours, amber is
+> caution and assumption, emerald is the slot a pick would fill, violet is withheld."
+
+That is a rule about MEANING — these hues say what STATE a thing is in, so a position IDENTITY
+must not wear one. Nothing encodes it. Measured with the suite's own `_delta_e`, every pill
+against every reserved hue, in the PROTOTYPE's token values (the ones that actually render):
+
+| pill | nearest reserved hue | dE |
+|---|---|---|
+| **QB** `#8366f1` | `violet-b` — **withheld** | **10.9** |
+| **RB** `#0fa877` | `emerald-b` — the slot a pick would fill | 21.4 |
+| **TE** `#e0661f` | `amber` — caution and assumption | 21.7 |
+| K `#fab87e` | `gold` | 31.1 |
+| IDP `#99a851` | `gold` | 35.4 |
+| DL / LB / DB | `emerald-b` / `violet` / `emerald-b` | 43.2 / 45.0 / 54.6 |
+
+**The violations are in the three OLDEST pills and in none of the four added by `#311`.**
+
+### Verified at the rendered level, not inferred from hexes
+
+The first query I wrote for this found no `WITHHELD` element at all — it required the element's
+ENTIRE text to equal "WITHHELD", and the badge has sibling text. Re-run with a looser selector,
+reading computed styles out of a real Chromium:
+
+| pair, as actually rendered in `HEAVY_IDP/mid` | dE |
+|---|---|
+| `WITHHELD` badge BORDER `#6d3fd6` (`--violet`) vs the `QB 6th door` dot `#8366f1` (`--qb`) | **15.8** |
+| `WITHHELD` badge TEXT `#b593f5` (`--violet-b`) vs the same dot | 29.0 |
+
+Both are in the first viewport together. So the collision is real and visible, and the tight pair
+is against the badge's BORDER. **The 10.9 I first published was `design_system`'s QB against
+`design_system`'s `violet-b` — a true number about a palette that is not the one rendering.** Both
+palettes violate the reservation; the pair and the magnitude differ.
+
+### `#312` MAKES THIS WORSE, and that was not in the evidence the owner decided on
+
+| floor | prototype values (what `#312` adopts) | `design_system` values (today) |
+|---|---|---|
+| 20.0 | 9/10 — QB 10.9 | 10/10 |
+| **25.0** | **7/10 — QB, RB, TE** | **9/10 — QB 22.8** |
+| 30.0 | 7/10 | 6/10 |
+
+The owner chose "`design_system` adopts the prototype's values" on evidence that it keeps zero
+legibility shortfalls, raises contrast on 15 of 23 scoped names, and loosens the quiet-text tier
+(`muted`/`tie-b` 1.5 -> 5.4). All true. **What I did not measure before recommending it: it takes
+reserved-hue violations from one to three.** The recommendation still holds on balance — better on
+two axes, worse on one — but the SEQUENCING changes: this re-solve lands BEFORE or WITH `#312`.
+Consolidating first writes three known violations into the one home, which is the worst possible
+moment to declare a single source of truth.
+
+### The floor is 25.0, and 20.0 is the tempting wrong answer
+
+20.0 isolates QB alone — one re-solve instead of three. That is exactly what `#56` forbids: a
+bound is not a threshold, and picking the number that makes the repair small is sizing it to the
+sample. 25.0 is the floor every other pill rule already uses, applied to a new population, which
+is the same argument that justified `#311`'s quiet-text floor. Take the three-pill cost.
+
+At any floor <= 25.0 the reservation adds NOTHING for `amber-b` and `crimson-b`: rule 1 already
+governs those as the injury pill colours. The reservations that bite are `violet-b` (QB),
+`emerald-b` (RB) and `amber` (TE). Stated so the rule is not mistaken for a broader claim than it
+makes — the error the original pill-rule block records making once already.
+
+### Five corrections from this pass, and they share one cause
+
+| I published | the truth | how it was caught |
+|---|---|---|
+| "all ten pill colours fire in the lineup strip" | the strip uses `--dim` / `--amber-b` / `--emerald-b` / `--ink`; NO pill colour appears in it. The density claim survives by another route: 7 distinct pill colours in one `HEAVY_IDP` viewport, via `.p` tags, `.pill` badges, door badges, the not-shown dots and filter borders | computed styles in a browser |
+| "the new DL green collides with the emerald 'fills your slot' token" | dE **43.2** — comfortably clear. My eye over-fired on "both are green" | measured after the screenshot alarmed me |
+| two `TOKENS` comments are stale | both accurate. "violet/sky 36.7 (base tokens; 22.2 -> 30.8 on the '-b' text colours)" states the OLD and NEW value and 30.8 is current; the 34.6 refers to gold-vs-the-tick | re-read with the sentence's own structure |
+| "`--def == --idp` is a defect" | LATENT, not live. No fixture format starts both — verified twice, by slot lists AND by rendered text | a second, wider query |
+| "the pill colour is the door's left rail" | the wide 13px rail is the §14 TANK (`--emerald` fill, gold hatch, OFFENSE-ONLY). The pill is a 4px `.edge::before` stripe — a pseudo-element the DOM query could not see | enumerating `.door` children, then grepping the CSS |
+
+**Every one was caught by RE-RUNNING WITH A WIDER QUERY, and not one by re-reading my own
+output.** A narrow selector returns a clean, plausible, wrong answer, and nothing about the result
+announces that the population was wrong. That is this session's recurring failure, it is mine
+rather than the repository's, and the instruments that keep catching it are earning their cost.
