@@ -420,7 +420,7 @@ later.** Worth knowing before either is built.
 | U26 | The tag LINEUP itself — how many bands, on what axis, against the channels already on the card | **PINNED** for the UI pass (see §16d) |
 | U25 | Does an unpriced row keep rendering as a bare dash, with no kind? | owner (see §16) |
 
-| U22 | Should the tank lock to whole numbers on each band? | **ANSWERED by §14 (owner asked 2026-09-16).** It needs no lock: every player is assigned a band at generation, so allocate the bar to PLAYERS and let bands inherit. The edge then lands on a player boundary by construction and one pick moves it exactly one unit. **Ticks are still forbidden** — drawing per-player marks would hand the reader band sizes, which §14's expansion rule excludes. Holds while `span >= N`; RB resolves at both 260px and 900px. |
+| U22 | ~~Should the tank lock to whole numbers on each band?~~ **MOOT at `#319b`** — the bands were refused and the built tank has none, so there is no band for a lock to round to. The answer below is kept because its reasoning about allocating to PLAYERS rather than to units survived into the built tank, and its ban on ticks is still live. | **ANSWERED by §14 (owner asked 2026-09-16).** It needs no lock: every player is assigned a band at generation, so allocate the bar to PLAYERS and let bands inherit. The edge then lands on a player boundary by construction and one pick moves it exactly one unit. **Ticks are still forbidden** — drawing per-player marks would hand the reader band sizes, which §14's expansion rule excludes. Holds while `span >= N`; RB resolves at both 260px and 900px. |
 
 ### THE UPSIDE-MODE ROWS ARE SUPERSEDED — read §14 before acting on this table
 
@@ -781,7 +781,25 @@ the one that generalises: the owner's *"2 left above replacement feels obscure t
 hasn't spent the last month chatting with you"*, and — a count invites the reader to reason about
 WHICH two players, which a gauge has no standing to imply.
 
-### The bands — MEMBERSHIP IS DERIVED, WIDTH IS NOT A CLAIM ABOUT IT
+> ### ~~The bands~~ — STRUCK AT `#319`. THE BANDS WERE REFUSED AND THE BUILT TANK HAS NONE.
+>
+> The owner's *"without the meh grouping"* was read two ways by two files: `OWNER_FEEDBACK_R2.md`
+> took it as cutting a VARIANT (it records GW Doors as "CUT by 'without the meh grouping'"), and
+> `fableA/REVISION.md` took it as banning the BAND, listing "Any band or 'meh' grouping" under
+> Refused. The built tank has no bands, and the owner called it "immaculate".
+>
+> **Ruled at `#319`: the phrase banned the BAND.** So everything below about ELITE / MID / DEPTH /
+> MEH, about four band slices as the DEFAULT collapsed rendering, and about the bottom strip that
+> rendering needs, describes a gauge that was refused and never built. It is kept, unedited,
+> because the measurement work in it is real and the reasoning is worth reading — but it is
+> HISTORY, and `DESIGN_RECORD.md` still cites §14 as binding.
+>
+> What was built instead, per `fableA/REVISION.md`: one tank per OFFENSIVE position, spanning the
+> position's whole priced pool, self-normalised to its own opening count, the starter line drawn
+> inside, **no bands** — vertical, 18px, on the left edge of each door rather than a separate
+> strip. Tanks are offense-only, permanently (`DESIGN_RECORD.md:120`).
+
+### ~~The bands~~ (HISTORY, see above) — MEMBERSHIP IS DERIVED, WIDTH IS NOT A CLAIM ABOUT IT
 
 Three cuts per position give four bands: **ELITE / MID / DEPTH / MEH**. Every player is assigned
 to one **once, at pool build**, from that league's own scoring settings applied through `bpa`.
@@ -1003,9 +1021,17 @@ Source: an owner prose description, a hand sketch, and four rounds of notes on t
 | **centre** | three recommendation cards across the top; depth rows beneath; the positional filter control along the bottom. |
 | **right sidebar** | Insight (eye) button and a settings button; the insight output panel; the chronological log; the pool gauges at the bottom. |
 
-**THE FORMAT IS ON SCREEN AT ALL TIMES, and that is not decoration.** §14's bands are derived
-from the league's own scoring, so the same position draws a different shape in a different
-league. A user comparing two leagues needs the rulebook visible to know why.
+**THE FORMAT IS ON SCREEN AT ALL TIMES, and that is not decoration.** The same position draws a
+different shape in a different league, because what the gauge spans -- the position's PRICED POOL
+-- is priced by the league's own scoring. A user comparing two leagues needs the rulebook visible
+to know why.
+
+> `#319b`: this used to give the reason as "§14's bands are derived from the league's own
+> scoring". `#319` struck the bands, and the sentence would then have justified a live rule with
+> a refused mechanism. **The conclusion survives the strike and the reason had to be restated,
+> not deleted** -- the tank is league-derived whether or not it is banded, so the rulebook still
+> has to be visible. A claim whose stated reason is withdrawn is not automatically false, and
+> treating it as false would have removed a rule the built surface still obeys.
 
 ### The three expansions, and what each one covers
 

@@ -432,7 +432,12 @@ def totals(records: Optional[list[CallRecord]] = None) -> dict:
     """Aggregate a set of records. Token totals are None unless EVERY record contributing to
     them reported its own -- a total assembled from some-known-some-unknown is a number that
     reads as authoritative and is not, which is the failure mode a cost display cannot afford.
-    `..._reported` counts say how much of the set was actually measurable."""
+    `..._reported` counts say how much of the set was actually measurable.
+
+    `#314`: that rule used to hold for the token totals and NOT for latency, which summed
+    whatever it had. There is now no latency TOTAL at all -- `latency_ms_slowest` is one real
+    call's measurement, so partial data makes it less representative but never fictional, and
+    `latency_reported` says how partial it was."""
     entries = list(_ledger) if records is None else records
     inputs = [e.input_tokens for e in entries]
     outputs = [e.output_tokens for e in entries]
@@ -447,8 +452,23 @@ def totals(records: Optional[list[CallRecord]] = None) -> dict:
         "input_tokens": sum(inputs) if entries and all(v is not None for v in inputs) else None,
         "output_tokens": sum(outputs) if entries and all(v is not None for v in outputs) else None,
         "usage_reported": sum(1 for e in entries if e.total_tokens is not None),
-        "latency_ms": (round(sum(e.latency_ms for e in entries if e.latency_ms is not None), 1)
-                       if any(e.latency_ms is not None for e in entries) else None),
+        # `#314`. THIS USED TO BE ONE KEY, `latency_ms`, HOLDING A SUM -- spelled exactly like
+        # `CallRecord.latency_ms`, the PER-CALL field, and guarded by `any()` where the two token
+        # fields above use `all()`. So it returned a total assembled from some-known-some-unknown,
+        # which this function's own docstring forbids eleven lines up, and it answered a question
+        # nobody asked: three calls at 100ms, 300ms and one unmeasured gave 400.0, and no call
+        # took 400ms.
+        #
+        # Replaced by named quantities rather than redefined, because a consumer written against
+        # the old key would have changed meaning without changing shape.
+        #
+        # NOT OFFERED, and the absence is the honest part: an end-to-end SPAN. The user waits on
+        # a whole debate rather than one chair's call (`DRAFT_ROOM_UI.md:176`), but `CallRecord`
+        # carries no start timestamp, so a span cannot be derived from what is stored -- and
+        # summing overlapping calls to fake one would be this same defect wearing a new key.
+        "latency_ms_slowest": (max(e.latency_ms for e in entries if e.latency_ms is not None)
+                               if any(e.latency_ms is not None for e in entries) else None),
+        "latency_reported": sum(1 for e in entries if e.latency_ms is not None),
     }
 
 

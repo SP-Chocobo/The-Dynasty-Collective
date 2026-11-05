@@ -17636,3 +17636,83 @@ Three defects, none found by re-reading:
 Plus two stale-prose instances (`design_system.py:97`, recorded at `#311` and never repaired; and
 `MAIN_PAGE.md`, the second home of the sentence `#322` fixed) and one bug of mine that reached
 origin and was corrected in the open (`#324`).
+
+---
+
+## `#314` `#319` `#319b` — A SUM UNDER A PER-CALL FIELD'S NAME, AND A STRUCK SPEC WITH THREE MORE HOMES
+
+### `#314` — `totals()` published a number no call took
+
+`provider_meter.totals()` returned `latency_ms` as `round(sum(...))` guarded by `any()`, sitting
+three lines below two token fields guarded by `all()`, and spelled **exactly like
+`CallRecord.latency_ms`, the PER-CALL field**. Three calls at 100ms, 300ms and one unmeasured
+returned **400.0**, and no call took 400ms. The function's own docstring forbids this eleven lines
+above: *"a number that reads as authoritative and is not, which is the failure mode a cost display
+cannot afford."*
+
+**Deleted, not redefined.** A consumer written against the old key would have changed meaning
+without changing shape — the most expensive kind of silent break. Nothing outside tests read it
+(verified by grep), so the key is gone and a stale consumer gets a `KeyError`. Replaced by:
+
+- `latency_ms_slowest` — ONE REAL CALL's measurement, so partial data makes it less
+  representative but never fictional
+- `latency_reported` — how partial it was
+
+**An end-to-end SPAN is deliberately not offered.** The user waits on a whole debate, not one
+chair's call (`DRAFT_ROOM_UI.md:176`), but `CallRecord` stores no start timestamp, so a span
+cannot be derived from what exists. Naming the gap is honest; summing overlapping calls to invent
+one would be this same defect wearing a new key.
+
+Mutation arms, run against in-memory recompiles of the module so the tree stayed clean:
+
+| arm | result |
+|---|---|
+| unmutated | silent |
+| restore the original `round(sum(...))` | **FIRES** (1 failure + 1 error) |
+| `max(...)` → `sum(...)` | **FIRES** |
+| `any(...)` → `all(...)` on the slowest | **FIRES** |
+
+### `#319` — §14's band specification struck, and `#319b` — it had three more homes
+
+Owner ruled the phrase *"without the meh grouping"* banned the BAND, not a variant. §14's band
+section is struck in place, kept unedited because its measurement work is real.
+
+**Then the same mechanism as everything else today.** Ten `.md` files cite §14. Rather than
+assume all ten were stale — §14 is a large section and only its band subsection was struck — the
+population was narrowed to citations that actually make a BAND claim. Five, and they needed four
+different treatments:
+
+| site | verdict |
+|---|---|
+| `fableA/RATIONALE.md:146` | **already correct** — it says "no bands" |
+| `POST_AUDIT_PLAN.md:10882` | register history, correct as history |
+| `DRAFT_ROOM_UI.md:423` (U22) | a RULED answer to a question that no longer arises → marked MOOT |
+| `DRAFT_ROOM_UI.md:1024` | **the conclusion survives, the reason does not** |
+| `fableB/RATIONALE.md:325` | a different variant's lineage — recorded, not unilaterally rewritten |
+
+**`:1024` is the one worth stating.** It read *"THE FORMAT IS ON SCREEN AT ALL TIMES... §14's
+bands are derived from the league's own scoring."* The bands were the stated REASON for a rule the
+built surface still obeys. Striking them would have left a live rule justified by a refused
+mechanism — but deleting the rule would have been worse. The tank is league-derived whether or not
+it is banded, because what it spans is the position's PRICED POOL. So the reason is restated and
+the conclusion kept.
+
+**A claim whose stated reason is withdrawn is not automatically false.** Treating it as false
+would have removed a rule the built surface obeys. That is the inverse of the error this register
+usually records, and it is worth naming because the reflex built up over today's items —
+"the sentence is stale, strike it" — would have produced exactly it.
+
+After `#319b`, the only `§14`+band matches left in `DRAFT_ROOM_UI.md` are the two markers
+themselves.
+
+### Verified
+
+```
+100 targeted tests across test_provider_meter_boundary, test_cost_envelope_boundary,
+  test_prose_names, test_doc_index: OK
+mutation arms 0 / 2 / 1 / 1 as tabled
+all seven ratchets PASS; floors 242 modules / 7612 assertions
+doc_index checked (not assumed) after editing a file DOC_INDEX classifies -- PASS, no regen needed
+```
+
+Neither item moves pixels, so neither needs a render gate run.

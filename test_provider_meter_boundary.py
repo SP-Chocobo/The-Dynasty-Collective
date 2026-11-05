@@ -183,6 +183,47 @@ class AbsenceIsAbsenceTests(unittest.TestCase):
         self.assertEqual(totals["usage_reported"], 1)
         self.assertEqual(totals["calls"], 2)
 
+    def test_no_totals_key_is_a_sum_over_a_partly_unknown_set(self):
+        """`#314`. The token totals already obeyed this: guarded by `all()`, they go None the
+        moment one call is unmeasured. `latency_ms` did NOT -- it was `round(sum(...))` guarded
+        by `any()`, sitting three lines below them, spelled exactly like `CallRecord.latency_ms`,
+        the PER-CALL field.
+
+        So three calls at 100ms, 300ms and one unmeasured returned 400.0, and NO CALL TOOK 400ms.
+        The function's own docstring forbids that eleven lines above: "a number that reads as
+        authoritative and is not, which is the failure mode a cost display cannot afford."
+
+        DELETED rather than redefined. A consumer written against the old key would have changed
+        meaning without changing shape -- the most expensive kind of silent break. Nothing outside
+        tests read it, so the key is simply gone and a stale consumer gets a KeyError.
+
+        `latency_ms_slowest` is ONE REAL CALL's measurement, so partial data makes it less
+        representative but never fictional, and `latency_reported` says how partial it was.
+        """
+        pm.record("claude", "quant", response=_Anthropic(tokens=(10, 20)), latency_ms=100.0)
+        pm.record("claude", "beat", response=_Anthropic(tokens=(5, 7)), latency_ms=300.0)
+        pm.record("claude", "chair", response=_Anthropic(tokens=(1, 1)))
+        totals = pm.totals()
+
+        self.assertNotIn("latency_ms", totals,
+                         "`latency_ms` named a SUM while CallRecord.latency_ms names one call's "
+                         "measurement; it was deleted so a stale consumer breaks loudly")
+        self.assertEqual(totals["latency_ms_slowest"], 300.0,
+                         "the slowest REPORTED call, not a total over a partial set")
+        self.assertEqual(totals["latency_reported"], 2, "two of three calls were measured")
+        self.assertEqual(totals["calls"], 3)
+        self.assertNotIn(400.0, totals.values(),
+                         "400.0 is 100+300 over a set that also contains an unmeasured call -- "
+                         "a number no call took, under a per-call field's name")
+
+    def test_the_slowest_is_absent_when_nothing_was_measured(self):
+        """`#314`'s absence arm. `latency_reported` must distinguish `0` (nothing measured) from
+        a measured zero, and the slowest of nothing is None, not 0.0 -- `#187`."""
+        pm.record("claude", "quant", response=_Anthropic(tokens=(10, 20)))
+        totals = pm.totals()
+        self.assertIsNone(totals["latency_ms_slowest"], "the slowest of nothing is not 0.0")
+        self.assertEqual(totals["latency_reported"], 0)
+
     def test_totals_sum_when_everything_is_known(self):
         pm.record("claude", "quant", response=_Anthropic(tokens=(10, 20)))
         pm.record("openai", "beat", response=_OpenAI(tokens=(5, 7)))

@@ -13480,16 +13480,17 @@
       }
     },
     "test_provider_meter_boundary.py": {
-      "test_methods": 42,
+      "test_methods": 44,
       "asserts": {
-        "assertEqual": 48,
+        "assertEqual": 52,
         "assertFalse": 2,
         "assertGreater": 2,
         "assertGreaterEqual": 1,
         "assertIn": 3,
         "assertIs": 1,
-        "assertIsNone": 9,
+        "assertIsNone": 10,
         "assertIsNotNone": 2,
+        "assertNotIn": 2,
         "assertRaises": 1,
         "assertTrue": 1
       },
@@ -13504,6 +13505,14 @@
         },
         "AbsenceIsAbsenceTests.test_missing_usage_is_none_not_zero": {
           "assertIsNone": 2
+        },
+        "AbsenceIsAbsenceTests.test_no_totals_key_is_a_sum_over_a_partly_unknown_set": {
+          "assertEqual": 3,
+          "assertNotIn": 2
+        },
+        "AbsenceIsAbsenceTests.test_the_slowest_is_absent_when_nothing_was_measured": {
+          "assertEqual": 1,
+          "assertIsNone": 1
         },
         "AbsenceIsAbsenceTests.test_totals_refuse_to_sum_a_partly_unknown_set": {
           "assertEqual": 2,
