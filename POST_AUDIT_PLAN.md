@@ -18274,3 +18274,80 @@ The suite budget's sixth dated point: **4364 tests, 1401.862s, 321.2ms/test** �
 the run before it at an identical test count, which is variance, not a repair. Budget from the
 total: **1508s** still, since that is the worst recent total and `close-register-item`'s rule is
 to budget from the worst rather than the newest.
+
+---
+
+## `#329` — THE OWNER'S THIRD COHERENCE POPULATION, MEASURED AND GUARDED
+
+`#310` agreed this one and deferred it: *"it needs the state vocabulary to have one home across
+Python and JS first."* `#311`'s entry then corrected that — the census can be written against the
+divergence as it stands, and the one home is the work, not the prerequisite. This builds it.
+
+The claim the population wants is **the same semantic state means the same thing on every
+surface**. Measured, that claim is **false today**, and this file says so with numbers rather
+than asserting it:
+
+| surface | declared in | words |
+|---|---|---|
+| draft room | `shared.js` `KIND` | `count` `measured` `not_charged` `not_priced` `unmeasured` `withheld` (6) |
+| front page | `build_front.stamp_kind` | `absent` `constructed` `measured` (3) |
+| engine | `basis_semantics` | `bounded_by_rule` `bounded_input` (2) |
+
+Three consequences, each a different defect:
+
+1. **The two user-facing surfaces share `measured`, and nothing else.** The room can say five
+   things the front page cannot express.
+2. **The front page can say `constructed`** — the word that marks a figure as FABRICATED FOR A
+   DEMO — **and the draft room has no way to say it at all.** That is `#187`'s most load-bearing
+   word missing from the product's reference surface.
+3. `basis_semantics` separates "more evidence would sharpen this" from "this is the limit of what
+   is knowable", and **neither user-facing surface can render either**. The engine computes an
+   epistemic distinction that never reaches a person.
+
+### Why a ratchet and not an invariant
+
+Registering this in `invariant_registry` today would mean registering a census against a claim the
+code contradicts. `boundary_census` is the model: it allows the reaches that exist and watches for
+one more while the work to get to zero proceeds. So this allows three vocabularies and fails on a
+fourth, and the number falling is the repair landing.
+
+### WHAT IT DELIBERATELY DOES NOT ASSERT, and the test that keeps it that way
+
+The divergence itself. `room_only` is 5 and `front_only` is 2 — and **a repair makes those fall**,
+so pinning today's numbers would make the repair fail the test. That is how a census stops being a
+ratchet and becomes a cast.
+
+`test_a_repair_does_not_fail_the_ratchet` exists to prevent exactly that: it simulates the draft
+room gaining `constructed`, asserts the shared set rises to two, and asserts the ratchet stays
+GREEN. A guard that fires on an improvement is the inverted instrument this register has already
+caught twice (`_python_rendered_figure_sites`, and `#311`'s own quiet-text rule).
+
+What it DOES guard, in two separate directions:
+
+- a **fourth** vocabulary — another home the words must be kept in step across by hand
+- the shared set **shrinking** below 1 — at zero, no semantic state would mean the same thing on
+  both user-facing surfaces, which is this population failing outright rather than partially
+
+### The words are DERIVED, and that was tested the hard way
+
+Each surface carries a reader, so the words come out of its own declaration. `shared.js` moved
+three times today (`#316`, `#320`, `#325`) and the readers still resolve — which is the whole
+argument for deriving rather than listing. Two tests cover the failure mode that matters: a moved
+declaration and an unreadable one both **raise**, rather than quietly reporting that a surface has
+no states. A census that under-reports its own population is `#298`'s and `#222`'s shape exactly —
+not a crash, a plausible report about something else.
+
+### What it does not claim
+
+It counts DECLARED vocabularies — a map or dispatch whose members are state words. A surface that
+spells one state word inline, with no map, is invisible here, exactly as
+`_surfaces_consulting_the_withholding_policy` cannot see a surface that never asks. That is what
+the per-surface rendering tests are for; this counts the sources of truth.
+
+### Verified
+
+```
+9 tests OK;  state_vocabulary --check PASS
+all EIGHT ratchets PASS (this is the eighth)
+floors 245 modules / 7667 assertions
+```

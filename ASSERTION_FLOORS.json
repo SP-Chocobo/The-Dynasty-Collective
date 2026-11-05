@@ -16583,6 +16583,54 @@
         "early_returns": 0
       }
     },
+    "test_state_vocabulary.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 5,
+        "assertGreaterEqual": 1,
+        "assertIn": 2,
+        "assertRaises": 2,
+        "assertTrue": 4
+      },
+      "by_method": {
+        "TheCensusRatchetsTests.test_a_fourth_vocabulary_fails": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "TheCensusRatchetsTests.test_a_repair_does_not_fail_the_ratchet": {
+          "assertEqual": 2
+        },
+        "TheCensusRatchetsTests.test_losing_the_one_shared_word_fails": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "TheCensusRatchetsTests.test_the_tree_as_it_stands_passes": {
+          "assertEqual": 1
+        },
+        "TheCliSaysWhatItMeasuredTests.test_check_fails_when_a_fourth_appears": {
+          "assertEqual": 1
+        },
+        "TheCliSaysWhatItMeasuredTests.test_check_passes_on_the_tree_as_it_stands": {
+          "assertEqual": 1
+        },
+        "TheReadersDeriveRatherThanRestateTests.test_a_declaration_found_but_unreadable_also_raises": {
+          "assertRaises": 1
+        },
+        "TheReadersDeriveRatherThanRestateTests.test_a_moved_declaration_raises_rather_than_reporting_an_empty_vocabulary": {
+          "assertRaises": 1
+        },
+        "TheReadersDeriveRatherThanRestateTests.test_every_vocabulary_yields_words_from_its_own_source": {
+          "assertGreaterEqual": 1,
+          "assertTrue": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_store_io.py": {
       "test_methods": 25,
       "asserts": {
