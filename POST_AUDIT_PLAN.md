@@ -18061,3 +18061,38 @@ for, and filing it silently under "palette" would have been the `#313` error in 
 The density numbers are committed with their cause named, because the alternative — leaving a
 measured artifact stale after running the instrument that writes it — is the defect `#323` exists
 to prevent, one directory over.
+
+---
+
+## CERTIFICATION — `#328` at `86ce27a`
+
+```
+Ran 4364 tests in 1508.019s
+FAILED (failures=1, skipped=2, expected failures=1)
+```
+
+| | `c59c9b7` | `86ce27a` |
+|---|---|---|
+| tests | 4360 | **4364** |
+| wall clock | 1484.602s | 1508.019s |
+| failures / skipped / expected | 1 / 2 / 1 | **1 / 2 / 1** |
+
+The **+4** is exactly `test_mockups_palette.py`. The sole failure is `#305`'s deliberate bound,
+verified by name.
+
+**No render gate run, checked rather than assumed:** `#328` touches no file under `ui_explore/`.
+The fableA gate photographs built PROTOTYPE pages; `mockups/` is a different surface with its own
+smoke instruments (`smoke.py`, `dock_smoke.py`, `panels_smoke.py`), all three of which ran clean,
+and `density.json` is its measured record.
+
+### Suite budget — five dated points across this session
+
+| commit | tests | seconds | ms/test |
+|---|---|---|---|
+| `#317` | 4345 | 1360.614 | 313.1 |
+| `486fc02` | 4349 | 1395.006 | 320.8 |
+| `584fa22` | 4360 | 1461.165 | 335.1 |
+| `c59c9b7` | 4360 | 1484.602 | 340.5 |
+| `86ce27a` | **4364** | **1508.019** | **345.6** |
+
+19 tests and 147 seconds added across the session. Budget from the total: **1508s**.
