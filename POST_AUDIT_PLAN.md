@@ -17916,3 +17916,44 @@ floors 243 modules / 7635 assertions
 prototype rebuilt: 8 pages moved by exactly one line each -- `--absent` #a79a83 -> #b0a28a,
   correct, because POSITION_PILL_ABSENT derives from `muted` and `muted` is one of the 27
 ```
+
+---
+
+## CERTIFICATION — `#312` at `c59c9b7`
+
+```
+Ran 4360 tests in 1484.602s
+FAILED (failures=1, skipped=2, expected failures=1)
+
+verdict                      PASS_WITH_KNOWN_FAILURES
+renders 396   ok 395   failed 1   failures_total 0
+expected_failures            ['m1_stack.html [HEAVY_IDP/late@390x664]']
+stale_expectations           []
+source_commit                c59c9b7de6c807075414206856a4b4757cee3594
+source_tree_clean            True      snapshot_verified_unchanged  True
+```
+
+| | `584fa22` | `c59c9b7` |
+|---|---|---|
+| tests | 4360 | **4360** |
+| wall clock | 1461.165s | 1484.602s |
+| failures / skipped / expected | 1 / 2 / 1 | **1 / 2 / 1** |
+| gate renders / ok / failed | 396 / 395 / 1 | **396 / 395 / 1** |
+
+**Moving 27 token values changed no test count and broke nothing in 4360 tests, and left every
+ruled render property intact.** The single suite failure is `#305`'s deliberate bound, verified by
+NAME on this run specifically because a palette change is exactly the sort of thing that could
+have broken a different test in the same position. The single gate failure is the named HEAVY_IDP
+8px scroll overrun, and `stale_expectations: []` confirms it is still that failure.
+
+### The suite budget, third dated point in one session
+
+| commit | tests | seconds | ms/test |
+|---|---|---|---|
+| `#317` | 4345 | 1360.614 | 313.1 |
+| `486fc02` | 4349 | 1395.006 | 320.8 |
+| `584fa22` | 4360 | 1461.165 | 335.1 |
+| `c59c9b7` | **4360** | **1484.602** | **340.5** |
+
+Same test count as the run before it and 23s slower, which is variance rather than growth. Budget
+from the total: **1485s**.
