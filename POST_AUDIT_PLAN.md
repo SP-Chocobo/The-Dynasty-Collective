@@ -18182,3 +18182,62 @@ same side of both bounds and the conclusion is identical, so the 0.2 is noted an
 **The suite has no standing failure for the first time in this register's recent history.** Every
 previous certification in this session reads `FAILED (failures=1 ...)` with this test named.
 `data_merger.py` is unchanged — the engine's behaviour was never in doubt, and `#305` said so.
+
+### `#305b` — AN ADVERSARIAL PASS FOUND A HOLE IN THE LIMB I HAD JUST PUSHED, AND A FUSE UNDER ALL THREE OPTIONS
+
+Commissioned an independent in-a-vacuum review of the `#305` fix. It found two things measurement
+then confirmed, and one thing measurement corrected.
+
+**THE HOLE.** Limb 3 was a bare ordering, `assertLess(thin_move, trusted_move)`. That is just
+monotonicity of a weighted mean. Measured against the mutants:
+
+| mutation | odds ratio | bare ordering |
+|---|---|---|
+| unmutated | 19.9649 | pass |
+| damping removed | 1.0000 | fails |
+| **divisor halved** | **9.9910** | **PASSES** |
+| divisor 1.0001 | 1.0000 | fails |
+
+The weight limbs do catch a halved divisor, so the TEST was never wrong — but the only
+**consequence** limb was blind to a weakening, which is half the space this class defends.
+
+**THE REPLACEMENT, and why it survives what killed the closed form.** Adding one component at
+percentile 100 and weight `w` to a mean of total weight `W` gives `(B*W + 100w)/(W + w)`, so
+`move / (gap - move) == w / W` exactly. Taken at both pools, `W` CANCELS and the ratio is
+`w_trusted / w_thin == MIN`. It recovers the pool factor from the SCORES while pinning only the
+SHAPE of the aggregation, not the weights — which is precisely the property the rejected
+closed-form candidate lacked. (It would need rewriting if the aggregator stopped being a weighted
+arithmetic mean over percentiles; said in the docstring so that is a decision, not a surprise.)
+
+The tolerance is `delta=1.0`, and it is **derived, not invented**: `score` is `round(score, 1)`,
+so each of three scores carries ±0.05; propagated through the ratio that is a band of
+**19.3558..20.6110**, worst deviation 0.6442. The nearest mutant sits 10.009 away, so any
+tolerance in (0.64, 10.0) separates law from mutant. 1.0 is the rounding bound rounded up.
+
+**THE FUSE — the finding that reframes the whole item.** `w_ds = 1.3 * recency(source_date)`, and
+the Draft Sharks baseline is a COMMITTED fixed-date file (`2026-08-19`) decaying against
+`date.today()`. It is 78 days old. So `thin_move = gap * w_b / (W + w_b)` **rises without bound as
+the repository ages**:
+
+```
+   age        W  thin_move   trusted   opt3 <3.5   opt1 <und/2   ODDS RATIO
+    78   0.5280     3.3908   36.4799        PASS          PASS      20.0000
+   108   0.3733     4.7072   42.9392        FAIL          PASS      20.0000
+   168   0.1867     8.8584   54.6119        FAIL          PASS      20.0000
+   443   0.0078    57.1883   73.8499        FAIL          FAIL      20.0000
+   808   0.0001    74.6571   74.9828        FAIL          FAIL      20.0000
+```
+
+**The old `3.0` was stale BY CONSTRUCTION, not mis-sized.** No value would have survived: option 3
+breaks in about 30 days, and option 1 — the one that looked derived — breaks in about a year. Only
+the ratio is invariant, because `W` cancels out of it. That is the measured answer to a question
+`#56` could only pose: the magnitude nobody could argue for did not exist, and the reason is that
+**no absolute score-delta can live in a test whose baseline decays against wall-clock time.**
+
+**WHERE THE REVIEW WAS WRONG.** It predicted the bare ordering would PASS under a divisor of
+1.0001. It FAILS — `round(score, 1)` collapses both moves onto the same reported value, so the
+strict `<` does not hold. The review reasoned on unrounded values. Recorded because an adversarial
+pass is evidence to check, not an oracle: four of its claims verified, one did not.
+
+Mutation arms after the change: unmutated silent; damping removed, divisor halved, sqrt softening
+and near-identity all FIRE. Ratchets all PASS, floors 244 modules / 7653 assertions.

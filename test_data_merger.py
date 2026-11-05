@@ -731,9 +731,39 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
                                    "TRUSTED_POOL_SIZE; the damping law has changed")
 
         # 3. THE END-TO-END CONSEQUENCE, which is what this class's docstring is about and what
-        #    option 2 (delete and lean on the sibling) would have lost. An ORDERING, so it needs
-        #    no magnitude: with damping removed the two weights are equal, both percentiles are
-        #    already 100, and the two moves collapse onto each other -- so `<` fails.
+        #    option 2 (delete and lean on the sibling) would have lost.
+        #
+        #    `#305b`: THIS WAS JUST `assertLess(thin_move, trusted_move)` AND THAT WAS A HOLE.
+        #    An adversarial review found it and measurement confirmed it: a bare ordering is
+        #    monotonicity of a weighted mean, so with the divisor merely HALVED the odds ratio
+        #    collapses to 9.99 and the ordering still PASSES. The weight limbs above do catch
+        #    that, but they are mechanism -- the only CONSEQUENCE limb was blind to a weakening,
+        #    which is the half of the space this class exists to defend.
+        #
+        #    Adding one component at percentile 100 and weight w to a mean of total weight W
+        #    gives (B*W + 100*w)/(W + w), so move / (gap - move) == w / W EXACTLY -- whatever W
+        #    is and however many sources compose it. Taking that at both pools recovers the pool
+        #    factor from the SCORES ALONE, with the other sources' weight mix CANCELLING. That
+        #    cancellation is why this survives the reweighting that disqualified the closed-form
+        #    candidate: it pins the SHAPE of the aggregation, not the weights. It would need
+        #    rewriting if the aggregator stopped being a weighted arithmetic mean over
+        #    percentiles (a median or trimmed mean would break the identity) -- stated here so
+        #    that is a decision rather than a surprise.
+        gap = 100.0 - baseline_only["score"]
+        thin_odds = thin_move / (gap - thin_move)
+        trusted_odds = trusted_move / (gap - trusted_move)
+
+        #    The tolerance is the ENGINE'S OWN REPORTING PRECISION, not a sample. `score` is
+        #    `round(score, 1)` (data_merger.py:2860), so each of the three scores carries +/-0.05;
+        #    propagated through the ratio that is a band of 19.3558..20.6110, worst deviation
+        #    0.6442. The nearest mutant (divisor halved) sits at 9.9910, i.e. 10.009 away, so any
+        #    tolerance in (0.64, 10.0) separates the law from it. 1.0 is the rounding bound
+        #    rounded up, and it is derived rather than invented -- which is the whole point of
+        #    this item.
+        self.assertAlmostEqual(
+            trusted_odds / thin_odds, float(MIN), delta=1.0,
+            msg=f"the thin/trusted move pair does not recover a 1/MIN pool factor: "
+                f"odds ratio {trusted_odds / thin_odds:.4f} against MIN={MIN}")
         self.assertLess(thin_move, trusted_move,
                         f"a thin pool moved the composite by {thin_move:.4f}, a trusted pool by "
                         f"{trusted_move:.4f}; damping is not reducing a thin source's influence")

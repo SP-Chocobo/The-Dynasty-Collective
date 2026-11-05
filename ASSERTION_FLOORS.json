@@ -5114,7 +5114,7 @@
     "test_data_merger.py": {
       "test_methods": 79,
       "asserts": {
-        "assertAlmostEqual": 7,
+        "assertAlmostEqual": 8,
         "assertEqual": 90,
         "assertFalse": 1,
         "assertGreater": 5,
@@ -5150,7 +5150,7 @@
           "assertEqual": 2
         },
         "CompositePoolSizeDampeningTests.test_a_thin_pool_is_damped_by_the_law_and_moves_the_score_less_than_a_trusted_one": {
-          "assertAlmostEqual": 2,
+          "assertAlmostEqual": 3,
           "assertEqual": 4,
           "assertLess": 1
         },
