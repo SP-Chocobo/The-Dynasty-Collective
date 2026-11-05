@@ -72,15 +72,50 @@ from typing import Optional
 #     as the instrument: it called gold-vs-tie a collision at 2.9 degrees apart, when tie is a
 #     near-neutral (saturation 0.28) that no one could mistake for the brand gold. dE accounts
 #     for lightness and chroma together and judged the old palette by the same rule.
+#
+# `#312`: THE 27 SHARED VALUES BELOW ARE THE PROTOTYPE'S. They used to be this file's own, and
+# `ui_explore/round2/fableA/_src/shared.css` carried a DIFFERENT value for every one of the 27
+# names they share -- `violet` dE 18.4 apart, `sky` 16.2, `emerald` 15.2. Owner ruled the
+# direction: design_system adopts the prototype's.
+#
+# WHY, measured rather than asserted. FOUR defects in one session traced to those two homes, and
+# not one of them looked like a palette problem when it was found:
+#   * `#321` -- `#318`'s reserved-hue rule bound on ONE of the three pills it was written for,
+#     because the breaches were measured against one home and the rule written over the other.
+#   * `#324` -- a WCAG comment whose contrast figures matched no ground this repo defines; the
+#     closest match was the OTHER palette's border token, so the basis was unrecoverable.
+#   * `#327` -- a divergence table `#320` had already made vacuous.
+#   * And one of mine: two different WR contrast numbers in consecutive commands, half an hour
+#     after writing the rule about exactly this.
+# `#321`'s two-home loop now ranges over one home twice, and stays as written: a rule that is
+# trivially true costs nothing, and deleting it would have to be undone the next time a value
+# is spelled twice.
+#
+# THE COST, RECORDED RATHER THAN HIDDEN. The prototype's palette is slightly TIGHTER on two
+# pairs: the eight-accent worst pair moves 25.8 (gold/amber) -> 23.9 (amber/block), and
+# `amber-b` vs `block-b` moves 23.8 -> 20.5. Nothing breaks -- the ACCENT tokens are
+# deliberately unfloored (`test_design_system.py:350` records that a floor there "would fail
+# five of the six existing pills") and all four ENFORCED rules still clear 25.0: reserved-hue
+# 27.85, injury 29.51, quiet-text 31.80, absence 33.61. The separation is genuinely smaller and
+# saying so is the point. The deciding argument: these are the values that ACTUALLY RENDER on
+# the surface being promoted, and this file's were the ones nobody had seen in a render.
+#
+# A THIRD HOME, found by this item rather than by the two-home analysis that preceded it:
+# `.streamlit/config.toml` spells seven hexes that must be TOKENS values verbatim. It cannot
+# import Python -- Streamlit reads it at startup -- so a literal file plus `#173`'s test is the
+# right mechanism, and that test is what caught it. Its seven colours were remapped by TOKEN
+# IDENTITY (bg -> bg, gold -> gold) rather than by eye.
+#
+# `status-ok` and `status-bad` keep this file's values: the prototype does not define them.
 TOKENS: dict[str, str] = {
-    "bg": "#15120b", "surface": "#1f1a11", "surface-2": "#1a1610",
-    "line": "#2c2517", "line-2": "#3f3522",
-    "ink": "#ece3d2", "muted": "#a79a83", "dim": "#776d5a",
-    "emerald": "#1a9e4b", "emerald-b": "#4ee08c",
-    "gold": "#d4a017", "gold-b": "#f7cf4a",
-    "violet": "#9457d4", "violet-b": "#c9a4f0",
-    "crimson": "#b0193c", "crimson-b": "#ff6b85",
-    "sky": "#1466c4", "sky-b": "#6fb2f7",
+    "bg": "#0c0a07", "surface": "#17130d", "surface-2": "#120f0a",
+    "line": "#2a2318", "line-2": "#443823",
+    "ink": "#f2ead9", "muted": "#b0a28a", "dim": "#897c61",
+    "emerald": "#0b8f57", "emerald-b": "#2fd08b",
+    "gold": "#c9961a", "gold-b": "#f5c93f",
+    "violet": "#6d3fd6", "violet-b": "#b593f5",
+    "crimson": "#a60f3a", "crimson-b": "#f2546e",
+    "sky": "#1356c9", "sky-b": "#56a0fa",
     # amber was NOT a token before the repaint: BADGE_ROLE_CSS's "notice" badge spelled out
     # #f59e0b/#fbbf24 by hand, a fourth color family with no entry here and nothing keeping it
     # honest. When it was added it was squeezed -- dE 25.8 from gold and 26.2 from block,
@@ -126,11 +161,11 @@ TOKENS: dict[str, str] = {
     # often. What is left is amber's squeeze against block (26.2), now the tightest pair in the
     # ladder. Re-deriving amber away from block, now that gold no longer hems it in on the
     # other side, is the remaining lever -- a palette decision, not settled here.
-    "amber": "#e07b0a", "amber-b": "#f9a828",
-    "cliff": "#0d9488", "cliff-b": "#3ad9c8",
-    "block": "#c2410c", "block-b": "#f9a05c",
-    "pure": "#e2d8c3",
-    "tie": "#7b7059", "tie-b": "#a99d84",
+    "amber": "#d4700a", "amber-b": "#f8a52a",
+    "cliff": "#07837a", "cliff-b": "#2fcfc0",
+    "block": "#b53a09", "block-b": "#f79a53",
+    "pure": "#efe5cd",
+    "tie": "#6f6550", "tie-b": "#a1947b",
     "status-ok": "#4ee08c", "status-bad": "#7b7059",
 }
 

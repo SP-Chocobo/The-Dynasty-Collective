@@ -9,11 +9,11 @@
 # allowed (owner's ruling recorded at TOKENS["amber"]); its label is painted in `bg` by
 # app.py's <style> block, since white on gold is 2.3:1 and bg on gold is 7.6:1.
 base = "dark"
-primaryColor = "#d4a017"
-backgroundColor = "#15120b"
-secondaryBackgroundColor = "#1f1a11"
-textColor = "#ece3d2"
-borderColor = "#3f3522"
+primaryColor = "#c9961a"
+backgroundColor = "#0c0a07"
+secondaryBackgroundColor = "#17130d"
+textColor = "#f2ead9"
+borderColor = "#443823"
 baseRadius = "medium"
 buttonRadius = "medium"
 showWidgetBorder = false
@@ -30,15 +30,15 @@ codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mo
 
 # The roster/free-agent tables get a header band and a border in the same warm tones as
 # every other surface, not Streamlit's light-theme grid lines.
-dataframeBorderColor = "#3f3522"
-dataframeHeaderBackgroundColor = "#1a1610"
+dataframeBorderColor = "#443823"
+dataframeHeaderBackgroundColor = "#120f0a"
 
 [theme.sidebar]
 # A touch darker than the main content so the sidebar reads as its own recessed panel rather
 # than a fused continuation of the page -- surface-2 is the recessed tone TOKENS already has.
-backgroundColor = "#1a1610"
-secondaryBackgroundColor = "#1f1a11"
-borderColor = "#2c2517"
+backgroundColor = "#120f0a"
+secondaryBackgroundColor = "#17130d"
+borderColor = "#2a2318"
 
 [browser]
 gatherUsageStats = false

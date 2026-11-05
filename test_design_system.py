@@ -69,16 +69,39 @@ def _contrast(a, b):
 
 
 class TokenRgbaTests(unittest.TestCase):
+    """`#312`: THESE USED TO SPELL THE TRIPLETS OUT. They read
+    `assertEqual(ds.token_rgba("emerald", 0.18), "rgba(26,158,75,0.18)")`, pinning emerald's
+    #1a9e4b and crimson's #b0193c by hand -- so they were a THIRD-ORDER home for the palette,
+    and `#312` broke all three by moving the tokens they had memorised.
+
+    Retyping the new numbers would have rebuilt the same trap. What is under test here is the
+    CONVERSION -- hex to an `rgba(...)` string with the alpha passed through -- and that is a
+    property of the function, not of whichever colour the token currently holds. So the expected
+    triplet is derived independently from the token's own hex: a second implementation of a pure
+    conversion is exactly what a test oracle is for, and it cannot go stale when a value moves.
+
+    The one thing deliberately still pinned is the FORMAT, because `rgba(26,158,75,0.18)` with no
+    spaces is what the CSS consumes."""
+
+    @staticmethod
+    def _triplet(name):
+        h = ds.TOKENS[name].lstrip("#")
+        return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
     def test_converts_a_known_token_to_its_exact_rgb_triplet(self):
-        # emerald = #1a9e4b -> (26, 158, 75), the same triplet BADGE_NECESSITY_CSS's
-        # "preferred" rule now derives rather than spelling out by hand.
-        self.assertEqual(ds.token_rgba("emerald", 0.18), "rgba(26,158,75,0.18)")
+        r, g, b = self._triplet("emerald")
+        self.assertEqual(ds.token_rgba("emerald", 0.18), f"rgba({r},{g},{b},0.18)")
 
     def test_a_different_token_produces_a_different_triplet(self):
-        self.assertEqual(ds.token_rgba("crimson", 0.18), "rgba(176,25,60,0.18)")
+        r, g, b = self._triplet("crimson")
+        self.assertEqual(ds.token_rgba("crimson", 0.18), f"rgba({r},{g},{b},0.18)")
+        self.assertNotEqual(ds.token_rgba("crimson", 0.18), ds.token_rgba("emerald", 0.18),
+                            "two different tokens must not render the same rgba string")
 
     def test_alpha_is_passed_through_unchanged(self):
-        self.assertEqual(ds.token_rgba("emerald", 0.5), "rgba(26,158,75,0.5)")
+        r, g, b = self._triplet("emerald")
+        self.assertEqual(ds.token_rgba("emerald", 0.5), f"rgba({r},{g},{b},0.5)")
+        self.assertEqual(ds.token_rgba("emerald", 1), f"rgba({r},{g},{b},1)")
 
     def test_unknown_token_name_raises_rather_than_silently_producing_black(self):
         with self.assertRaises(KeyError):

@@ -17826,3 +17826,93 @@ The suite grew by 15 tests and 100 seconds across today's work. Per-test cost ro
 inside the variance this repo has recorded before (`close-register-item` has it swinging 28% in
 both directions across single days). **Budget from the total, not the trend** — and the total to
 budget from is now **1461s**, not the 1344s that was current this morning.
+
+---
+
+## `#312` — ONE PALETTE AT LAST, AND IT TURNED OUT TO HAVE THREE HOMES
+
+`design_system.TOKENS` adopts the prototype's 27 shared values. Owner ruled the direction.
+Afterwards: **27 shared names, 0 disagreeing.** `status-ok` and `status-bad` keep this file's
+values because the prototype does not define them.
+
+### Why this stopped being cosmetic
+
+Four defects in one session traced to the two homes, and **not one looked like a palette problem
+when it was found**:
+
+| item | how it presented |
+|---|---|
+| `#321` | `#318`'s reserved-hue rule bound on ONE of three pills — breaches measured in one home, rule written over the other |
+| `#324` | a WCAG comment whose contrast figures matched no ground this repo defines; closest match was the OTHER palette's border token |
+| `#327` | a divergence table `#320` had already made vacuous |
+| (mine) | two different WR contrast numbers in consecutive commands, half an hour after writing the rule about exactly this |
+
+`#321`'s two-home loop now ranges over one home twice and **stays as written**: a trivially-true
+rule costs nothing, and deleting it would have to be undone the next time a value is spelled twice.
+
+### FINDING: THERE WAS A THIRD HOME
+
+`.streamlit/config.toml` spells seven hexes that must be `TOKENS` values verbatim. The two-home
+analysis that drove this whole thread never mentioned it. It cannot import Python — Streamlit
+reads it at startup — so a literal file plus `#173`'s test is the right mechanism, and **that
+test is what caught it**, failing 11 subtests the moment the tokens moved.
+
+Remapped by **token identity**, not by eye: each hex was resolved to the token name it held in
+the committed `design_system.py`, then rewritten to that same token's new value. `bg -> bg`,
+`gold -> gold`. Matching by appearance would have been the `#313` error again.
+
+### FINDING: MY PRE-FLIGHT WAS THE WRONG INSTRUMENT, TWICE
+
+I hand-wrote a pre-flight that simulated adoption against **the four rules I knew about**, and it
+reported all four PASS. Applying the change produced **14 failures**. The cheapest complete
+pre-flight — running `test_design_system` against a mutated palette — was available the whole time
+and would have found all of them. I checked the population I could remember instead of the one
+the suite already encodes.
+
+It also had a **method hole**. It reported "absence marker vs pills: 33.61 unchanged", because
+`POSITION_PILL_ABSENT = TOKENS["muted"]` is DERIVED AT IMPORT: simulating a new token table does
+not move a constant that was already resolved. The real post-adoption value is **31.80**. Both
+clear 25.0, so the conclusion survived — by luck, not by method.
+
+### Nearly corrected two sentences that were already correct
+
+`:70` says the repaint took the worst accent pair "16.4 -> 35.2", and today's worst pair is 25.8.
+That looked like a fourth stale-prose instance. It is not: `:86`, three lines below, records that
+amber was added LATER and "was squeezed -- dE 25.8 from gold and 26.2 from block, **against 35.2
+for every other pair**". Both sentences are past-tense and scoped to events, and read together
+they are exactly right. **A number that does not match today is not stale if it is scoped to an
+event** — the mirror of `#319b`'s lesson, and the reflex built up over this session would have
+"fixed" both.
+
+### THE COST, recorded rather than hidden
+
+| pair | before | after |
+|---|---|---|
+| eight-accent worst | 25.8 (gold/amber) | **23.9 (amber/block)** |
+| `amber-b` vs `block-b` | 23.8 | **20.5** |
+
+Nothing breaks: the ACCENT tokens are deliberately unfloored (`test_design_system.py:350` records
+that a floor there "would fail five of the six existing pills"), and all four enforced rules still
+clear 25.0 — reserved-hue **27.85**, injury **29.51**, quiet-text **31.80**, absence **31.80**.
+The separation is genuinely smaller. The deciding argument is that these are the values that
+**actually render on the surface being promoted**; this file's were the ones nobody had ever seen
+in a render.
+
+### `TokenRgbaTests` were a third-order palette home
+
+Three tests spelled triplets by hand — `assertEqual(ds.token_rgba("emerald", 0.18),
+"rgba(26,158,75,0.18)")` — so they had memorised emerald's and crimson's hexes and broke when
+those moved. Retyping the new numbers would have rebuilt the same trap. What is under test is the
+CONVERSION, which is a property of the function and not of whichever colour a token holds, so the
+expected triplet is now derived independently from the token's own hex. The FORMAT stays pinned,
+because `rgba(26,158,75,0.18)` with no spaces is what the CSS consumes.
+
+### Verified
+
+```
+27 shared names, 0 disagreeing; ds-only status-ok/status-bad kept
+135 targeted tests across 6 modules: OK      all seven ratchets PASS
+floors 243 modules / 7635 assertions
+prototype rebuilt: 8 pages moved by exactly one line each -- `--absent` #a79a83 -> #b0a28a,
+  correct, because POSITION_PILL_ABSENT derives from `muted` and `muted` is one of the 27
+```
