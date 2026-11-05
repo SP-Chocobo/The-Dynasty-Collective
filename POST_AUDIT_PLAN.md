@@ -18241,3 +18241,36 @@ pass is evidence to check, not an oracle: four of its claims verified, one did n
 
 Mutation arms after the change: unmutated silent; damping removed, divisor halved, sqrt softening
 and near-identity all FIRE. Ratchets all PASS, floors 244 modules / 7653 assertions.
+
+---
+
+## CERTIFICATION — `#305` / `#305b` at `ef6a07d`: **THE SUITE IS GREEN**
+
+```
+Ran 4364 tests in 1401.862s
+OK (skipped=2, expected failures=1)
+```
+
+**`OK`, not `FAILED`.** Every certification earlier in this session reads
+`FAILED (failures=1, skipped=2, expected failures=1)` with
+`test_single_finding_barely_moves_the_composite` named. There is no standing failure left.
+
+| | `86ce27a` | `ef6a07d` |
+|---|---|---|
+| tests | 4364 | **4364** |
+| wall clock | 1508.019s | 1401.862s |
+| verdict | FAILED (failures=1) | **OK** |
+| skipped / expected failures | 2 / 1 | 2 / 1 |
+
+Test count is unchanged because the failing test was REPLACED, not removed: one test out, one
+test in. `data_merger.py` was never touched.
+
+**What this is worth beyond the green.** A suite with one permanently-red test trains everyone
+reading it to parse past a failure, and the register shows that happening — six certifications in
+this session each had to name the failure and argue it was the expected one. Every future failure
+is now a signal with nothing to compare it against.
+
+The suite budget's sixth dated point: **4364 tests, 1401.862s, 321.2ms/test** — 106s faster than
+the run before it at an identical test count, which is variance, not a repair. Budget from the
+total: **1508s** still, since that is the worst recent total and `close-register-item`'s rule is
+to budget from the worst rather than the newest.
