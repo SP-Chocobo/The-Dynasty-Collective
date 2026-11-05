@@ -29,20 +29,33 @@
   --pure:#efe5cd; --tie:#6f6550; --tie-b:#a1947b;
   /* the starter-band hatch. one home: it was a hardcoded rgba() of a gold that no longer exists. */
   --hatch:rgba(245,201,63,.70);
-  /*__PILLS__*/  /* `#320`: emitted from design_system.position_pill_css_block() at build
-     time. This line used to spell ten hexes of its own, and eight of them had drifted into
-     hues reserved for a STATE -- see that function's docstring. A pill hex typed here again
-     is a second palette, which is the condition that made two independent measurement passes
-     cross between them without either noticing. */
-  /* WCAG AA on the position palette. Six of these ten already cleared 4.5:1 comfortably
-     (WR 4.68, TE 5.36, DL 5.38, RB 6.07, LB 6.97, DB 8.05); QB 4.08, K 4.14 and DEF/IDP
-     3.17 did not, failing both as text and as the ground under a pill's dark label.
-     Raised to the floor with hue and saturation held, so each stays the same colour and
-     the three outliers join the majority rather than the palette being restyled.
-     DEF and IDP share a hex deliberately and still do. */
+  /* WCAG AA on the position palette. `#324` REPLACED THE FIGURES THAT USED TO BE HERE and the
+     claim that closed them, because `#311` and `#318` had made both false and nothing noticed.
+     The old sentence ended "DEF and IDP share a hex deliberately and still do": `#311` gave IDP
+     its own, and they are now --def and --idp, dE 89.8 apart.
+     The old figures (WR 4.68, TE 5.36, DL 5.38, RB 6.07, LB 6.97, DB 8.05, QB 4.08, K 4.14,
+     DEF/IDP 3.17) are NOT re-derivable and are not corrected in place. They do not match any
+     ground this file defines, even for the pills that never moved -- WR's hex is unchanged and
+     measures 7.17 against --surface here, not 4.68. The closest match found anywhere was
+     design_system.TOKENS["line-2"] at 4.67, i.e. the OTHER palette's border token. So the basis
+     was never written down, and guessing one to make the numbers fit would be a reconstruction
+     standing in for a measurement.
+     MEASURED, WITH THE GROUND NAMED: each pill as TEXT against --surface #17130d, the lightest
+     ground it is drawn on and therefore the binding case, which is the same basis --dim was
+     solved against at :24. QB 4.97, TE 6.17, RB 6.25, LB 6.45, IDP 7.11, WR 7.17, DEF 7.46,
+     K 10.76, DB 11.18, DL 11.81. All ten clear 4.5:1; QB is the binding case at 4.97. The
+     absence marker measures 6.69 and is quiet by hue, not by contrast. */
   --f-d:"Cinzel",Georgia,serif; --f-s:"Segoe UI",system-ui,sans-serif;
   --f-m:"JetBrains Mono","DejaVu Sans Mono",monospace; --r:2px; color-scheme:dark;
 }
+/*__PILLS__*/
+/* `#320`/`#324`: the ten position pills and the absence marker, emitted at build time by
+   design_system.position_pill_css_block(). OUTSIDE the :root block above, deliberately: that
+   function returns a complete `:root { ... }` of its own, exactly as root_css_block() does, and
+   `#320` substituted it INSIDE the block above -- producing a :root nested in a :root, which
+   parses but never applies. The pills were present in every built page and dead in all of them,
+   and three text-matching checks confirmed the hexes were there. A pill hex typed into this file
+   again is a second palette; a pill hex typed INSIDE the block above is a silent one. */
 *{box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-s);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}

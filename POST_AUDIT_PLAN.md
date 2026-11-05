@@ -17336,3 +17336,110 @@ _palette.py position-pill table                 : 10 rows at 0.00 dE
 - **`posOf` duplicated in `m1_stack`, `m2_sheet`, `m3_hero`** — a `#126` violation sitting under
   `#316`. Lifting it is a refactor, not a bug fix.
 - **Whether `DRAFT_ROOM_UI.md:50` reaches the mock draft button** — still the owner's, from `#317`.
+
+---
+
+## `#324` — `#320` SHIPPED THE PILLS INTO DEAD CSS, AND `#323`'s TEST COULD NOT TELL
+
+**This is a correction to `b88dbdd`, pushed one commit earlier.** The repair in `#320` was
+structurally wrong, every check run against it was the wrong KIND of check, and the test added in
+the same batch to prevent exactly this class of failure could not see it.
+
+### The defect
+
+`position_pill_css_block()` emits a complete `:root { ... }` block — correctly, and symmetrically
+with `root_css_block()`, which emits one too and is substituted at TOP LEVEL into `<style>` at
+`app.py:139`. The `/*__PILLS__*/` marker was placed INSIDE `shared.css`'s existing `:root` block
+(it opens at `:17`, closes at `:45`). The build therefore produced a `:root` nested in a `:root`:
+
+```
+  --hatch:rgba(245,201,63,.70);
+  :root {                          <- line 37 of the built page
+  --qb: #2a81fc;
+```
+
+Nested that way the declarations never reach the root element.
+`getComputedStyle(document.documentElement).getPropertyValue('--qb')` returned the **empty
+string** on every page checked. **The prototype rendered with the entire position palette dead
+from `#320` until this item** — which also means the "0 reserved-hue breaches" measured in the
+previous entry was measuring a page that was drawing no pills at all.
+
+### WHY EVERY CHECK PASSED: THEY WERE ALL TEXT MATCHES
+
+Three independent checks said the palette was correct. All three asked the same wrong question:
+
+| check | what it did | what it answered |
+|---|---|---|
+| post-build verification | grepped `--qb: #2a81fc` out of the HTML | the hex is PRESENT |
+| `_palette.py` (after `#323`) | regex over the built page, dE vs `design_system` | the hex is PRESENT |
+| `#323`'s new test | `re.findall` over each built page, compare hexes | the hex is PRESENT |
+
+The question that mattered was **is the hex IN EFFECT**. A declaration can be present and dead,
+and nothing in this repo could tell the two apart. `#323` was written specifically to catch a
+stale build and still shipped a blind spot, because I reached for the same instrument that had
+just failed me rather than asking what the instrument could not see.
+
+### The arm that was missing
+
+`#324` adds `test_the_pills_are_IN_EFFECT_on_the_root_element_not_merely_present`: it EXECUTES
+each built page in Chromium and reads the custom properties off `document.documentElement`.
+Proven against pages carrying the restored defect:
+
+| arm | against defective pages |
+|---|---|
+| in-effect (executes the page) | **FIRES** |
+| text match (`#323`, as shipped) | **SILENT** |
+
+The text arm is kept. It localises a failure to a file and covers containers with no browser; it
+is simply not sufficient alone. Both now live in the same class.
+
+### SECOND FINDING: SIX LINES BELOW MY OWN EDIT
+
+`shared.css:37-42` carried a WCAG comment ending **"DEF and IDP share a hex deliberately and still
+do."** `#311` gave IDP its own hex; they are `#ef7fc0` and `#99a851`, dE 89.8 apart. The contrast
+figures beside it describe the pre-`#318` palette.
+
+**Those figures were not corrected in place, because their basis is unrecoverable.** They match no
+ground this file defines — even for pills that never moved. WR's hex is unchanged and measures
+**7.17** against the prototype's own `--surface`; the comment claims **4.68**. The closest match
+found anywhere was `design_system.TOKENS["line-2"]` at 4.67 — the OTHER palette's border token.
+Guessing a basis to make the numbers fit would be a reconstruction standing in for a measurement,
+which is the thing `#222` cost two withdrawn findings to learn. So the old figures are quoted as
+superseded, and replaced with figures whose ground is named in the sentence:
+
+```
+each pill as TEXT against --surface #17130d, the lightest ground it is drawn on
+and therefore the binding case (the same basis --dim was solved against at :24):
+  QB 4.97, TE 6.17, RB 6.25, LB 6.45, IDP 7.11, WR 7.17, DEF 7.46, K 10.76, DB 11.18, DL 11.81
+  all ten clear 4.5:1; QB is the binding case at 4.97
+  the absence marker measures 6.69 and is quiet by hue, not by contrast
+```
+
+I edited line 32 of that file and did not read line 37. **Fourth instance of the mechanism.**
+
+### A measurement error caught mid-measurement, worth recording
+
+While computing those figures I produced two different contrast values for WR (7.17 and 6.70) in
+consecutive commands. The first read `--surface` from `shared.css`; the second read it from
+`design_system.TOKENS`. That is `#321`'s two-homes finding biting inside my own instrument,
+thirty minutes after I wrote the rule for it — which is the strongest argument available that
+`#312` is not cosmetic. The published figures read their grounds from `shared.css`, stated.
+
+### Verified
+
+```
+emitted :root now at top level (line 56, after the outer block closes at 55)
+all 11 properties resolve on document.documentElement, on every page: qb #2a81fc
+  rb #0ca89c  wr #4aa8ef  te #ff6042  k #fab87e  def #ef7fc0  dl #4cec4c
+  lb #ff45ed  db #6ad8f0  idp #99a851  absent #a79a83
+TheBuiltPagesWearDesignSystemsPillsTests: 2 tests, OK
+```
+
+### Open, found by LOOKING at the render and not yet measured
+
+The small initials badges (`TE` Travis Etienne, `LB` Luther Burden, `BP` Brock Purdy) carry
+coloured underlines, and Etienne is an RB whose badge does not read teal. Whether those badges are
+coloured by the player's POSITION or by something else — the initials themselves would be a
+spectacular bug, since "TE" and "LB" are both initials AND positions — is not yet established. A
+first probe guessed at class names and matched nothing; the selectors must come from the source.
+Recorded as open rather than guessed at.

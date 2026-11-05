@@ -776,6 +776,62 @@ class TheBuiltPagesWearDesignSystemsPillsTests(unittest.TestCase):
         return [p for p in sorted(pathlib.Path(_FABLE).glob("*.html"))
                 if p.name not in _FROZEN_CARRIERS]
 
+    @_EXECUTABLE
+    def test_the_pills_are_IN_EFFECT_on_the_root_element_not_merely_present(self):
+        """`#324`. The arm `#323` was missing, and its absence let a real defect reach origin.
+
+        `#320` substituted a complete `:root { ... }` block INSIDE `shared.css`'s existing `:root`
+        block, producing a :root nested in a :root. That parses and never applies. Every built
+        page carried `--qb: #2a81fc` in its text and resolved it to the EMPTY STRING on the root
+        element, so the whole position palette was dead on every prototype surface.
+
+        Three separate checks said it was fine. All three were text matches -- including
+        `#323`'s own, directly above. "The hex is present" and "the hex is in effect" are
+        different questions, and until this test nothing here could tell them apart.
+
+        This executes the page and reads the properties off `document.documentElement`, which is
+        the only way to answer the second question. It fails on nested CSS, on a stale build, on
+        a pasted hex, and on a marker that was never substituted.
+        """
+        from playwright.sync_api import sync_playwright
+
+        expected = {f"--{p.lower()}": v.lower()
+                    for p, v in design_system.POSITION_PILL_TOKENS.items()}
+        expected["--absent"] = design_system.POSITION_PILL_ABSENT.lower()
+        pages = self._built_pages()
+        self.assertGreaterEqual(len(pages), 5, f"only {len(pages)} built pages to execute")
+
+        dead, wrong, checked = [], [], 0
+        with sync_playwright() as p:
+            browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+            page = browser.new_page()
+            for built in pages:
+                page.goto(built.resolve().as_uri())
+                got = page.evaluate(
+                    "names => { const cs = getComputedStyle(document.documentElement);"
+                    " const o = {}; for (const n of names) o[n] = cs.getPropertyValue(n).trim();"
+                    " return o; }", sorted(expected))
+                if not any(got.values()):
+                    # A page that defines no pill at all in TEXT either is not this rule's
+                    # business; one whose text has them but resolves none is the nested-CSS bug.
+                    if not any(f"{n}:" in built.read_text(encoding="utf-8") for n in expected):
+                        continue
+                    dead.append(built.name)
+                    continue
+                checked += 1
+                for name, want in expected.items():
+                    if got.get(name, "") == "":
+                        dead.append(f"{built.name}:{name}")
+                    elif got[name].lower() != want:
+                        wrong.append(f"{built.name}:{name}={got[name]} want {want}")
+            browser.close()
+
+        self.assertEqual(dead, [], f"these pill properties are DECLARED IN THE TEXT and resolve "
+                                   f"to nothing on the root element -- the declaration is present "
+                                   f"and dead, which is what a nested :root does: {dead[:12]}")
+        self.assertEqual(wrong, [], f"resolved pill values disagree with design_system: {wrong[:12]}")
+        self.assertGreaterEqual(checked, 5, f"only {checked} pages resolved any pill at all")
+
     def test_every_built_page_carries_design_systems_pills_exactly(self):
         pages = self._built_pages()
         # Non-vacuity: a glob that matches nothing turns this into a rule about no pages at all,

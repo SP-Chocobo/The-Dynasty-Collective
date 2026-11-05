@@ -247,13 +247,13 @@
       }
     },
     "test_216_room_integrity.py": {
-      "test_methods": 27,
+      "test_methods": 28,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 33,
+        "assertEqual": 35,
         "assertFalse": 1,
         "assertGreater": 3,
-        "assertGreaterEqual": 6,
+        "assertGreaterEqual": 8,
         "assertIn": 16,
         "assertIsNone": 1,
         "assertIsNotNone": 1,
@@ -304,6 +304,10 @@
         "TheBuiltPagesWearDesignSystemsPillsTests.test_every_built_page_carries_design_systems_pills_exactly": {
           "assertEqual": 1,
           "assertGreaterEqual": 3
+        },
+        "TheBuiltPagesWearDesignSystemsPillsTests.test_the_pills_are_IN_EFFECT_on_the_root_element_not_merely_present": {
+          "assertEqual": 2,
+          "assertGreaterEqual": 2
         },
         "TheCostStripSaysWhatItsArithmeticDoesTests.test_both_picks_is_the_difference_of_the_two_cells_beside_it": {
           "assertAlmostEqual": 1,
