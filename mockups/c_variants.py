@@ -13,6 +13,10 @@ a number.
 
 from __future__ import annotations
 
+# `#328`: the position palette is DERIVED here now. This module used to spell a FACET dict of
+# its own in source, which no rebuild could repair -- see common.facet_js() for what was in it.
+import common
+
 TIER_JS = r"""
 function tier(c, i) {
   if (i === 0) return "decide";
@@ -391,7 +395,10 @@ body { background: radial-gradient(90% 60% at 50% -10%, #221c10, var(--bg) 60%);
 """
 C4_BODY = r"""<div class="orb"><div class="h display" id="clock"></div><div class="m" id="meta"></div></div><div class="gems" id="gems"></div>"""
 C4_JS = TIER_JS + r"""
-const FACET = { QB: "#8f86f0", RB: "#17bfa0", WR: "#4aa8ef", TE: "#e8683f", K: "#a09480", DEF: "#ef7fc0", DL: "#a09480", LB: "#a09480", DB: "#a09480" };
+// `#328`: emitted from common.facet_js() -> design_system. A hex typed here again is a
+// second palette, which is what this line was: four superseded values, no IDP, and
+// DL/LB/DB all on the old K neutral.
+const FACET = __FACET__;
 function render() {
   document.getElementById("clock").textContent = PAYLOAD.pickHeader;
   document.getElementById("meta").textContent = `${PAYLOAD.league} · ${PAYLOAD.intervening} picks to your turn · ${coverage(candidates)} · ${PAYLOAD.valueUnitShort} = ${PAYLOAD.valueUnit}, not fantasy points`;
@@ -400,7 +407,7 @@ function render() {
     const t = tier(c, i);
     if (t === "tail") { tail.push(c); return ""; }
     const rs = reasons(c, i === 0);
-    return `<div class="gem ${t}${i === 0 ? " leader" : ""}" style="--facet:${FACET[c.pos] || FACET.K}" tabindex="0" data-i="${i}">
+    return `<div class="gem ${t}${i === 0 ? " leader" : ""}" style="--facet:${FACET[c.pos] || FACET.ABSENT}" tabindex="0" data-i="${i}">
       <div class="big ${num(c.tav) && c.tav < 0 ? "neg" : ""}" title="Acquisition value in ${PAYLOAD.valueUnit}">${num(c.tav) ? c.tav.toFixed(0) : `<span class="absent" title="Unpriced: no replacement level at his position. An absence, not a zero.">${ABSENT}</span>`}<span class="unit">acq · ${PAYLOAD.valueUnitShort}</span></div>
       <div class="name display"><span class="rank">${i + 1}</span>${c.name} ${pillPos(c)}${fixtureTag(c)}</div>
       <div class="nec">${c.necessity}${c.fillsRequiredSlot ? " · fills required slot" : ""}</div>
@@ -409,7 +416,7 @@ function render() {
       <div class="strip"><span>uv <b>${fmt(c.uv, 0)}</b> ${PAYLOAD.valueUnitShort}</span><span>proj <b>${fmt(c.proj, 0)}</b> season pts</span><span>survive <b>${pct(c.survival)}</b></span>${c.waitNote ? `<span title="${esc(c.waitNote.title)}">wait <b>${c.waitNote.label}</b></span>` : (horizon(c) ? `<span title="${esc(horizon(c).text)}">wait <b><span class="absent">${ABSENT}</span></b> ${horizon(c).word}</span>` : "")}<span>denial <b>${fmt(c.denial_value, 1)}</b></span></div>
     </div>`;
   }).join("");
-  const trayHtml = tail.length ? `<div class="tray"><span class="label">the tray · ${tail.length} low-urgency stones · names and values only</span>${tail.map(c => `<span class="stone" style="--facet:${FACET[c.pos] || FACET.K}" title="${c.necessity}">${c.name} ${pillPos(c)} <span class="v ${num(c.tav) && c.tav < 0 ? "neg" : ""}">${num(c.tav) ? c.tav.toFixed(0) : `<span class="absent">${ABSENT}</span>`}</span>${fixtureTag(c)}</span>`).join("")}</div>` : "";
+  const trayHtml = tail.length ? `<div class="tray"><span class="label">the tray · ${tail.length} low-urgency stones · names and values only</span>${tail.map(c => `<span class="stone" style="--facet:${FACET[c.pos] || FACET.ABSENT}" title="${c.necessity}">${c.name} ${pillPos(c)} <span class="v ${num(c.tav) && c.tav < 0 ? "neg" : ""}">${num(c.tav) ? c.tav.toFixed(0) : `<span class="absent">${ABSENT}</span>`}</span>${fixtureTag(c)}</span>`).join("")}</div>` : "";
   document.getElementById("gems").innerHTML = html + trayHtml;
   document.querySelectorAll(".gem").forEach(g => {
     g.addEventListener("mousemove", e => {
@@ -420,7 +427,7 @@ function render() {
     g.addEventListener("mouseleave", () => { g.style.transform = ""; });
   });
 }
-"""
+""".replace("__FACET__", common.facet_js())
 
 # ---------------------------------------------------------------------------------------
 # C5 CLOCK -- time leads. The picks between now and your next turn are a strip across the

@@ -9,7 +9,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 255
+  "boardTop": 256
  },
  {
   "file": "synthesis_h1_dense.html",
@@ -20,8 +20,8 @@
   "rawRowPx": 65.5,
   "elementsPerCandidate": 9.5,
   "elementsLeader": 9,
-  "pageHeight": 1591,
-  "boardTop": 255
+  "pageHeight": 1592,
+  "boardTop": 256
  },
  {
   "file": "synthesis_h2_split.html",
@@ -33,7 +33,7 @@
   "elementsPerCandidate": 13.1,
   "elementsLeader": 12,
   "pageHeight": 1400,
-  "boardTop": 235
+  "boardTop": 236
  },
  {
   "file": "synthesis_h2_split.html",
@@ -44,8 +44,8 @@
   "rawRowPx": 79.5,
   "elementsPerCandidate": 11.1,
   "elementsLeader": 12,
-  "pageHeight": 2128,
-  "boardTop": 235
+  "pageHeight": 2129,
+  "boardTop": 236
  },
  {
   "file": "synthesis_h3_deck.html",
@@ -57,7 +57,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 255
+  "boardTop": 236
  },
  {
   "file": "synthesis_h3_deck.html",
@@ -68,20 +68,20 @@
   "rawRowPx": 32.3,
   "elementsPerCandidate": 9.5,
   "elementsLeader": 9,
-  "pageHeight": 1436,
-  "boardTop": 255
+  "pageHeight": 1417,
+  "boardTop": 236
  },
  {
   "file": "synthesis_r1_2across.html",
   "population": "fixture-14",
   "candidates": 13,
   "readable": 13,
-  "pxPerCandidate": 79.4,
-  "rawRowPx": 91.9,
+  "pxPerCandidate": 78,
+  "rawRowPx": 90.6,
   "elementsPerCandidate": 12.9,
   "elementsLeader": 22,
   "pageHeight": 1400,
-  "boardTop": 224
+  "boardTop": 225
  },
  {
   "file": "synthesis_r1_2across.html",
@@ -92,44 +92,44 @@
   "rawRowPx": 62.5,
   "elementsPerCandidate": 10.5,
   "elementsLeader": 22,
-  "pageHeight": 2235,
-  "boardTop": 224
+  "pageHeight": 2237,
+  "boardTop": 225
  },
  {
   "file": "synthesis_r2_3across.html",
   "population": "fixture-14",
   "candidates": 13,
   "readable": 13,
-  "pxPerCandidate": 73.3,
-  "rawRowPx": 114.6,
+  "pxPerCandidate": 72.1,
+  "rawRowPx": 113.7,
   "elementsPerCandidate": 13.6,
   "elementsLeader": 22,
   "pageHeight": 1400,
-  "boardTop": 224
+  "boardTop": 225
  },
  {
   "file": "synthesis_r2_3across.html",
   "population": "real-33",
   "candidates": 33,
   "readable": 18,
-  "pxPerCandidate": 56.8,
-  "rawRowPx": 71.7,
+  "pxPerCandidate": 56.9,
+  "rawRowPx": 71.9,
   "elementsPerCandidate": 10.8,
   "elementsLeader": 22,
-  "pageHeight": 2162,
-  "boardTop": 224
+  "pageHeight": 2165,
+  "boardTop": 225
  },
  {
   "file": "synthesis_r3_lanes.html",
   "population": "fixture-14",
   "candidates": 13,
   "readable": 13,
-  "pxPerCandidate": 79.5,
-  "rawRowPx": 118.2,
+  "pxPerCandidate": 79.6,
+  "rawRowPx": 118.7,
   "elementsPerCandidate": 12.7,
   "elementsLeader": 22,
   "pageHeight": 1400,
-  "boardTop": 224
+  "boardTop": 225
  },
  {
   "file": "synthesis_r3_lanes.html",
@@ -137,11 +137,11 @@
   "candidates": 33,
   "readable": 21,
   "pxPerCandidate": 49.6,
-  "rawRowPx": 69.9,
+  "rawRowPx": 70.1,
   "elementsPerCandidate": 10,
   "elementsLeader": 22,
-  "pageHeight": 1923,
-  "boardTop": 224
+  "pageHeight": 1927,
+  "boardTop": 225
  },
  {
   "file": "synthesis_s1_verdict.html",
@@ -153,7 +153,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 428
+  "boardTop": 430
  },
  {
   "file": "synthesis_s1_verdict.html",
@@ -164,8 +164,8 @@
   "rawRowPx": 47.5,
   "elementsPerCandidate": 9.5,
   "elementsLeader": 9,
-  "pageHeight": 2237,
-  "boardTop": 428
+  "pageHeight": 2238,
+  "boardTop": 430
  },
  {
   "file": "synthesis_s2_ledger.html",
@@ -177,7 +177,7 @@
   "elementsPerCandidate": 10.2,
   "elementsLeader": 9,
   "pageHeight": 1400,
-  "boardTop": 300
+  "boardTop": 301
  },
  {
   "file": "synthesis_s2_ledger.html",
@@ -188,7 +188,7 @@
   "rawRowPx": 47.5,
   "elementsPerCandidate": 9.5,
   "elementsLeader": 9,
-  "pageHeight": 2109,
-  "boardTop": 300
+  "pageHeight": 2110,
+  "boardTop": 301
  }
 ]

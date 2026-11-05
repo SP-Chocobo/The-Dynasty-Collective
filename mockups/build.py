@@ -86,7 +86,21 @@ def index_html() -> str:
 
 
 def main() -> int:
-    for slug, title, tagline, asserts, sacrifices, css, body, js in r_variants.VARIANTS + s_variants.VARIANTS:
+    # `#328`: c_variants and b_variants ARE emitted now. This loop ran over
+    # `r_variants.VARIANTS + s_variants.VARIANTS` only, while `index_html()` above puts
+    # `cards(c_variants.VARIANTS)` and `cards(b_variants.VARIANTS)` straight into the index --
+    # so the index advertised NINE pages the build could not regenerate, with no recorded reason
+    # for the asymmetry and no other module writing them.
+    #
+    # It was invisible because a page that is never rebuilt never fails; it just quietly stops
+    # being what its source says it is. Measured when found: all nine still carried the
+    # pre-`#311`/`#318` pills AND the pre-`#312` tokens, ~117 lines behind their own generator.
+    # Regenerating them is pure catch-up -- the entire diff is the token block, the derived badge
+    # CSS and the spec card `common.page()` builds, with nothing hand-authored in it (checked by
+    # generating to a scratch directory and diffing before changing this line).
+    for slug, title, tagline, asserts, sacrifices, css, body, js in (
+            r_variants.VARIANTS + s_variants.VARIANTS
+            + c_variants.VARIANTS + b_variants.VARIANTS):
         (HERE / f"{slug}.html").write_text(
             common.page(title, tagline, asserts, sacrifices, css, body, js, width="1180px"))
         print("wrote", slug)

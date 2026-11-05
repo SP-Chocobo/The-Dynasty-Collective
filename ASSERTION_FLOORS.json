@@ -10781,6 +10781,40 @@
         "early_returns": 0
       }
     },
+    "test_mockups_palette.py": {
+      "test_methods": 4,
+      "asserts": {
+        "assertEqual": 2,
+        "assertGreaterEqual": 3,
+        "assertIn": 4,
+        "assertNotIn": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "TheMockupsWearDesignSystemsPaletteTests.test_a_page_that_declares_FACET_declares_the_derived_one": {
+          "assertGreaterEqual": 1,
+          "assertIn": 3
+        },
+        "TheMockupsWearDesignSystemsPaletteTests.test_every_built_page_carries_the_derived_pill_css_verbatim": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 2,
+          "assertIn": 1
+        },
+        "TheMockupsWearDesignSystemsPaletteTests.test_no_built_page_still_falls_back_to_the_kickers_colour": {
+          "assertNotIn": 1
+        },
+        "TheMockupsWearDesignSystemsPaletteTests.test_the_exemption_list_has_not_grown": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_multi_position_eligibility.py": {
       "test_methods": 19,
       "asserts": {

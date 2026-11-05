@@ -116,10 +116,32 @@ def pill_css() -> str:
     for pos in ds.POSITION_PILL_TOKENS:
         bg, fg = ds.position_pill_color(pos)
         out.append(f".pill-{pos} {{ background: {bg}; color: {fg}; }}")
-    for pos in ("DL", "LB", "DB"):
-        bg, fg = ds.position_pill_color(pos)
-        out.append(f".pill-{pos} {{ background: {bg}; color: {fg}; }}")
+    # `#328`: a second loop over ("DL", "LB", "DB") used to follow this one. It existed because
+    # POSITION_PILL_TOKENS held only six entries and those three had to be added by hand. `#311`
+    # widened the dict to ten, so the loop above already emitted them and the second loop was
+    # re-emitting three rules verbatim -- dead since `#311`, and invisible because a duplicate
+    # CSS rule with identical content changes nothing on screen. The same shape as `#322`'s dead
+    # branch: harmless output, and a statement about the palette that had stopped being true.
     return "\n".join(out)
+
+
+def facet_js() -> str:
+    """The position palette as a JS object literal, for the variants' inline scripts.
+
+    `#328`: `c_variants.py` spelled this dict out by hand, IN SOURCE, so no rebuild could repair
+    it -- `{ QB: "#8f86f0", RB: "#17bfa0", TE: "#e8683f", K: "#a09480", DL/LB/DB: "#a09480" }`.
+    Four values were superseded by `#311`/`#318`, IDP was missing entirely, and DL, LB and DB all
+    shared the old K neutral, which re-implements in code the exact defect `#311` was raised to
+    end. This module's own first line claims it takes "the design tokens (from design_system,
+    never a second copy)"; that dict was the second copy.
+
+    `ABSENT` is emitted alongside the ten so a caller has a real fallback to name. The hand-built
+    dict's callers fell back to `FACET.K` -- the KICKER's colour -- which is the same hole `#325`
+    closed in the prototype's `pc()`.
+    """
+    pairs = [f'{position}: "{value}"' for position, value in ds.POSITION_PILL_TOKENS.items()]
+    pairs.append(f'ABSENT: "{ds.POSITION_PILL_ABSENT}"')
+    return "{ " + ", ".join(pairs) + " }"
 
 
 BASE_CSS = f"""

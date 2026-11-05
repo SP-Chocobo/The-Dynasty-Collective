@@ -129,7 +129,7 @@
   "file": "panels_1_calls.html",
   "panel": "(group)",
   "top": 341,
-  "height": 665,
+  "height": 666,
   "textElements": 167,
   "buttons": 18,
   "inputs": 0,
@@ -137,21 +137,21 @@
   "minFontPx": 11.2,
   "page": {
    "scrollHeight": 1400,
-   "viewBottom": 1330
+   "viewBottom": 1329
   }
  },
  {
   "file": "panels_2_standing.html",
   "panel": "objectives",
   "open": true,
-  "height": 197,
+  "height": 198,
   "units": 4,
   "fullyVisible": 4,
   "pxPerUnit": 36.4,
   "elementsPerUnit": 8.5,
   "buttons": 8,
   "inputs": 0,
-  "chromeAbove": 42,
+  "chromeAbove": 43,
   "minFontPx": 11.2,
   "kinds": {
    "objective": {
@@ -165,14 +165,14 @@
   "file": "panels_2_standing.html",
   "panel": "findings",
   "open": true,
-  "height": 336,
+  "height": 337,
   "units": 8,
   "fullyVisible": 8,
   "pxPerUnit": 35.6,
   "elementsPerUnit": 8.8,
   "buttons": 4,
   "inputs": 0,
-  "chromeAbove": 42,
+  "chromeAbove": 43,
   "minFontPx": 11.2,
   "kinds": {
    "comparison": {
@@ -191,7 +191,7 @@
   "file": "panels_2_standing.html",
   "panel": "verdicts",
   "open": false,
-  "height": 42,
+  "height": 43,
   "units": 0,
   "fullyVisible": 0,
   "pxPerUnit": null,
@@ -206,7 +206,7 @@
   "file": "panels_2_standing.html",
   "panel": "closed",
   "open": false,
-  "height": 42,
+  "height": 43,
   "units": 0,
   "fullyVisible": 0,
   "pxPerUnit": null,
@@ -221,7 +221,7 @@
   "file": "panels_2_standing.html",
   "panel": "pins",
   "open": false,
-  "height": 42,
+  "height": 43,
   "units": 0,
   "fullyVisible": 0,
   "pxPerUnit": null,
@@ -236,7 +236,7 @@
   "file": "panels_2_standing.html",
   "panel": "(group)",
   "top": 341,
-  "height": 881,
+  "height": 867,
   "textElements": 144,
   "buttons": 17,
   "inputs": 0,
@@ -244,14 +244,14 @@
   "minFontPx": 11.2,
   "page": {
    "scrollHeight": 1400,
-   "viewBottom": 1330
+   "viewBottom": 1329
   }
  },
  {
   "file": "panels_3_brief.html",
   "panel": "decided",
   "open": true,
-  "height": 377,
+  "height": 359,
   "units": 6,
   "fullyVisible": 6,
   "pxPerUnit": 35.7,
@@ -303,14 +303,14 @@
   "file": "panels_3_brief.html",
   "panel": "unresolved",
   "open": true,
-  "height": 398,
+  "height": 377,
   "units": 7,
   "fullyVisible": 0,
   "pxPerUnit": 36.3,
   "elementsPerUnit": 6.1,
   "buttons": 7,
   "inputs": 0,
-  "chromeAbove": 101,
+  "chromeAbove": 80,
   "minFontPx": 11.2,
   "kinds": {
    "open": {
@@ -324,14 +324,14 @@
   "file": "panels_3_brief.html",
   "panel": "optimising",
   "open": true,
-  "height": 430,
+  "height": 408,
   "units": 7,
   "fullyVisible": 0,
-  "pxPerUnit": 40.9,
+  "pxPerUnit": 40.8,
   "elementsPerUnit": 7.9,
   "buttons": 11,
   "inputs": 0,
-  "chromeAbove": 101,
+  "chromeAbove": 80,
   "minFontPx": 11.2,
   "kinds": {
    "objective": {
@@ -345,15 +345,15 @@
   "file": "panels_3_brief.html",
   "panel": "(group)",
   "top": 341,
-  "height": 1833,
+  "height": 1772,
   "textElements": 313,
   "buttons": 28,
   "inputs": 0,
   "colourEmoji": 0,
   "minFontPx": 11.2,
   "page": {
-   "scrollHeight": 2317,
-   "viewBottom": 1330
+   "scrollHeight": 2257,
+   "viewBottom": 1329
   }
  }
 ]

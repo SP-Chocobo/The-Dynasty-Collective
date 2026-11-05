@@ -17957,3 +17957,107 @@ have broken a different test in the same position. The single gate failure is th
 
 Same test count as the run before it and 23s slower, which is variance rather than growth. Budget
 from the total: **1485s**.
+
+---
+
+## `#328` — 28 OF 28 MOCKUP PAGES WERE PRE-`#311`, AND THE INDEX LINKED NINE THE BUILD COULD NOT EMIT
+
+Measured when found: **every one of the 28 pages under `mockups/` carried superseded hexes**, and
+`grep -c pill-IDP mockups/index.html` returned **0** — so every page was a pre-`#311` output,
+drawing DL, LB and DB in one colour and omitting IDP entirely. `mockups/common.py`'s own first
+line claims this family takes *"the design tokens (from design_system, never a second copy)"*.
+
+### Two causes, both invisible because a page that is never rebuilt never fails
+
+**1. A second palette in SOURCE.** `c_variants.py:394` spelled
+
+```js
+const FACET = { QB: "#8f86f0", RB: "#17bfa0", WR: "#4aa8ef", TE: "#e8683f",
+                K: "#a09480", DEF: "#ef7fc0", DL: "#a09480", LB: "#a09480", DB: "#a09480" };
+```
+
+by hand, so **no rebuild could repair it**. Four values superseded by `#311`/`#318`, IDP absent,
+and DL/LB/DB all on the old K neutral — re-implementing in code the exact defect `#311` was
+raised to end. Both call sites fell back to **`FACET.K`, the KICKER's real colour**: the same
+hole `#325` closed in the prototype's `pc()`, in its second home. Now emitted by
+`common.facet_js()` from `design_system`, with `ABSENT` alongside the ten so a caller has a real
+fallback to name.
+
+**2. The index advertised nine pages the build could not regenerate.** `build.py:89` looped over
+`r_variants.VARIANTS + s_variants.VARIANTS` only, while `index_html()` put
+`cards(c_variants.VARIANTS)` and `cards(b_variants.VARIANTS)` straight into the index. No
+recorded reason for the asymmetry, no other module writing them, and all nine were **~117 lines
+behind their own generator** — still carrying the pre-`#311`/`#318` pills AND the pre-`#312`
+tokens.
+
+**The regeneration was checked before it was done**, not after: all nine were generated to a
+scratch directory and diffed against the committed versions first. The entire diff is the token
+block, the derived badge CSS and the spec card `common.page()` builds — nothing hand-authored was
+at risk. That check is the only reason it was safe to change the emit loop rather than record the
+asymmetry and stop.
+
+**3. A dead loop, the `#322` shape again.** `common.py:119-121` re-emitted `.pill-DL/LB/DB` after
+the loop above it already had — dead since `#311` widened the dict to ten, and invisible because
+a duplicate CSS rule with identical content changes nothing on screen.
+
+### Result
+
+| | before | after |
+|---|---|---|
+| pages carrying superseded hexes | **28 of 28** | **2** |
+| `pill-IDP` in `index.html` | 0 | 1 |
+
+The remaining two — `draft_rail.html` and `draft_room_compass.html` — are hand-written, emitted
+by no builder, **linked from neither `index.html` nor any other page**, and referenced only by
+`DRAFT_ROOM_UI.md`. Hand-editing them to today's palette would be editing a record to make a test
+green, which is the move `#323` declined for `_v1_ledger_rail_prev.html`. They are exempted by a
+**count-pinned** set, and the test fails if that set grows or if a name in it stops existing.
+
+### The guard, which is the actual deliverable
+
+`#320` built an emitter for the prototype with no check on its OUTPUT, and a stale build slipped
+through within the hour (`#324`). Here the emitter and its output side ship together.
+`test_mockups_palette.py`, 4 tests:
+
+| arm | failures | what it defends |
+|---|---|---|
+| unmutated | 0 | — |
+| `pill_css` returns the pre-`#312` CSS | **26** | every pill-carrying page, i.e. a stale build |
+| `facet_js` returns the hand-written dict | **1** | the source-level second palette |
+| restore the dead DL/LB/DB loop | **1** | `pill_css` emits exactly one rule per position |
+| empty the exemption set | **1** | the count pin is load-bearing |
+| restore the `FACET.K` fallback | **1** | `#325`'s hole, in its second home |
+
+### Verified
+
+```
+mockups smoke tests: smoke ok, dock_smoke ok, panels_smoke ok
+82 targeted tests across 4 modules: OK      all seven ratchets PASS
+floors 244 modules / 7646 assertions
+```
+
+### THE REBUILD ALSO CAUGHT UP A CONTRACT FIELD, AND `density.json` IS HOW I FOUND OUT
+
+`mockups/density.json` — a MEASURED artifact, written by `smoke.py` — moved on **all 16** of its
+records. Fifteen moved by 1-2px; `synthesis_h3_deck.html` moved **-19px** on both `boardTop`
+(255 → 236) and `pageHeight` (1436 → 1417).
+
+A 19px shift is not a palette change, and I was one command away from committing 50 files under a
+heading that said it was. Checked rather than assumed:
+
+1. **Deterministic?** Re-ran `smoke.py`: the second run reproduced the numbers exactly. So it is
+   not instrument jitter.
+2. **What actually differs in the page?** Filtering the diff of every colour and token line left
+   exactly one changed line: `const PAYLOAD = {...}`.
+3. **What in the payload?** Diffed the two payloads field by field: **one** field differs.
+   `contract.intervening_picks` was ABSENT in the committed page and is PRESENT now
+   (`{"label": "Picks Until Your Next Turn", ...}`).
+
+So these pages predate a display-contract entry, not just a palette. Rendering it reflows the deck
+layout by 19px and the others by 1-2px. **This is catch-up and an improvement** — the contract is
+now complete on the page — but it is a different kind of change from the one this item is named
+for, and filing it silently under "palette" would have been the `#313` error in a new costume.
+
+The density numbers are committed with their cause named, because the alternative — leaving a
+measured artifact stale after running the instrument that writes it — is the defect `#323` exists
+to prevent, one directory over.
