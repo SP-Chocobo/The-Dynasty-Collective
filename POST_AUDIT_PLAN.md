@@ -1,6 +1,24 @@
 # Post-Audit Execution Plan — reconciled
 
-**Status: planning document. No production code has been written for this phase.**
+> **HEADER CORRECTED `#313`. THE TWO LINES BELOW WERE TRUE WHEN WRITTEN AND ARE NOW FALSE, AND
+> THIS FILE IS THE ONE SIX OTHER DOCUMENTS NAME AS AUTHORITATIVE — so a cold reader following
+> their banners reads a stale line first. Struck in place rather than edited away, per this
+> repository's own discipline.**
+>
+> - ~~"planning document. No production code has been written for this phase."~~ **FALSE since
+>   long before this correction.** The suite is **4,344 tests** at `b7c41a8`, the app boots, and
+>   the register below runs to `#313`.
+> - ~~"`main` stays frozen at `9fb5102`. All work continues on `ui-authority-pass`."~~ **THE
+>   BRANCH `ui-authority-pass` DOES NOT EXIST**, locally or on the remote — verified at `#313`
+>   with `git branch -a`, which lists only `main` and the session's working branch. This is the
+>   exact `#239` failure that `close-register-item` records finding in ITSELF and repairing
+>   ("a session that had followed the old line literally would have pushed finished work onto a
+>   branch nobody reads"). The lesson was fixed in the skill and never reached here. **Derive
+>   the branch — `git rev-parse --abbrev-ref HEAD` — never read it out of a document.**
+> - The baseline figure below (`d7902ac`, 1459 tests) is kept as the historical entry point.
+
+**Status: ~~planning document~~ — an append-only register of executed work. (See the correction
+above: the original status line is retained struck, not deleted.)**
 
 > **Rulings recorded 2026-09-01.** Four decisions settled by the operator and folded in below:
 > the Insight Foundation is **promoted ahead of Insight**; Insight scope stays at **Top 5** as
@@ -14,7 +32,7 @@ Inputs reconciled here:
 2. **Post-Audit Plan of Attack v2** (Phases 1–11);
 3. the operator's revised 12-step sequence.
 
-`main` stays frozen at `9fb5102`. All work continues on `ui-authority-pass`.
+~~`main` stays frozen at `9fb5102`. All work continues on `ui-authority-pass`.~~ **Struck at `#313`: that branch does not exist. See the correction at the top of this file; derive the branch from `git rev-parse --abbrev-ref HEAD`.**
 Baseline entering this phase: **`d7902ac`, 1459 tests OK (1 skip), clean tree.**
 
 ---

@@ -356,10 +356,25 @@ class TheConstantCheckReadsTheDocumentsToo(unittest.TestCase):
         the case that motivated trying it. A heading governs itself only."""
         blocks = prose_names.markdown_blocks()
         index = {(str(path), line): text for path, line, text in blocks}
-        self.assertIn(("POST_AUDIT_PLAN.md", 5518), index,
-                      "the #178 pre-registration paragraph is the worked case; if this moves, "
-                      "re-point it rather than deleting the guard")
-        self.assertTrue(prose_names.is_history(index[("POST_AUDIT_PLAN.md", 5518)]),
+        # RE-POINTED AT `#313`, AND MADE DERIVED IN THE SAME EDIT. This used to pin the worked
+        # case at a hardcoded `("POST_AUDIT_PLAN.md", 5518)`, with its own message saying
+        # "if this moves, re-point it rather than deleting the guard". It moved -- to 5536 --
+        # because `#313` struck two false lines in that file's HEADER, and every line below
+        # shifted by 18. A line number inside a 16,000-line APPEND-ONLY file is a coordinate
+        # that any edit above it invalidates, so re-pointing it by hand would only buy time
+        # until the next header correction.
+        #
+        # Found by its own first words instead. The (path, line) assertion is KEPT rather than
+        # replaced: it is what proves `markdown_blocks()` indexes by line at all, which a
+        # content search alone would stop exercising.
+        opener = "I first registered the acceptance test"
+        located = [(str(path), line) for path, line, text in blocks
+                   if str(path) == "POST_AUDIT_PLAN.md" and text.startswith(opener)]
+        self.assertEqual(1, len(located),
+                         f"the #178 pre-registration paragraph is the worked case and must be "
+                         f"findable exactly once by its opening words; found {len(located)}")
+        self.assertIn(located[0], index, "markdown_blocks() is not indexing by line")
+        self.assertTrue(prose_names.is_history(index[located[0]]),
                         "it shields on its own word 'registered', not on its heading")
 
     def test_the_markdown_is_deliberately_absent_from_the_dead_name_check(self):

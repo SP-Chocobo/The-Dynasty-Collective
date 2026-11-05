@@ -1,6 +1,22 @@
 # What is left before "how it drafts" is done, and before v1 can freeze
 
-> # STATE AS OF 2026-09-17 — read this first. It supersedes the 2026-09-12 block below, which is kept as the record.
+> # SUPERSEDED — CORRECTED AT `#313`, AND THIS BLOCK IS WHY THE CORRECTION MATTERS
+>
+> **Six documents point a reader here for "the current state": `DRAFT_ROOM_UI.md`,
+> `ENGINE_WIRING_PASS.md`, `ENGINEERING_DOCTRINE.md`, `ARCHITECTURE_AUDIT.md`,
+> `CDME_CONTRACTS.md` and `GOLD_WYRM_WEBFRONT.md` all carry the same banner.** Their shared
+> justification is that "a copy goes stale silently, a pointer cannot". **That is defeated when
+> the TARGET goes stale**, which is what happened here: the block below says "One item stands
+> between here and the freeze: `#53` itself", and `#53` closed long ago — v2, v3 and v4 freeze
+> records have all since been cut, and the register now runs past `#313`.
+>
+> **For current state, read the TAIL of `POST_AUDIT_PLAN.md`, not this file.** A pointer is only
+> as good as its target's maintenance, and nothing was maintaining this one.
+>
+> `DOC_INDEX.md` independently files this document as SUPERSEDED, so the index and those six
+> banners have been disagreeing about whether this file is current. They now agree.
+>
+> # STATE AS OF 2026-09-17 — HISTORICAL. It superseded the 2026-09-12 block below, which is kept as the record.
 >
 > **One item stands between here and the freeze: `#53` itself.** Gate 1 is delivered and clean,
 > the quality question is answered as far as this repository's data can answer it, the one open

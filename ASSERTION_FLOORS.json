@@ -13256,7 +13256,7 @@
     "test_prose_names.py": {
       "test_methods": 30,
       "asserts": {
-        "assertEqual": 6,
+        "assertEqual": 7,
         "assertFalse": 7,
         "assertGreater": 12,
         "assertGreaterEqual": 1,
@@ -13338,6 +13338,7 @@
           "assertIn": 1
         },
         "TheConstantCheckReadsTheDocumentsToo.test_a_heading_does_not_shield_the_paragraph_beneath_it": {
+          "assertEqual": 1,
           "assertIn": 1,
           "assertTrue": 1
         },
