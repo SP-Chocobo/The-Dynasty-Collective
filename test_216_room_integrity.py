@@ -589,6 +589,159 @@ class TheRealBoardStillRunsTests(unittest.TestCase):
         self.assertIn("not fantasy points", out["legend"])
 
 
+#: The prototype pages the shared model is built into. Read, never written, by the tests below.
+_FABLE = Path("ui_explore/round2/fableA")
+#: The alpha. Any built page carries the whole shared model, so the arithmetic below could be
+#: read off any of them; this one is named because it is the surface being promoted.
+_ALPHA = _FABLE / "v4_doors.html"
+
+#: Templates that RENDER `M.costKey` -- the sentence that tells a reader what the three cost
+#: cells mean. Derived, so the census below cannot be a restatement of a list that drifted.
+def _templates_rendering_the_cost_key() -> set[str]:
+    return {t.name for t in sorted((_FABLE / "_src").glob("*.tpl.html"))
+            if "costKey" in t.read_text(encoding="utf-8")}
+
+
+def _evaluate_in_the_alpha(js: str):
+    """Run `js` inside the built alpha page, where the shared model actually executes.
+
+    #222's rule, applied to the browser: OBSERVE the production quantity. The three cost cells
+    are computed by `M.compare`, and a Python reimplementation of that arithmetic would be a
+    second source of truth for the very relationship under test -- which is how this file's
+    `_find_chrome` and `suite_reach`'s `root` both went wrong. So the numbers come out of the
+    page. Page errors are collected rather than swallowed: a model that throws half-way answers
+    with a short list, and a short list would pass a `>= 0` assertion silently.
+    """
+    from playwright.sync_api import sync_playwright
+    errors: list[str] = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        page = browser.new_page()
+        page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+        page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
+        page.goto(_ALPHA.resolve().as_uri(), wait_until="load")
+        out = page.evaluate(js)
+        browser.close()
+    return out, errors
+
+
+_COST_CELL_PROBE = r"""() => {
+  const rows = [], keys = [];
+  for (const fmt of Object.keys(DATA.formats)) {
+    for (const key of ["early", "mid", "late"]) {
+      let M;
+      try { M = buildModel(key, fmt); } catch (e) { rows.push({err: String(e), fmt, key}); continue; }
+      const subj = M.LEADER;
+      if (!subj) continue;
+      keys.push(M.costKey(subj));
+      for (const c of M.C) {
+        if (c.player_id === subj.player_id) continue;
+        const r = M.compare(c, subj);
+        if (r.same || !r.hasNext) continue;
+        rows.push({fmt, key, dv: r.dv, nextGap: r.nextGap, planEdge: r.planEdge,
+                   labels: M.costOf(c, subj).map(x => x.k)});
+      }
+    }
+  }
+  return {rows, keys};
+}"""
+
+
+@_EXECUTABLE
+class TheCostStripSaysWhatItsArithmeticDoesTests(unittest.TestCase):
+    """`#310` -- the three-cell cost strip's own explanation described the wrong operation.
+
+    `M.costKey` told the reader `both picks = the two added together, him first`. The cell holds
+    `planEdge`, and `planEdge = (cand + NEXTV[subj.pos]) - (subj + NEXTV[cand.pos])`, which
+    reduces to `now - at #N`. Each PLAN is a sum -- that part of the source header is right --
+    but the CELL is the difference BETWEEN two plans, and the key described a plan as though it
+    were the cell.
+
+    WHY THIS IS NOT A WORDING NIT. Measured across the whole fixture, 551 of 551 cross-position
+    pairs satisfy the subtractive reading and 0 satisfy the additive one; on 48 of them the
+    additive reading has the OPPOSITE SIGN, so a reader who believed the key would conclude the
+    wrong two-pick plan was better. The first pair in the fixture reads
+    `now -9.77 - at#N -19.68 -> +9.91`: the plan is favourable, the sum says -29.45.
+
+    WHAT IT DOES NOT CLAIM, stated rather than left to the next reader. This file is the
+    `#216` room-integrity module and the key is part of the shared model, which every built page
+    carries; but only two TEMPLATES render it, and neither is the alpha. The census below pins
+    that set so the reach of this repair cannot be overstated -- which it was, once, in this
+    session, before the templates were read.
+    """
+
+    def test_both_picks_is_the_difference_of_the_two_cells_beside_it(self):
+        out, errors = _evaluate_in_the_alpha(_COST_CELL_PROBE)
+        self.assertEqual([], errors, "the shared model did not run clean; the rows below are partial")
+        broken = [r for r in out["rows"] if "err" in r]
+        self.assertEqual([], broken, "buildModel raised on a fixture state")
+        rows = out["rows"]
+        # Non-vacuity FIRST: an empty population passes every assertion that follows.
+        self.assertGreater(len(rows), 300,
+                           f"only {len(rows)} cross-position pairs carry a measured next-turn "
+                           f"value; the probe is no longer exercising the strip")
+        additive = []
+        for r in rows:
+            with self.subTest(fmt=r["fmt"], state=r["key"]):
+                self.assertAlmostEqual(r["planEdge"], r["dv"] - r["nextGap"], places=6)
+            if abs(r["planEdge"] - (r["dv"] + r["nextGap"])) < 1e-9:
+                additive.append(r)
+        # The two readings must be DISTINGUISHABLE on this fixture, or agreeing with one of them
+        # proves nothing. They coincide only where `at #N` is zero.
+        indistinguishable = [r for r in rows if abs(r["nextGap"]) <= 1e-9]
+        self.assertEqual([], indistinguishable,
+                         "a pair where `at #N` is 0.0 makes the two readings identical")
+        self.assertEqual([], additive, "a pair satisfies the additive reading the key once claimed")
+        # And the labels the key explains are the labels the strip actually prints.
+        for r in rows[:1]:
+            self.assertEqual(["now", r["labels"][1], "both picks"], r["labels"])
+            self.assertTrue(r["labels"][1].startswith("at #"), r["labels"])
+
+    def test_the_additive_reading_would_have_named_the_wrong_plan(self):
+        """The harm, measured. Without this the test above is satisfied by any arithmetic claim
+        that happens to be true, including one no reader could be misled by."""
+        out, errors = _evaluate_in_the_alpha(_COST_CELL_PROBE)
+        self.assertEqual([], errors)
+        flipped = [r for r in out["rows"]
+                   if (r["planEdge"] > 0) != ((r["dv"] + r["nextGap"]) > 0)]
+        self.assertGreater(
+            len(flipped), 20,
+            "the fixture no longer contains pairs where the additive reading picks the other "
+            "plan, so the corrected key is no longer defending anything a reader could act on")
+
+    def test_the_key_describes_the_operation_the_cells_perform(self):
+        out, errors = _evaluate_in_the_alpha(_COST_CELL_PROBE)
+        self.assertEqual([], errors)
+        keys = out["keys"]
+        self.assertGreaterEqual(len(keys), 10, "the key is no longer produced per state")
+        for text in keys:
+            with self.subTest(text=text[:60]):
+                # The exact phrase that was wrong, and the family it belongs to. A key that
+                # describes ADDITION is describing a plan, not the cell.
+                self.assertNotIn("added together", text)
+                self.assertNotIn("the two added", text)
+                self.assertNotIn("sum of", text)
+                # ...and it must still name the relation the arithmetic has, in the house form
+                # that lets a reader check it against the two cells beside it.
+                self.assertIn("less", text)
+                self.assertIn("both picks", text)
+
+    def test_the_surfaces_that_render_the_key_are_pinned_not_assumed(self):
+        """A census, not a preference. `v4_doors` -- the alpha -- renders the three cells with
+        NO key at all, so the corrected sentence does not reach the surface being promoted.
+        That is recorded here rather than asserted as correct: when a template gains or loses
+        the key this fails, and the reader re-checks that it reads true on the new surface.
+        """
+        rendering = _templates_rendering_the_cost_key()
+        self.assertEqual(
+            {"v1_ledger.tpl.html", "v3_trio.tpl.html"}, rendering,
+            "the set of templates rendering M.costKey moved. If the alpha has GAINED it, "
+            "confirm the sentence reads true where it now sits and update this census; if a "
+            "template lost it, confirm the three cells are explained some other way.")
+        alpha_tpl = (_FABLE / "_src" / "v4_doors.tpl.html").read_text(encoding="utf-8")
+        self.assertIn("costHTML", alpha_tpl, "the alpha no longer renders the cost cells at all")
+
+
 # MEASURED STATUS ON UNFIXED CODE (f580c11) and MUTATION RESULTS -- recorded at the bottom of
 # the committed file after the adversary ran it.
 if __name__ == "__main__":

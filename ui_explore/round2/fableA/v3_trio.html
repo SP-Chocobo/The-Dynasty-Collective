@@ -912,7 +912,7 @@ M.doorDepth = (d, best, list) => {
     return cells;
   };
   M.costHTML = (b, a) => M.costOf(b, a).map(c => `<span class="cc ${c.fav ? "fav" : ""}"><span class="ck">${c.k}</span><span class="cv">${c.v}</span></span>`).join("");
-  M.costKey = subj => `<b>now</b> = value against ${short(subj.name)} today, the board's order · <b>at #${M.NEXT_NO}</b> = what his position leaves at your next turn against what ${subj.position} leaves · <b>both picks</b> = the two added together, him first`;
+  M.costKey = subj => `<b>now</b> = value against ${short(subj.name)} today, the board's order · <b>at #${M.NEXT_NO}</b> = what his position leaves at your next turn against what ${subj.position} leaves · <b>both picks</b> = him now with ${subj.position} at #${M.NEXT_NO}, against ${short(subj.name)} now with his position at #${M.NEXT_NO} — which is <b>now</b> less <b>at #${M.NEXT_NO}</b>`;
 
   /* ---- the engine's working (hidden until asked): every number with its kind; measured zeros print ---- */
   const KIND = {measured:"measured", count:"a count", withheld:"withheld", unmeasured:"not measured",

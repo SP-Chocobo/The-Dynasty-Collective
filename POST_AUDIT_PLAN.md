@@ -16398,3 +16398,173 @@ purpose, pending a ruling.
 **The budget turned over.** Five measurements in one day: 301 -> 396 -> 462 -> 457 -> **449ms** per
 test, while the count went 4235 -> 4318. The rise stopped and has begun easing, so the figure to
 carry forward is a plateau, not a trend. `close-register-item` holds the table.
+
+---
+
+## `#310` THE DRAFT ROOM'S CONTRACT IS A READING CONTRACT, AND THE API IS NOT 31 FUNCTIONS
+
+Two published numbers of mine were wrong, and both were wrong the same way: an instrument asked a
+narrower question than the one I put to the reader.
+
+### Correction 1 — "31 engine functions across 12 modules" was an artifact of my own module pick
+
+I measured the engine half of the hull by running `boundary_census.reaches` with `DATA_MODULES`
+swapped for a hand-picked set of engine modules, and published **50 calls / 31 functions / 12
+modules**, together with the conclusion "the API scope = 31 engine functions + 6 data-layer
+functions". Run against **every** module the hull imports rather than the ones I thought of:
+
+```
+the hull reaches its own modules 234 times, 145 distinct functions, 35 modules
+```
+
+The gap is not rounding. It is thirty modules — `todo_log`, `attachments`, `llm_engine`,
+`bot_config`, `pinned_messages`, `league_prefs`, … — that a module-name heuristic dropped in
+silence. `boundary_census` says exactly this about its own hand-assigned `DATA_MODULES` ("a
+derived rule would mis-sort most of them"); I then built a derived rule and mis-sorted most of
+them.
+
+### Correction 2 — the `costKey` defect is real, and it was never on the alpha
+
+I told the owner the three-cell cost strip's help text was "a trust issue on the draft room". The
+text was wrong, and the fix is right, but **`v4_doors` — the alpha — never rendered it.** Derived
+from the templates rather than assumed:
+
+| template | renders `M.costKey` |
+|---|---|
+| `v1_ledger.tpl.html` | yes (a retired desktop variant) |
+| `v3_trio.tpl.html` | yes (a retired desktop variant) |
+| **`v4_doors.tpl.html`** | **no — the three cells render with no explanation at all** |
+
+So the finding splits in two. The shared model's one home for that sentence was lying, which is
+fixed below. And **the alpha prints three costed figures and explains none of them**, which is the
+larger gap against the owner's own constraint ("clean who, why, and other valid options, at what
+cost") and is a decision about where the sentence goes, not a bug to patch.
+
+### What the arithmetic actually is
+
+`M.costKey` said `both picks = the two added together, him first`. The cell holds `planEdge`:
+
+```js
+r.aThenB  = cand.tav + NEXTV[subj.position];      // take him now, his position at my next turn
+r.bThenA  = subj.tav + NEXTV[cand.position];      // the reverse
+r.planEdge = r.aThenB - r.bThenA;                 // == dv - nextGap == `now` - `at #N`
+```
+
+Each **plan** is a sum — the module header's "the two-pick plan that adds them" is right about
+that. The **cell** is the difference *between* two plans, and the key described a plan as though
+it were the cell. Measured over the whole fixture in the real page:
+
+| | pairs |
+|---|---|
+| cross-position pairs carrying a measured next-turn value | **551** |
+| satisfy `both picks = now − at #N` | **551** |
+| satisfy `both picks = now + at #N` | **0** |
+| where the additive reading has the **opposite sign** | **48** |
+
+The published render makes it concrete: `NOW −9.1 · AT #67 −10.4 · BOTH PICKS +1.3`. The
+difference is `+1.3`; the sum is `−19.5`. On 48 pairs a reader who believed the key would have
+concluded the wrong two-pick plan was better — the first in the fixture reads `−9.77` and
+`−19.68` against a plan edge of **`+9.91`**, favourable, where the sum says `−29.45`.
+
+Corrected to name the real comparison *and* the arithmetic, so a reader can check it against the
+two cells beside it: `both picks = him now with RB at #67, against Taylor now with his position
+at #67 — which is now less at #67`.
+
+**Pinned by `TheCostStripSaysWhatItsArithmeticDoesTests`** in `test_216_room_integrity.py`,
+executed in Chromium against the built alpha — `#222`'s rule applied to the browser: observe the
+production quantity, never reimplement it. Four tests, four mutation arms, all fire:
+
+| arm | fires |
+|---|---|
+| restore `the two added together` | **18 failures** |
+| `planEdge = aThenB + bThenA` | **551 failures** |
+| a template stops rendering the key | **1 failure** |
+| `r.hasNext = false` (empty population) | **2 failures** |
+
+The fourth class of test in that group is a **census, not a preference**: the set of templates
+rendering the key is pinned at `{v1_ledger, v3_trio}` so the reach of this repair cannot be
+overstated again, and it fails — asking the reader to re-check the sentence — the moment the alpha
+gains it.
+
+### `api_surface.py` — the inventory, sorted by whose job each answer is
+
+The owner's instruction was that the browser must consume product capabilities, not mirror
+Python's internal function structure, and that the inventory must distinguish internal engine
+functions, server-side orchestration, public API operations, data-layer access and administrative
+operations. **The measurement needs seven layers, not five**, and the two extra ones are the
+finding rather than a quibble:
+
+| layer | calls | functions | modules | what it is |
+|---|---|---|---|---|
+| `ENGINE` | 45 | 29 | 12 | deterministic knowledge a client must never recompute |
+| `ORCHESTRATION` | 77 | 54 | 12 | server-side composition; holds credentials and the trust boundary |
+| `PRODUCT_STORE` | 59 | 35 | 6 | **per-league state a person reads AND writes** |
+| `ADMIN` | 29 | 14 | 2 | its own auth; spends money or rewrites who answers |
+| `RENDER` | 24 | 13 | 3 | **Streamlit-side rendering the rewrite replaces, not exposes** |
+| *(data layer)* | 41 | 27 | 3 | not re-counted — `boundary_census.CENSUS` is its one home |
+
+`PRODUCT_STORE` is the layer the five did not have: six modules a browser talks to constantly,
+carrying no engine knowledge and needing no admin auth. Unnamed, they would have been filed
+under whichever neighbour was closest and inherited that layer's auth. `RENDER` is what keeps
+`draft_board_ui.render_board_html` — a reach the hull makes six times — out of the API.
+
+**The engine is the smallest layer the hull reaches: 45 of 234 calls, 19%.** The API is mostly not
+about the engine, which is the opposite of the shape my "31 functions" number implied.
+
+The population is derived and the **assignment** is hand-made with one line of evidence per
+module, quoted from that module's own docstring. `--check` fails on a module the hull reaches that
+no layer claims, on a module two layers claim, and on a declared operation naming a function
+nobody wrote or reaching past the engine. `test_api_surface.py` carries 20 tests including the
+mutation arms inline (drop `llm_engine` from its layer and the ratchet names it; plant an
+operation composing `llm_engine.run_debate` and it is refused as ORCHESTRATION, not ENGINE), plus
+a guard that `api_surface` never grows an AST walk of its own — `boundary_census.reaches` already
+learned that `instance.method(...)` is a reach, and a second scanner would have to learn it again.
+
+### The Draft Room Live Alpha boundary: **15 engine functions in 7 modules**
+
+Derived from three declared operations, not listed beside them:
+
+```
+draft_room.board      pick_synthesis: build_snapshot, snapshot_identity, players_db_stamp,
+                                      withheld_fields, presentable_text
+                      player_universe: build_player_universe, available_players,
+                                       league_usable_positions
+                      league_config: round_of, team_count
+draft_room.depth      depth_chart: positional_depth, depth_value_label
+                      depth_ratings: depth_label
+draft_room.freshness  freshness: build_freshness_manifest
+                      corpus_state: assess
+```
+
+Three operations, because a request answers a question a person asked — "who, why, other valid
+options, at what cost" for one turn — rather than exposing a figure at a time. Splitting the board
+per-figure would let a client assemble a board the engine never ordered.
+
+`slice_for("trade_ledger")` returns `{}` **on purpose**: the comparison and transaction grammar is
+the Trade Ledger's to establish, and this file says so by having nothing for it rather than by
+guessing.
+
+### The contract is scoped to READING
+
+The adversarial pass found that the draft room establishes glance → door → drawer, fixed-reference
+comparison, explanation beside engine figures, the six-word absence vocabulary, and one
+authoritative source per displayed figure — and establishes **none** of arbitrary A-vs-B
+comparison, selection and commitment, confirmation and undo, sorting, or transactional recovery.
+The owner's ruling, adopted: the Draft Room owns the **reading** contract; the Trade Ledger
+establishes comparison and transaction; neither waits on the other. Making commit and compare
+prerequisites for the alpha would turn a working prototype into a much larger project for the
+single reason that it was built first.
+
+### Not fixed here, and why
+
+- **Where the cost-cell explanation lives on the alpha.** A tooltip is hover-only, which is the
+  desktop/phone divergence the owner calls a contract violation; a visible row costs a line on a
+  surface that already ends in "↓ scroll · the rest is cut off" at 1440×900. Owner's call.
+- **The palette.** Measured, and deliberately NOT folded in here: the colour work found a live
+  defect in `design_system` itself (the `K` pill is dE **2.8** from `muted`, the quiet-text
+  colour, and `POSITION_PILL_FALLBACK = "K"` — so every unknown position already renders in the
+  colour of body text), and that changes the shape of the IDP decision the owner had already
+  answered. It gets its own item once the owner has ruled, rather than riding in on this one.
+- **The third coherence population** ("same semantic state, same understanding, across surfaces
+  and viewports"). Agreed and not built: it needs the state vocabulary to have one home across
+  Python and JS first, which the palette work touches.

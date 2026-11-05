@@ -247,19 +247,19 @@
       }
     },
     "test_216_room_integrity.py": {
-      "test_methods": 22,
+      "test_methods": 26,
       "asserts": {
-        "assertAlmostEqual": 2,
-        "assertEqual": 23,
+        "assertAlmostEqual": 3,
+        "assertEqual": 31,
         "assertFalse": 1,
-        "assertGreater": 1,
-        "assertGreaterEqual": 2,
-        "assertIn": 13,
+        "assertGreater": 3,
+        "assertGreaterEqual": 3,
+        "assertIn": 16,
         "assertIsNone": 1,
         "assertIsNotNone": 1,
         "assertLess": 1,
-        "assertNotIn": 8,
-        "assertTrue": 4
+        "assertNotIn": 11,
+        "assertTrue": 5
       },
       "by_method": {
         "EveryTermOfTheIdentityReachesTheRoomTests.test_the_identity_has_the_three_named_roster_terms_today": {
@@ -300,6 +300,26 @@
           "assertEqual": 2,
           "assertIn": 1,
           "assertNotIn": 2
+        },
+        "TheCostStripSaysWhatItsArithmeticDoesTests.test_both_picks_is_the_difference_of_the_two_cells_beside_it": {
+          "assertAlmostEqual": 1,
+          "assertEqual": 5,
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "TheCostStripSaysWhatItsArithmeticDoesTests.test_the_additive_reading_would_have_named_the_wrong_plan": {
+          "assertEqual": 1,
+          "assertGreater": 1
+        },
+        "TheCostStripSaysWhatItsArithmeticDoesTests.test_the_key_describes_the_operation_the_cells_perform": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 1,
+          "assertIn": 2,
+          "assertNotIn": 3
+        },
+        "TheCostStripSaysWhatItsArithmeticDoesTests.test_the_surfaces_that_render_the_key_are_pinned_not_assumed": {
+          "assertEqual": 1,
+          "assertIn": 1
         },
         "TheDisplayRoundingRuleTests.test_an_absent_or_non_finite_figure_is_not_rendered_as_one": {
           "assertEqual": 1,
@@ -2449,6 +2469,93 @@
         },
         "TheKeyCoversTheFunctionItKeysTests.test_the_same_inputs_key_the_same_way_twice": {
           "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_api_surface.py": {
+      "test_methods": 20,
+      "asserts": {
+        "assertEqual": 10,
+        "assertGreater": 4,
+        "assertIn": 6,
+        "assertLess": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 8
+      },
+      "by_method": {
+        "DeclaredOperationsMustBeBuildableTests.test_an_operation_naming_a_missing_function_is_caught": {
+          "assertIn": 1
+        },
+        "DeclaredOperationsMustBeBuildableTests.test_an_operation_reaching_past_the_engine_is_caught": {
+          "assertTrue": 1
+        },
+        "DeclaredOperationsMustBeBuildableTests.test_every_declared_operation_composes_functions_that_exist": {
+          "assertEqual": 1
+        },
+        "DeclaredOperationsMustBeBuildableTests.test_every_operation_states_why_it_is_one_request": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "EveryModuleTheHullReachesHasAnOwnerTests.test_no_module_is_claimed_by_two_layers": {
+          "assertEqual": 1
+        },
+        "EveryModuleTheHullReachesHasAnOwnerTests.test_no_module_the_hull_reaches_is_unassigned": {
+          "assertEqual": 1
+        },
+        "EveryModuleTheHullReachesHasAnOwnerTests.test_the_double_assignment_guard_fires": {
+          "assertEqual": 1
+        },
+        "EveryModuleTheHullReachesHasAnOwnerTests.test_the_population_is_the_one_the_hull_actually_reaches": {
+          "assertGreater": 2,
+          "assertNotEqual": 1
+        },
+        "EveryModuleTheHullReachesHasAnOwnerTests.test_the_ratchet_fires_on_a_module_with_no_owner": {
+          "assertIn": 1
+        },
+        "TheDraftRoomAlphaSliceIsSmallerThanTheInventoryTests.test_a_surface_nobody_declared_operations_for_gets_an_empty_slice": {
+          "assertEqual": 1
+        },
+        "TheDraftRoomAlphaSliceIsSmallerThanTheInventoryTests.test_the_slice_is_derived_from_the_operations": {
+          "assertLess": 1,
+          "assertTrue": 2
+        },
+        "TheDraftRoomAlphaSliceIsSmallerThanTheInventoryTests.test_the_slice_moves_when_an_operation_does": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "TheLayersAreTheOnesTheMeasurementForcedTests.test_every_assigned_module_exists_and_imports": {
+          "assertTrue": 1
+        },
+        "TheLayersAreTheOnesTheMeasurementForcedTests.test_every_assignment_carries_its_evidence": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "TheLayersAreTheOnesTheMeasurementForcedTests.test_no_layer_is_empty": {
+          "assertTrue": 1
+        },
+        "TheLayersAreTheOnesTheMeasurementForcedTests.test_the_scanner_is_borrowed_and_not_reimplemented": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "TheLayersAreTheOnesTheMeasurementForcedTests.test_the_vendor_data_layer_is_not_counted_twice": {
+          "assertEqual": 1
+        },
+        "TheReportSaysWhatItMeasuredTests.test_the_check_path_fails_when_a_module_is_unowned": {
+          "assertEqual": 1
+        },
+        "TheReportSaysWhatItMeasuredTests.test_the_check_path_passes_on_the_tree_as_it_stands": {
+          "assertEqual": 1
+        },
+        "TheReportSaysWhatItMeasuredTests.test_the_report_names_every_layer_and_the_data_census_it_defers_to": {
+          "assertIn": 3
         }
       },
       "disabled": {
