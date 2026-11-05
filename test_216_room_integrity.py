@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import pathlib
 import re
 import unittest
 from pathlib import Path
@@ -741,6 +742,72 @@ class TheCostStripSaysWhatItsArithmeticDoesTests(unittest.TestCase):
             "template lost it, confirm the three cells are explained some other way.")
         alpha_tpl = (_FABLE / "_src" / "v4_doors.tpl.html").read_text(encoding="utf-8")
         self.assertIn("costHTML", alpha_tpl, "the alpha no longer renders the cost cells at all")
+
+
+class TheBuiltPagesWearDesignSystemsPillsTests(unittest.TestCase):
+    """`#323`. `#320` made the prototype's position pills DERIVED from `design_system` via a
+    `/*__PILLS__*/` marker substituted at build time, and guarded it with a check inside
+    `_build.py` that the marker is still there. That guard protects the INPUT. It cannot say
+    anything about a page that was never rebuilt.
+
+    THAT IS NOT HYPOTHETICAL. In the session that wrote `#320`, the patch raised
+    `ModuleNotFoundError` on a missing `sys.path` entry, the build aborted part-way, and eight
+    built pages kept the OLD ten hexes -- eight of which breach the reserved-hue rule `#318` had
+    established minutes earlier. The suite was silent. The render gate would have photographed
+    the stale pages and certified them. A manual spot-check is what caught it.
+
+    So this is the emitter's output side: a pasted hex fails it, and a stale file fails it, and
+    between them that is the whole way the one-home mechanism can be defeated.
+    """
+
+    #: `#323b`: the pages the build EMITS. The frozen set is imported, not restated, because
+    #: `test_withheld_values_never_reach_the_prototype` already defines this category for this
+    #: same page -- "Committed artifacts the build no longer emits, whose inlined text therefore
+    #: cannot be regenerated" -- and a second spelling of it here would be `#126` again, in the
+    #: very batch whose whole subject is a quantity that had two homes. If a third consumer ever
+    #: wants it, that is the signal to lift it into a production module instead.
+    def _built_pages(self):
+        from test_withheld_values_never_reach_the_prototype import _FROZEN_CARRIERS
+        # Count-pinned upstream and re-pinned here: a growing exemption list must announce
+        # itself rather than quietly widen what this rule declines to check.
+        self.assertEqual(len(_FROZEN_CARRIERS), 1,
+                         f"the frozen-carrier set is now {sorted(_FROZEN_CARRIERS)}; this rule "
+                         f"exempts whatever is in it, so a change here needs a reason on record")
+        return [p for p in sorted(pathlib.Path(_FABLE).glob("*.html"))
+                if p.name not in _FROZEN_CARRIERS]
+
+    def test_every_built_page_carries_design_systems_pills_exactly(self):
+        pages = self._built_pages()
+        # Non-vacuity: a glob that matches nothing turns this into a rule about no pages at all,
+        # which passes. `#311` shipped a rule with that hole and the mutation pass found it.
+        self.assertGreaterEqual(len(pages), 5,
+                                f"only {len(pages)} built pages found under {_FABLE}; this rule "
+                                f"ranges over nothing it was written for")
+        expected = {f"--{p.lower()}": v.lower()
+                    for p, v in design_system.POSITION_PILL_TOKENS.items()}
+        expected["--absent"] = design_system.POSITION_PILL_ABSENT.lower()
+        self.assertGreaterEqual(len(expected), 11, "the pill vocabulary has been thinned")
+
+        checked = 0
+        for page in pages:
+            text = page.read_text(encoding="utf-8")
+            found = {f"--{n}": v.lower() for n, v in
+                     re.findall(r"--([a-z]+(?:-b)?):\s*(#[0-9a-fA-F]{6})", text)}
+            present = {k: v for k, v in found.items() if k in expected}
+            if not present:
+                continue   # a page that draws no pills at all is not this rule's business
+            checked += 1
+            for name, value in sorted(present.items()):
+                with self.subTest(page=page.name, pill=name):
+                    self.assertEqual(
+                        value, expected[name],
+                        f"{page.name} draws {name}: {value} where design_system says "
+                        f"{expected[name]}. Either a hex was pasted into the source, or this "
+                        f"page was not rebuilt after the palette moved -- `#320` emits these "
+                        f"and `python3 ui_explore/round2/fableA/_build.py` is what applies it")
+        self.assertGreaterEqual(checked, 5,
+                                f"only {checked} of {len(pages)} built pages carried any pill at "
+                                f"all; the substitution may not be reaching the pages")
 
 
 # MEASURED STATUS ON UNFIXED CODE (f580c11) and MUTATION RESULTS -- recorded at the bottom of

@@ -622,12 +622,17 @@ function doorHold(M, d){
   return {need: held.length === 0, text: held.length === 0 ? (open ? `you hold none, slot open` : fx ? `you hold none, ${fx.slot} open` : `you hold none`) : open ? `${names} · ${open} slot open` : `${names}${fx ? " · next → " + fx.slot : " · next → bench"}`};
 }
 /* the §14 tank on a door's edge; show=false (v4's ?notank) draws the position stripe alone */
-function doorTank(M, pos, cls, show){
+// `#316`: `pos` drives the tank's DATA (which pool to draw); `colourKey` drives its
+// COLOUR. Identical for every simple door; different for the compound IDP door, which was
+// painting its badge from the door and its rail from whoever topped the board. Optional,
+// falling back to `pos`, so callers that do not pass it are unchanged.
+function doorTank(M, pos, cls, show, colourKey){
   if (show === undefined) show = true;
-  if (!show || !M.tankable(pos)) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="${M.tankable(pos) ? "No pool sample from the engine for this format." : "No tank: §14 draws the pool gauge for offensive positions only."}"></span>`;
-  const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(pos)}" data-tip="No pool sample from the engine for this format."></span>`;
+  const PC = colourKey || pos;
+  if (!show || !M.tankable(pos)) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(PC)}" data-tip="${M.tankable(pos) ? "No pool sample from the engine for this format." : "No tank: §14 draws the pool gauge for offensive positions only."}"></span>`;
+  const t = M.tank(pos); if (!t) return `<span class="edge notank ${cls || ""}" style="--pc:${pc(PC)}" data-tip="No pool sample from the engine for this format."></span>`;
   const fillPct = 100 * t.left / t.N, markPct = 100 * (t.N - t.starters) / t.N;
-  return `<span class="edge ${cls || ""}" style="--pc:${pc(pos)}"><span class="tank" data-tip="${posTitle(pos)} pool
+  return `<span class="edge ${cls || ""}" style="--pc:${pc(PC)}"><span class="tank" data-tip="${posTitle(pos)} pool
 ${t.pctLeft}% of the engine's priced ${PLUR[pos]} are still on the board, its sample as of #${t.sampleAt}.
 The gold line is where the position stops producing starters in the replacement sense. It is a marker rather than an edge: below it players are still startable, and what runs out at the line is surplus over replacement, not production.
 The engine prices ${Math.round(100 * t.coverage)}% of the ${PLUR[pos]} listed, so an empty tank means it ran out of rated players, not that the position is gone."><span class="fill ${t.startersLeft ? "st" : ""}" style="height:${fillPct}%"></span><span class="zone" style="height:${100 - markPct}%"></span><span class="mark" style="bottom:${markPct}%"></span></span></span>`;
@@ -806,7 +811,7 @@ function doorDrawer(M, o){
   let ctx = "";
   if (d) { const b = M.doorBest(d), pos = b ? b.position : d.positions[0], h = doorHold(M, d);
     const inWin = o.window.includes(d), idx = M.DOOR_ORDER.indexOf(d);
-    ctx = `<div class="ctx">${doorTank(M, pos)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${b ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
+    ctx = `<div class="ctx">${doorTank(M, pos, null, true, d.key)}<div><div class="t"><span style="color:${pc(d.key)}">${doorLabel(d)}</span><span class="n">${b ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length} in the board's order · ${inWin ? "on the main surface" : "not on the main surface, the window is showing higher doors"}` : "no name on the board"}</span></div>
       <p>${h.text}${d.positions.filter(p => num(M.DEMAND[p])).map(p => ` · ${d.compound ? p + " " : ""}${M.demandText(p)}`).join("")}${M.shareNote() ? ` · ${M.shareNote()}` : ""}</p>
       <p>${b ? M.waitLine(pos) : doorNone(M, d, ", so nothing to wait on is measured.")}${b && doorDear(M, pos) ? " " + doorDear(M, pos) : ""}</p>
       ${b ? doorTankCap(M, pos).replace("tankcap", "note") : ""}</div></div>`; }

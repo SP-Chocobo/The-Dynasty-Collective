@@ -17208,3 +17208,131 @@ thing I had already found instead of for the rule's whole population.
 
 `DRAFT_ROOM_UI.md:1046` wants the same gate on the Insight button, and whether Insight ships at
 all is `U3`, still owner-owned. The Debate gate does not wait on that.
+
+---
+
+## `#316` `#318` `#320` `#321` `#322` `#323` — THE PILLS HAD TWO HOMES, AND SO DID THE HUES THEY HAD TO STAY CLEAR OF
+
+One batch, one subject. `#311` had moved the position pills into `design_system` and given them a
+rule. This batch found that the rule could not see most of what it was written to exclude, because
+the thing it measured AGAINST was itself duplicated — and then found that the repair's own
+mechanism had a test for its input and none for its output.
+
+### What shipped
+
+| item | change | why it is not cosmetic |
+|---|---|---|
+| `#316` | `doorTank` takes a `colourKey`; 6 call sites across 4 surfaces pass the door's own key | the compound IDP door drew its badge from the door and its rail from whoever topped the board — two identities, the second one dE 4.6 from the WITHHELD violet |
+| `#318` | QB `#8f86f0`→`#2a81fc`, RB `#17bfa0`→`#0ca89c`, TE `#e8683f`→`#ff6042`, plus `RESERVED_SEMANTIC_HUES` | three pills sat inside hues the prototype reserves for a STATE; QB's was visible in one viewport as a violet `QB` chip beside a violet-bordered `WITHHELD` badge |
+| `#320` | `shared.css`'s ten pill hexes → `/*__PILLS__*/`, filled from `design_system.position_pill_css_block()` | the prototype spelled its own ten and had drifted; `root_css_block()` renders TOKENS and pills are not tokens, so half the palette had never been covered by the one-home mechanism |
+| `#321` | the reserved-hue rule ranges over BOTH definitions of the reserved hues | **the rule caught 1 of the 3 breaches it was written for** — see below |
+| `#322` | `_palette.py`'s six-entry/K-fallback prose and its dead branch | a measurement tool describing a world `#311` had ended |
+| `#323` | `_palette.py` reads the BUILT page; new test pins every built page's pills to `design_system` | the emitter had no output-side check, and a stale build had **already** slipped through once |
+
+### THE FINDING: THE RESERVED HUES WERE THEMSELVES DUPLICATED, SO THE NEW RULE BARELY BOUND
+
+`#318` added `test_a_pill_is_never_a_colour_reserved_for_a_STATE` over `design_system.TOKENS`.
+The mutation arms — reverting each moved pill to its old value — showed it fired for one of three:
+
+| reverted pill | dE vs `ds.TOKENS` | dE vs the prototype | rule fires? |
+|---|---|---|---|
+| QB → `#8f86f0` vs `violet-b` | 22.8 | 10.9 | yes |
+| RB → `#17bfa0` vs `emerald-b` | **29.6** | 21.4 | **no** |
+| TE → `#e8683f` vs `amber` | **25.0** | 21.7 | **no** |
+
+Old TE landing on **exactly 25.0** to three figures is the part to stare at: `assertGreaterEqual`
+passes at equality, so that pill sat precisely on the boundary of a rule written to exclude it.
+
+The cause is `#126` one level up. `design_system.TOKENS` and the prototype's `shared.css` both
+define `violet-b`, `emerald`, `amber` and the rest, with different values:
+
+```
+--emerald    ds #1a9e4b   proto #0b8f57   dE 15.2
+--violet     ds #9457d4   proto #6d3fd6   dE 18.4
+--violet-b   ds #c9a4f0   proto #b593f5   dE 13.7
+--emerald-b  ds #4ee08c   proto #2fd08b   dE  9.0
+--crimson-b  ds #ff6b85   proto #f2546e   dE  8.5
+(gold, gold-b, amber, amber-b, crimson all differ by 2.0-5.6)
+```
+
+So "within 25.0 of amber" was two different questions, and `#318` measured the breaches against
+one home and wrote the rule over the other. `#321` ranges the rule over both: a pill is drawn on
+both surfaces, so until `#312` collapses the token sets it must clear both. Union worst margin
+across 10 pills × 10 hues × 2 homes is **27.9** (RB vs the prototype's emerald), so the 25.0 floor
+holds without being resized to its sample (`#56`). When `#312` lands, the second home returns the
+first home's values and the loop becomes the same loop — no change needed.
+
+**What this rules out:** that `#318` was a complete repair. It moved the right three pills for the
+right reason, and its own docstring correctly reports both palettes' margins for the NEW values.
+The defect was entirely in the rule's population, not in the ruling.
+
+### THE SECOND FINDING: `#320` GUARDED ITS INPUT AND NOTHING GUARDED ITS OUTPUT
+
+`#320`'s protection is a marker check inside `_build.py`: it raises if someone pastes pill hexes
+back into `shared.css`. That cannot fire on a page that was never rebuilt.
+
+**This had already happened, in the session that wrote it.** The `#320` patch raised
+`ModuleNotFoundError` (it imported `design_system` from a subdirectory without the repo root on
+`sys.path`), the build aborted, and eight built pages kept the old ten hexes — eight of which
+breach the reserved-hue rule `#318` had established minutes earlier. The suite was silent. The
+render gate would have photographed the stale pages and certified them. A manual spot-check is
+what caught it, and only because I checked the OUTPUT rather than trusting "rebuild succeeded".
+
+`#323` adds that output check. Mutation arms:
+
+| arm | failures | what it proves |
+|---|---|---|
+| unmutated | 0 | — |
+| move QB in `design_system`, don't rebuild | **8** | the stale-build case, caught on every built page |
+| move `POSITION_PILL_ABSENT`, don't rebuild | **8** | the absence marker is covered too |
+| empty `_FROZEN_CARRIERS` | 1 | the exemption is load-bearing, not decorative |
+| point the glob at nothing | 1 | non-vacuity: an empty page set cannot pass |
+
+On its first run it failed 4 subtests on `_v1_ledger_rail_prev.html`: `--k #a09480` (the
+**pre-`#311`** K) plus QB/RB/TE at pre-`#318` values — stale by two items. That page has no
+template, is not a build output (`_build.py:112` derives jobs from `SRC.glob("v*.tpl.html")` +
+`glob("m*.tpl.html")`, with `v1_ledger` emitting both plain and `_rail`), and is a tracked record
+from `96105d2` cited by this file. Holding it to the current palette would mean editing a record
+to make a test green. The exemption reuses `test_withheld_values_never_reach_the_prototype`'s
+existing `_FROZEN_CARRIERS` — same page, same stated reason ("Committed artifacts the build no
+longer emits, whose inlined text therefore cannot be regenerated"), count pin carried over —
+rather than a second spelling or an underscore-prefix heuristic, which would have been a rule
+shaped to its sample.
+
+### THE MECHANISM, THIRD INSTANCE IN TWO SESSIONS
+
+`#311` invalidated three sentences elsewhere in the repo. Two were caught (`design_system.py:97`,
+`test_design_system.py:242`). The third, `_palette.py:41-43`, was not — and with it a dead `elif`
+branch that would have printed a false explanation if it ever ran, in a file whose own docstring
+exists because a design note once asserted a palette claim "from reading the two files and seeing
+similar-looking hex".
+
+Every one of these was found by widening a query, never by re-reading. The check that would have
+caught all three: **after changing a published quantity, grep for the quantity's NAME across the
+whole repo, not across the files being edited.** `#322` found its two by grepping the blast radius
+of an unrelated batch.
+
+### Measured after the batch
+
+```
+pills matching design_system in the built pages : 10 of 10   mismatches: none
+--absent emitted                                : #a79a83    (design_system #a79a83)
+reserved-hue breaches in the built page         : 0          (was 8 of 10 pills)
+  worst margin anywhere                         : 27.9       (RB vs emerald, floor 25.0)
+  --def vs --idp                                : 89.8       (was 0.0 -- the same hex)
+  --k   vs body text                            : 38.9       (was 9.0)
+_palette.py position-pill table                 : 10 rows at 0.00 dE
+`pc(pos)` surviving inside doorTank             : 0
+```
+
+### Not fixed, and why
+
+- **`#312`** — `design_system` adopting the prototype's 27 non-pill tokens. Still open, and it is
+  what makes `#321`'s two-home loop collapse to one. The TOKENS comments cite 7 ΔE relationships
+  that all move and must be re-measured, so it is not a value swap.
+- **`REPO = pathlib.Path("/home/user/The-Dynasty-Collective")`** at `_build.py:25` — a hardcoded
+  absolute path, pre-existing, deliberately left rather than widen this batch. Recorded, not
+  silently touched.
+- **`posOf` duplicated in `m1_stack`, `m2_sheet`, `m3_hero`** — a `#126` violation sitting under
+  `#316`. Lifting it is a refactor, not a bug fix.
+- **Whether `DRAFT_ROOM_UI.md:50` reaches the mock draft button** — still the owner's, from `#317`.

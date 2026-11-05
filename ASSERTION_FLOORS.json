@@ -247,13 +247,13 @@
       }
     },
     "test_216_room_integrity.py": {
-      "test_methods": 26,
+      "test_methods": 27,
       "asserts": {
         "assertAlmostEqual": 3,
-        "assertEqual": 31,
+        "assertEqual": 33,
         "assertFalse": 1,
         "assertGreater": 3,
-        "assertGreaterEqual": 3,
+        "assertGreaterEqual": 6,
         "assertIn": 16,
         "assertIsNone": 1,
         "assertIsNotNone": 1,
@@ -300,6 +300,10 @@
           "assertEqual": 2,
           "assertIn": 1,
           "assertNotIn": 2
+        },
+        "TheBuiltPagesWearDesignSystemsPillsTests.test_every_built_page_carries_design_systems_pills_exactly": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 3
         },
         "TheCostStripSaysWhatItsArithmeticDoesTests.test_both_picks_is_the_difference_of_the_two_cells_beside_it": {
           "assertAlmostEqual": 1,
@@ -6329,21 +6333,21 @@
       }
     },
     "test_design_system.py": {
-      "test_methods": 37,
+      "test_methods": 38,
       "asserts": {
         "assertAlmostEqual": 4,
-        "assertEqual": 29,
+        "assertEqual": 30,
         "assertFalse": 1,
         "assertGreater": 1,
-        "assertGreaterEqual": 7,
-        "assertIn": 14,
+        "assertGreaterEqual": 9,
+        "assertIn": 15,
         "assertIsNotNone": 3,
         "assertLess": 2,
         "assertLessEqual": 2,
         "assertNotEqual": 3,
         "assertNotIn": 5,
         "assertRaises": 2,
-        "assertTrue": 2,
+        "assertTrue": 5,
         "assertWarns": 1
       },
       "by_method": {
@@ -6397,6 +6401,12 @@
         },
         "PaletteLegibilityTests.test_the_written_scope_is_every_foreground_token_dim_and_every_pill": {
           "assertEqual": 3
+        },
+        "PositionPillTests.test_a_pill_is_never_a_colour_reserved_for_a_STATE": {
+          "assertEqual": 1,
+          "assertGreaterEqual": 2,
+          "assertIn": 1,
+          "assertTrue": 3
         },
         "PositionPillTests.test_a_pill_is_never_the_colour_of_the_text_around_it": {
           "assertGreaterEqual": 2,

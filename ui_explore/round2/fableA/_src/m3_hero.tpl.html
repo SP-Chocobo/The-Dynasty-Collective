@@ -233,7 +233,7 @@ function heroHTML(d, idx){
   /* the X says what it does: the hero is the top door, which is the board's first name except
      when that name is streamable and set aside, so "the board's first name" was false in K_DEF */
   const x = open ? `<button class="x" data-x="1" aria-label="Close the ${d.label} door's other names and return to the top door">✕</button>` : "";
-  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}</div>${x}</section>`;
+  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos, null, true, d.key)}<div class="body">${head}${body}</div>${x}</section>`;
 }
 /* the chips: the window's other doors, in the board's order, and only those -- the count line
    says "showing N" and N is the hero plus these. The doors the window is not showing, and the
@@ -254,7 +254,7 @@ function chipsHTML(w, hero){
 function altsHTML(d){
   const best = doorBest(d), pos = posOf(d);
   if (!best) return "";
-  return `${doorTank(M, pos)}${phoneAlts(M, d, best, M.C.filter(c => d.positions.includes(c.position)), true)}`;
+  return `${doorTank(M, pos, null, true, d.key)}${phoneAlts(M, d, best, M.C.filter(c => d.positions.includes(c.position)), true)}`;
 }
 /* the count line is phoneCount in shared.js: one line for the three phones, and the one place
    the doors outside the window are named, each as a chip that opens it. */

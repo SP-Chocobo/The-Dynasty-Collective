@@ -224,7 +224,7 @@ function tileHTML(d, idx){
        <div class="val"><span class="big">${f1(best.team_acquisition_value)}</span>${best.player_id === L.player_id ? `<span class="d first">first</span>` : `<span class="cost2">${glanceHTML(M, best)}</span>`}</div>
        <div class="st ${h.need ? "need" : ""}">${h.text}</div>`
     : `<div class="empty">${doorHeld(M, d)} ${doorNone(M, d)}</div>`;
-  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${top}${body}</div></section>`;
+  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos, null, true, d.key)}<div class="body">${top}${body}</div></section>`;
 }
 /* the panel: the desktop's open door, laid under the grid */
 function panelHTML(d){
@@ -238,7 +238,7 @@ function panelHTML(d){
       ${phoneCtx(M, d, pos)}
       ${phoneAlts(M, d, best, list)}`
     : `<div class="empty">${doorHeld(M, d)} ${doorNone(M, d)}</div>`;
-  return `${doorTank(M, pos)}<div class="pbody">${head}${body}</div><button class="x" data-x="1" aria-label="Close the ${d.label} door and return to the grid">✕</button>`;
+  return `${doorTank(M, pos, null, true, d.key)}<div class="pbody">${head}${body}</div><button class="x" data-x="1" aria-label="Close the ${d.label} door and return to the grid">✕</button>`;
 }
 /* the count line is phoneCount in shared.js, one line for the three phones; this surface adds
    the one place its tiles' unit is stated. */

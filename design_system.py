@@ -409,6 +409,32 @@ def root_css_block() -> str:
     return f":root {{\n{lines}\n}}"
 
 
+def position_pill_css_block() -> str:
+    """Every position pill as a CSS custom property, plus the absence marker.
+
+    THE SECOND HALF OF A PALETTE THAT ONLY EVER HAD ONE EMITTER. `root_css_block()` renders
+    `TOKENS` and calls itself "the only place that ever spells out these hex values" -- true of
+    the tokens, and the pills are not tokens. So `ui_explore/round2/fableA/_src/shared.css`
+    spelled its own ten, they drifted, and by `#320` EIGHT OF THE TEN sat inside a hue reserved
+    for a STATE: `--lb` dE 4.6 from the withheld violet, `--db` 6.3 from gold, `--def` and
+    `--idp` the same hex, `--k` 9.0 from body text.
+
+    The drift was not the defect so much as its INVISIBILITY. Two palettes existed and nothing
+    named which one any given number belonged to, so measurements crossed between them in
+    silence -- including a published table in `#313`, and, independently, an adversarial pass
+    whose table made the mirror error on the same data. One emitter per half is what ends that;
+    diligence had already been applied and did not.
+
+    `--absent` is emitted too, because `#311` gave the absence marker its own token and the
+    prototype has no word for it: an unmapped position there still falls back to a POSITION's
+    colour, which is the defect `POSITION_PILL_ABSENT` exists to end.
+    """
+    lines = [f"  --{position.lower()}: {value};"
+             for position, value in POSITION_PILL_TOKENS.items()]
+    lines.append(f"  --absent: {POSITION_PILL_ABSENT};")
+    return ":root {\n" + "\n".join(lines) + "\n}"
+
+
 # ---------------------------------------------------------------------------------------
 # Shared badge vocabulary. Two families: role identity (who's speaking -- Quant/Beat/
 # Contrarian/Moderator/User/system messages) and necessity (how urgent a decision is -- the
@@ -610,10 +636,43 @@ def warn_if_out_of_policy() -> list[dict]:
 # colour" -- three positions, one chip, and that chip the colour of body text. Two of the
 # fixture's six formats are IDP leagues. Measured against the enforced rules, the worst number
 # anywhere in the four is 33.1 (DB against WR) on a 25.0 floor.
+#
+# `#318`: QB, RB AND TE MOVED OFF THE RESERVED STATE HUES. The prototype's `shared.css` reserves
+# four colours for what a thing IS DOING rather than what it IS -- "gold is now/selected/yours,
+# amber is caution and assumption, emerald is the slot a pick would fill, violet is withheld" --
+# and nothing encoded it, so three pills had drifted into them. Measured against the palette that
+# actually renders: QB sat dE 10.9 from the withheld violet, RB 21.4 from emerald, TE 21.7 from
+# amber. QB's was visible: a violet `QB` chip and a violet-bordered `WITHHELD` badge appeared in
+# one viewport and read as one colour.
+#
+# Each move stays inside +/-13 degrees of its own hue, so the pill reads as moved rather than
+# replaced. The cost, recorded rather than hidden: QB and WR are now two BLUES, and they are
+# often adjacent doors. Their dE is 36.3, slightly BETTER than the 35.6 they had -- but the old
+# pair crossed the blue/violet boundary and the new one does not, so the metric scores the change
+# as an improvement while the eye scores it a regression. Owner looked at the render and took it:
+# the collision removed is worse than the adjacency created.
 POSITION_PILL_TOKENS: dict[str, str] = {
-    "QB": "#8f86f0", "RB": "#17bfa0", "WR": "#4aa8ef",
-    "TE": "#e8683f", "K": "#fab87e", "DEF": "#ef7fc0",
+    "QB": "#2a81fc", "RB": "#0ca89c", "WR": "#4aa8ef",
+    "TE": "#ff6042", "K": "#fab87e", "DEF": "#ef7fc0",
     "DL": "#4cec4c", "LB": "#ff45ed", "DB": "#6ad8f0", "IDP": "#99a851",
+}
+
+#: Tokens that say what a thing is DOING, not what it IS. A position pill is an IDENTITY, so it
+#: must not wear one of these. The vocabulary is the prototype's own sentence, quoted above, and
+#: `#318` is where it stopped being prose only.
+#:
+#: WHAT THIS ADDS BEYOND RULE 1, stated so the rule is not mistaken for a broader claim than it
+#: makes -- the error the original pill block records making once already. At 25.0 the injury
+#: pair `amber-b`/`crimson-b` is already governed by the injury rule, and `gold-b`/`crimson`
+#: never bind for any of the ten. The reservations that actually bite are `violet-b` (QB),
+#: `emerald-b` (RB) and `amber` (TE). The rule is still written over all ten, because a rule
+#: narrowed to the members that happen to fail today is `#56`'s error in a new costume.
+RESERVED_SEMANTIC_HUES: dict[str, str] = {
+    "gold": "now / selected / yours", "gold-b": "now / selected / yours",
+    "amber": "caution and assumption", "amber-b": "caution and assumption",
+    "emerald": "the slot a pick would fill", "emerald-b": "the slot a pick would fill",
+    "violet": "withheld", "violet-b": "withheld",
+    "crimson": "injury", "crimson-b": "injury",
 }
 
 #: The quiet-text tier a pill must not be mistaken for. Named here because `#311` added a rule

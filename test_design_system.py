@@ -1,9 +1,32 @@
+import pathlib
 import re
 import unittest
 import warnings
 from unittest import mock
 
 import design_system as ds
+
+#: The prototype's `shared.css` is where the reserved hues are RESERVED -- its own sentence at
+#: lines 20-22 names them -- and `#320` already made that file derive its PILLS from
+#: `design_system`. Its reserved-hue VALUES are still its own, and they are not
+#: `design_system.TOKENS`': `emerald` differs by dE 15.2 between the two, `violet` by 18.4. So
+#: `#321` reads them rather than restating them, because a literal here would be a third home
+#: for a quantity that already has two too many.
+_PROTOTYPE_CSS = pathlib.Path(__file__).with_name("ui_explore") / "round2" / "fableA" / "_src" / "shared.css"
+
+
+def _prototype_reserved_hues():
+    """`--<name>: #hex` for every reserved hue the prototype draws, read from its own CSS.
+
+    Returns `{}` when the file is absent, and the caller treats that as a REASON TO FAIL rather
+    than a reason to skip: a rule whose second population silently empties is the inverted
+    instrument `#311` already shipped once.
+    """
+    if not _PROTOTYPE_CSS.exists():
+        return {}
+    found = dict(re.findall(r"--([a-z]+(?:-b)?):\s*(#[0-9a-fA-F]{6})",
+                            _PROTOTYPE_CSS.read_text(encoding="utf-8")))
+    return {k: v for k, v in found.items() if k in ds.RESERVED_SEMANTIC_HUES}
 
 
 def _rgb(value):
@@ -251,6 +274,64 @@ class PositionPillTests(unittest.TestCase):
             for pb, vb in items[i + 1:]:
                 with self.subTest(pair=(pa, pb)):
                     self.assertGreaterEqual(_delta_e(va, vb), 25.0)
+
+    def test_a_pill_is_never_a_colour_reserved_for_a_STATE(self):
+        """`#318`. The prototype states this in prose at `shared.css:20-22` -- "gold is
+        now/selected/yours, amber is caution and assumption, emerald is the slot a pick would
+        fill, violet is withheld" -- and nothing encoded it. A position pill is an IDENTITY; one
+        of these says what something is DOING. A pill wearing one answers the wrong question.
+
+        THREE PILLS HAD DRIFTED IN, and they were the three OLDEST: QB dE 10.9 from the withheld
+        violet, RB 21.4 from emerald, TE 21.7 from amber, measured against the palette that
+        actually renders. None of the four added by `#311` was in breach. QB's was visible in a
+        single viewport -- a violet `QB` chip beside a violet-bordered `WITHHELD` badge.
+
+        THE FLOOR IS 25.0 AND 20.0 WAS THE TEMPTING WRONG ANSWER: it would have isolated QB alone
+        and left RB and TE, turning a three-pill repair into a one-pill one. That is `#56` exactly
+        -- a bound is not a threshold, and choosing the number that makes the repair small is
+        sizing it to the sample. 25.0 is the floor every other pill rule already uses, applied to
+        a new population, which is the same argument `#311` made for the quiet-text tier.
+
+        VERIFIED UNDER BOTH PALETTES, because `#312` will swap the values these hues come from:
+        worst margin 29.9 against `design_system`'s own tokens and 27.9 against the prototype's.
+        """
+        # NON-VACUITY FIRST, and it is here because `#311` shipped the quiet-text rule WITHOUT it
+        # and the mutation pass found the hole: empty the population and every arm below is
+        # skipped, so the rule reports OK. A guard that fires on compliance and is silent on the
+        # violation is the inverted instrument this repository has already caught once.
+        self.assertTrue(ds.RESERVED_SEMANTIC_HUES, "the reserved vocabulary is empty")
+        self.assertGreaterEqual(len(ds.RESERVED_SEMANTIC_HUES), 8,
+                                f"only {len(ds.RESERVED_SEMANTIC_HUES)} reserved hues; the "
+                                f"vocabulary this rule ranges over has been thinned")
+        for token, meaning in ds.RESERVED_SEMANTIC_HUES.items():
+            self.assertIn(token, ds.TOKENS, f"{token} is reserved but is not a token")
+            self.assertTrue(meaning.strip(), f"{token} is reserved for nothing in particular")
+        self.assertTrue(ds.POSITION_PILL_TOKENS, "there are no pills to hold to the rule")
+
+        # `#321`: BOTH HOMES. The reserved hues are defined twice -- here and in the
+        # prototype's `shared.css` -- with different values, and this rule originally ranged
+        # over `ds.TOKENS` alone while the breaches `#318` repaired had been measured against
+        # the prototype's. The mutation arms proved the gap: reverting QB fired the rule,
+        # reverting RB (29.6 here, 21.4 there) and TE (25.0 here -- exactly on the floor --
+        # 21.7 there) did not. A pill is drawn on both surfaces, so it must clear both.
+        # `#312` collapses the two sets and makes this loop range over one home twice.
+        proto = _prototype_reserved_hues()
+        self.assertEqual(
+            set(proto), set(ds.RESERVED_SEMANTIC_HUES),
+            f"the prototype defines {len(proto)} of the {len(ds.RESERVED_SEMANTIC_HUES)} "
+            f"reserved hues; this rule's second population is incomplete, which would make it "
+            f"report OK on a breach it simply could not see")
+        homes = {"design_system.TOKENS": ds.TOKENS, "the prototype's shared.css": proto}
+
+        for position, value in ds.POSITION_PILL_TOKENS.items():
+            for token, meaning in ds.RESERVED_SEMANTIC_HUES.items():
+                for home, palette in homes.items():
+                    with self.subTest(position=position, reserved=token, home=home):
+                        self.assertGreaterEqual(
+                            _delta_e(value, palette[token]), 25.0,
+                            f"the {position} pill is within 25.0 of {token} as {home} defines "
+                            f"it, and {token} is reserved for \"{meaning}\" -- an identity "
+                            f"wearing a state's colour")
 
     def test_a_pill_is_never_the_colour_of_the_text_around_it(self):
         """`#311`. The rule the four enforced rules could not see: they govern 8 of 29 tokens,

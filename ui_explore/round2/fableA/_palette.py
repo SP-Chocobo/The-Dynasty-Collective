@@ -38,10 +38,21 @@ grounds, written from reading the two files and seeing similar-looking hex. It d
 prototype's grounds are measurably darker, and not one of the twenty-seven shared names is the
 same colour. That is the whole argument for having this file rather than an opinion.
 
-The position pills diverge further, and there the difference is a CAPABILITY rather than a
-preference: the app's POSITION_PILL_TOKENS has six entries and falls back to K's neutral for
-anything unmapped, so an IDP league draws DL, LB and DB in one colour where the prototype gives
-each a hue. Two of the fixture's six formats are IDP leagues.
+The position pills diverge further, and the shape of that divergence CHANGED under this file
+without this file noticing -- recorded here because the correction is the point, not a footnote.
+
+Until `#311` the app's POSITION_PILL_TOKENS had six entries and fell back to K's neutral for
+anything unmapped, so an IDP league drew DL, LB and DB in one colour where the prototype gave
+each a hue; two of the fixture's six formats are IDP leagues, so the gap was reachable. `#311`
+added DL, LB, DB and IDP and replaced the K fallback with POSITION_PILL_ABSENT, a deliberately
+quiet non-colour. THE CAPABILITY GAP IS CLOSED. What remains is a preference gap: ten names on
+both sides, different hues, which is what the table below measures.
+
+This paragraph described the old world for as long as it took someone to grep the name while
+changing something else (`#322`). The `#311` pass verified the properties it was establishing and
+not the ones it might be invalidating -- in `design_system.py` and `test_design_system.py` that
+was caught, here it was not, because the check looked at the files being edited rather than at
+every file naming the quantity.
 
 And the three FACES are identical, Cinzel included -- which settled a question that had been
 posed backwards. design_system.py already defines FONT_DISPLAY with a written rule ("the wordmark
@@ -100,7 +111,22 @@ def main():
 
     # The POSITION pills, which the app keeps in their own dict rather than in TOKENS, so the
     # "prototype only" list above reports them as absent when they are merely elsewhere.
+    #
+    # `#323`: READ FROM THE BUILT PAGE, not from `_src/shared.css`. `#320` replaced that file's
+    # ten pill hexes with a `/*__PILLS__*/` marker filled at build time, and this section went on
+    # parsing the source -- so it found nothing and printed "prototype (absent)" for all ten
+    # positions, which is the exact class of error this whole file exists to prevent. A built
+    # page is also the only artifact that can answer the question still worth asking: the pills
+    # are DERIVED from design_system now, so prototype-vs-app is a thing against itself, and what
+    # can actually fail is whether the derivation reached the file that ships.
     print("\n--- position pills ---")
+    built = ROOT / "ui_explore" / "round2" / "fableA" / "v4_doors.html"
+    if built.exists():
+        p = dict(re.findall(r"--([a-z]+(?:-b)?):\s*(#[0-9a-fA-F]{6})", built.read_text()))
+        print(f"  (read from {built.name}; `#320` made these derived, so a difference below is a"
+              f" BUILD that did not run, not a design divergence)")
+    else:
+        print(f"  (no built page at {built}; run _build.py -- the source no longer spells pills)")
     pos = {k.upper(): v for k, v in p.items() if k.upper() in
            ("QB", "RB", "WR", "TE", "K", "DEF", "DL", "LB", "DB", "IDP")}
     app_pos = ds.POSITION_PILL_TOKENS
@@ -110,8 +136,15 @@ def main():
             print(f"  {de:6.2f}  {k:<4} prototype {pos[k]:<9} app {app_pos[k]:<9}"
                   f"{'  <-- different hue' if de > 10 else ''}")
         elif k in pos:
-            print(f"  {'--':>6}  {k:<4} prototype {pos[k]:<9} app (no entry; falls back to the "
-                  f"neutral {ds.POSITION_PILL_TOKENS.get('K')} that K uses)")
+            # `#322`: reachable only if the app DROPS a position the prototype draws. It was
+            # reachable for real before `#311` (the app had six of these ten), and the message
+            # here then named K's neutral as the fallback -- which `#311` also changed, to
+            # POSITION_PILL_ABSENT. So this arm went unreachable AND wrong in the same commit,
+            # and a dead branch holding a false explanation is a measurement tool with a lie
+            # loaded in it. Derived from the constant now, so it cannot go stale again.
+            print(f"  {'--':>6}  {k:<4} prototype {pos[k]:<9} app (no entry; an unmapped "
+                  f"position draws POSITION_PILL_ABSENT {ds.POSITION_PILL_ABSENT}, which is "
+                  f"deliberately not any position's hue)")
         else:
             print(f"  {'--':>6}  {k:<4} prototype (absent)  app {app_pos[k]}")
 

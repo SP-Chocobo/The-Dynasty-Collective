@@ -276,7 +276,7 @@ function doorHTML(d, idx){
   const alts = !(open && best) ? "" : `<div class="then"><button class="btn expand" data-expand="${d.key}">
       <span>Expanded ${doorLabel(d)} options</span><em>${rest ? `${rest} more ${rest === 1 ? "name" : "names"}` : "no other name"}</em><span class="car">&rsaquo;</span></button></div>`;
   const x = open ? `<button class="x" data-x="1" aria-label="Collapse the ${d.label} door">✕</button>` : "";
-  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos)}<div class="body">${head}${body}${ctx}${alts}</div>${x}</section>`;
+  return `<section class="door ${open ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${doorTank(M, pos, null, true, d.key)}<div class="body">${head}${body}${ctx}${alts}</div>${x}</section>`;
 }
 /* the count line is phoneCount in shared.js: one line for the three phones, so the number it
    prints is the number of doors drawn on every one of them. The chip rows' labels are folded

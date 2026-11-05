@@ -181,7 +181,7 @@ const posOf = d => { const b = doorBest(d); return b ? b.position : d.positions[
 /* the window: the first WINDOW doors in the board's order; the open door is always in it.
    doorWindow in shared.js, with this surface's globals passed in (one home for the rule, #126) */
 function windowDoors(){ return doorWindow(M, openKey, STREAM_HIDE, WINDOW, ALL_DOORS); }
-function tankHTML(pos, cls){ return doorTank(M, pos, cls, SHOW_TANK); }
+function tankHTML(pos, cls, doorKey){ return doorTank(M, pos, cls, SHOW_TANK, doorKey); }
 function tankCap(pos){ return doorTankCap(M, pos, SHOW_TANK); }
 function holdText(d){ return doorHold(M, d); }
 function doorHTML(d, idx){
@@ -200,7 +200,7 @@ function doorHTML(d, idx){
         return `<div class="then"><span class="k">then at ${d.key}${d.compound ? " · best of each" : ""}</span>${dep.map((c, i) => `<div class="tr"><span class="rk">${d.compound ? c.position : i + 2}</span><span class="nm">${c.name}${M.armMark(c)}</span><span class="g">${sgn(c.team_acquisition_value - best.team_acquisition_value)}</span></div>`).join("")}${rest > 0 ? `<div class="tr"><span></span><span class="note">+ ${rest} more in the drawer</span></div>` : ""}</div>`; })() : `<div class="then"><span class="k">the only ${doorNoun(d)} on the board</span></div>`}</div>
       <div class="dact"><span class="note" style="margin-left:0">${d.key === openKey ? "open below · copy and numbers are on the cards" : `click to open ${d.key}`}</span></div>`;
   }
-  return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
+  return `<section class="door ${d.key === openKey ? "open" : ""} ${best ? "" : "none"}" data-door="${d.key}">${tankHTML(pos, null, d.key)}<div class="body"><div class="dh"><div class="top"><span class="pos" style="color:${pc(d.key)}" data-tip="${d.label}">${M.pill(d.key)}${doorLabel(d)}</span><span class="n ${best ? "" : "dim"}" data-tip="${best ? ordinal(idx + 1) + " of " + M.DOOR_ORDER.length + " doors, in the board's order" : "no name on the board"}">${best ? `${ordinal(idx + 1)} of ${M.DOOR_ORDER.length}` : "no name"}</span></div><div class="st ${h.need ? "need" : ""}">${h.text}</div>${dem ? `<div class="dem">${dem}</div>` : ""}<div class="wait">${wait}</div>${best ? tankCap(pos) : ""}</div>${body}</div></section>`;
 }
 /* the default open door, which must never be one STREAM_HIDE is holding back (doorDefault in shared.js) */
 function defaultOpen(){ return doorDefault(M, STREAM_HIDE && !ALL_DOORS); }

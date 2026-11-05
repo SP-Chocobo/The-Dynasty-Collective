@@ -88,6 +88,20 @@ if missing:
 
 payload = "const DATA=" + json.dumps({"formats": fixture, "vocab": vocab, "gauge": gauge, "avail": avail}, separators=(",", ":")) + ";"
 css = (SRC / "shared.css").read_text()
+# `#320`: the pills are DERIVED, the way the tokens are. `root_css_block()` renders TOKENS and
+# the pills are not tokens, so a second emitter fills the half that was never covered -- the
+# half the prototype had been spelling for itself, and had drifted in.
+# `_build.py` runs from this directory and `design_system` lives at the repo root, so the root
+# has to be on the path first -- the same two lines `_palette.py` already carries. Found by the
+# build crashing rather than by reading it: the rebuild raised ModuleNotFoundError, left the HTML
+# stale, and the pill check downstream reported all ten mismatched.
+import sys as _sys
+if str(REPO) not in _sys.path:
+    _sys.path.insert(0, str(REPO))
+import design_system as _ds
+if "/*__PILLS__*/" not in css:
+    raise SystemExit("shared.css has no /*__PILLS__*/ marker -- did someone paste pill hexes back in?")
+css = css.replace("/*__PILLS__*/", _ds.position_pill_css_block())
 js = (SRC / "shared.js").read_text()
 ok = True
 jobs = []
