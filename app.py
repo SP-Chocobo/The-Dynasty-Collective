@@ -65,6 +65,7 @@ from data_merger import (
 )
 from depth_chart import depth_value_label, positional_depth
 from freshness import build_freshness_manifest
+from pick_ledger import build_pick_ledger
 import league_config
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
 from league_prefs import forget_league, get_prefs, move_league, sorted_leagues, toggle_archive
@@ -1707,24 +1708,6 @@ def _best_alternative_line(alt) -> str:
     rendered = design_system.figure(alt.team_acquisition_value)
     tav = f"{rendered} {design_system.VALUE_UNIT_SHORT}" if rendered is not None else "unpriced"
     return f"**Best alternative:** {alt.name} — acquisition value {tav}"
-
-
-def build_pick_ledger(snapshot: dict) -> dict[int, dict[str, list[dict]]]:
-    """roster_id -> {"acquired": [...], "given_away": [...]}, built only from Sleeper's own
-    traded_picks (the authoritative source for who owns what -- Draft Sharks' own pick imports
-    can be unreliable, per direct report). Sleeper only lists a pick here once it's actually
-    moved from its original roster; an untouched pick is assumed to still belong to its
-    original roster and isn't worth listing, so this ledger is deliberately just the diffs,
-    not a full inventory of every hypothetical future pick."""
-    ledger: dict[int, dict[str, list[dict]]] = {}
-    for pick in snapshot.get("traded_picks") or []:
-        original, current = pick.get("roster_id"), pick.get("owner_id")
-        if original is None or current is None or original == current:
-            continue
-        ledger.setdefault(current, {"acquired": [], "given_away": []})["acquired"].append(pick)
-        ledger.setdefault(original, {"acquired": [], "given_away": []})["given_away"].append(pick)
-    return ledger
-
 
 
 

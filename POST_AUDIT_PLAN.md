@@ -17716,3 +17716,73 @@ doc_index checked (not assumed) after editing a file DOC_INDEX classifies -- PAS
 ```
 
 Neither item moves pixels, so neither needs a render gate run.
+
+---
+
+## `#315` — THE HULL EXTRACTION THAT FOUND AN UNTESTED FUNCTION, AND THE RATCHET THAT REFUSED IT
+
+`build_pick_ledger` lifted out of `app.py:1712-1726` into `pick_ledger.py`, by AST span rather
+than by retyping, the way `#300` lifted `build_freshness_manifest`. Function body verified
+**byte-identical** against `git show HEAD:app.py`.
+
+The hull imports the NAME, not the module, and that form is load-bearing:
+`test_league_view_wiring` asserts the literal call site `pick_ledger = build_pick_ledger(snapshot)`
+appears exactly once in each of two blocks, so `import pick_ledger` would have rewritten those
+call sites to `pick_ledger.build_pick_ledger(...)` and failed both. There is also a latent
+collision the name-import avoids: the new module is `pick_ledger.py` and the local variable at
+every call site is `pick_ledger`.
+
+### `api_surface` refused the extraction, which is the whole reason it exists
+
+```
+UNASSIGNED MODULE: pick_ledger -- the hull reaches it and no layer claims it.
+Decide whose job it is (ENGINE / ORCHESTRATION / PRODUCT_STORE / ADMIN / RENDER)
+and record the evidence, or route the reach away.
+```
+
+`#310` built this ratchet on the principle that the ASSIGNMENT is the thing that must not go
+stale. A new module entering the hull is a new ownership decision, and it would not let one
+through unmade. **Assigned ENGINE, on four pieces of evidence rather than by feel:**
+
+1. Its nearest sibling is already there — `player_universe` owns *"the pool and league
+   OWNERSHIP"*, and this answers the same kind of question about a future pick.
+2. It prices nothing. Its own docstring refuses to, and `estimate_future_pick_value` is a
+   separate ruling — so it does not reach into valuation.
+3. No credentials, no I/O, no writes. That rules out `ORCHESTRATION` (which holds provider
+   credentials) and `PRODUCT_STORE` (per-league state a person reads AND WRITES).
+4. The structural precedent is exact: `freshness` was lifted from the same hull by `#300` and
+   assigned ENGINE on the reasoning that a hull-liftable derivation over league facts IS engine
+   work. `#85`'s future-pick valuation waits on this one as an INPUT.
+
+The draft room's slice is unchanged at 15 engine functions in 7 modules — correctly, since this
+feeds the league view, not the draft room.
+
+### THE FINDING: THE FUNCTION HAD NO BEHAVIOUR TEST
+
+The only test naming `build_pick_ledger` was `test_league_view_wiring`, and it asserts the literal
+STRING `"pick_ledger = build_pick_ledger(snapshot)"` appears once in a source block. **That is a
+wiring assertion — it never calls the function.** So a function at three call sites, producing
+what a documentation review called *"the single dynasty fact the product most needs"*, could have
+returned anything at all and the suite would have stayed green.
+
+Lifting is what made the gap visible: a function inside a 5,800-line Streamlit hull is hard to
+call, and a module is not. `test_pick_ledger.py` — 9 tests — now pins the behaviour:
+
+| arm | failures | what it defends |
+|---|---|---|
+| unmutated | 0 | — |
+| drop the `original == current` skip | **2** | an untouched pick is not an entry |
+| `is None` → falsiness | **1** | **roster 0 is a real roster**, not a missing value |
+| record only the acquiring side | **5** | one `traded_picks` row is TWO facts |
+| store ids instead of the vendor row | **2** | callers price these; season and round must survive |
+
+The falsiness arm is the one worth keeping: `if not original` would have silently dropped every
+pick belonging to roster `0`, and nothing would have failed.
+
+### Verified
+
+```
+function body byte-identical to app.py's: True
+test_pick_ledger 9 tests OK; test_league_view_wiring + test_api_surface 41 tests OK
+all seven ratchets PASS; floors 243 modules / 7633 assertions
+```

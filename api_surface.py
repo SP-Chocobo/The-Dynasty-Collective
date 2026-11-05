@@ -88,6 +88,18 @@ ENGINE: dict[str, str] = {
     "lineup_readiness": "'is there a problem with my active lineup right now'",
     "league_standings": "standings off each roster's own record",
     "freshness": "the freshness manifest (#300), liftable precisely because it is engine work",
+    # `#315`: WHO HOLDS WHICH FUTURE PICK. Assigned here on four pieces of evidence rather than
+    # by feel, because this file's whole point is that the ASSIGNMENT is the thing that must not
+    # go stale. (1) Its nearest sibling is already ENGINE: `player_universe` owns "the pool and
+    # league OWNERSHIP", and this answers the same kind of question about a future pick.
+    # (2) It prices nothing -- its own docstring refuses to, and `estimate_future_pick_value` is
+    # a separate ruling -- so it does not reach into valuation. (3) No credentials, no I/O, no
+    # writes: that rules out ORCHESTRATION (which holds provider credentials) and PRODUCT_STORE
+    # (per-league state a person reads AND WRITES). (4) The structural precedent is exact:
+    # `freshness` above was lifted out of the hull by `#300` under `#137` and assigned ENGINE on
+    # the reasoning that a hull-liftable derivation over league facts IS engine work. `#315`
+    # lifted this one the same way, and `#85`'s future-pick valuation waits on it as an INPUT.
+    "pick_ledger": "who holds which future pick (#315), derived from Sleeper's own traded_picks",
     "corpus_state": "'which body of data this session's numbers are computed from'",
 }
 

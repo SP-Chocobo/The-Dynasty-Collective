@@ -12150,6 +12150,49 @@
         "early_returns": 0
       }
     },
+    "test_pick_ledger.py": {
+      "test_methods": 9,
+      "asserts": {
+        "assertEqual": 20,
+        "assertNotIn": 1
+      },
+      "by_method": {
+        "AMovedPickIsRecordedOnBothSidesTests.test_both_rosters_appear_even_though_only_one_row_describes_the_trade": {
+          "assertEqual": 1
+        },
+        "AMovedPickIsRecordedOnBothSidesTests.test_several_picks_accumulate_rather_than_replace": {
+          "assertEqual": 3
+        },
+        "AMovedPickIsRecordedOnBothSidesTests.test_the_new_owner_acquired_it_and_the_original_gave_it_away": {
+          "assertEqual": 4
+        },
+        "AbsenceIsNotZeroTests.test_a_missing_original_or_owner_is_skipped_not_defaulted": {
+          "assertEqual": 3
+        },
+        "AbsenceIsNotZeroTests.test_no_traded_picks_key_and_an_explicit_none_both_give_an_empty_ledger": {
+          "assertEqual": 3
+        },
+        "AbsenceIsNotZeroTests.test_roster_zero_is_a_roster_and_not_a_missing_value": {
+          "assertEqual": 2
+        },
+        "AnUntouchedPickIsNotAnEntryTests.test_a_pick_still_with_its_original_roster_is_skipped": {
+          "assertEqual": 1
+        },
+        "AnUntouchedPickIsNotAnEntryTests.test_a_roster_with_only_untouched_picks_does_not_appear_at_all": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "TheRowItselfIsHandedBackTests.test_the_stored_entry_is_the_vendor_row_not_a_reduction_of_it": {
+          "assertEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_pick_resolution_flags.py": {
       "test_methods": 6,
       "asserts": {
