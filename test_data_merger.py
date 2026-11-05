@@ -630,6 +630,20 @@ class RecencyGradeTests(unittest.TestCase):
         self.assertEqual(dm.recency_grade(None), "Unknown")
 
 
+#: `#305`: ONE HOME for the pool fillers, now that two tests in this class grow the same pool.
+#: bot_research's percentile pool is segmented by offense/IDP position group (see
+#: `_compute_percentiles`), so a filler must land in Crosby's own "idp" group to grow HIS pool --
+#: an unpositioned dummy name would just form its own separate one-off group. Each name here
+#: shares a (first-initial, last-name) key with a real IDP row in the baseline, because Draft
+#: Sharks stores first-initial-only names, and that is how a finding's position resolves at all.
+_IDP_POOL_FILLERS = [
+    "Cole Schwesinger", "Chase Gray", "Zack Baun", "Robert Spillane", "Jake Campbell",
+    "Will Anderson", "Aidan Hutchinson", "Jamie Sherwood", "Brandon Burns",
+    "Andrew Van Ginkel", "Devin Lloyd", "Quinn Walker", "Fred Warner", "Eli Cooper",
+    "Ben Cashman", "Roman Smith", "Cole Conner", "Nick Bonitto", "Felix Oluokun",
+]
+
+
 class CompositePoolSizeDampeningTests(unittest.TestCase):
     """The exact bug this class exists to prevent regressing: with a single bot_research
     finding on the books, EVERY finding read as the 100th percentile regardless of its actual
@@ -645,14 +659,84 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         self.addCleanup(lambda: shutil.rmtree(self._tmpdir, ignore_errors=True))
         self.addCleanup(setattr, bot_research, "FINDINGS_PATH", self._orig_findings_path)
 
-    def test_single_finding_barely_moves_the_composite(self):
+    def test_a_thin_pool_is_damped_by_the_law_and_moves_the_score_less_than_a_trusted_one(self):
+        """`#305`. THIS TEST USED TO ASSERT `move < 3.0`, AND HAD BEEN THE SUITE'S ONE STANDING
+        FAILURE: the measured move is 3.3536. Three candidate replacements were rejected first,
+        and the reasons are the reason this one looks the way it does.
+
+        REJECTED -- the prose that sat above the old assertion. It defined the bound as "well
+        under half of the gap between draftsharks' own reading and a naive 100th percentile
+        reading", i.e. 0.5 * (100.0 - 25.0) = 37.5. **That bound is VACUOUS**: with damping
+        removed entirely the move is 36.3, which is under 37.5, so a test asserting the prose
+        would have passed with the exact bug this class exists to prevent fully restored.
+
+        REJECTED -- the closed form `gap * w_bot / (w_ds + w_bot)`. It evaluates to the measured
+        move exactly, which makes it a PIN ON THE FORMULA rather than a bound on behaviour: it
+        restates the implementation and would fail on any deliberate reweighting.
+
+        REJECTED -- raising the constant to 3.5 and dating it. That is `#56` precisely: sizing a
+        repair to its sample, stale again the moment the weights move, with nothing saying so.
+
+        WHAT THIS ASSERTS INSTEAD, and the point is that NONE of it is a magnitude anybody had to
+        invent. The damping law is `base * recency * min(1.0, pool / MIN)`. Two legitimate
+        production states bracket it: a pool of 1 (factor `1/MIN`) and a pool of MIN (factor
+        1.0). Comparing them IS the ablation -- at pool MIN the damping is inert, so the trusted
+        move is the undamped move -- but performed with two real pools rather than by toggling a
+        production constant, which is what `#222` asks for.
+
+        MEASURED when this was written, as an OBSERVATION and deliberately not as an assertion
+        (`#326`: an observed margin written in the grammar of a guarantee is what goes stale):
+        pool 1 -> weight 0.025000, move 3.4000; pool 20 -> weight 0.500000, move 36.5000; weight
+        ratio exactly 20.0, move ratio 10.74. The move ratio is NOT asserted because it depends
+        on the other sources' weight mix and would rot on any reweighting; the weight ratio is
+        asserted because the law fixes it at exactly MIN.
+        """
+        MIN = dm.COMPOSITE_MIN_TRUSTED_POOL_SIZE
         baseline_only = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
+
         _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
-        with_one_finding = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
-        # A single, thin-pool finding should nudge the score, not swing it -- well under half
-        # of the gap between draftsharks' own trade_value-as-score reading and a naive 100th
-        # percentile reading of the untrusted single-row pool.
-        self.assertLess(with_one_finding["score"] - baseline_only["score"], 3.0)
+        thin = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
+        thin_bot = next(c for c in thin["components"] if c["source"] == "bot_research")
+        thin_move = thin["score"] - baseline_only["score"]
+
+        for i, name in enumerate(_IDP_POOL_FILLERS):
+            _admitted_finding(name, "ESPN", "filler", rank=i + 2)
+        trusted = dm.DataMerger().composite_player_score("Maxx Crosby", position="DL")
+        trusted_bot = next(c for c in trusted["components"] if c["source"] == "bot_research")
+        trusted_move = trusted["score"] - baseline_only["score"]
+
+        # The two states are the ones the law brackets, and the subject stays rank 1 in both --
+        # so percentile is held at 100 and the WEIGHT is the only thing that moves. Without this
+        # the comparison below would be measuring a percentile change as well.
+        self.assertEqual(thin_bot["pool_size"], 1)
+        self.assertEqual(trusted_bot["pool_size"], MIN)
+        self.assertEqual(thin_bot["percentile"], 100.0)
+        self.assertEqual(trusted_bot["percentile"], 100.0)
+
+        # 1. THE LAW AT POOL 1, exactly. The sibling test pins the other end (pool == MIN, where
+        #    min() returns 1.0); this pins the damped end, in the same terms, from the same
+        #    constants. No invented number.
+        self.assertAlmostEqual(
+            thin_bot["weight"],
+            dm.COMPOSITE_SOURCE_WEIGHTS["bot_research"]
+            * dm._recency_weight(thin_bot["source_date"]) / MIN,
+            places=6,
+            msg="a pool-of-one source is not being damped by exactly 1/MIN")
+
+        # 2. THE RATIO OF TWO PRODUCTION WEIGHTS is exactly MIN. Observed, not reconstructed --
+        #    both come off real components. This is the assertion that fails if damping is
+        #    WEAKENED rather than removed, because a halved divisor gives a ratio of MIN/2.
+        self.assertAlmostEqual(trusted_bot["weight"] / thin_bot["weight"], float(MIN), places=6,
+                               msg="the trusted-to-thin weight ratio is not COMPOSITE_MIN_"
+                                   "TRUSTED_POOL_SIZE; the damping law has changed")
+
+        # 3. THE END-TO-END CONSEQUENCE, which is what this class's docstring is about and what
+        #    option 2 (delete and lean on the sibling) would have lost. An ORDERING, so it needs
+        #    no magnitude: with damping removed the two weights are equal, both percentiles are
+        #    already 100, and the two moves collapse onto each other -- so `<` fails.
+        self.assertLess(thin_move, trusted_move,
+                        f"a thin pool moved the composite by {thin_move:.4f}, a trusted pool by "
+                        f"{trusted_move:.4f}; damping is not reducing a thin source's influence")
 
     def test_weight_ramps_back_up_as_pool_grows_to_the_trusted_threshold(self):
         _admitted_finding("Maxx Crosby", "ESPN", "ranked #1 DL", rank=1)
@@ -662,12 +746,7 @@ class CompositePoolSizeDampeningTests(unittest.TestCase):
         # Each of these shares a (first-initial, last-name) key with a real IDP row in the
         # baseline (Draft Sharks stores first-initial-only names), which is how that grouping
         # resolves a finding's position at all.
-        idp_fillers = [
-            "Cole Schwesinger", "Chase Gray", "Zack Baun", "Robert Spillane", "Jake Campbell",
-            "Will Anderson", "Aidan Hutchinson", "Jamie Sherwood", "Brandon Burns",
-            "Andrew Van Ginkel", "Devin Lloyd", "Quinn Walker", "Fred Warner", "Eli Cooper",
-            "Ben Cashman", "Roman Smith", "Cole Conner", "Nick Bonitto", "Felix Oluokun",
-        ]
+        idp_fillers = _IDP_POOL_FILLERS
         self.assertEqual(len(idp_fillers), dm.COMPOSITE_MIN_TRUSTED_POOL_SIZE - 1)
         for i, name in enumerate(idp_fillers):
             _admitted_finding(name, "ESPN", "filler", rank=i + 2)

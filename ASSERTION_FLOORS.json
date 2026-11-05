@@ -5114,8 +5114,8 @@
     "test_data_merger.py": {
       "test_methods": 79,
       "asserts": {
-        "assertAlmostEqual": 5,
-        "assertEqual": 86,
+        "assertAlmostEqual": 7,
+        "assertEqual": 90,
         "assertFalse": 1,
         "assertGreater": 5,
         "assertGreaterEqual": 1,
@@ -5149,7 +5149,9 @@
         "BotResearchPercentilePositionSegmentationTests.test_number_one_offense_and_number_one_idp_claims_stay_in_separate_pools": {
           "assertEqual": 2
         },
-        "CompositePoolSizeDampeningTests.test_single_finding_barely_moves_the_composite": {
+        "CompositePoolSizeDampeningTests.test_a_thin_pool_is_damped_by_the_law_and_moves_the_score_less_than_a_trusted_one": {
+          "assertAlmostEqual": 2,
+          "assertEqual": 4,
           "assertLess": 1
         },
         "CompositePoolSizeDampeningTests.test_structured_sources_are_unaffected_by_a_thin_bot_research_pool": {

@@ -18096,3 +18096,89 @@ and `density.json` is its measured record.
 | `86ce27a` | **4364** | **1508.019** | **345.6** |
 
 19 tests and 147 seconds added across the session. Budget from the total: **1508s**.
+
+---
+
+## `#305` CLOSED — THE SUITE'S ONE STANDING FAILURE, FIXED WITHOUT INVENTING A MAGNITUDE
+
+`#305` was left open deliberately, with three options and **no recommendation**, because `#56`
+forbids sizing a repair to its sample and none of the three avoided that. Owner delegated the
+choice. **There is a fourth option, and it needs no magnitude at all.**
+
+### What the three options cost
+
+| option | the problem with it |
+|---|---|
+| 1. bound the move against the undamped move (`move < undamped / 2`) | the `/ 2` is still a magnitude nobody argued for |
+| 2. delete the test, lean on the sibling | loses the end-to-end consequence, which is what this class's docstring is about |
+| 3. raise the constant to 3.5 and date it | `#56` exactly: stale again on the next reweighting, with nothing saying so |
+
+### The fourth option: two real pools, not a toggled constant
+
+The damping law is `base * recency * min(1.0, pool / MIN)`. **Two legitimate production states
+bracket it**: a pool of 1 (factor `1/MIN`) and a pool of MIN (factor `1.0`). Comparing them IS
+the ablation — at pool MIN the damping is inert, so the trusted move is the undamped move — but
+performed with two REAL pools rather than by toggling a production constant, which is what `#222`
+asks for.
+
+Measured:
+
+```
+            pool   percentile   weight     law base*rec*min(1,pool/MIN)   move
+thin           1        100.0   0.025000   0.025000                      3.4000
+trusted       20        100.0   0.500000   0.500000                     36.5000
+
+weight ratio trusted/thin = 20.0000   <- exactly COMPOSITE_MIN_TRUSTED_POOL_SIZE
+move   ratio              = 10.7353
+```
+
+Three assertions, **none of them a magnitude anybody had to invent**:
+
+1. **The law at pool 1, exactly** — `weight == base * recency / MIN`. The sibling test already
+   pins the other end (pool == MIN, where `min()` returns 1.0); this pins the damped end in the
+   same terms, from the same constants.
+2. **The ratio of two PRODUCTION weights is exactly MIN** — observed off real components, not
+   reconstructed. This is the assertion that catches damping being WEAKENED rather than removed.
+3. **The end-to-end consequence, as an ORDERING** — `thin_move < trusted_move`. No magnitude is
+   possible in an ordering. Non-vacuous because with damping removed the two weights are equal,
+   both percentiles are already 100, and the two moves collapse onto each other.
+
+The **move ratio (10.74) is recorded as an observation and deliberately NOT asserted** — it
+depends on the other sources' weight mix and would rot on any reweighting. `#326`'s lesson applied
+at the moment of writing rather than a year later.
+
+### Mutation arms — the point of the whole item
+
+| arm | result |
+|---|---|
+| unmutated | silent |
+| damping removed (`return 1.0`) | **FIRES** |
+| damping halved (divisor `MIN / 2`) | **FIRES** |
+| damping softened to `sqrt(pool / MIN)` | **FIRES** |
+
+The halved and sqrt arms are the ones the old test could never have caught.
+
+### THE REJECTED PROSE BOUND, PROVEN VACUOUS BY MEASUREMENT RATHER THAN ARGUMENT
+
+```
+gap (naive 100th pct - draftsharks reading)  = 75.0
+the prose's bound  0.5 * gap                 = 37.5
+move AS SHIPPED (damping on)                 =  3.4000
+move WITH DAMPING REMOVED                    = 36.5000   <- the bug restored
+would assertLess(move, 37.5) catch the bug?  NO -- IT PASSES WITH THE BUG RESTORED
+```
+
+`#305` asserted this; it is now demonstrated. A test written from that sentence would have
+replaced a failing test with a vacuous one, which is strictly worse.
+
+**One figure not reconciled, recorded rather than smoothed over.** `#305` measured the undamped
+move as **36.3** by setting `COMPOSITE_MIN_TRUSTED_POOL_SIZE = 1`; this pass measures **36.5** by
+replacing the damping factor with `1.0`. The second ablation is narrower — it cannot disturb
+anything else that reads the constant, though a grep confirms only the law does. Both land on the
+same side of both bounds and the conclusion is identical, so the 0.2 is noted and not chased.
+
+### Consequence
+
+**The suite has no standing failure for the first time in this register's recent history.** Every
+previous certification in this session reads `FAILED (failures=1 ...)` with this test named.
+`data_merger.py` is unchanged — the engine's behaviour was never in doubt, and `#305` said so.
