@@ -17786,3 +17786,43 @@ function body byte-identical to app.py's: True
 test_pick_ledger 9 tests OK; test_league_view_wiring + test_api_surface 41 tests OK
 all seven ratchets PASS; floors 243 modules / 7633 assertions
 ```
+
+---
+
+## CERTIFICATION — `#314` `#319` `#319b` `#315` at `584fa22`
+
+```
+Ran 4360 tests in 1461.165s
+FAILED (failures=1, skipped=2, expected failures=1)
+```
+
+| | previous cert (`486fc02`) | this run (`584fa22`) |
+|---|---|---|
+| tests | 4349 | **4360** |
+| wall clock | 1395.006s | 1461.165s |
+| per test | 320.8ms | 335.1ms |
+| failures / skipped / expected | 1 / 2 / 1 | **1 / 2 / 1** |
+
+The **+11** is exactly accounted for: 9 new `test_pick_ledger` tests and `#314`'s 2. The sole
+failure is `test_single_finding_barely_moves_the_composite` — `#305`'s deliberate `3.0` bound,
+verified by name rather than assumed from its position in the run.
+
+**No render gate run, and the reason is a check rather than a guess:** none of these four items
+touches the prototype's HTML, CSS or JS. `#314` edits `provider_meter.py`, `#319`/`#319b` edit
+`DRAFT_ROOM_UI.md`, `#315` moves a function between Python modules. The gate photographs built
+prototype pages; there is nothing for it to see.
+
+### Suite budget, re-measured with its date and commit
+
+Three dated measurements now exist, all taken with `__pycache__` cleared first (`#240`):
+
+| commit | tests | seconds | ms/test |
+|---|---|---|---|
+| `#317` | 4345 | 1360.614 | 313.1 |
+| `486fc02` | 4349 | 1395.006 | 320.8 |
+| `584fa22` | **4360** | **1461.165** | **335.1** |
+
+The suite grew by 15 tests and 100 seconds across today's work. Per-test cost rose 7%, which is
+inside the variance this repo has recorded before (`close-register-item` has it swinging 28% in
+both directions across single days). **Budget from the total, not the trend** — and the total to
+budget from is now **1461s**, not the 1344s that was current this morning.
