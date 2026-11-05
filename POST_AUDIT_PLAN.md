@@ -17562,3 +17562,77 @@ all seven ratchets PASS; floors 242 modules / 7605 assertions
   pages under `mockups/` carry superseded hexes and have no output guard (the `#323` class). It is
   a separate surface and a separate decision; recorded with its evidence rather than half-done.
 - **`#312`** — still the item that collapses `#321`'s two-home loop.
+
+---
+
+## CERTIFICATION — `#316` `#318` `#320` `#321` `#322` `#323` `#324` `#325` `#326` `#327` at `486fc02`
+
+Both gates run against a clean tree at `486fc02`, after the batch and its correction were pushed.
+
+### Full suite
+
+```
+Ran 4349 tests in 1395.006s
+FAILED (failures=1, skipped=2, expected failures=1)
+```
+
+| | baseline `#317` | this run |
+|---|---|---|
+| tests | 4345 | **4349** |
+| wall clock | 1360.614s | 1395.006s |
+| per test | 313.1ms | 320.8ms |
+| failures / skipped / expected | 1 / 2 / 1 | **1 / 2 / 1** |
+
+The **+4** is exactly the four tests this batch added — `#318`'s reserved-hue rule, `#323`'s
+built-page pill guard, `#324`'s in-effect arm, `#325`'s absence marker. The one failure is
+`#305`'s deliberate `3.0` bound, the same test that failed at `#317`. No regression in 4349 tests.
+
+**A timing claim I made twice and had to withdraw both times.** Mid-run I measured ~778-864 ms/test
+over the first few hundred tests and flagged a possible suite-wide slowdown — first blaming CPU
+contention, then a genuine regression. Both were wrong. The expensive modules
+(`test_216_room_integrity` and the board-executing ones, then
+`test_a_rank_difference_needs_one_population`, then `test_threshold_reachability`) sit early in
+the alphabet, so any prefix rate is dragged by them while the cheap modules sit later. At 1337s
+the run was at 4022 tests — already tracking baseline. **A rate over a non-representative prefix
+is not a rate**, and the only thing that settled it was waiting for the denominator. The suite
+budget needs no revision: 320.8ms/test against 313.1ms.
+
+### Render gate
+
+```
+verdict                      PASS_WITH_KNOWN_FAILURES
+renders 396   ok 395   failed 1   failures_total 0
+expected_failures            ['m1_stack.html [HEAVY_IDP/late@390x664]']
+stale_expectations           []
+source_commit                486fc028534840636806cbcf948ed4f113a80635
+source_tree_clean            True      source_tree_dirty_paths  []
+snapshot_verified_unchanged  True      (7 builds re-hashed)
+```
+
+Identical to the `e454460` baseline: 396 / 395 / 1. The single failure is the named known one —
+the HEAVY_IDP 8px scroll overrun left alone under `#56` — and `stale_expectations: []` confirms it
+is still that failure rather than a new one inheriting its name.
+
+**What this certifies, stated precisely.** Not that the pixels are unchanged — the palette moved
+visibly, which was the point. That every RULED property survived the move:
+
+- name size identical across draft states for all **126** (file, format, viewport) groups
+- URL and board agree at every navigation step on all four surfaces (load / hash edit / Back / Forward)
+- scroll budgets, navigation consistency, and the build snapshot byte-identical across 7 re-hashed builds
+
+A palette change that moved three pills, re-rooted the emitted CSS block, and rewired `pc()` across
+six call sites left all of that untouched.
+
+### What was wrong on the shipped surface when this batch started
+
+Three defects, none found by re-reading:
+
+| defect | found by |
+|---|---|
+| the entire position palette was DEAD in the browser — present in every file, applied to nothing | taking a screenshot and looking at it |
+| `pc('')` painted unmapped positions in the KICKER's colour; `pc('XYZ')` in the TEXT's colour | calling the page's own function instead of reasoning about it |
+| the `#318` reserved-hue rule bound on 1 of the 3 pills it was written for | the mutation arms |
+
+Plus two stale-prose instances (`design_system.py:97`, recorded at `#311` and never repaired; and
+`MAIN_PAGE.md`, the second home of the sentence `#322` fixed) and one bug of mine that reached
+origin and was corrected in the open (`#324`).
