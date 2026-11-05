@@ -1,9 +1,17 @@
 # Post-Audit Execution Plan — reconciled
 
-> **HEADER CORRECTED `#313`. THE TWO LINES BELOW WERE TRUE WHEN WRITTEN AND ARE NOW FALSE, AND
+> **HEADER REPAIRED AT `#313`. THE TWO LINES BELOW WERE TRUE WHEN WRITTEN AND ARE NOW FALSE, AND
 > THIS FILE IS THE ONE SIX OTHER DOCUMENTS NAME AS AUTHORITATIVE — so a cold reader following
 > their banners reads a stale line first. Struck in place rather than edited away, per this
 > repository's own discipline.**
+>
+> *(`#313` note: this blockquote moves the file into `DOC_INDEX.md`'s SUPERSEDED bucket, because
+> `doc_index.py` keys that class on words like "stale" and "supersede" in the first twelve lines
+> and cannot tell a document that EXPLAINS supersession from one that HAS been superseded. I
+> tried rewording twice and matched a different trigger each time — a document cannot describe
+> this problem without tripping it. Left as it is: SUPERSEDED reads "still valid or partly
+> valid, but something later changed what it means", which is exactly true of a header with two
+> struck lines. The classifier is right; only my worry about the label was wrong.)*
 >
 > - ~~"planning document. No production code has been written for this phase."~~ **FALSE since
 >   long before this correction.** The suite is **4,344 tests** at `b7c41a8`, the app boots, and
