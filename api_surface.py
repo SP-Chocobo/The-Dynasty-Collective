@@ -29,6 +29,18 @@ finding rather than a quibble:
     modules. Naming it is what keeps them out of the API: `draft_board_ui.render_board_html` is
     a reach the hull makes 16 times and is not an endpoint under any reading.
 
+WHAT THE LAYER NAMES MEAN, AND WHAT THEY DELIBERATELY DO NOT SETTLE. `WARPATH.md`'s standing
+rule is "build the mechanism, do not let it imply the deployment", because the local-first /
+central-substrate question is one `ROADMAP.md` refuses to answer and the owner's lean toward
+"one independent cloud version we control" is recorded as a lean, not a decision. So read every
+layer below as an EXECUTION AND TRUST boundary -- what runs outside the browser, and what holds
+credentials -- never as a hosting claim. That boundary exists identically in both futures: today
+Streamlit is already a local server, so "server-side" means "not in the page", not "in a data
+centre". `ORCHESTRATION` holds the provider credentials whether it runs on a laptop or a host;
+`PRODUCT_STORE` is per-league state a person reads and writes whether that store is a local JSON
+file or a row somewhere. Nothing here should be cited as having settled the deployment model --
+that must be decided as itself, which is exactly the accretion failure WARPATH names.
+
 WHAT THIS FILE DOES NOT DECIDE. Which public operations exist. `PUBLIC_OPERATIONS` below is
 DECLARED, not derived, because the operations do not exist yet -- and an operation is a product
 judgement about what one coherent client request is, which is exactly the judgement that stops
