@@ -607,8 +607,9 @@ def _evaluate_in_the_alpha(js: str):
 
     #222's rule, applied to the browser: OBSERVE the production quantity. The three cost cells
     are computed by `M.compare`, and a Python reimplementation of that arithmetic would be a
-    second source of truth for the very relationship under test -- which is how this file's
-    `_find_chrome` and `suite_reach`'s `root` both went wrong. So the numbers come out of the
+    second source of truth for the very relationship under test -- which is how the
+    `_find_chrome` this file used to carry, and `suite_reach`'s `root`, both went wrong (the
+    first is gone: `browser_binary` is its one home now). So the numbers come out of the
     page. Page errors are collected rather than swallowed: a model that throws half-way answers
     with a short list, and a short list would pass a `>= 0` assertion silently.
     """
