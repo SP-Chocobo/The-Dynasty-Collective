@@ -252,6 +252,55 @@ class PositionPillTests(unittest.TestCase):
                 with self.subTest(pair=(pa, pb)):
                     self.assertGreaterEqual(_delta_e(va, vb), 25.0)
 
+    def test_a_pill_is_never_the_colour_of_the_text_around_it(self):
+        """`#311`. The rule the four enforced rules could not see: they govern 8 of 29 tokens,
+        and the quiet-text tier is not among them, so `K` sat at dE 2.8 from `muted` -- a
+        position pill indistinguishable from body text -- and passed. Measured before it was
+        written: this floor fails EXACTLY ONE of the six pills as they stood (K at 2.8); the
+        other five clear it at 48.1 to 71.8, and the four added in `#311` at 33.7 to 103.5. It
+        is the existing 25.0 floor applied to a new population, not a constant invented to fit
+        a sample (`#56`).
+
+        WHAT IT DELIBERATELY DOES NOT COVER. A floor against the ACCENT tokens would fail five
+        of the six existing pills -- WR is dE 6.4 from `sky-b`, RB 12.5 from `cliff-b`, TE 15.5
+        from `block`, QB 22.8 from `violet-b` -- so it is measured and recorded in `#311` rather
+        than ratcheted in here, where it would turn one repair into six.
+        """
+        # NON-VACUITY FIRST, and it is here because the mutation pass found the hole: with
+        # `QUIET_TEXT_TOKENS` emptied, every arm below is skipped and this test PASSES. A rule
+        # whose population can be emptied without failing is the inverted guard this repository
+        # already caught once -- `_python_rendered_figure_sites` fired on compliance and was
+        # silent on the violation. So the population is asserted before it is used.
+        self.assertTrue(ds.QUIET_TEXT_TOKENS, "the quiet-text population is empty")
+        self.assertGreaterEqual(len(ds.QUIET_TEXT_TOKENS), 4,
+                                f"only {len(ds.QUIET_TEXT_TOKENS)} quiet-text tokens; the tier "
+                                f"this rule ranges over has been thinned")
+        for quiet in ds.QUIET_TEXT_TOKENS:
+            self.assertIn(quiet, ds.TOKENS, f"{quiet} is not a token, so nothing is compared")
+        self.assertTrue(ds.POSITION_PILL_TOKENS, "there are no pills to hold to the rule")
+
+        for position, value in ds.POSITION_PILL_TOKENS.items():
+            for quiet in ds.QUIET_TEXT_TOKENS:
+                with self.subTest(position=position, quiet=quiet):
+                    self.assertGreaterEqual(
+                        _delta_e(value, ds.TOKENS[quiet]), 25.0,
+                        f"the {position} pill is within 25.0 of {quiet}, the colour of the text "
+                        f"beside it")
+
+    def test_the_absence_marker_is_not_a_pill_and_is_quiet_on_purpose(self):
+        """The other half of `#311`, and it asserts the OPPOSITE of the rule above, which is why
+        it has to be said out loud. `POSITION_PILL_ABSENT` means "no position known". It must be
+        quiet -- an absence rendered loudly is an absence rendered as a value (`#187`) -- so it
+        is derived from the quiet tier and held to none of the pill rules. What it must NOT be
+        is any position's identity: that was the defect."""
+        self.assertNotIn(ds.POSITION_PILL_ABSENT, ds.POSITION_PILL_TOKENS.values(),
+                         "the absence marker is some position's pill colour")
+        self.assertEqual(ds.TOKENS["muted"], ds.POSITION_PILL_ABSENT,
+                         "the absence marker no longer derives from the quiet tier")
+        # ...and an unknown position must no longer render as the kicker.
+        self.assertNotEqual(ds.position_pill_color("NOT_A_POSITION"),
+                            ds.position_pill_color("K"))
+
     def test_no_pill_is_a_semantic_token_value_verbatim(self):
         # The specific way the old map went wrong: not "too close", but literally the same hex.
         semantic = {v.lower() for v in ds.TOKENS.values()}
@@ -266,7 +315,17 @@ class PositionPillTests(unittest.TestCase):
 
     def test_dst_is_the_same_slot_as_def_and_unknown_falls_back_to_neutral(self):
         self.assertEqual(ds.position_pill_color("DST"), ds.position_pill_color("DEF"))
-        self.assertEqual(ds.position_pill_color("NOT_A_POSITION"), ds.position_pill_color("K"))
+        # WAS: assertEqual(position_pill_color("NOT_A_POSITION"), position_pill_color("K")) --
+        # which pinned the `#311` defect rather than the contract. An unmapped position renders
+        # the ABSENCE marker now; the kicker keeps its own identity.
+        bg, fg = ds.position_pill_color("NOT_A_POSITION")
+        self.assertEqual(ds.POSITION_PILL_ABSENT, fg)
+        self.assertNotEqual(ds.position_pill_color("K"), (bg, fg))
+        # every real position still resolves to its own pill, which is what makes the line above
+        # a narrowing rather than a hole.
+        for position, value in ds.POSITION_PILL_TOKENS.items():
+            with self.subTest(position=position):
+                self.assertEqual(value, ds.position_pill_color(position)[1])
 
     def test_the_pill_tint_is_the_same_0_18_convention_the_badges_use(self):
         tint, fg = ds.position_pill_color("QB")

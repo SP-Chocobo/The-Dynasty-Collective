@@ -16568,3 +16568,191 @@ single reason that it was built first.
 - **The third coherence population** ("same semantic state, same understanding, across surfaces
   and viewports"). Agreed and not built: it needs the state vocabulary to have one home across
   Python and JS first, which the palette work touches.
+
+---
+
+## `#311` A POSITION PILL WAS THE COLOUR OF BODY TEXT, AND THE FALLBACK CLAIMED TO BE A KICKER
+
+Two defects in `design_system`'s own palette, both invisible to the four rules that govern it,
+plus the four IDP pills the prototype needed and the app never had.
+
+### The rules govern 8 of 29 tokens, and `K` fell in the other 21
+
+`POSITION_PILL_TOKENS["K"]` was `#a09480`. Measured with the suite's own `_delta_e`:
+
+| K `#a09480` vs | dE |
+|---|---|
+| `muted` `#a79a83` | **2.8** |
+| `tie-b` `#a99d84` | **4.2** |
+| `dim` | 15.4 |
+| `tie` | 14.4 |
+| `pure` | 24.8 |
+| `ink` | 28.8 |
+
+A position pill two-point-eight from the colour the prose beside it is set in. All four enforced
+rules passed, because they range over the two injury colours and the other five pills — 8 of the
+29 `TOKENS` entries — and `muted` is not one of them. The rule block's own comment already
+records the previous time this happened ("THE ORIGINAL CLAIM WAS BROADER THAN THE CODE, AND
+FALSE"), and the narrowing it performed was correct; it simply left this outside.
+
+**The new rule is the existing floor applied to a new population, not a constant invented to fit a
+sample (`#56`).** Measured before it was written, 25.0 against the quiet-text tier fails **exactly
+one** pill:
+
+| pill | worst dE to `ink`/`pure`/`muted`/`dim`/`tie`/`tie-b` |
+|---|---|
+| QB | 71.8 |
+| RB | 48.1 |
+| WR | 57.8 |
+| TE | 56.7 |
+| **K** | **2.8 — FAILS** |
+| DEF | 57.4 |
+| *(new)* DB / DL / LB / IDP | 40.8 / 87.3 / 103.5 / 33.7 |
+
+### `K` moved to `#fab87e`, and the option not taken is recorded
+
+Searched at step 2 over RGB under every governed constraint plus the new floor, with **no contrast
+regression** permitted:
+
+| | hue | worst governed dE | contrast on `surface` |
+|---|---|---|---|
+| old `#a09480` | 38 | **2.8** (`muted`) | 5.80 |
+| **new `#fab87e`** | 28 | **32.9** (`tie-b`) | **10.07** |
+
+It stays in K's own hue family so the pill reads as moved rather than replaced (dE 35.9 from the
+old value), and it improves contrast by 74%.
+
+**`#fff6a5` is the option not taken, and why is the point.** It clears 25.0 against *every*
+non-structural token — not just the governed ones — at a worst of 31.2, with contrast 15.63. It was
+rejected because it is dE 45.1 from today's K and reads loud for what is meant to be the quiet
+position, and because the floor adopted here is the text-tier one. **A floor against the ACCENT
+tokens would fail five of the six existing pills** and is recorded, measured, rather than
+ratcheted in:
+
+| pill | nearest accent | dE |
+|---|---|---|
+| WR | `sky-b` | **6.4** |
+| RB | `cliff-b` | **12.5** |
+| TE | `block` | **15.5** |
+| QB | `violet-b` | **22.8** |
+| K (new) | `block-b` | **15.0** |
+| DEF | `violet-b` | 29.9 |
+
+Turning one repair into six is not a repair. The number is here so the next reader does not have
+to re-derive it, and so nobody mistakes the text-tier floor for a claim about the whole palette —
+which is the exact mistake the original rule block made.
+
+### The fallback was the kicker, and its own comment said so
+
+```python
+#: What a pill falls back to for a position with no entry -- the same neutral K uses, so an
+#: unmapped position reads as "no positional claim" rather than borrowing another one's color.
+POSITION_PILL_FALLBACK = "K"
+```
+
+K **is** a position. So an unmapped position rendered in the kicker's identity — exactly the
+borrowing the comment claims to avoid. A test pinned it rather than catching it:
+
+```python
+self.assertEqual(ds.position_pill_color("NOT_A_POSITION"), ds.position_pill_color("K"))
+```
+
+It also explains why K was colour-bound: one pill was asked to be IDENTIFIABLE (a position) and
+UNREMARKABLE (the fallback) at once, and was solved toward unremarkable until it reached body text.
+
+`ui_explore/round2/fableA/_palette.py` had already written down the consequence and nothing acted
+on it: *"the app's POSITION_PILL_TOKENS has six entries and falls back to K's neutral for anything
+unmapped, so an IDP league draws DL, LB and DB in one colour where the prototype gives each a
+hue. Two of the fixture's six formats are IDP leagues."* Three distinct positions, one chip, and
+that chip the colour of the prose.
+
+`POSITION_PILL_ABSENT` now derives from `muted` **deliberately** and is held to none of the pill
+rules: "no position known" is an absence, and the absence contract (`#187`) says an absence must
+not be rendered as a value. Being quiet is the point of it. Being a kicker was the defect.
+
+### The four IDP pills
+
+All four of the prototype's were illegal, each for a different reason — which my first two
+measurements of this got wrong by checking too narrow a rule set:
+
+| prototype pill | breaks |
+|---|---|
+| DL `#e35d7a` | `crimson-b` **8.9**, and IDP **10.9** |
+| LB `#b08cf5` | QB **9.1** — pairwise only; it clears both injury colours |
+| DB `#d9a21c` | `amber-b` **12.2** |
+| IDP `#e0406d` | `crimson-b` **13.7**, and DL **10.9** |
+
+And `--def` and `--idp` in `shared.css` are **the same hex** — dE 0.0 against a 25.0 floor.
+
+Adopted: DB `#6ad8f0`, DL `#4cec4c`, LB `#ff45ed`, IDP `#99a851`. Worst number anywhere in the set
+is **33.1** (DB against WR); worst contrast 6.03 on `surface` and 6.45 on the prototype's own
+darker ground.
+
+**A correction to a number I published from the colour pass.** It reported four of the prototype's
+six existing pills under the 4.5:1 floor. That was measured against `design_system`'s `surface`
+`#1f1a11`, which the prototype never draws on — every one of its grounds is darker (`#17130d`,
+`#120f0a`, `#0f0d08`, `#0c0a07`). On its own binding ground the six measure **4.51–6.07**, all at
+or above the floor. The prototype's palette was solved against its own ground, and the CSS comment
+on `--dim` says so in as many words.
+
+### Surfaced, measured, not fixed: there is no shared vocabulary for a state
+
+Derived from the three sources rather than read off them — **ten distinct state words, and exactly
+one is shared by the two user-facing surfaces**:
+
+| surface | words |
+|---|---|
+| draft room (`shared.js` `KIND`) | `measured`, `a count`, `withheld`, `not measured`, `not charged`, `not priced into value` |
+| front page (`build_front.stamp_kind`) | `measured`, `constructed`, `absent` |
+| `basis_semantics` | `bounded_input`, `bounded_by_rule` |
+
+- shared by room and front: **`measured`, and nothing else**
+- the room can say five things the front page cannot express
+- the front page can say **`constructed`** — the word that marks a figure as fabricated for a
+  demo — and **the draft room has no way to say it at all**
+- `basis_semantics` distinguishes "more evidence would sharpen this" from "this is the limit of
+  what is knowable", and **neither user-facing surface can render either**. The engine computes an
+  epistemic distinction that never reaches a person.
+
+That is the owner's third coherence population, and it is enumerable today — which corrects the
+`#310` note saying it had to wait for a one-home vocabulary. The one home is the work; the census
+can be written against the divergence as it stands. Not started here: it is its own item, and
+folding it into a palette commit would bury it.
+
+### Mutation pass — four arms, and the fourth found a hole in my own new rule
+
+| arm | fires |
+|---|---|
+| `K` restored to `#a09480` | **5 failures** — exactly the five quiet tokens it is within 25.0 of (`muted` 2.8, `tie-b` 4.2, `tie` 14.4, `dim` 15.4, `pure` 24.8); `ink` at 28.8 correctly does not fire |
+| `POSITION_PILL_ABSENT` set to K's hex | **2 failures** |
+| DL restored to `#e35d7a` | **1 failure** (the injury rule, `crimson-b` 8.9) |
+| `QUIET_TEXT_TOKENS` emptied | **0 failures — THE RULE PASSED** |
+
+The fourth arm is the finding. With the population emptied, every comparison is skipped and the
+new rule reports OK. **That is the inverted guard this repository has already caught once**:
+`_python_rendered_figure_sites`' own entry records a version that "fires on compliance and is
+silent on the violation, which is inverted, and worse than absent". A rule whose population can
+be emptied without failing is the same shape.
+
+Repaired in the test itself, before the comparisons run: the population must be non-empty, must
+have at least four members, and every member must be a real `TOKENS` name — so a thinned tier
+fails rather than quietly narrowing what the rule covers. The arm now fires 1.
+
+Measured after the repair: `warn_if_out_of_policy()` returns `[]` across all ten pills, and the
+legibility report has every one between **5.34** (TE) and **11.04** (DL) against the 4.5 floor.
+
+### The suite budget broke downward
+
+| commit | tests | seconds | per test |
+|---|---|---|---|
+| `dbae709` | 4235 | 1276.5 | 301ms |
+| `96bb4a8` | 4248 | 1682.7 | 396ms |
+| `029b31e` | 4276 | 1976.7 | 462ms |
+| `b4dbffb` | 4311 | 1968.7 | 457ms |
+| `d781af2` | 4318 | 1939.9 | 449ms |
+| **`25c4aa0`** | **4342** | **1344.0** | **309ms** |
+
+A 31% drop in per-test cost while the count rose by 24. `#309` recorded the rise as having
+plateaued; it has now reversed, and the figure is back to where it was at `dbae709`. Not
+extrapolated — `close-register-item` keeps the dated table and the rule there is to re-measure
+rather than trust the trend, in either direction.

@@ -92,7 +92,7 @@ Grepping for the symbol you moved is NOT this check and is not a substitute for 
 1939.9s** at `d781af2` (2026-11-04), measured with `__pycache__` cleared first per `#240`.
 **Size a timeout from 1939.9s.**
 
-Five measurements the same day, which is far more useful than any one of them:
+Six measurements -- five on one day, the sixth the next -- which is far more useful than any one of them:
 
 | tests | seconds | per test | commit |
 |---|---|---|---|
@@ -101,10 +101,19 @@ Five measurements the same day, which is far more useful than any one of them:
 | 4276 | 1976.7 | 462ms | `029b31e` |
 | 4311 | 1968.7 | 457ms | `b4dbffb` |
 | 4318 | 1939.9 | 449ms | `d781af2` |
+| **4342** | **1344.0** | **309ms** | **`25c4aa0`** (2026-11-05) |
 
-The per-test cost rose 301 -> 396 -> 462ms and then turned over: 457, then 449, while the test
-count kept climbing. So the thing to carry forward is that **the suite got ~50% more expensive per
-test over one day and has PLATEAUED and begun easing**, not that it is still climbing. Part of the rise is accounted for
+**THE SIXTH MEASUREMENT BROKE THE TREND DOWNWARD, AND IT IS THE ONE THAT MATTERS MOST HERE.**
+309ms is a 31% drop from 449ms, taken with the count UP 24, and it lands within 8ms of where the
+series started at `dbae709`. So the whole 301 -> 462 excursion was a round trip, not a ratchet.
+
+That is the argument for this table rather than a single number, stated by the data instead of by
+the paragraph: at `d781af2` the honest summary was "rose ~50%, plateaued, beginning to ease", and
+one measurement later the right summary is "returned to baseline". Either conclusion drawn from
+four points would have been wrong about the fifth or sixth. **Budget from the TOTAL (1344s here,
+1977s at the worst point), size timeouts off the WORST total you have, and re-measure instead of
+extrapolating in either direction** -- including downward: do not set a timeout from 1344s, because
+the same suite took 1977s three measurements ago and nothing in the record explains why. Part of the rise is accounted for
 -- `#299` un-skipped 15 browser-executing tests, and `#308` made 34 more reachable -- but those
 modules cost 30.2s, 1.8s and ~0.2s standalone, nowhere near the ~660s of total growth. **The
 remainder is unattributed and is not claimed.** Do not extrapolate from the trend; re-measure.

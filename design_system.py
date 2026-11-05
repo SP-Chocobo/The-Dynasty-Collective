@@ -590,15 +590,58 @@ def warn_if_out_of_policy() -> list[dict]:
 # must be perceptually separable from the two INJURY pill colors it can share a row with, and
 # from the other five pills. That is the real co-occurrence; "distinct from every semantic hue
 # at once" was never achievable alongside nine accents and was not what the row needed.
+#
+# `#311`: K MOVED, AND THE MAP GREW BY FOUR. Two defects, found by measuring the rules against
+# their own population rather than reading them.
+#
+# K was "#a09480", which is dE **2.8** from TOKENS["muted"] and 4.2 from TOKENS["tie-b"] -- the
+# quiet-text tier. A position pill the colour of body text is not a position pill, and no rule
+# here could see it: the four enforced rules govern 8 of the 29 tokens, and `muted` is not one
+# of them. `#fab87e` stays in K's own hue family (28 deg against 38) so the pill reads as moved
+# rather than replaced, clears every governed distance at >= 32.9, and takes contrast on
+# `surface` from 5.80 to 10.07. `#fff6a5` would additionally clear every UNGOVERNED token at
+# >= 31.2 and is recorded in the register as the option not taken: it is dE 45.1 from today's K
+# and reads loud for what is meant to be the quiet position, and the floor adopted here is the
+# text-tier one, not an accent floor nobody has argued for (`#56` -- a bound is not a threshold).
+#
+# The four IDP entries are what the prototype needed and the app never had. `_palette.py` had
+# already written down the consequence: "the app's POSITION_PILL_TOKENS has six entries and
+# falls back to K's neutral for anything unmapped, so an IDP league draws DL, LB and DB in one
+# colour" -- three positions, one chip, and that chip the colour of body text. Two of the
+# fixture's six formats are IDP leagues. Measured against the enforced rules, the worst number
+# anywhere in the four is 33.1 (DB against WR) on a 25.0 floor.
 POSITION_PILL_TOKENS: dict[str, str] = {
     "QB": "#8f86f0", "RB": "#17bfa0", "WR": "#4aa8ef",
-    "TE": "#e8683f", "K": "#a09480", "DEF": "#ef7fc0",
+    "TE": "#e8683f", "K": "#fab87e", "DEF": "#ef7fc0",
+    "DL": "#4cec4c", "LB": "#ff45ed", "DB": "#6ad8f0", "IDP": "#99a851",
 }
+
+#: The quiet-text tier a pill must not be mistaken for. Named here because `#311` added a rule
+#: over it and a rule needs a population with one home (`#126`). These are the tokens text is
+#: SET IN, as against the accents a figure is coloured with -- a pill landing on one of them is
+#: not "a bit close to an accent", it is indistinguishable from the prose around it.
+QUIET_TEXT_TOKENS: tuple[str, ...] = ("ink", "pure", "muted", "dim", "tie", "tie-b")
 #: DEF and DST are the same slot under two spellings, never two different things.
 POSITION_PILL_ALIASES: dict[str, str] = {"DST": "DEF"}
-#: What a pill falls back to for a position with no entry -- the same neutral K uses, so an
-#: unmapped position reads as "no positional claim" rather than borrowing another one's color.
-POSITION_PILL_FALLBACK = "K"
+#: What a pill falls back to for a position with no entry.
+#:
+#: THIS USED TO BE THE STRING "K", AND ITS OWN COMMENT DESCRIBED THE DEFECT: "the same neutral K
+#: uses, so an unmapped position reads as 'no positional claim' rather than borrowing another
+#: one's color". But K IS a position -- the kicker's own pill -- so an unmapped position rendered
+#: in the kicker's identity, which is exactly the borrowing the comment claimed to avoid. A test
+#: pinned it (`assertEqual(position_pill_color("NOT_A_POSITION"), position_pill_color("K"))`),
+#: which is why nothing ever complained.
+#:
+#: It also explains why K was colour-bound. One pill was asked to be IDENTIFIABLE (a position)
+#: and UNREMARKABLE (the fallback) at once; it was solved toward unremarkable until it reached
+#: dE 2.8 from body text.
+#:
+#: So the absence marker is now its own thing, derived from `muted` DELIBERATELY: "no position
+#: known" is an absence, and the absence contract (`#187`) says an absence must not be rendered
+#: as a value. A quiet chip reads as "nothing claimed here"; a kicker-coloured chip claims a
+#: kicker. It is NOT in POSITION_PILL_TOKENS and is NOT held to the pill rules -- being close to
+#: the quiet-text tier is the point of it, not a violation.
+POSITION_PILL_ABSENT = TOKENS["muted"]
 
 
 def position_pill_color(position: str) -> tuple[str, str]:
@@ -606,9 +649,7 @@ def position_pill_color(position: str) -> tuple[str, str]:
     a hand-written literal per position. Mirrors the badge convention: the same color at 0.18
     behind its full-strength self."""
     key = POSITION_PILL_ALIASES.get(position, position)
-    if key not in POSITION_PILL_TOKENS:
-        key = POSITION_PILL_FALLBACK
-    hex_value = POSITION_PILL_TOKENS[key]
+    hex_value = POSITION_PILL_TOKENS.get(key, POSITION_PILL_ABSENT)
     h = hex_value.lstrip("#")
     r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
     return f"rgba({r},{g},{b},0.18)", hex_value
