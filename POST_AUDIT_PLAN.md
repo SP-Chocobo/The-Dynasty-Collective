@@ -18351,3 +18351,46 @@ the per-surface rendering tests are for; this counts the sources of truth.
 all EIGHT ratchets PASS (this is the eighth)
 floors 245 modules / 7667 assertions
 ```
+
+---
+
+## CERTIFICATION — `#329` at `bfc2420`
+
+```
+Ran 4373 tests in 1409.280s
+OK (skipped=2, expected failures=1)
+```
+
+| | `ef6a07d` | `bfc2420` |
+|---|---|---|
+| tests | 4364 | **4373** |
+| wall clock | 1401.862s | 1409.280s |
+| verdict | OK | **OK** |
+
+The **+9** is exactly `test_state_vocabulary.py`. **Two consecutive green suites** — the first
+time this register has been able to write that.
+
+No render gate run, checked rather than assumed: `#329` adds two Python files at the repository
+root and touches no prototype asset.
+
+### The ratchet count is now eight
+
+`assertion_floors`, `boundary_census`, `skip_gates`, `suite_reach`, `api_surface`, `doc_index`,
+`prose_names`, `state_vocabulary`. Three of them were built in this session (`api_surface` at
+`#310`, and `state_vocabulary` here, plus the built-page guards at `#323`/`#324`/`#328` which live
+in test modules rather than as standalone ratchets).
+
+### Suite budget — seventh dated point
+
+| commit | tests | seconds | ms/test | verdict |
+|---|---|---|---|---|
+| `#317` | 4345 | 1360.614 | 313.1 | FAILED (1) |
+| `486fc02` | 4349 | 1395.006 | 320.8 | FAILED (1) |
+| `584fa22` | 4360 | 1461.165 | 335.1 | FAILED (1) |
+| `c59c9b7` | 4360 | 1484.602 | 340.5 | FAILED (1) |
+| `86ce27a` | 4364 | 1508.019 | 345.6 | FAILED (1) |
+| `ef6a07d` | 4364 | 1401.862 | 321.2 | **OK** |
+| `bfc2420` | **4373** | **1409.280** | **322.2** | **OK** |
+
+The suite grew 28 tests across the session and the per-test cost ended where it started. Budget
+from the worst total: **1508s**.
