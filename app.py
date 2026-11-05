@@ -5774,9 +5774,15 @@ elif main_view == DRAFT_VIEW:
 
                                 debate_btn_col, chip_col, _ = st.columns([1, 0.6, 2.4])
                                 with debate_btn_col:
+                                    # `#317`: DRAFT_ROOM_UI.md:50 RULES that debate is callable
+                                    # only while on the clock, and this button shipped with no
+                                    # gate at all -- RENDER_TRACE captured it drawn enabled on a
+                                    # screen whose own caption read "Not your turn yet". It is
+                                    # three provider calls, so the ruling is about money.
                                     run_debate_clicked = st.button(
                                         "🎙️ Debate This Pick", key="draft_room_debate_btn",
                                         type="primary", use_container_width=True,
+                                        disabled=not is_live,
                                         help=screen_context.DRAFT_ROOM_PICK_DEBATE_HELP,
                                     )
                                 with chip_col:

@@ -25,6 +25,8 @@ No provider is called anywhere in this file.
 import ast
 import dataclasses
 import inspect
+import json
+import pathlib
 import re
 import unittest
 from pathlib import Path
@@ -209,6 +211,46 @@ class NothingAmplifiesTheEnvelopeTests(unittest.TestCase):
             all(name.startswith("parse_") for name in called),
             f"process_moderator_output reaches non-parser members: {called}",
         )
+
+    def test_the_billed_debate_button_is_dead_when_it_is_not_your_turn(self):
+        """`#317`. `DRAFT_ROOM_UI.md:50` RULES "Debate is callable only while on the clock", and
+        `debate_pick` is three provider calls -- so this is a cost guard, which is why it lives
+        here rather than beside the other render checks.
+
+        IT SHIPPED UNGATED. `RENDER_TRACE.json` captured the Draft Room drawing the button
+        ENABLED on a screen whose own caption, seven calls earlier, read "Not your turn yet --
+        Trace Manager 12 is on the clock." The rule was in the compass; nothing encoded it.
+
+        WHY THIS READS THE TRACE RATHER THAN THE SOURCE. The repository's existing guard of this
+        shape, `test_the_app_discloses_the_benchmark_cost_before_running_it`, asserts a
+        `disabled=` SUBSTRING appears in `app.py`. That proves a keyword was typed, not that the
+        control is dead on the screen where it must be: a `disabled=` wired to the wrong
+        expression passes it. The trace records what the render actually produced, so this
+        asserts the PROPERTY -- on a pass where the app says it is not your turn, the billed
+        button is disabled -- and it would fail if the gate were wired to the wrong condition.
+
+        The sibling `mock_draft_debate_btn` is deliberately NOT covered: a mock draft is a
+        simulation the user drives, with no other party who can hold the clock. Whether
+        `DRAFT_ROOM_UI.md:50` nonetheless reaches it is an open question for the owner, recorded
+        in `#317` rather than answered by this test.
+        """
+        calls = json.loads(pathlib.Path("RENDER_TRACE.json").read_text(encoding="utf-8"))["calls"]
+        off_clock = [i for i, c in enumerate(calls) if "Not your turn yet" in c]
+        self.assertTrue(
+            off_clock,
+            "no recorded pass renders the off-clock caption, so this guard proves nothing -- "
+            "re-seed the trace with a Draft Room pass that is not on the clock")
+        buttons = [(i, c) for i, c in enumerate(calls) if "draft_room_debate_btn" in c]
+        self.assertTrue(buttons, "the live Draft Room debate button is not in the trace at all")
+        for cap in off_clock:
+            after = [(i, c) for i, c in buttons if i > cap]
+            self.assertTrue(after, f"caption at {cap} is not followed by the debate button")
+            i, c = after[0]
+            with self.subTest(caption=cap, button=i):
+                self.assertIn(
+                    "disabled=bool:True", c,
+                    f"the billed Debate button is live at call {i} on a screen whose caption at "
+                    f"{cap} says it is not your turn -- DRAFT_ROOM_UI.md:50 forbids it")
 
     def test_the_only_ask_call_sites_are_user_triggered(self):
         """Every provider-spending entry point sits behind a button or a submitted question,

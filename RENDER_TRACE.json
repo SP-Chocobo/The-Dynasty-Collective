@@ -448,7 +448,7 @@
     "[\ud83d\udccb Draft Room \u00b7 Live] st.button(str:ALL, help=str[long], key=str:draft_room_view_toggle)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.components.v1.html(str[long], height=int, scrolling=bool:True)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.columns(list[3])",
-    "[\ud83d\udccb Draft Room \u00b7 Live] st.button(str:\ud83c\udf99\ufe0f Debate This Pick, help=str[long], key=str:draft_room_debate_btn, type=str:primary, use_container_width=bool:True)",
+    "[\ud83d\udccb Draft Room \u00b7 Live] st.button(str:\ud83c\udf99\ufe0f Debate This Pick, disabled=bool:True, help=str[long], key=str:draft_room_debate_btn, type=str:primary, use_container_width=bool:True)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.container(key=str:debate_chip_draft_room)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.button(str:\ud83d\udcac Debate, help=str[long], key=str:debate_chip_btn_draft_room)",
     "[\ud83d\udccb Draft Room \u00b7 Live] st.expander(str:\ud83d\uddc2 Boards stored for this league, expanded=bool:False)",

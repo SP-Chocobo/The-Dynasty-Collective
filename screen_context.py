@@ -45,7 +45,13 @@ UNIVERSAL_DEBATE_HELP = (
 DRAFT_ROOM_PICK_DEBATE_HELP = (
     "Run the pick-specific Draft Room deliberation (Strategist, Skeptic, Caller) using the "
     "current frozen snapshot -- a different, dedicated system from The Prytaneum, "
-    "built specifically to reason over this exact board with no live search involved."
+    "built specifically to reason over this exact board with no live search involved. "
+    # `#317`. The rule belongs ON the control: once the button is disabled off-clock, this
+    # tooltip is the only explanation still attached to it, and a dead control with no stated
+    # reason is an absence rendered as a value (`#187`). Wording taken verbatim from the
+    # prototype's own tooltip at ui_explore/round2/fableA/_src/v4_doors.tpl.html:151, so both
+    # surfaces say one thing about one action (`#126`).
+    "Billed, and only while you are on the clock."
 )
 
 

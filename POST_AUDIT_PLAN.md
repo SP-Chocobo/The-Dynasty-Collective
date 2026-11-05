@@ -16880,3 +16880,331 @@ makes — the error the original pill-rule block records making once already.
 output.** A narrow selector returns a clean, plausible, wrong answer, and nothing about the result
 announces that the population was wrong. That is this session's recurring failure, it is mine
 rather than the repository's, and the instruments that keep catching it are earning their cost.
+
+### `#313` CORRECTED: the table mixed two palettes, and the real number is far worse
+
+The `#313` entry above prints this row, among three:
+
+| **QB** `#8366f1` | `violet-b` — **withheld** | **10.9** |
+
+**`#8366f1` does not produce 10.9 against any violet in either palette.** Measured:
+
+| QB from | violet from | dE |
+|---|---|---|
+| design_system `#8f86f0` | prototype `#b593f5` | **10.9** |
+| design_system `#8f86f0` | design_system `#c9a4f0` | 22.8 |
+| prototype `#8366f1` | prototype `#b593f5` | 29.0 |
+| prototype `#8366f1` | prototype `#6d3fd6` (`--violet`) | 15.8 |
+| prototype `#8366f1` | design_system `#c9a4f0` | 42.6 |
+
+**What was right and what was wrong.** The dE VALUES (10.9 / 21.4 / 21.7) are correct for the
+question `#312` actually poses — `design_system`'s pills measured against the reserved hues AFTER
+`design_system` adopts the prototype's token values. The HEXES printed beside them are the
+PROTOTYPE's pills. The column header said "the prototype's token values (the ones that actually
+render)", which is true of the reserved hues in that table and false of the pills. One table, two
+palettes, one label.
+
+This is the session's own recurring failure arriving in a pushed artifact, and it is worth saying
+plainly: every earlier instance was caught by re-running with a wider query, and this one was
+caught the same way — by a second measurement that enumerated all five QB/violet combinations
+instead of the one I had already decided on.
+
+### The number nobody had measured: what renders today breaks 8 of 10
+
+Both pill AND reserved hue taken from `shared.css` — one palette, the one on screen:
+
+| pill | hex | nearest reserved | dE |
+|---|---|---|---|
+| LB | `#b08cf5` | `violet-b` — withheld | **4.6** |
+| DB | `#d9a21c` | `gold` — now/selected/yours | **6.3** |
+| DEF | `#e0406d` | `crimson-b` — injury | **10.1** |
+| IDP | `#e0406d` | `crimson-b` — injury | **10.1** |
+| RB | `#0fa877` | `emerald` — the slot a pick would fill | **10.8** |
+| TE | `#e0661f` | `amber` — caution | **11.3** |
+| DL | `#e35d7a` | `crimson-b` — injury | **11.4** |
+| QB | `#8366f1` | `violet` — withheld | **15.8** |
+| WR | `#2f7df0` | `violet-b` | 28.8 — clear |
+| K | `#947954` | `gold` 42.9 — clear | but **9.0 from `dim`**, body text |
+
+**Eight of ten break the reserved rule. K breaks the quiet-text rule instead. Only WR is clean on
+both.** `--def` and `--idp` remain dE 0.0 from each other.
+
+So `#313`'s published framing — "three pills fail" — understated the live surface by a factor of
+nearly three, because it measured the palette `#312` WOULD produce rather than the one a person
+looks at now.
+
+### The adversarial pass made the mirror error, which is how both were caught
+
+The colour pass reported DB/gold at **1.6** and DL/crimson-b at **8.9**. Those are prototype pills
+against `design_system`'s reserved hues — the exact inverse of my mixing. The single-palette
+values are 6.3 and 11.4. Both sets are arithmetically correct and neither describes what renders.
+Two independent passes made the same class of error in opposite directions, which is a reasonable
+argument that the error is structural: **there are two palettes, nothing names which one a given
+number belongs to, and every measurement has to say so explicitly or it will silently cross.**
+That is a stronger argument for `#312` than any of the ones already recorded.
+
+---
+
+### `#311` BROKE A PROSE CLAIM IN TWO FILES, AND ITS OWN NARROWER CLAIM IS WHY I DID NOT NOTICE
+
+Found by a prose-rule audit, verified here with the suite's own `_delta_e`.
+
+`design_system.py:97` and `test_design_system.py:242` both say:
+
+> "amber-b sits >= 39.8 from every position pill it shares a roster row with (TE is the nearest;
+> it was 57.2 from gold-b)"
+
+Measured after `#311`:
+
+| | dE from `amber-b` |
+|---|---|
+| **K** `#fab87e` | **33.17** <- NEAREST, and below the claimed 39.8 |
+| TE `#e8683f` | 39.80 — still exactly right for TE |
+| IDP `#99a851` | 49.15 |
+| every other pill | 91.5 to 135.0 |
+
+**It was true when written.** The K that `#311` replaced, `#a09480`, sat **63.68** from `amber-b`,
+so TE genuinely was nearest. `#311` moved K to fix its dE 2.8 collision with `muted` (body text)
+and landed it at 33.17 — inside the gap the sentence asserts is empty.
+
+**Why nothing fired.** The enforced floor is 25.0, and 33.17 clears it comfortably. A rule written
+at 25.0 cannot see a documented 39.8 erode to 33.17. The claim lives in PROSE at a magnitude no
+instrument holds.
+
+**Why I did not notice, which is the part worth recording.** `#311`'s own commit message claims the
+new K "clears every governed distance at >= 32.9", and that is TRUE — 33.17 >= 32.9. I verified the
+property I was establishing and never checked the properties I might be invalidating. The claim I
+broke was about a DIFFERENT token (`amber-b`), written by someone else, two years of commits ago,
+and sitting in a file I edited in the same change.
+
+**And it is a `#126` violation in its own right**: the sentence exists in two files, so one drift
+made two files wrong. The repair should leave the measurement in ONE home and have the other point
+at it — or, better, derive it, since "which pill is nearest to the injury colours" is exactly the
+kind of fact a test can compute instead of a comment asserting.
+
+NOT a user-visible defect: 33.17 clears the enforced floor and no pill is wrong on screen. It is a
+false claim in the two files whose job is keeping colour claims honest.
+
+---
+
+## `#314` `provider_meter.totals()` BREAKS, IN ONE FIELD, THE RULE ITS OWN DOCSTRING STATES
+
+Surfaced by a documentation review of what this project's own files say is outstanding;
+`DRAFT_ROOM_UI.md:172-176` lists it as one of the freeze timer's three gaps and calls it "a real
+trap, because the field is present and named plausibly". Verified here by execution, and it is
+worse than that description: the defect is not merely a sum where a max was wanted. **The same
+function's docstring forbids it.**
+
+```python
+"""Aggregate a set of records. Token totals are None unless EVERY record contributing to
+them reported its own -- a total assembled from some-known-some-unknown is a number that
+reads as authoritative and is not, which is the failure mode a cost display cannot afford."""
+...
+"input_tokens":  sum(inputs) if entries and all(v is not None for v in inputs) else None,
+"output_tokens": sum(outputs) if entries and all(v is not None for v in outputs) else None,
+"latency_ms":   (round(sum(e.latency_ms for e in entries if e.latency_ms is not None), 1)
+                 if any(e.latency_ms is not None for e in entries) else None),
+```
+
+`all()` twice, then `any()` once. Measured on three calls — 100ms, 300ms, and one that did not
+report:
+
+| field | guard | result |
+|---|---|---|
+| `input_tokens` | `all()` | **`None`** — obeys the rule |
+| `output_tokens` | `all()` | **`None`** — obeys the rule |
+| `latency_ms` | `any()` | **`400.0`** — a total assembled from some-known-some-unknown |
+
+### The naming is the half a reader meets first
+
+`400.0` is published under the key **`latency_ms`**, spelled identically to `CallRecord.latency_ms`,
+the PER-CALL field. The slowest real call took 300ms and the mean of the measured ones was 200ms.
+**No call took 400ms.** One word doing two jobs (`#70`, `#126`), and the aggregate job is the one
+nobody named.
+
+### It is LATENT, and that is the reason to fix it now rather than the reason to defer
+
+Measured: **nothing outside `test_provider_meter_boundary.py` calls `provider_meter.totals()`.**
+So no wrong number reaches a person today. But `DRAFT_ROOM_UI.md:172-176` asks for a duration log
+to ship, and `:174` names the statistic it wants — "a **max** (or a percentile)" — against "the
+user waits on a WHOLE DEBATE, not one chair's call". The first caller is the one the document is
+already asking for, and it would arrive expecting a latency.
+
+### What the repair has to decide, and what it must not do
+
+The honest shape is three named quantities, not one renamed:
+
+- **a span** — how long the whole debate took end to end, which is NOT the sum of per-call
+  latencies when calls overlap, and the record carries no start timestamp, so this cannot be
+  derived from what is stored today. `DRAFT_ROOM_UI.md:176` names exactly this gap.
+- **a representative call** — max or a percentile, per `:174`.
+- **coverage** — how many of the calls reported at all, which the dict already does for tokens
+  via `usage_reported` and does not for latency.
+
+**It must not silently become a max under the same key.** Any consumer written against today's
+value would change meaning without changing shape — the defect this register keeps finding.
+Rename, or return the three, and delete `latency_ms` rather than redefining it.
+
+NOT FIXED HERE: the repair needs the owner's call on whether the freeze timer ships at all
+(`U3`, `DRAFT_ROOM_UI.md:278`, still owner-owned), and `#100`'s cost/token half is open and
+untouched by this (`:178-179`).
+
+---
+
+## `#316` THE COMPOUND DOOR WEARS TWO IDENTITIES, AND THE SECOND ONE IS CHOSEN BY THE BOARD
+
+Found by an adversarial colour pass, verified here against computed styles in a real browser
+rather than by reading the template.
+
+`v4_doors.tpl.html:203` builds each door with two different sources for what is meant to be one
+identity:
+
+```js
+${tankHTML(pos)} ... <span class="pos" style="color:${pc(d.key)}" ...>
+```
+
+`pc(d.key)` is the DOOR's colour. `pos` is the BEST CANDIDATE's position. For every simple door
+those are the same thing, so nothing shows. For the compound IDP door they are not:
+
+| door | badge `.pos` | rail `--pc` |
+|---|---|---|
+| TE | `#e0661f` | `#e0661f` |
+| QB | `#8366f1` | `#8366f1` |
+| WR | `#2f7df0` | `#2f7df0` |
+| RB | `#0fa877` | `#0fa877` |
+| **IDP** | `#e0406d` (`--idp`) | **`#b08cf5` (`--lb`)** |
+
+So the DEFENDERS door renders its badge and title in the umbrella colour and its 4px edge stripe
+in the colour of whichever position happens to top the board. **The identity is partly data.**
+
+### Why this is worse than a mismatch
+
+`--lb #b08cf5` is dE **4.6** from `--violet-b`, the token reserved for WITHHELD. So as shipped,
+the compound door's rail reads as a semantic STATE rather than a position. And it is not stable:
+if the best IDP candidate were a defensive back the rail would be `--db #d9a21c`, dE **6.3** from
+`--gold`, which is reserved for "now / selected / yours". The door's second colour is a lottery
+over the reserved vocabulary, drawn fresh on every board.
+
+### Why no colour rule catches it
+
+Every rule in `test_design_system.PositionPillTests` ranges over `POSITION_PILL_TOKENS` — a map
+of fixed hexes. This defect is not a bad hex. Every colour involved is legal in isolation; the
+defect is that a SECOND one is selected at render time from data. A palette audit cannot see it,
+`#313`'s reserved-hue rule cannot see it, and neither could any floor. It is caught only by
+asking what a door actually painted, which is why it took a browser and not a grep.
+
+### The repair, and what it must decide
+
+Not a palette change. Either:
+
+- the compound door uses `pc(d.key)` for BOTH — one identity, the umbrella's own colour, and the
+  rail stops being informative about which member leads; or
+- the rail keeps naming the leading member DELIBERATELY, as a second channel, and then it needs
+  to be legible as that rather than read as a mislabelled door — and it still must not land on a
+  reserved hue, which `--lb` and `--db` both currently do.
+
+The first is one character of change and loses a signal nobody asked for. The second is a design
+decision about whether "which defender leads this door" is worth a channel. That is the owner's,
+not a palette commit's.
+
+NOTE: this is also why `#313`'s pill work does not close it. Under the proposed palette the
+mismatch persists — badge olive `#99a851`, rail magenta `#ff45ed` — legal on every rule and still
+two identities on one door.
+
+---
+
+## `#317` A §1 RULED CONSTRAINT ON A BILLED ACTION WAS NEVER BUILT, AND THE APP PRINTS THE CONTRADICTION ON THE SAME SCREEN
+
+`DRAFT_ROOM_UI.md:50`, in the list the document opens by calling RULED:
+
+> - **Debate is callable only while on the clock.**
+
+`DRAFT_ROOM_UI.md:1035` prices the action it protects: `debate_pick` is **three provider calls**.
+`:1046` then discusses gating the *Insight* button and cites this rule as the settled precedent —
+while the Debate button it cites is itself ungated.
+
+### Verified, from the captured render rather than by reading the code
+
+`app.py:5777-5781` builds the control with no `disabled=` of any kind:
+
+```python
+run_debate_clicked = st.button(
+    "🎙️ Debate This Pick", key="draft_room_debate_btn",
+    type="primary", use_container_width=True,
+    help=screen_context.DRAFT_ROOM_PICK_DEBATE_HELP,
+)
+```
+
+`is_live` EXISTS — `app.py:5527`, `is_live = target_index == current_index` — and is used twice,
+at `:5669` for the caption and `:5737` for a staleness note. **It never reaches the button.**
+
+`RENDER_TRACE.json` captures both halves of the contradiction in ONE render of ONE screen:
+
+```
+:444   [Draft Room · Live] st.caption("Not your turn yet -- Trace Manager 12 is on the clock.")
+:451   [Draft Room · Live] st.button("🎙️ Debate This Pick", key=draft_room_debate_btn, type=primary)
+```
+
+Seven calls apart. The app says it is not your turn, and draws the billed button enabled anyway.
+`target_index = draft_strategy.find_next_pick_index(...)`, so the Draft Room renders "your next
+pick" off-clock as a matter of course — this is the ordinary path, not an edge case.
+
+### The repository already owns the instrument and did not point it here
+
+`test_cost_envelope_boundary.py:272` asserts `"disabled=len(_bench_candidates) < 1"` appears in
+`app.py` — so a source-level `disabled=` guard is an established pattern in this codebase, used
+elsewhere, and simply never applied to this button.
+
+The nearest existing guard is weaker than it looks. `test_cost_envelope_boundary.py:213`,
+`test_the_only_ask_call_sites_are_user_triggered`, matches spend sites with
+`re.findall(r"llm_engine\.(ask_\w+|run_debate)\(")` — and the Draft Room spends through
+`pick_debate.debate_pick`, which that regex does not match at all. "User-triggered" is in any
+case a strictly weaker claim than "only while on the clock": a user can trigger it off-clock,
+which is precisely what the rule forbids and what the render shows.
+
+Not in `invariant_registry.py` either.
+
+### Severity: LIVE, and on money
+
+Every other finding of this class this session has been latent — a wrong number nobody reads, a
+pill nobody has drawn yet. This one spends three provider calls, today, in the ordinary path,
+against an explicit ruling. It is the first LIVE one.
+
+### The repair, and the one thing it must not do
+
+Gate the button on `is_live` and pin it with a test in the `disabled=` shape the repo already
+uses. What it must NOT do is gate the button and leave the caption as the only other signal: a
+disabled primary button with no stated reason is an absence rendered as a dead control (`#187`).
+The help text or an adjacent line has to say WHY, and "why" here is already written one line
+above it in the caption.
+
+### THERE ARE TWO DEBATE BUTTONS, AND I WROTE "the button" BEFORE I CHECKED
+
+Grepping the help constant rather than the button rendered a second site:
+
+| site | key | surface |
+|---|---|---|
+| `app.py:5780` | `draft_room_debate_btn` | the LIVE Draft Room — what the rule governs |
+| `app.py:5257` | `mock_draft_debate_btn` | the MOCK draft |
+
+`is_live` is defined at `:5527`, AFTER `:5257`, so it does not exist at the mock site — the gate
+cannot simply be applied to both. Both spend the same three provider calls.
+
+**The fix is scoped to the live button, and the reason is stated rather than assumed.** A mock
+draft is a simulation the user drives: there is no other party who can hold the clock, so "while
+on the clock" has no one to exclude. Searched for a whose-turn concept in the mock path and found
+none.
+
+**But `DRAFT_ROOM_UI.md:50` does not say "in a live draft".** It says "Debate is callable only
+while on the clock", full stop, in the RULED list. Reading that as live-only is an interpretation,
+and this register's whole discipline is against quietly interpreting a ruling into a narrower
+shape. So: the live gate ships, and whether the mock button is exempt is put to the owner as a
+question rather than answered by a commit.
+
+That is also how I nearly shipped a one-button fix for a two-button rule — by searching for the
+thing I had already found instead of for the rule's whole population.
+
+### Owner's call on one further point
+
+`DRAFT_ROOM_UI.md:1046` wants the same gate on the Insight button, and whether Insight ships at
+all is `U3`, still owner-owned. The Debate gate does not wait on that.

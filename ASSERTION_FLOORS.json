@@ -5022,15 +5022,15 @@
       }
     },
     "test_cost_envelope_boundary.py": {
-      "test_methods": 15,
+      "test_methods": 16,
       "asserts": {
         "assertEqual": 10,
-        "assertIn": 6,
+        "assertIn": 7,
         "assertIsNone": 2,
         "assertIsNotNone": 2,
         "assertLessEqual": 1,
         "assertNotIn": 5,
-        "assertTrue": 2
+        "assertTrue": 5
       },
       "by_method": {
         "NoBudgetPrimitivesExistTests.test_no_budget_ceiling_quota_cooldown_or_throttle_exists": {
@@ -5061,6 +5061,10 @@
         },
         "NothingAmplifiesTheEnvelopeTests.test_parsing_a_models_output_can_never_spend_money": {
           "assertTrue": 2
+        },
+        "NothingAmplifiesTheEnvelopeTests.test_the_billed_debate_button_is_dead_when_it_is_not_your_turn": {
+          "assertIn": 1,
+          "assertTrue": 3
         },
         "NothingAmplifiesTheEnvelopeTests.test_the_limits_module_adds_no_retry_semantics_either": {
           "assertNotIn": 1
