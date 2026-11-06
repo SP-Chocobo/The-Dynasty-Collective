@@ -30,25 +30,16 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path.cwd()))
 import design_system as ds
+import front_claims as fc
 import lineup_optimizer as lo
+
+#: Re-exported from their one home (`#333`) so a reader of this file still finds them
+#: here, without this file becoming a second place they are spelled.
+LADDER, CAP = fc.LADDER, fc.CAP
 
 HERE = pathlib.Path(__file__).resolve().parent
 FIX = pathlib.Path("ui_explore/front_fixture.json")
 OUT = HERE / "front.html"
-
-#: The claim ladder, highest cost-to-ignore first, with the reason each rung outranks the next.
-#: A FIXED LADDER RATHER THAN A SCORE, because these units are incomparable -- a pick clock in
-#: minutes, a bye in trade-value, a thin position in a peer label -- and a computed ranking would
-#: imply they had been put on one scale. The reason is written beside each rung so the order can
-#: be argued with rather than merely obeyed.
-LADDER = [
-    ("clock",  "a deadline you can actually miss; everything else keeps until tomorrow"),
-    ("hole",   "you cannot field a legal lineup at all, which no amount of value fixes"),
-    ("bye",    "a known future week with a measured cost, and planning only works in advance"),
-    ("thin",   "a standing weakness with no deadline attached"),
-]
-CAP = 3
-
 
 def esc(s):
     return html.escape(str(s), quote=True)
@@ -91,6 +82,53 @@ def num(value, digits, why):
     stringifies it, so the page painted the literal word None where a number was missing."""
     out = ds.figure(value, digits)
     return esc(out) if out is not None else absent(why)
+
+
+def claim_prose(c):
+    """One claim's (title, body) HTML. THE SENTENCES, not the judgment.
+
+    Every string here was lifted verbatim from `build`'s own f-strings, which is why rebuilding
+    `front.html` after `#333` reproduces the committed file's sha256 exactly -- the one check
+    that makes a refactor of a certified artifact safe to make at all, and the one `#332` had to
+    repair before it could be relied on.
+    """
+    k = c["kind"]
+    if k == "hole":
+        holes = c["positions"]
+        # ESCAPED: position codes come from a league capture, i.e. upstream data, so an
+        # unescaped one is injection and not merely a cosmetic slip.
+        named = f"<b>{esc(holes[0])}</b>" if len(holes) == 1 else (
+            " and ".join([", ".join(f"<b>{esc(h)}</b>" for h in holes[:-1]), f"<b>{esc(holes[-1])}</b>"]))
+        title = (f"No <b>{esc(holes[0])}</b> on the roster" if len(holes) == 1
+                 else f"{len(holes)} starting slots nobody you own can fill")
+        return title, f"This league starts {named}. You hold none."
+    if k == "bye":
+        ge = "&ge;" if c["partial"] else ""
+        unknown = c["unknown_byes"]
+        floor = (f" These are floors: {esc(unknown)} player"
+                 f"{'s' if (unknown or 0) != 1 else ''} on this roster has no known bye."
+                 if c["partial"] else "")
+        when = ("" if c["ahead_only"] else
+                " This counts the whole season, including weeks already played &mdash; the app "
+                "does not know today's week here.")
+        out = c["starters_out"]
+        who = (f"<b>{esc(out)}</b> of your starters "
+               f"{'sits' if str(out) == '1' else 'sit'} that week. " if out is not None else "")
+        share = c["concentration"]
+        shape_txt = (f"{esc(ds.figure(share * 100, 0))}% of your season's bye damage lands in "
+                     f"that one week" if share is not None
+                     else f"its share of the season is {absent('bye damage has no shape: this roster carries none')}")
+        return (f"Week <b>{esc(c['worst_week'])}</b> costs you "
+                f"<b>{ge}{num(c['worst_week_loss'], 0, 'the worst week was not measured')} "
+                f"{esc(ds.VALUE_UNIT_SHORT)}</b>",
+                f"{who}{shape_txt}.{floor}{when}")
+    # ONE WORD FOR ONE BUCKET. "Thin" is this page's name for the bucket whose members are
+    # depth_ratings' WEAK and NO_PLAYERS labels.
+    covered, count = c["valued_count"], c["count"]
+    scope = (f" Priced depth only: {esc(covered)} of {esc(count)} could be priced, so "
+             f"that comparison is a floor." if c["priced_floor"] else "")
+    return (f"Thin at <b>{esc(c['position'])}</b>",
+            f"<b>{esc(count)}</b> rostered &mdash; bottom of this league at the position.{scope}")
 
 
 def style_css():
@@ -181,118 +219,23 @@ h2{{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:u
 
 
 def build(fx):
-    # EVERY top-level read is tolerant. A fixture is hand-maintainable and this file's own
-    # docstring invites editing it, so a missing key must not be a traceback: a page that fails
-    # to build is strictly worse than one that renders an honest absence.
+    # THE JUDGMENT IS NOT HERE ANY MORE (`#333`). Which claims fire, with what values and in
+    # what order, is `front_claims.compose` -- one home, reachable by production, with no HTML in
+    # it. What stays here is the PROSE, deliberately: two surfaces say the same thing differently
+    # and a module that shipped copy would make this page's voice a thing production had to
+    # override rather than write.
     basis = (fx.get("_provenance") or {}).get("basis") or {}
-    claims = []
+    band = fc.compose(fx)
+    shown, hidden = band["shown"], band["hidden"]
+    # The RESOLVED profile, which the week strip below also draws. Re-deriving it here is how one
+    # quantity acquires two answers.
+    bp = band["bye_profile"]
 
-    # ONE CARD FOR ALL THE HOLES, not one per position. Two cards reading "No K on the roster"
-    # and "No DEF on the roster" is two sentences for one problem with one remedy and one route,
-    # and in the fixture's own league they ate two of the three slots and pushed the bye claim --
-    # the best signal on this page -- to last while both thin positions fell off entirely. The
-    # standing constraint on this project is "clean who, why, and other valid options, at what
-    # cost... I dont need all the variables", and a band that spends itself enumerating one
-    # problem is the failure that constraint names. Collapsed, the count does the work the
-    # repetition was doing.
-    holes = fx.get("structural_holes") or []
-    if holes:
-        # ESCAPED, like every other interpolation in this file. The multi-hole branch escaped and
-        # this one did not: position codes come from a league capture, i.e. upstream data, so an
-        # unescaped one is injection and not merely a cosmetic slip.
-        named = f"<b>{esc(holes[0])}</b>" if len(holes) == 1 else (
-            " and ".join([", ".join(f"<b>{esc(h)}</b>" for h in holes[:-1]), f"<b>{esc(holes[-1])}</b>"]))
-        title = (f"No <b>{esc(holes[0])}</b> on the roster" if len(holes) == 1
-                 else f"{len(holes)} starting slots nobody you own can fill")
-        # The body said the headline again 14 words later and then claimed the slot "cannot be
-        # filled at any price", which is false: a kicker costs $1 of FAAB. One sentence.
-        claims.append(("hole", title, f"This league starts {named}. You hold none.",
-                       "Roster Maintenance"))
-
-    bp = fx.get("bye_profile") or {}
-    # THE RUNG'S REASON IS FUTURITY, so a claim that cannot establish futurity must not borrow
-    # the urgency. With a known current week, rank on the worst week STILL AHEAD and say so; with
-    # none, the same numbers are a season-shape fact and the copy says that instead of implying a
-    # deadline. The first version had no concept of now and would happily have put a week already
-    # played second on the page -- which is the one thing a triage surface must never do, because
-    # it spends the reader's trust in the whole band.
-    now = fx.get("current_week")
-    weeks_all = bp.get("weeks") or {}
-    if now is not None:
-        ahead = {w: v for w, v in weeks_all.items()
-                 if str(w).lstrip("-").isdigit() and int(w) >= int(now)}
-        if ahead:
-            worst = max(ahead, key=lambda w: ahead[w])
-            bp = {**bp, "worst_week": int(worst), "worst_week_loss": ahead[worst],
-                  "weeks": ahead, "_ahead_only": True}
-        else:
-            bp = {**bp, "worst_week": None, "_ahead_only": True}
-    if bp.get("worst_week") is not None and bp.get("worst_week_loss") is not None:
-        share, detail = bp.get("concentration"), (bp.get("worst_week_detail") or {})
-        # A FLOOR IS NOT A TOTAL, and the floor's magnitude is part of saying so. bye_collision
-        # is explicit that under a partial basis EVERY week's number is a floor, not only the
-        # weeks that happen to show a collision -- so the marker goes on the figure, not in a
-        # trailing sentence. `>=` is the form depth_value_label already uses for the same reason.
-        partial = bp.get("basis") != lo.BYE_MEASURED
-        ge = "&ge;" if partial else ""
-        unknown = bp.get("unknown_byes")
-        floor = (f" These are floors: {esc(unknown)} player"
-                 f"{'s' if (unknown or 0) != 1 else ''} on this roster has no known bye."
-                 if partial else "")
-        # Say which kind of claim this is, rather than letting the reader assume the urgent one.
-        when = ("" if bp.get("_ahead_only") else
-                " This counts the whole season, including weeks already played &mdash; the app "
-                "does not know today's week here.")
-        out = detail.get("starters_out")
-        who = (f"<b>{esc(out)}</b> of your starters "
-               f"{'sits' if str(out) == '1' else 'sit'} that week. " if out is not None else "")
-        # concentration is None, NEVER 0.0 -- bye_concentration says so, because a roster with
-        # nothing to lose has no shape and 0.0 would rank it as maximally staggered. `or 0` here
-        # rendered that as a measured "0%", eight lines under a docstring forbidding exactly it.
-        shape_txt = (f"{esc(ds.figure(share * 100, 0))}% of your season's bye damage lands in "
-                     f"that one week" if share is not None
-                     else f"its share of the season is {absent('bye damage has no shape: this roster carries none')}")
-        claims.append(("bye",
-                       f"Week <b>{esc(bp['worst_week'])}</b> costs you "
-                       f"<b>{ge}{num(bp['worst_week_loss'], 0, 'the worst week was not measured')} "
-                       f"{esc(ds.VALUE_UNIT_SHORT)}</b>",
-                       f"{who}{shape_txt}.{floor}{when}", "Matchup"))
-
-    # Ranked WITHIN the rung by how close the room is to empty, not by the alphabet. The capture
-    # emits positions in sorted() order, so without this the order was Q-before-T -- which in one
-    # real league hid a ONE-quarterback room (an injury away from the rung above) below the cap
-    # while a two-man TE room held a card.
-    def _thin_key(x):
-        """Coerced, because a sort key is not a place to trust the fixture's types. The first
-        version of this compared `count` values directly and raised TypeError the moment one
-        entry carried a string and another an int -- a crash introduced BY the fix for the
-        alphabetical-ordering defect, found by re-running the adversarial fixtures against it."""
-        try:
-            n = int(x.get("count") or 0)
-        except (TypeError, ValueError):
-            n = 0
-        return (n, str(x.get("position") or ""))
-
-    for t in sorted(fx.get("thin_positions") or [], key=_thin_key):
-        # ONE WORD FOR ONE BUCKET. "Thin" is this page's name for the bucket whose members are
-        # depth_ratings' WEAK and NO_PLAYERS labels, so printing "Thin at TE / Weak against..."
-        # four words apart reads as two severities where there is one.
-        covered, count = t.get("valued_count"), t.get("count") or 0
-        scope = ("" if covered is None or covered >= count
-                 else f" Priced depth only: {esc(covered)} of {esc(count)} could be priced, so "
-                      f"that comparison is a floor.")
-        claims.append(("thin", f"Thin at <b>{esc(t['position'])}</b>",
-                       f"<b>{esc(count)}</b> rostered &mdash; bottom of this league at the "
-                       f"position.{scope}", "League"))
-
-    rank = {k: i for i, (k, _) in enumerate(LADDER)}
-    claims.sort(key=lambda c: rank[c[0]])
-    shown, hidden = claims[:CAP], claims[CAP:]
-
+    rendered = [(c["kind"], *claim_prose(c), c["route"]) for c in shown]
     cards = "".join(
         f'<article class="claim {esc(k)}"><h3>{title}</h3><p>{body}</p>'
         f'<a class="route" href="#{esc(route.lower().replace(" ", "-"))}">{esc(route)} &rsaquo;</a></article>'
-        for k, title, body, route in shown) or (
+        for k, title, body, route in rendered) or (
         '<article class="claim none"><h3>Nothing needs you</h3>'
         '<p>No unfillable slot, no concentrated bye week, no position thin against the '
         'league.</p></article>')
@@ -301,7 +244,8 @@ def build(fx):
     # 18 of its 23 words and 37px tall, and on the phone it was what pushed the first real fact
     # below the fold -- the page's restraint, costing the page its fold.
     more = (f'<p class="more">Also: '
-            + ", ".join(esc(c[1].replace("<b>", "").replace("</b>", "")) for c in hidden)
+            + ", ".join(esc(claim_prose(c)[0].replace("<b>", "").replace("</b>", ""))
+                         for c in hidden)
             + ".</p>") if hidden else ""
 
     filled = len(fx.get("starters") or [])

@@ -8606,6 +8606,83 @@
         "early_returns": 0
       }
     },
+    "test_front_claims.py": {
+      "test_methods": 18,
+      "asserts": {
+        "assertEqual": 20,
+        "assertFalse": 1,
+        "assertIn": 3,
+        "assertIsNone": 2,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "AbsenceAndFloorsSurviveTheLiftTests.test_a_null_concentration_stays_null_and_never_becomes_zero": {
+          "assertIsNone": 1
+        },
+        "AbsenceAndFloorsSurviveTheLiftTests.test_a_partial_bye_basis_marks_the_claim_as_a_floor": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "AbsenceAndFloorsSurviveTheLiftTests.test_priced_floor_is_set_only_when_some_of_the_room_could_not_be_priced": {
+          "assertEqual": 1
+        },
+        "FuturityIsTheByeRungsWholeReasonTests.test_a_known_week_re_picks_the_worst_week_STILL_AHEAD": {
+          "assertEqual": 2,
+          "assertTrue": 1
+        },
+        "FuturityIsTheByeRungsWholeReasonTests.test_a_non_numeric_week_key_does_not_take_the_band_down": {
+          "assertEqual": 1
+        },
+        "FuturityIsTheByeRungsWholeReasonTests.test_a_week_already_played_is_dropped_from_the_profile_entirely": {
+          "assertEqual": 1
+        },
+        "FuturityIsTheByeRungsWholeReasonTests.test_the_resolved_profile_comes_back_even_when_the_claim_does_not_fire": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "FuturityIsTheByeRungsWholeReasonTests.test_with_every_bye_behind_us_the_claim_does_not_fire_at_all": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        },
+        "FuturityIsTheByeRungsWholeReasonTests.test_without_a_known_week_nothing_claims_futurity": {
+          "assertEqual": 1,
+          "assertFalse": 1
+        },
+        "TheLadderRanksAcrossIncomparableUnitsTests.test_a_hole_outranks_a_bye_which_outranks_a_thin_position": {
+          "assertEqual": 1
+        },
+        "TheLadderRanksAcrossIncomparableUnitsTests.test_compose_never_emits_a_kind_the_ladder_cannot_rank": {
+          "assertIn": 1
+        },
+        "TheLadderRanksAcrossIncomparableUnitsTests.test_the_band_caps_at_three_and_names_what_it_hid": {
+          "assertEqual": 3
+        },
+        "TheLadderRanksAcrossIncomparableUnitsTests.test_the_clock_rung_is_declared_and_deliberately_unreachable": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "TheRungsOwnOrderingAndToleranceTests.test_all_holes_collapse_into_exactly_one_claim": {
+          "assertEqual": 2
+        },
+        "TheRungsOwnOrderingAndToleranceTests.test_an_entirely_empty_roster_produces_an_empty_band": {
+          "assertEqual": 2
+        },
+        "TheRungsOwnOrderingAndToleranceTests.test_mixed_types_in_the_sort_key_do_not_raise": {
+          "assertEqual": 1
+        },
+        "TheRungsOwnOrderingAndToleranceTests.test_thin_positions_rank_by_how_empty_the_room_is_not_by_the_alphabet": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_front_pages_match_their_builders.py": {
       "test_methods": 2,
       "asserts": {

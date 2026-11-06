@@ -18770,3 +18770,157 @@ The gate covers `ui_explore/round2/fableA/`'s built pages. This item changed two
 `ui_explore/round3/`, which — as the finding above establishes by grep rather than assumption —
 the gate has no knowledge of. Running it would have cost twelve minutes to re-certify a tree the
 diff does not touch. The guard shipped here is what now covers the files the gate does not.
+
+---
+
+## `#333` — THE FRONT PAGE'S JUDGMENT HAD ONE HOME AND IT WAS A PROTOTYPE'S HTML EMITTER
+
+`MAIN_PAGE.md` named this the honest first cost of the page, ahead of any layout, and it was
+right. Every ruling the claim band makes — the ladder, the cap, the futurity rule, the within-rung
+ordering and all four rung conditions — was spelled inside `ui_explore/round3/build_front.build()`,
+interleaved with the f-strings that draw the HTML. One caller could reach it: a prototype that
+emits a static file.
+
+So production had two options and both were forbidden. Re-implement the ranking in `app.py` — a
+second source of truth, which `#126` forbids. Or text-extract it from the builder — which is what
+`test_positional_depth_coverage` had to do before `#297` lifted `positional_depth` out of
+`app.py`, and which that item recorded as a workaround, named as one.
+
+**This is `#297`'s lift in the opposite direction.** `#297` moved a quantity OUT of the one module
+nothing can import. This moves a judgment OUT of the one module only a prototype calls.
+
+### What moved, and what deliberately did not
+
+`front_claims.py` carries `LADDER`, `CAP`, `byes_ahead`, `thin_sort_key` and `compose`, and
+contains **no HTML**. A claim is measured values plus the basis flags that qualify them — never a
+sentence.
+
+The prose stayed in the builder, and that is a ruling rather than laziness. Two surfaces say the
+same thing differently: a static page writes *"1 of your starters sits that week"*; Streamlit may
+not. A module that shipped copy would make the page's voice something production had to override
+instead of write. Same rule `depth_ratings` follows — the engine returns the label, the surface
+writes the sentence.
+
+### The proof, which only existed because `#332` ran first
+
+Rebuilding `front.html` through the rewired builder reproduces the committed file's **sha256
+exactly**:
+
+```
+7e78424f0d8d342c9f1e5a224df5c78bd321562858d9f3c6b7420b68a3bbbe80   rewired build
+7e78424f0d8d427f...                                                  (identical)
+```
+
+That check is the only reason a refactor of a certified artifact is safe to make at all — and it
+is the check `#332` found broken the day before, with both committed pages painted in a palette
+`design_system` had abandoned. **Doing this lift first would have had no baseline to stand on, and
+nothing would have said so**: the comparison would have "passed" against a file that was already
+wrong, or failed for a reason that had nothing to do with the refactor. The ordering was luck, not
+planning, and it is worth recording as the reason to establish a baseline before trusting one.
+
+Also verified: all 18 existing tests in `test_front_renders_its_basis` — the RENDERING contract —
+pass unchanged against the rewired builder, confirmed loaded from the rewired copy rather than the
+original.
+
+### The clock rung is declared and has never fired
+
+Pinned while lifting, because it was invisible until the rungs were listed in one place:
+`"clock"` is the ladder's top rung — the only one carrying a deadline a reader can actually miss —
+and **nothing produces it.** No fixture key supplies it; no branch emits it. So the band's
+ordering has only ever been exercised on three of its four rungs.
+
+That is a known absence, not dead code to delete: when the app knows you are on the clock, that
+claim should outrank everything, and the ladder already says so. `RUNGS_PRODUCED_HERE` pins the
+gap, and a test asserts the two lists disagree in exactly this way — so wiring the draft clock
+later has to come past that test rather than quietly satisfy it.
+
+### What is NOT fixed
+
+**The front page still is not in the app.** `front_claims` is now reachable by production and
+unreached by it. `app.py:3606-3610` is still `st.title` + `st.info` + `st.stop()`. That is the
+next item and the actual delivery of the marathon `#331` sanctioned; this is the prerequisite it
+could not be built without.
+
+### Mutation panel — 9 arms
+
+| arm | tests fired |
+|---|---|
+| baseline | **0** |
+| ladder: the `hole` rung renamed | 7 |
+| `CAP` 3 → 4 | 1 |
+| futurity: `>= now` becomes `> now` | 3 |
+| futurity: `current_week` ignored entirely | 3 |
+| thin ordering: count dropped from the sort key | 1 |
+| `priced_floor` always False | 1 |
+| `concentration`: None coerced to 0 | 1 |
+| `clock` added to `RUNGS_PRODUCED_HERE` | 1 |
+| holes: one claim per hole instead of one card | 1 |
+| restored | **0** |
+
+### Two instrument failures, and the second one found a real defect
+
+**1. The first panel was entirely void, and it took the file's own status to see it.**
+`git checkout -- front_claims.py` fails on an UNTRACKED file — `pathspec did not match any
+file(s) known to git` — and the new module had not been committed yet. So nothing was ever
+restored and the nine mutations ACCUMULATED, each reading reporting every previous arm's damage
+as well as its own. The failure counts rose monotonically down the list, which is the tell.
+
+This is the **second restore failure in this session**, with a different mechanism each time.
+`#332`'s was a `cp` restore shadowed by a `__pycache__` Python trusted; this one was a restore
+command that printed an error and returned non-zero while the loop carried on. The general rule
+both of them point at: **a restore is a measurement and gets the same scepticism as the
+mutation.** The corrected panel copies from a pristine source and `cmp`s after every single arm,
+so a restore that does not restore stops the run instead of silently poisoning the next nine
+readings.
+
+**2. The void panel still found something, and it was a test that tested nothing.**
+One arm — dropping the count from `thin_sort_key`, i.e. reverting to the alphabetical ordering
+the key exists to prevent — added **no new failing test**, visible even through the accumulation
+because every other arm did. The cause:
+
+```
+the test's fixture  TE(2), QB(1)  ->  by count ['QB','TE']   by alphabet ['QB','TE']   same
+a fixture that works QB(2), TE(1)  ->  by count ['TE','QB']   by alphabet ['QB','TE']   differ
+```
+
+`test_thin_positions_rank_by_how_empty_the_room_is_not_by_the_alphabet` asserted `["QB","TE"]`
+against a fixture where **ranking by count and ranking alphabetically give the same answer**. It
+asserted the right answer for the wrong reason and passed against either implementation. Fixed to
+QB(2)/TE(1), where only one ordering can pass; the arm now fires.
+
+The irony is exact and worth keeping: this is `#332`'s arm-4 error one level up. There, a
+*mutation* that could not change the artifact proved nothing. Here, a *test* whose fixture could
+not distinguish the behaviours proved nothing — and it had been copied forward from the original
+code's own comment, which cites a real league where the thin position happened to be QB, the
+alphabetically-first code. **A real-world example is not automatically a discriminating one.**
+
+### A THIRD instrument failure, in the close-out procedure itself
+
+Caught only because a stop hook kept asking for a commit and I went to establish why waiting was
+correct. **Two of the eight ratchets enumerate via `git ls-files`, and a new file is invisible to
+them until it is staged.**
+
+```
+assertion_floors  boundary_census  skip_gates  suite_reach  api_surface  state_vocabulary   filesystem
+doc_index  prose_names                                                                      GIT LS-FILES
+```
+
+`prose_names` scans tracked `*.py` at four separate call sites — it reads every backticked name
+inside each module's prose and requires it to resolve. `front_claims.py` and
+`test_front_claims.py` were UNTRACKED when I ran the ratchets, so **`prose_names --check` passed
+without ever opening either new file.** It was a green reading of a tree that did not contain the
+work. `doc_index` is scoped to `*.md` and was unaffected, and the other six scan the filesystem
+and did see the new modules — so six of eight readings were valid and two were vacuous.
+
+The ordering in `close-register-item` puts the ratchets after the suite and before the commit,
+which is the wrong order for any item that ADDS a file: at that point the file is still untracked
+and the two index-reading ratchets cannot see it. **The order that measures what is actually
+being committed is `git add` FIRST, then the ratchets, then the suite.** Re-run against the
+staged tree, all eight are green — but that is a different measurement from the one I had, and
+only the second one means anything.
+
+This is the session's third instrument failure and they rhyme: a `__pycache__` that shadowed a
+restore, a `git checkout` that could not restore an untracked file, and now two ratchets that
+could not see an untracked file. All three are the same question answered wrong — **what is the
+instrument actually looking at** — and in each case the reading was green, plausible, and about
+something else.
