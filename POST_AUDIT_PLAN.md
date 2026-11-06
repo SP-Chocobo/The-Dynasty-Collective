@@ -18547,3 +18547,51 @@ now recorded that failure twice in two days, in two unrelated files.
 floors 245 modules / 7668 assertions
 13 stamped seat labels, console clean, DOM verified free of stray whitespace
 ```
+
+---
+
+## CERTIFICATION — `#330` / `#331` / `#317b` at `f410ca9`
+
+```
+Ran 4373 tests in 1366.836s
+OK (skipped=2, expected failures=1)
+
+verdict PASS_WITH_KNOWN_FAILURES   renders 396 / ok 395 / failed 1 / failures_total 0
+stale_expectations []   source_tree_clean True   snapshot_verified_unchanged True
+```
+
+| | `bfc2420` | `f410ca9` |
+|---|---|---|
+| tests | 4373 | **4373** |
+| wall clock | 1409.280s | 1366.836s |
+| verdict | OK | **OK** |
+| gate | — | **396 / 395 / 1** |
+
+Test count is unchanged because `#330` modified existing tests rather than adding any: two arms
+were de-staled and one assertion was added inside an existing test. **Three consecutive green
+suites.**
+
+**The gate settles the one thing an eye could not.** `#330` wrapped 13 seat labels in
+`<span data-tip=...>`, and I misread the resulting render as having gained whitespace in the clock
+line. The DOM disproved it immediately and the gate confirms it at scale: name size identical
+across draft states for all 126 (file, format, viewport) groups, scroll budgets unchanged, URL and
+board agreeing at every navigation step on all four surfaces.
+
+Worth stating as a pairing rather than a correction, because both instruments earned their keep in
+this session and neither could have done the other's job: **looking at a render found the entire
+position palette dead in the browser** when three text-matching checks called it correct
+(`#324`); **the gate found that looking had cried wolf** here. An eye answers "is anything
+obviously wrong". The gate answers "did anything ruled actually move".
+
+### Suite budget — eighth dated point
+
+| commit | tests | seconds | ms/test | verdict |
+|---|---|---|---|---|
+| `#317` | 4345 | 1360.614 | 313.1 | FAILED (1) |
+| `86ce27a` | 4364 | 1508.019 | 345.6 | FAILED (1) |
+| `ef6a07d` | 4364 | 1401.862 | 321.2 | OK |
+| `bfc2420` | 4373 | 1409.280 | 322.2 | OK |
+| `f410ca9` | **4373** | **1366.836** | **312.5** | **OK** |
+
+312.5ms/test is the fastest per-test figure in the table and lands on top of `#317`'s 313.1 at 28
+more tests. Budget from the worst recent total: **1508s**.
