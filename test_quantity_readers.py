@@ -72,8 +72,23 @@ KNOWN_WRITE_ONLY = {
     "bye_collision", "bye_concentration",
     # bye_collision / bye_concentration sub-keys. roster_diagnostics stores those dicts whole,
     # so the individual keys await a reader rather than being dropped (#142).
-    "bench_used", "bench_value_used", "players_out", "starters_out",
-    "lineup_value", "total_loss", "worst_week_loss", "concentration",
+    #
+    # `starters_out` AND `concentration` LEFT THIS SET AT `bb5463b` (`#333`), and the ratchet's
+    # other direction is what noticed. Both were already read by the front-page prototype, but
+    # this scanner's surface set is the top-level `*.py` files plus a closed module list -- so a
+    # read inside `ui_explore/round3/build_front.py` was never a read by production, correctly.
+    # Lifting the claim band into top-level `front_claims.py` is what turned them from
+    # `write_only` into `carried`, which is an INDEPENDENT WITNESS that the lift did what it
+    # claimed: the quantities became reachable by production, measured by an instrument that had
+    # no part in the refactor and no knowledge of it.
+    #
+    # `worst_week_loss` did NOT resolve and stays here. `front_claims` references it and the
+    # scanner still grades it `write_only`. That is reported rather than overridden: `#222`'s
+    # rule is to observe the production quantity and never overrule the instrument with a
+    # reconstruction of it, and overruling a correct instrument on a recomputed number is an
+    # error already made once in this session. Why it differs from the two above is unmeasured.
+    "bench_used", "bench_value_used", "players_out",
+    "lineup_value", "total_loss", "worst_week_loss",
     # depth_exposure returns BOTH aggregates on purpose -- "total risk carried" and "what one
     # backup buys" are different questions -- and only worst_loss is consumed (#139).
     "exposure",

@@ -18924,3 +18924,54 @@ restore, a `git checkout` that could not restore an untracked file, and now two 
 could not see an untracked file. All three are the same question answered wrong — **what is the
 instrument actually looking at** — and in each case the reading was green, plausible, and about
 something else.
+
+### `#333b` — THE SUITE FAILED, AND THE FAILURE WAS THE BEST EVIDENCE THE LIFT WORKED
+
+The certification run came back `FAILED (failures=1)`:
+
+```
+FAIL: test_quantity_readers.TheWriteOnlySetMustNotGrowTests
+      .test_a_write_only_quantity_that_gained_a_reader_is_noticed
+AssertionError: ['concentration', 'starters_out'] != []
+  : these are no longer write-only. Good -- remove them from KNOWN_WRITE_ONLY and
+    note which commit gave them a reader.
+```
+
+That is `#138`'s write-only scanner, reconciled in both directions, firing in the **good** one.
+Two engine quantities that nothing in production read now have a reader.
+
+**And the mechanism is the independent witness this refactor could not have produced for itself.**
+`quantity_readers`'s surface set is the top-level `*.py` files plus a closed module list. Both
+quantities were already read by the front-page prototype — but a read inside
+`ui_explore/round3/build_front.py` was never a read by production, and the scanner was right to
+say so. Lifting the claim band into top-level `front_claims.py` is what moved them from
+`write_only` to `carried`. So the claim "`#333` makes this judgment reachable by production" was
+checked by an instrument with no part in the refactor and no knowledge of it, and it agreed.
+
+Observed from the scanner rather than reasoned about:
+
+```
+concentration     write_only=False   verdict=carried
+starters_out      write_only=False   verdict=carried
+worst_week_loss   write_only=True    verdict=write_only
+```
+
+**`worst_week_loss` did not resolve, and that is reported rather than explained away.**
+`front_claims` references it; the scanner still grades it write-only. `#222`'s rule is to observe
+the production quantity and never overrule the instrument with a reconstruction — and overruling
+a correct instrument on a recomputed number is an error already made once this session, on a
+token count. Why this one differs from the two above is **unmeasured**, and saying so is more
+useful than a guess that would read like a finding.
+
+Repair: both removed from `KNOWN_WRITE_ONLY` with the commit that gave them a reader recorded
+beside them. Both directions re-checked — restoring `concentration` fires the gained-a-reader
+arm; dropping a still-write-only `players_out` fires the no-new-write-only arm.
+
+**A fourth restore failure, same session, fourth mechanism.** Mutation arm A used
+`git checkout -- test_quantity_readers.py`, which succeeded — and reverted the file to HEAD,
+discarding the uncommitted repair rather than the mutation. The `cmp` that the earlier failures
+had taught me to add is the only reason it was caught. The file was tracked (unlike `#333`'s
+case) and the command returned zero (unlike `#333`'s case), so neither previous lesson covered
+it. **The general form, finally stated properly: an uncommitted change means `git checkout` is
+not an undo, it is a discard.** Restore from a pristine copy taken immediately before the
+mutation, and verify with `cmp` every time.
