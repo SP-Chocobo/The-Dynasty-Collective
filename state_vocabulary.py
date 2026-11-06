@@ -74,11 +74,15 @@ VOCABULARIES: dict[str, dict[str, str]] = {
 #: A FALL is the repair -- the words moving to one home.
 CENSUS = 3
 
-#: The two USER-FACING surfaces share exactly one state word, `measured`. This is a FLOOR, not a
-#: target: it may rise (the repair) and must not fall. At zero, no semantic state would mean the
-#: same thing in the draft room and on the front page, which is the owner's third coherence
-#: population failing outright rather than partially.
-SHARED_FLOOR = 1
+#: How many state words the two USER-FACING surfaces must BOTH be able to say. A FLOOR, not a
+#: target: it may rise and must not fall.
+#:
+#: `#329` set this at 1 -- they shared `measured` and nothing else. `#330` added `constructed`
+#: to the draft room and the floor FOLLOWS THE REPAIR UP to 2, because a ratchet that does not
+#: move with its own repair is just a ceiling: the gain would be lossless to give back, silently.
+#: At zero, no semantic state would mean the same thing on both surfaces at all, which is the
+#: owner's third coherence population failing outright rather than partially.
+SHARED_FLOOR = 2
 
 
 def words_of(name: str, root: pathlib.Path = pathlib.Path(".")) -> list[str]:

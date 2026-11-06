@@ -69,29 +69,43 @@ class TheCensusRatchetsTests(unittest.TestCase):
         self.assertTrue(grew, "a fourth state vocabulary did not trip the census")
         self.assertIn("FOURTH", grew[0])
 
-    def test_losing_the_one_shared_word_fails(self):
-        """`measured` is the only word the draft room and the front page both have. Below the
-        floor, no semantic state means the same thing on both surfaces."""
-        with mock.patch.object(sv, "SHARED_FLOOR", 2):
+    def test_losing_a_shared_word_fails(self):
+        """Below the floor, a state word that meant the same thing on both surfaces stops doing
+        so. `#330`: the floor rose from 1 to 2 when the draft room gained `constructed`.
+
+        THE MUTATION IS DERIVED, NOT HARDCODED, and that is `#305`'s lesson arriving one day
+        later in a test I had just written. This read `SHARED_FLOOR, 2` -- which tripped the
+        ratchet while the surfaces shared ONE word and silently stopped tripping it the moment
+        they shared two. An arm pinned to a number stops being an arm when the number moves
+        underneath it; `len(shared) + 1` is an arm forever.
+        """
+        over = len(sv.divergence(_ROOT)["shared_by_user_facing"]) + 1
+        with mock.patch.object(sv, "SHARED_FLOOR", over):
             grew = sv.widened(_ROOT)
         self.assertTrue(grew, "the shared-vocabulary floor is not load-bearing")
         self.assertIn("DRIFTED FURTHER APART", grew[0])
 
     def test_a_repair_does_not_fail_the_ratchet(self):
-        """THE POINT OF THE DESIGN. If the draft room gained the front page's `constructed` --
-        the word `#187`'s absence contract most needs and the room cannot currently say -- the
-        shared set rises and the divergence falls. That is the repair, and it must PASS.
+        """THE POINT OF THE DESIGN: a repair must PASS. A census that pins its own divergence
+        turns the defect into a requirement, which is the failure `boundary_census` avoids by
+        allowing today's reaches and watching for one more.
 
-        A census that pins its own divergence turns the defect into a requirement, which is the
-        failure `boundary_census` avoids by allowing today's reaches and watching for one more.
+        THIS ARM HAS ALREADY PAID OFF ONCE. It was written simulating the draft room gaining
+        `constructed`, and `#330` then made that real -- the shared set rose 1 -> 2 and the
+        ratchet stayed green, exactly as this predicted. So the simulation MOVED ON to the next
+        repair rather than being left to re-assert something that is now simply true: `absent`
+        is the one word the front page can still say and the room cannot.
         """
         real = sv.words_of
         def repaired(name, root=_ROOT):
             words = real(name, root)
-            return sorted(set(words) | {"constructed"}) if name == "draft_room" else words
+            return sorted(set(words) | {"absent"}) if name == "draft_room" else words
         with mock.patch.object(sv, "words_of", repaired):
             d = sv.divergence(_ROOT)
-            self.assertEqual(d["shared_by_user_facing"], ["constructed", "measured"])
+            self.assertEqual(d["shared_by_user_facing"], ["absent", "constructed", "measured"])
+            self.assertEqual(d["front_only"], [],
+                             "with `absent` adopted the front page has nothing left the room "
+                             "cannot say; that is the user-facing half of this population closed")
             self.assertEqual(sv.widened(_ROOT), [],
                              "a REPAIR tripped the ratchet; the census has become a cast")
 

@@ -16586,7 +16586,7 @@
     "test_state_vocabulary.py": {
       "test_methods": 9,
       "asserts": {
-        "assertEqual": 5,
+        "assertEqual": 6,
         "assertGreaterEqual": 1,
         "assertIn": 2,
         "assertRaises": 2,
@@ -16598,9 +16598,9 @@
           "assertTrue": 1
         },
         "TheCensusRatchetsTests.test_a_repair_does_not_fail_the_ratchet": {
-          "assertEqual": 2
+          "assertEqual": 3
         },
-        "TheCensusRatchetsTests.test_losing_the_one_shared_word_fails": {
+        "TheCensusRatchetsTests.test_losing_a_shared_word_fails": {
           "assertIn": 1,
           "assertTrue": 1
         },

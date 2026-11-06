@@ -739,8 +739,8 @@ M.doorDepth = (d, best, list) => {
   M.waitShort = () => `Next turn <b>${M.nextLabel}</b> (#${M.NEXT_NO}) · <b>${S.intervening} picks</b> away`;
   M.waitText = () => `You pick again at <b>${M.nextLabel}</b> (#${M.NEXT_NO}), after <b>${S.intervening} picks</b>: ${M.seatsText()}.`;
   /* §1: who is on the clock is never ambiguous, with or without a rail */
-  M.clockShort = () => `next up: <b>Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}</b>${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> (Roster ${M.LAST.seat})` : ""}`;
-  M.clockText = () => `On the clock: <b>you</b> (Roster ${S.seat}) · next up: Roster ${M.AFTER_ME ? M.AFTER_ME.seat : "—"}${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> by Roster ${M.LAST.seat}` : " · first pick of the draft"}`;
+  M.clockShort = () => `next up: <b>${M.seatLabel(M.AFTER_ME ? M.AFTER_ME.seat : "—")}</b>${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> (${M.seatLabel(M.LAST.seat)})` : ""}`;
+  M.clockText = () => `On the clock: <b>you</b> (${M.seatLabel(S.seat)}) · next up: ${M.seatLabel(M.AFTER_ME ? M.AFTER_ME.seat : "—")}${M.LAST ? ` · last taken: <b>${M.short(M.LAST.name)}</b> by ${M.seatLabel(M.LAST.seat)}` : " · first pick of the draft"}`;
 
   /* ---- names: the family name is the collision key ("Brown" for Amon-Ra St. Brown, A.J. Brown
           and Chase Brown); a collision keeps the particle: A. St. Brown / A. Brown / C. Brown; if
@@ -1075,8 +1075,47 @@ M.doorDepth = (d, best, list) => {
   M.costKey = subj => `<b>now</b> = value against ${short(subj.name)} today, the board's order · <b>at #${M.NEXT_NO}</b> = what his position leaves at your next turn against what ${subj.position} leaves · <b>both picks</b> = him now with ${subj.position} at #${M.NEXT_NO}, against ${short(subj.name)} now with his position at #${M.NEXT_NO} — which is <b>now</b> less <b>at #${M.NEXT_NO}</b>`;
 
   /* ---- the engine's working (hidden until asked): every number with its kind; measured zeros print ---- */
+  // `#330`: `constructed` is the sixth kind, and it arrives WITH the thing that sets it.
+  // `#329` measured that this room and the front page shared exactly one state word
+  // (`measured`) and that the front page could say `constructed` -- "the source did not carry
+  // this value, so it was synthesised from something else, and labelled rather than hidden" --
+  // while this room had no way to say it at all. That is `#187`'s absence contract missing its
+  // most load-bearing word from the product's reference surface.
+  //
+  // A WORD WITH NO PRODUCER WOULD HAVE BEEN `#320` AGAIN: that item emitted an `--absent` CSS
+  // token nothing read, and `#325` had to go back and wire it. So the producer was found first,
+  // by checking every provenance field this room's data carries (eight of them: denial_basis,
+  // displacement_basis, depth_basis, replacement_basis, availability_basis, risk_basis,
+  // slot_share_basis, bpa_source). NONE of them can be `constructed` -- every value is
+  // engine-derived. The fallback-priced case was checked too and is NOT it: a candidate on
+  // `position_relative_trade_value_vor` has `projected_points: null`, so `not_priced` is
+  // already correct there.
+  //
+  // What IS constructed is the SEAT IDENTITY. This room renders "Roster 6" wherever a live
+  // league would render an owner's team name, and the front page stamps exactly that case
+  // CONSTRUCTED in its own fixture: "the seat's label in a replayed battery, not an owner's
+  // team name". Same fact, same word, on both surfaces now -- which is the whole point of the
+  // coherence population `#329` exists to measure.
   const KIND = {measured:"measured", count:"a count", withheld:"withheld", unmeasured:"not measured",
-              not_charged:"not charged", not_priced:"not priced into value"};
+              not_charged:"not charged", not_priced:"not priced into value",
+              constructed:"constructed"};
+  //: The stamp itself, worded to match the front page's so the two surfaces say the same thing
+  //: rather than two things that happen to rhyme.
+  M.SEAT_BASIS = `${KIND.constructed} -- the seat's label in a replayed battery, not an owner's `
+               + `team name. A live league reads the team name from its own roster settings.`;
+  //: One home for the seat label WHERE THE SEAT IS NAMED AS AN IDENTITY -- the clock line and
+  //: the roster card header. THE FIRST DRAFT OF THIS COMMENT CLAIMED "one home for how a seat is
+  //: written", and a grep for the whole population immediately falsified it: seven sites render
+  //: a seat, and this reaches three. `#316` is the same lesson -- scoping to the sites you
+  //: already know about and calling it complete.
+  //:
+  //: The other four are DELIBERATELY unstamped, and the reason is the owner's standing
+  //: constraint about clean dissemination rather than an oversight. On the pick board a seat is
+  //: a COORDINATE ("who holds #67"), not a claim about who someone is; there are 168 of them,
+  //: and a tooltip on each would bury the one place the stamp means something. A stamp repeated
+  //: everywhere stops being read, which is the failure mode this room's whole design argues
+  //: against.
+  M.seatLabel = n => `<span${tipAttr(M.SEAT_BASIS)}>Roster ${n}</span>`;
   M.working = c => {
     const d = M.depth(c), rows = [
       {l:"Value to your roster", v:f1(c.team_acquisition_value), b:"what the board is ordered by", k:"measured"},
@@ -1155,7 +1194,7 @@ M.doorDepth = (d, best, list) => {
       const r = slotRoster(picks, S.slots), starters = r.filter(x => x.slot !== "BN");
       const benchP = r.filter(x => x.slot === "BN" && x.p), benchOpen = M.benchTotal - benchP.length;
       const turns = M.BETWEEN.filter(p => p.seat === seat).map(p => "#" + p.no);
-      return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""} ${M.benchFolded(seat) ? "foldbn" : ""}" data-seat="${seat}"><h4>${me ? "You" : "Roster " + seat}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
+      return `<div class="rcard ${me ? "me" : ""} ${turns.length ? "soon" : ""} ${M.benchFolded(seat) ? "foldbn" : ""}" data-seat="${seat}"><h4>${me ? "You" : M.seatLabel(seat)}<span class="note">${turns.length ? `picks ${turns.join(", ")} before your next turn` : me ? "on the clock" : "no pick before your next turn"}</span></h4>
         <div class="sg">${starters.map(x => `<span class="sl ${x.p ? "" : "open"}"${tipAttr(nameTip(x.p))}><i>${slotTag(x.slot, x.p)}</i>${x.p ? short(x.p.name) : "open"}</span>`).join("")}</div>
         <div class="sg bn">
           <button class="sl bh" data-bench="${seat}" aria-expanded="${!M.benchFolded(seat)}" data-tip="${M.benchFolded(seat) ? "Show this roster's bench" : "Hide this roster's bench"}">bench ${benchP.length} of ${M.benchTotal}<em>${M.benchFolded(seat) ? "expand ▸" : "collapse ▾"}</em></button>

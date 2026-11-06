@@ -18451,3 +18451,99 @@ Three failure modes are written into the gate because this repository has hit al
 It does not schedule the freeze, and it does not argue for one. `#305` closed having confirmed the
 engine's behaviour is not in question. The gate exists to license a freeze when the owner calls
 it, not to find reasons to delay it.
+
+---
+
+## `#330` — THE DRAFT ROOM GAINS `constructed`, AND THE PRODUCER WAS FOUND BEFORE THE WORD
+
+Owner ruled at `#331` that `#329`'s divergence is repaired by the draft room gaining
+`constructed`. **Acting on that literally would have shipped a dead token**, so the producer was
+found first — and finding it took three attempts, two of which measurement killed.
+
+### Why the word could not just be added
+
+`#320` emitted an `--absent` CSS token that nothing read, and `#325` had to go back and wire it.
+A vocabulary word with no producer is that defect exactly. So before touching `KIND`, every
+provenance field the room's data carries was enumerated:
+
+```
+denial_basis        measured 700/700        displacement_basis  measured 700/700
+depth_basis         vacant / no_surplus / measured / roster_partially_priced
+replacement_basis   live_starter_demand / predraft_anchor / startable_floor / pool_truncated
+availability_basis  no_designation / immaterial_designation / unrecognised_designation
+risk_basis          designation_not_priced  slot_share_basis    even_flex_split
+bpa_source          points_vor_sleeper_season_scored / position_relative_trade_value_vor
+```
+
+**Eight fields, and not one of them can be `constructed`.** Every value is engine-derived.
+
+**Two hypotheses killed by measurement, recorded so nobody re-runs them:**
+
+1. *`pick_synthesis.py` produces CONSTRUCTED.* It does not — those two hits are PROSE IN
+   COMMENTS describing a SCALE that was constructed, and the second one explains that
+   construction was since removed. A grep hit is not a producer.
+2. *The fallback-priced candidate is constructed.* It is not. A candidate on
+   `position_relative_trade_value_vor` has `projected_points: null` and `universal_value: 0.0`,
+   so the room's existing `not_priced` is already correct there. The basis prose beside it is
+   about `universal_value`, not about the points row.
+
+### The real producer: the SEAT IDENTITY
+
+The front page stamps its `team` field `CONSTRUCTED -- the seat's label in a replayed battery,
+not an owner's team name`. **The draft room renders exactly that and had no way to say so**: it
+writes `Roster 6` wherever a live league would write an owner's team name, from a fixture whose
+`seat` is an integer 1-12.
+
+Same fact, same word, on both surfaces now — which is the entire point of the coherence
+population `#329` measures. The stamp's wording is copied from the front page's deliberately, so
+the two surfaces say the same thing rather than two things that happen to rhyme.
+
+### A scope claim I made and immediately falsified
+
+The first version of the helper's comment said *"one home for how a seat is written"*. A grep for
+the whole population falsified it on the spot: **seven sites render a seat, and the helper reached
+two.** `#316` is the identical lesson — scoping to the sites already in hand and calling it
+complete. The roster-card header (`M.allRosters`'s `<h4>`) was the missed identity site and is now
+stamped.
+
+The other four are **deliberately** unstamped, and the reason is the owner's standing constraint
+rather than an oversight: on the pick board a seat is a COORDINATE ("who holds #67"), not a claim
+about who someone is. There are 168 of them, and a tooltip on each would bury the one place the
+stamp means something. A stamp repeated everywhere stops being read.
+
+Measured after: **13 seat labels carry the stamp** (2 on the clock line, 11 roster cards — twelve
+seats less "You"), console clean.
+
+### The census moved, and the ratchet followed it
+
+```
+shared by the two user-facing surfaces: constructed, measured   (was: measured alone)
+the front page can say, the room cannot : absent                (was: absent, constructed)
+```
+
+`test_a_repair_does_not_fail_the_ratchet` was written at `#329` simulating *this exact repair* and
+asserting the ratchet would stay green. **It did.** The design held on its first real test.
+
+**`SHARED_FLOOR` rises 1 -> 2.** A ratchet that does not move with its own repair is just a
+ceiling: the gain would be lossless to give back, silently.
+
+### TWO TEST ARMS WENT STALE THE MOMENT THE REPAIR LANDED, FOR `#305`'s REASON
+
+1. `test_losing_the_one_shared_word_fails` patched `SHARED_FLOOR` to the literal `2`. That tripped
+   the ratchet while the surfaces shared ONE word and **silently stopped tripping it** the moment
+   they shared two. Now derived: `len(shared) + 1`, an arm that cannot go stale.
+2. `test_a_repair_does_not_fail_the_ratchet` simulated gaining `constructed` — now simply true, so
+   the simulation was moved on to the NEXT repair (`absent`), with an added assertion that
+   adopting it would leave `front_only` empty and close the user-facing half of this population.
+
+This is `#305`'s lesson arriving one day later in tests I had written the day before: **an
+absolute constant in a test whose baseline moves is an arm that disarms itself.** The register has
+now recorded that failure twice in two days, in two unrelated files.
+
+### Verified
+
+```
+84 tests across 4 modules OK;  all EIGHT ratchets PASS
+floors 245 modules / 7668 assertions
+13 stamped seat labels, console clean, DOM verified free of stray whitespace
+```
