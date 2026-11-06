@@ -47,7 +47,14 @@ Recorded verbatim in effect:
   closes U13.)*
 - **The draft must function fully with no API at all** — that is a supported configuration, not
   a degraded one.
-- **Debate is callable only while on the clock.**
+- **Debate is callable only while on the clock.** *(Scope RULED by the owner at `#317b`:
+  this governs the LIVE Draft Room button (`app.py:5780`), which `#317` gated. The MOCK draft
+  button (`app.py:5257`) is EXEMPT and stays ungated. The reason is that in a mock draft the
+  user drives every pick, so they are always on the clock -- the gate could never fire and would
+  be decorative, while still costing a branch to read. Recorded here explicitly because `#317`
+  shipped the live gate and flagged that reading an unqualified rule narrowly is exactly what
+  this register forbids; the narrowing is now a ruling rather than an inference. Both buttons
+  spend the same three provider calls, so this is a cost decision that was made deliberately.)*
 - **A user-set freeze timer** warns before a late call. Recommendation ≈ the slowest recorded
   call for that function plus 10–15s. Manually editable, and disable-able.
 - **There is no third emblem state for "someone else took him."** Ruled by the owner: a call is

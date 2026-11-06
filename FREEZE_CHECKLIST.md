@@ -16,6 +16,54 @@
 > `DOC_INDEX.md` independently files this document as SUPERSEDED, so the index and those six
 > banners have been disagreeing about whether this file is current. They now agree.
 >
+
+---
+
+# THE NEXT FREEZE GATE — PENCILLED IN AT `#331`, NOT YET SCHEDULED
+
+Owner ruled at `#331`: **the engine stays OPEN for now, and a new wave of engine modifications
+demands a freeze down the road for base production level.** This section defines what that gate
+IS, so that calling it is running a procedure rather than forming an opinion.
+
+**This file's job has changed, deliberately.** It was SUPERSEDED as a STATE SNAPSHOT because six
+documents pointed here for "the current state" and the target went stale — a pointer is only as
+good as its target's maintenance. Current state still lives in the TAIL of `POST_AUDIT_PLAN.md`
+and that pointer above stands. What lives HERE now is the DEFINITION of the gate, which is a
+procedure rather than a snapshot and therefore cannot go stale in the same way: it is wrong only
+if the procedure itself changes, and then it is wrong loudly.
+
+## What must pass, all three, in one pass, on one commit
+
+| # | pass | what "clean" means | cost |
+|---|---|---|---|
+| 1 | **Full battery** | every arm drafted fresh by the engine it claims to measure, zero carried-forward arms, 0 structural findings | ~5.3h measured (34 arms, 19,220.8s) — size from the SLOWEST arm, not the average; per-arm cost varies 5x at the same pick count |
+| 2 | **Full suite** | `OK`, no standing failure | ~1,508s (worst recent total; budget from the worst, not the newest) |
+| 3 | **Adversarial pass** | an independent in-a-vacuum review of the diff, with every claim it makes VERIFIED before it is acted on | variable |
+
+Plus, because they are cheap and they are what catch the silent class: **all eight ratchets**
+(`assertion_floors`, `boundary_census`, `skip_gates`, `suite_reach`, `api_surface`, `doc_index`,
+`prose_names`, `state_vocabulary`) and the **render gate** if anything touched a prototype asset.
+
+## Three things this gate must not repeat
+
+1. **A battery run needs a survival plan, not just a background job.** A multi-hour run was
+   reclaimed 13 minutes in, losing everything but one arm, because CPU does not count as session
+   activity. Run with `--resume` against a gitignored path, copy to a tracked path every N arms
+   and push — the git remote is the only store that outlives the container.
+2. **A suite that quietly stood down is not a pass.** `requirements.txt` already warns: "a
+   reclaimed container ran the suite 14 tests lighter and reported OK. A freeze must be licensed
+   by a suite that RAN, not one that quietly stood down." Check the test COUNT against the dated
+   table in the register's tail, not just the verdict.
+3. **The adversarial pass is evidence, not an oracle.** At `#305b` a commissioned review found a
+   real hole AND made one claim that measurement contradicted. Four of five verified. Every
+   finding gets checked before it is acted on, and the ones that fail verification get recorded
+   as failing rather than silently dropped.
+
+## What does NOT gate it
+
+The engine's behaviour is not in question, and no open item argues for changing it. `#305` closed
+having explicitly confirmed that. This gate is about licensing a freeze, not about finding a
+reason to delay one.
 > # STATE AS OF 2026-09-17 — HISTORICAL. It superseded the 2026-09-12 block below, which is kept as the record.
 >
 > **One item stands between here and the freeze: `#53` itself.** Gate 1 is delivered and clean,

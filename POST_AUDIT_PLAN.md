@@ -18394,3 +18394,60 @@ in test modules rather than as standalone ratchets).
 
 The suite grew 28 tests across the session and the per-test cost ended where it started. Budget
 from the worst total: **1508s**.
+
+---
+
+## `#331` — FOUR RULINGS, AND THE FREEZE GATE GETS A DEFINITION INSTEAD OF AN INTENTION
+
+Owner answered four open questions. Recorded here because three of them close items that were
+explicitly left open for exactly this, and one of them changes what a document is FOR.
+
+| question | ruling |
+|---|---|
+| next build | **the front page** (`MAIN_PAGE.md`) |
+| v4-freeze | **engine stays OPEN for now** — but a new wave of engine modifications demands a freeze down the road for base production level; pencil one in, battery/suite/adversarial passes all included |
+| `DRAFT_ROOM_UI.md:50` and the mock Debate button | **mock stays ungated**, exemption recorded explicitly |
+| `#329`'s state-vocabulary divergence | **the draft room gains `constructed`** |
+
+### `#317b` — the mock exemption is now a RULING, not an inference
+
+`#317` gated the live Debate button and flagged the problem honestly: `DRAFT_ROOM_UI.md:50` says
+*"Debate is callable only while on the clock"*, full stop, and reading an unqualified rule
+narrowly is what this register forbids. So the narrowing was put to the owner rather than
+committed.
+
+Ruled: the mock button (`app.py:5257`) is exempt. **The reason matters more than the ruling** —
+in a mock draft the user drives every pick, so they are always on the clock; the gate could never
+fire and would be decorative while still costing a branch to read. Both buttons spend the same
+three provider calls, so this is a deliberate cost decision rather than an oversight. Written into
+`DRAFT_ROOM_UI.md:50` itself, where the rule lives, not only here.
+
+### The freeze gate: a DEFINITION, not a date
+
+The owner's phrasing — *"pencil one in for later, battery/suite/adversarial passes all
+included"* — asks for a gate that can be RUN, not an intention that can drift. So
+`FREEZE_CHECKLIST.md` now carries the gate's definition: all three passes, on one commit, plus
+the eight ratchets and the render gate where a prototype asset moved.
+
+**That changes what that file is for, deliberately.** It was SUPERSEDED as a STATE SNAPSHOT
+because six documents pointed there for "the current state" and the target went stale — `#313`'s
+finding that a pointer is only as good as its target's maintenance. Current state still lives in
+this register's tail and that pointer stands. What lives there now is a PROCEDURE, which cannot
+go stale the same way: it is wrong only if the procedure changes, and then it is wrong loudly.
+
+Three failure modes are written into the gate because this repository has hit all three:
+
+1. a multi-hour battery reclaimed 13 minutes in, losing everything but one arm, because CPU does
+   not count as session activity
+2. `requirements.txt`'s own warning — *"a reclaimed container ran the suite 14 tests lighter and
+   reported OK. A freeze must be licensed by a suite that RAN, not one that quietly stood down"*
+   — so the gate checks the test COUNT against the dated table, not just the verdict
+3. the adversarial pass is evidence, not an oracle: at `#305b` a commissioned review found a real
+   hole AND made a claim measurement contradicted, four of five verified, and the one that failed
+   verification is recorded as having failed
+
+### What this does not do
+
+It does not schedule the freeze, and it does not argue for one. `#305` closed having confirmed the
+engine's behaviour is not in question. The gate exists to license a freeze when the owner calls
+it, not to find reasons to delay it.
