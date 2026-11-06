@@ -41,10 +41,10 @@ same sentence, and the gap between them is the whole build estimate.
 
 | signal | where it comes from | wired today? | the claim it supports |
 |---|---|---|---|
-| starters filled vs the league's own slot count | `lineup_readiness.compute_readiness` → `filled_starting_slots` / `total_starting_slots` | **yes** — `app.py:3886`, Matchup | "7 of 9 starters set" |
+| starters filled vs the league's own slot count | `lineup_readiness.compute_readiness` → `filled_starting_slots` / `total_starting_slots` | **yes** — `app.py:3765`, Matchup | "7 of 9 starters set" |
 | **material** injuries on starters only | same → `starter_injury_flags`, gated by `player_universe.is_material_injury_status` | **yes**, same call | "Etienne is Out" |
 | positions where you are thin **against the league** | same → `thin_positions`, via `depth_ratings.depth_label` | **yes**, same call | "thin at TE" |
-| record and place | `league_standings.team_standings`, reading Sleeper's own `settings.wins/losses` | **yes** — `app.py:6200`, League | "4-3, 6th" |
+| record and place | `league_standings.team_standings`, reading Sleeper's own `settings.wins/losses` | **yes** — `app.py:6085`, League | "4-3, 6th" |
 | positions you cannot field at all | `player_universe.league_usable_positions` against the roster's own positions | **no** — one call; `player_universe` is already imported | "no kicker on the roster" |
 | the week your byes actually cost you | `lineup_optimizer.bye_concentration` → `worst_week`, `worst_week_loss`, `concentration` | **no, and it is the real work** — see below | "week 9 costs 127.0 — 62% of your season's bye damage, in one week" |
 | whether any of the above is a floor | `bye_*.basis`, and `TeamDiagnostics.unpriced_players` where diagnostics are used | with the number it qualifies | "…and that is a floor: 2 players could not be priced" |
@@ -262,27 +262,27 @@ actually carries, read off the templates:
 |---|---|---|
 | desktop `v4_doors` | a wordmark (`Gold Wyrm`) and a league line | no nav, no back, no commands |
 | phone `m1_stack` | four bottom-dock buttons — Every name, Rosters, Draft board, Debate | **no wordmark, no league name, no view, no way out** |
-| the real app | `st.segmented_control` over five views, `app.py:3742` — and it is BELOW the empty-state `st.stop()` at `app.py:3667` | no nav at all until a league is synced |
+| the real app | `st.segmented_control` over five views, `app.py:3685` — and it is BELOW the empty-state `st.stop()` at `app.py:3610` | no nav at all until a league is synced |
 
 **CORRECTION, 2026-11-04 — this table said "six views, `app.py:3806`" and both halves were
 wrong, and so was the count I reported from the running app.** Measured against `app.py` and
 against the app actually serving on :8787:
 
 * The picker carries **five** options, not six — `MATCHUP_VIEW, MAINTENANCE_VIEW, DRAFT_VIEW,
-  LEAGUE_VIEW, IMPORT_VIEW` — declared **unconditionally** at `app.py:3742`. `3806` is near the
+  LEAGUE_VIEW, IMPORT_VIEW` — declared **unconditionally** at `app.py:3685`. `3806` is near the
   `if main_view ==` branch chain that consumes it, not the control.
 * I then reported "the view picker renders only 3 buttons, because most views are gated behind a
   synced league." **Both clauses were false.** Nothing gates the picker. What I counted was the
   single `stButtonGroup` in the DOM, and it is **in the sidebar** (`inSidebar: true`, three
   buttons) — a different control entirely. The view picker was not in the page at all.
-* The reason it was not in the page is the finding worth keeping: `app.py:3667` runs
+* The reason it was not in the page is the finding worth keeping: `app.py:3610` runs
   `st.title(...)`, `st.info("Sync a Sleeper username ...")`, `st.stop()` when `not snapshot`.
   **Unsynced, the app renders zero view-picker buttons**, because the picker is seventy-five
   lines below a `stop`.
 
 That sharpens the brief's own premise rather than softening it. The front page is meant to
 replace that two-line empty state — so it cannot be a sixth view, or a branch of the existing
-`if main_view ==` chain, or anything else below `app.py:3667`. Every one of those positions is
+`if main_view ==` chain, or anything else below `app.py:3610`. Every one of those positions is
 unreachable in exactly the state the page exists to serve. It has to live ABOVE the stop, which
 makes "where does it go" a structural question about `app.py`'s top, not a navigation question.
 
@@ -292,6 +292,25 @@ my own instrument said three, and the honest reading was that one of them was me
 else — which is what it turned out to be. `.claude/skills/engine-measurement/SKILL.md` already
 names this family ("not a crash, a plausible number about something else"); it applies to DOM
 queries exactly as it does to engine probes.
+
+**SECOND CORRECTION, 2026-11-06 (`#332`) — every line pointer in this file was wrong, including
+the two the correction above had just re-pinned two days earlier.** Measured against `app.py` as
+it stands:
+
+| pointer | this file said | measured |
+|---|---|---|
+| the only `st.stop()` | `app.py:3667` | **3610** |
+| the five-view `st.segmented_control` | `app.py:3742` | **3685** |
+| `lineup_readiness.compute_readiness` | `app.py:3886` | **3765** |
+| `league_standings.team_standings` | `app.py:6200` | **6085** |
+
+Four of four. That is not a maintenance lapse, it is the FORM failing: a line number in prose
+decays on every edit above it, silently, and `app.py` is 7,326 lines of actively edited surface.
+`#313` already ruled that a pointer is only as good as its target's maintenance. The durable
+form is the one used throughout the table above — **name the symbol and let a reader grep** —
+with the line number kept beside it as a convenience that is allowed to rot. All four are
+corrected here, and all four are expected to rot again; the symbol names are what this file
+actually relies on.
 
 Two things follow from that table.
 

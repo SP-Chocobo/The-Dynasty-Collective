@@ -8606,6 +8606,28 @@
         "early_returns": 0
       }
     },
+    "test_front_pages_match_their_builders.py": {
+      "test_methods": 2,
+      "asserts": {
+        "assertEqual": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "TheCommittedPagesAreWhatTheirBuildersProduceTests.test_every_generated_page_in_round3_matches_its_builder_byte_for_byte": {
+          "assertEqual": 1
+        },
+        "TheCommittedPagesAreWhatTheirBuildersProduceTests.test_the_palette_on_every_page_is_the_system_of_records_OWN_values": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_harness_league_format_hygiene.py": {
       "test_methods": 1,
       "asserts": {

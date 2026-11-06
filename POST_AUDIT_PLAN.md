@@ -18595,3 +18595,178 @@ obviously wrong". The gate answers "did anything ruled actually move".
 
 312.5ms/test is the fastest per-test figure in the table and lands on top of `#317`'s 313.1 at 28
 more tests. Budget from the worst recent total: **1508s**.
+
+---
+
+## `#332` — BOTH COMMITTED FRONT PAGES WERE PAINTED IN A PALETTE THE SYSTEM OF RECORD ABANDONED, AND 4,373 TESTS WERE GREEN
+
+Found on the first step of the front-page marathon the owner sanctioned in `#331`, while
+establishing a byte-identity baseline before refactoring. The baseline did not hold, and the
+reason was worth more than the refactor.
+
+### The measurement
+
+```
+committed ui_explore/round3/front.html        27 of 29 shared colour tokens stale
+committed ui_explore/round3/front_empty.html  27 of 29 shared colour tokens stale
+
+  --bg         #15120b -> #0c0a07        --ink        #ece3d2 -> #f2ead9
+  --surface    #1f1a11 -> #17130d        --gold       #d4a017 -> #c9961a
+  --emerald    #1a9e4b -> #0b8f57        --violet     #9457d4 -> #6d3fd6
+  ... 21 more
+```
+
+`#312` adopted the prototype's 27 shared token values into `design_system.TOKENS` — the one home
+the front page derives its colours from, by calling `root_css_block()`. Nothing rebuilt the two
+committed pages. **`#312`'s headline was "one palette, 27 names 0 disagreeing", and it shipped
+beside two committed artifacts painted entirely in the palette it had just abandoned.**
+
+Left and right in that table are both correct readings of this repo at different times, which is
+the whole problem: the page was right when it was built and became wrong without being touched.
+
+### Why nothing failed
+
+Three guards could have caught it and none was pointed at the artifact:
+
+| guard | what it covers | why it missed |
+|---|---|---|
+| the 34 round-3 tests | `build_front.build()` / `build_empty.build()` | every one calls `build()` **in memory** and asserts on the returned string; not one reads the file on disk |
+| the render gate | round 2's built pages, hashed | `grep round3 _shoot.py` → nothing. Checked, not assumed |
+| `test_design_system` | `design_system.py`'s own values | it is the thing that CHANGED; it has no concept of a downstream artifact |
+
+So the builders were tested and the artifacts were not. A test that rebuilds can never see
+staleness, because rebuilding is the repair.
+
+### This is `#328`'s defect in a second place
+
+`#328` found 28 stale committed mockup pages and shipped `test_mockups_palette.py` beside the
+emitter so the next drift would fail loudly. The identical shape existed one directory over and
+nobody grepped for the other generator. **A guard written for one emitter is not a guard on the
+practice** — the same sentence `#327` had to write about `MAIN_PAGE.md` being the second home of
+a claim `#322` had already repaired. Three occurrences now, same root: a repair applied where it
+was found rather than everywhere it applies.
+
+### The repair
+
+Both pages rebuilt, and `test_front_pages_match_their_builders.py` added at top level — **not**
+beside its subject, and the reason is `#308`: `ui_explore/round3/` was invisible to the
+certification suite for its whole life (34 tests that passed by hand and were never once reached
+by `unittest discover`, because neither `ui_explore/` nor `ui_explore/round3/` had an
+`__init__.py`). Both exist now and `#308` closed that, but a guard whose purpose is to catch an
+unguarded artifact does not belong in the directory that was recently unreachable.
+
+Two tests, table-driven so a third page arrives as one row with its guard already attached:
+
+1. **byte-identity** — `build(fixture)` must equal the committed file exactly. `build()`, not
+   `main()`: `main()` WRITES, and a check that invokes the repair can never report that the
+   repair was needed.
+2. **the palette, against its cause** — every colour token on a committed page must be the hex
+   `design_system.TOKENS` spells today. Test 1 would also fail here but could not say why; this
+   one names the quantity and keeps firing if a page is ever rebuilt from a COPY of the palette
+   instead of from `root_css_block()`.
+
+### Mutation panel — 4 arms, 11 firing subtests, and one deliberate silence
+
+| arm | mutation | byte-identity | palette |
+|---|---|---|---|
+| 1 | `front.html` → its committed state | `[front]` | `[front]` |
+| 2 | `front_empty.html` → its committed state | `[empty]` | `[empty]` |
+| 3 | `design_system.TOKENS["bg"]` → `#010203` | `[front] [empty]` | `[front] [empty]` |
+| 4 | prose `Everything else` in `build_front.py` | `[front]` | **silent, correctly** |
+
+Arm 4 is the one that proves the two tests are not one test twice: a change that moves the page
+without touching a colour fires byte-identity alone, and only on the page that carries the string.
+
+Also verified in a real browser, because `#324` is the standing reason not to trust text
+matching about CSS: `getComputedStyle(documentElement)['--bg']` resolves to `#0c0a07` and
+`body`'s background computes to `rgb(12, 10, 7)` on both pages. The palette is in EFFECT, not
+merely present.
+
+### Two corrections — both mine, both in the instrument, both while measuring this
+
+**1. I rebuilt a committed artifact by accident and then measured my own repair.** `build_empty.py`
+reads `argv[0]` as the FIXTURE path, not the output path. Invoking it with a single scratchpad
+argument raised, and the `||` fallback I had written ran it with NO arguments — which writes to
+the real `ui_explore/round3/front_empty.html`. The guard then reported `front_empty.html` as
+current, and I briefly published that "only `front.html` is stale". **Both pages were stale.** The
+reading was of a file I had just fixed without noticing. Caught by `git status` showing ` M` on a
+file I had no reason to have modified.
+
+**2. Two mutation arms were measured against a mutation still in effect.** I restored
+`design_system.py` with `cp` from a backup and re-ran — and the test still read the mutated
+value, because `__pycache__` held a compiled module Python trusted. Arms 2 and 3 of the first
+panel were therefore void, and arm 3 appeared to prove the palette test fires on a prose change,
+which would have meant the two tests were redundant. This is `#240` ("clear `__pycache__` before
+measuring") arriving somewhere its own entry does not mention: **mutation testing, where the
+restore is as much a measurement as the mutation.** The panel above was re-run with a cache clear
+before every single probe, and `git checkout --` rather than `cp`.
+
+**And arm 4 of that first panel proved nothing at all.** I mutated `"Nothing needs you"` — a
+string that only renders when the claim band is EMPTY, and the fixture carries two claims, so it
+never reaches the page. The mutation was a no-op and the silence I read as a result was the
+silence of nothing having happened. A mutation that does not change the artifact is not a weak
+test, it is not a test. The corrected arm greps the built page for the string first.
+
+### EVERY line pointer in `MAIN_PAGE.md` was wrong — four of four
+
+I started by checking the two that a CORRECTION dated 2026-11-04 had just re-pinned, found both
+stale again, and then checked the other two rather than assuming they were fine. They were not:
+
+| pointer | the doc said | measured |
+|---|---|---|
+| the only `st.stop()` | `app.py:3667` | **3610** |
+| the five-view `st.segmented_control` | `app.py:3742` | **3685** |
+| `lineup_readiness.compute_readiness` | `app.py:3886` | **3765** |
+| `league_standings.team_standings` | `app.py:6200` | **6085** |
+
+**Four of four**, two of them re-pinned forty-eight hours earlier. All corrected in place. The
+figure moved because I checked the rest instead of writing up the two I had tripped over — the
+difference between "two pointers went stale" and "this form does not work here" is the whole
+finding, and only the second one is actionable.
+
+A pointer that needed correcting twice in two days is not a maintenance failure, it is a FORM
+failure — `#313`'s rule that a pointer is only as good as its target's
+maintenance, with the durable repair being to name the symbol (`st.stop()`, `st.segmented_control`
+over `MATCHUP_VIEW…IMPORT_VIEW`) and let a reader grep, rather than a line number that decays on
+every edit above it. Done here; the line numbers are kept beside the names as a convenience that
+is allowed to rot.
+
+### What is NOT fixed
+
+- **The front page still is not in the app.** It is a prototype in `ui_explore/round3/` and
+  production still shows `st.title` + `st.info` + `st.stop()` at `app.py:3606-3610`. That is the
+  marathon `#331` sanctioned and this item is its first step, not its delivery.
+- **The claim band's judgment still has exactly one home and it is a prototype's HTML emitter.**
+  `LADDER`, `CAP`, the futurity rule that ranks on the worst week STILL AHEAD, the within-rung
+  ordering and all four rung conditions live inside `build_front.build()`, interleaved with
+  f-strings. Production cannot reach any of it without re-implementing it, which `#126` forbids.
+  This is the same shape `#297` fixed for `positional_depth`, and `MAIN_PAGE.md` already named it
+  the honest first cost of this page. **It is the next item, and it was what I set out to do
+  before the baseline failed to hold.**
+
+### CERTIFICATION — `#332`
+
+```
+Ran 4375 tests in 1341.210s
+OK (skipped=2, expected failures=1)
+
+eight ratchets green   assertion_floors: no guarantee has shrunk (246 modules held to a floor)
+```
+
+4373 → **4375**: the two tests this item adds. Fourth consecutive green suite.
+
+| commit | tests | seconds | ms/test | verdict |
+|---|---|---|---|---|
+| `ef6a07d` | 4364 | 1401.862 | 321.2 | OK |
+| `bfc2420` | 4373 | 1409.280 | 322.2 | OK |
+| `f410ca9` | 4373 | 1366.836 | 312.5 | OK |
+| **`#332`** | **4375** | **1341.210** | **306.6** | **OK** |
+
+306.6 ms/test is the fastest per-test figure recorded, on the largest suite recorded. Budget from
+the worst recent total: **1508s**.
+
+**The render gate was NOT run for this item, and that is a reasoned omission rather than a skip.**
+The gate covers `ui_explore/round2/fableA/`'s built pages. This item changed two files in
+`ui_explore/round3/`, which — as the finding above establishes by grep rather than assumption —
+the gate has no knowledge of. Running it would have cost twelve minutes to re-certify a tree the
+diff does not touch. The guard shipped here is what now covers the files the gate does not.
