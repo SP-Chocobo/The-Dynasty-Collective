@@ -65,6 +65,7 @@ from data_merger import (
 )
 from depth_chart import depth_value_label, positional_depth
 from freshness import build_freshness_manifest
+import front_page
 from pick_ledger import build_pick_ledger
 import league_config
 from league_format import FORMAT_GUIDANCE, FORMAT_OPTIONS, STANDARD, get_format_override, set_format_override
@@ -3425,7 +3426,16 @@ with st.sidebar:
     # only, not a gate. Reuses build_freshness_manifest, already computed for the Moderator's own
     # DATA FRESHNESS context, rather than a second staleness calculation living only in the UI.
     _freshness_entries = build_freshness_manifest(st.session_state.league_snapshot or {}, merger)
-    if _freshness_entries:
+    # ONE GRADE ON SCREEN AT A TIME (`#334`). Unsynced, the front page above the `st.stop()`
+    # already shows this exact grade AND the per-source ages this caption only promises -- so
+    # rendering it here too put two copies of one judgment on one screen, which is the thing the
+    # standing constraint on this project names ("clean dissemination of information over just
+    # having as much on the screen as you can fit"). It was introduced by wiring the front page
+    # and found by SCREENSHOTTING the running app, not by reading the diff.
+    #
+    # Synced, the front page is below the stop and unreachable, so this is the only grade and it
+    # stays. The condition is the same one the front page branches on.
+    if _freshness_entries and st.session_state.league_snapshot:
         _worst_age = max((age for _, _, age in _freshness_entries if age is not None), default=None)
         _grade = recency_grade(_worst_age)
         _grade_ok = _grade in ("Fresh", "Recent")
@@ -3605,8 +3615,52 @@ snapshot = st.session_state.league_snapshot
 _priceable_season_sums, _season_sum_refusal = sleeper_client.priceable_season_projections(snapshot)
 
 if not snapshot:
+    # THE FRONT PAGE'S UNSYNCED STATE (`#334`). This was `st.title` + one `st.info` line, and it
+    # is the ONLY thing a person sees before syncing -- the view picker is seventy-five lines
+    # below this `st.stop()`, so every other surface in the app is unreachable from here. A
+    # sentence telling them to sync answers "what do I do" and nothing else: not whether the data
+    # already on this machine is any good, not what is missing, not what syncing actually buys.
+    #
+    # The judgment is `front_page.compose_unsynced`, NOT spelled here, so this surface and the
+    # prototype that designed it cannot drift into two answers (`#126`). This writes the
+    # sentences; the module returns the values and the basis flags that qualify them.
+    #
+    # `st.session_state.data_merger` rather than the `merger` local: that name is bound inside a
+    # conditional block above, so reading it here would be a NameError on any path where the
+    # block did not run. The session key is set at construction and is always present.
+    _fp = front_page.compose_unsynced(
+        build_freshness_manifest({}, st.session_state.data_merger))
+
     st.title("Fantasy Football Command Center")
-    st.info("Sync a Sleeper username and select a league in the sidebar to get started.")
+
+    # IS THIS READY -- one grade, with the number behind it. ABSENCE IS RENDERED AS ABSENCE
+    # (`#187`): with nothing on disk carrying a date there is no grade, and the page says why
+    # rather than showing a reassuring zero.
+    if _fp["grade"] is not None:
+        _fp_ok = _fp["grade"] in ("Fresh", "Recent")
+        st.markdown(
+            f'<span class="{"status-ok" if _fp_ok else "status-bad"}">'
+            f'{"✅" if _fp_ok else "⚠️"} {_fp["grade"]}</span>',
+            unsafe_allow_html=True)
+        st.caption(f"Oldest input on disk is {_fp['worst_days']} days old.")
+    else:
+        st.caption(front_page.reason_of(_fp["grade_basis"]))
+
+    # TWO LISTS, NOT ONE WITH HOLES IN IT -- the whole reason the composition splits them. A
+    # single table with two dashes would make "never synced" look like damage, when before a
+    # sync it is simply the expected state.
+    if _fp["have"]:
+        st.markdown("**On disk now**")
+        for _fp_row in _fp["have"]:
+            st.markdown(f"- {_fp_row['label']} — **{_fp_row['days']}d**, as of {_fp_row['as_of']}")
+    if _fp["on_sync"]:
+        st.markdown("**Arrives when you sync**")
+        for _fp_row in _fp["on_sync"]:
+            st.markdown(f"- {_fp_row['label']} — {front_page.reason_of(_fp_row['basis'])}")
+
+    # DO THIS -- one action, and what it costs to not take it.
+    st.markdown(f"**{_fp['action']}**")
+    st.caption(_fp["action_cost"])
     st.stop()
 
 # The active league's own name carries the page title once one is loaded — it's the

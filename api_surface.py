@@ -143,6 +143,24 @@ ADMIN: dict[str, str] = {
 RENDER: dict[str, str] = {
     "draft_board_ui": "'the production port of the validated merged board interaction model'",
     "trade_ledger_ui": "'pure formatting/data-shaping helpers' for the trade UI",
+    # `#334`: THE UNSYNCED FRONT PAGE'S COMPOSITION. Assigned RENDER on evidence, not by feel,
+    # because a wrong assignment is the one thing this file exists to prevent.
+    # (1) Its nearest sibling is `trade_ledger_ui` directly above -- "pure formatting/data-shaping
+    #     helpers" is precisely this module's job: it reshapes `freshness`'s rows for a page.
+    # (2) IT CARRIES DISPLAY COPY. `action`, `action_cost` and every `*_basis` string are
+    #     sentences a reader sees. No ENGINE module does that -- `freshness`, its own input,
+    #     returns `(label, as_of, days)` and nothing else. That is the line: deriving OVER engine
+    #     output does not make a module engine when what it adds is presentation.
+    # (3) It is not an operation. No I/O, no credentials, no writes, nothing a client would call
+    #     as an endpoint -- which rules out ORCHESTRATION and PRODUCT_STORE the same way `#315`
+    #     ruled them out for `pick_ledger`.
+    # (4) The rewrite REPLACES it, which is this layer's defining test: a non-Streamlit front end
+    #     would compose its own empty state from `freshness`'s rows. This module exists to serve
+    #     the Streamlit page and the HTML prototype that designed it, and nothing else.
+    # The have/on_sync split is a presentation judgment SHARED BY TWO RENDERERS, which is what
+    # keeps it here rather than in the surface -- the same reason `trade_ledger_ui` exists.
+    "front_page": "the unsynced front page's split, grade and copy (#334), shared by app.py and "
+                  "the round-3 prototype so the two cannot drift",
     "draft_history_ui": "'reading a stored draft board back' -- a reader, not a record",
 }
 

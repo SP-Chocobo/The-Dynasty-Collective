@@ -19001,3 +19001,141 @@ The render gate was not run, for the same reason recorded under `#332`: it cover
 `ui_explore/round2/fableA/` and the diff touches `round3` and top-level modules. The two built
 pages are held by `#332`'s guard instead, which is exactly what it was shipped for — and here it
 did real work, proving the claim-band lift byte-identical rather than merely plausible.
+
+---
+
+## `#334` — THE FRONT PAGE IS IN THE APP
+
+The marathon `#331` sanctioned, delivered. `app.py`'s empty state was `st.title` plus one
+`st.info` line, and it is the ONLY thing a person sees before syncing — the view picker is
+seventy-five lines below the `st.stop()`, so every other surface is unreachable from there. One
+sentence telling them to sync answers "what do I do" and nothing else: not whether the data
+already on the machine is any good, not what is missing, not what syncing buys.
+
+### The third lift in the same family, and the pattern is now explicit
+
+```
+`#297`   positional_depth   OUT of `app.py`, the one module nothing can import
+`#333`   the claim band     OUT of a prototype's HTML emitter
+`#334`   the have/on_sync split   OUT of a prototype's FIXTURE GENERATOR
+```
+
+Each time, a production judgment had exactly one home and that home was unreachable by
+production. `front_page.compose_unsynced` is the split's home now, with **no Streamlit import in
+it** — `app.py` writes the sentences, the module returns the values and the basis flags that
+qualify them. That is `#333`'s ruling applied again, and here it has a second payoff: a module
+that imported Streamlit could not be called by the capture script, so the fixture and production
+would have drifted into two compositions of one thing — the `#126` defect all three lifts close.
+
+`reason_of` gained one home in the same move. It was `build_front.reason_of`, reachable only by
+the prototypes, and `app.py` needed the identical parse rule to strip an `ABSENT --` stamp. A
+second spelling in `app.py` would have been `#126` in miniature — the kind that rots quietly
+because both copies look obviously correct. `build_front` imports it from `front_page` now.
+
+### The proof, built to not go stale
+
+The composition is a **pure function of the manifest rows**, not of the clock or the disk. That
+is deliberate: the real ages move every day, so a test that called `build_freshness_manifest` and
+compared against committed numbers would be stale tomorrow BY CONSTRUCTION — `#305`'s defect
+exactly, where a bound was wrong the day after it was written because the thing it bounded decays
+against `date.today()`. Feeding the composition the rows implied by the committed fixture tests
+the judgment and nothing else, and it reproduces that fixture **exactly**.
+
+Both built pages also rebuild byte-identical through the `reason_of` move — they do not appear in
+`git status` at all. That is `#332`'s guard earning its place a second time in two items.
+
+### It was run, and looked at
+
+Not a prototype claim. Streamlit 1.66.1 is installed in this container, so `app.py` was served
+and screenshotted:
+
+```
+Fantasy Football Command Center
+⚠️ Aging          Oldest input on disk is 79 days old.
+On disk now       Draft Sharks Dynasty Rankings — 74d, as of 2026-08-25
+                  Draft Sharks Trade Value Chart — 79d, as of 2026-08-20
+Arrives when you sync
+                  Sleeper player database — never fetched on this machine
+                  Sleeper season projections (the league-scored board) — never fetched
+Sync a Sleeper username in the sidebar
+console errors: none
+```
+
+**79 days, where the committed fixture says 76.** That difference is the point: the page is
+reading the live manifest, not the prototype's fixture.
+
+### Looking at it found a defect reading the diff would not have
+
+The running app showed the freshness grade **twice** — `⚠️ Aging` on the page and
+`⚠️ Data Freshness: Aging` in the sidebar — two copies of one judgment on one screen. I
+introduced it by wiring the front page, and it is precisely what the standing constraint on this
+project names: *"clean dissemination of information over just having as much on the screen as you
+can fit."*
+
+The sidebar grade is now gated on a synced league. Unsynced, the front page carries the same
+grade AND the per-source ages the sidebar caption only promises; synced, the front page is below
+the stop and the sidebar is the only grade, so it stays. This is the second time this session
+that **looking at a render found what text-matching could not** — `#324` found the entire
+position palette dead in the browser while three string checks called it correct.
+
+### The wiring test, and why it is weaker than it should be
+
+`app.py` has 69 top-level Streamlit calls and no `__main__` guard, so importing it runs the
+application and no test can call the empty-state branch. `test_maintenance_view_wiring` set the
+precedent: read `app.py`'s SOURCE. Named as the weaker check it is — but the alternative is a
+composition that is perfectly tested and reachable by nobody, which is the state `front_claims`
+was in before `#333` and `positional_depth` before `#297`.
+
+One of the three wiring assertions is an AST check that the call sits **above the only
+`st.stop()`**, because a call that drifted below it would render nothing and fail no other test.
+
+### Mutation panel — 10 arms, baseline 0, restore 0
+
+| arm | fires |
+|---|---|
+| `have.sort` removed | ordering |
+| worst age `max` → `min` | grade-reads-oldest, fixture anchor |
+| grade hardcoded `Fresh` | grade-from-one-home, grade-reads-oldest, fixture anchor |
+| no-date `worst_days` 0 instead of None | the `#187` absence arm |
+| `split_reason` never splits | 4 tests incl. the fixture anchor |
+| `reason_of` returns the whole stamp | 3 tests |
+| `have` / `on_sync` swapped | 4 tests |
+| app: sidebar gate removed | the one-grade-on-screen arm |
+| app: compose call deleted | both call-exists arms |
+| **app: call kept but moved BELOW the stop** | **the ordering arm alone** |
+
+The last arm is the one that matters, and it exists because of this session's repeated lesson: a
+mutation that does not exercise the specific claim proves nothing. Deleting the call fires the
+"is it called" tests for the wrong reason. Moving it below the stop leaves the call present,
+fires **only** `test_the_composition_is_called_ABOVE_the_only_stop`, and is therefore the only
+arm that actually tests the ordering.
+
+### A ratchet asked the question I would not have
+
+`api_surface` failed on the first run with `UNASSIGNED MODULE: front_page -- the hull reaches it
+and no layer claims it`. That is `#310`'s five-layer inventory doing exactly its job: a new module
+that `app.py` imports has to declare which layer it belongs to, and the file's own rule is that
+the assignment is defended by what the module says it is FOR, not by its name.
+
+Assigned **RENDER**, on four pieces of evidence recorded beside the entry. The one that decides
+it: **this module carries display COPY.** `action`, `action_cost` and every `*_basis` string is a
+sentence a reader sees, and no ENGINE module does that — `freshness`, its own input, returns
+`(label, as_of, days)` and nothing else. That is the line. Deriving OVER engine output does not
+make a module engine when what it adds is presentation, and the have/on_sync split is a
+presentation judgment that happens to be shared by two renderers, which is why it sits beside
+`trade_ledger_ui` ("pure formatting/data-shaping helpers") rather than beside `freshness`.
+
+Worth noting for the next item: `front_claims` is NOT in this inventory, because nothing in the
+hull reaches it yet. The moment `app.py` imports it, this ratchet will ask the same question
+about it — and the answer will be RENDER for the same reason.
+
+### What is NOT fixed
+
+- **The SYNCED front page is still not in the app.** `front_claims.compose` is reachable and
+  unreached: the triage band — the claims, the week band, the doors — has no call site in
+  production. It cannot go where this one went, because above the stop there is no roster to
+  triage. Where it belongs (a sixth destination, the default landing, or something above the view
+  picker) is a structural question about `app.py` and the next item.
+- **The record band and the dynasty facts remain absent**, for the reasons `#306` establishes: a
+  pick count derived from `league_type` and `total_rosters` is plausible, cheap, and wrong in
+  exactly the case the product exists to serve.

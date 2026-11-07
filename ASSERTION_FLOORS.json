@@ -8683,6 +8683,78 @@
         "early_returns": 0
       }
     },
+    "test_front_page.py": {
+      "test_methods": 17,
+      "asserts": {
+        "assertEqual": 18,
+        "assertIn": 3,
+        "assertIsNone": 3,
+        "assertLess": 1,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "TheAppActuallyRendersItTests.test_app_imports_the_one_home": {
+          "assertIn": 1
+        },
+        "TheAppActuallyRendersItTests.test_the_composition_is_called_ABOVE_the_only_stop": {
+          "assertEqual": 2,
+          "assertLess": 1
+        },
+        "TheAppActuallyRendersItTests.test_the_empty_state_branch_calls_the_composition": {
+          "assertIn": 1
+        },
+        "TheAppActuallyRendersItTests.test_the_sidebar_grade_is_suppressed_while_unsynced": {
+          "assertIn": 1
+        },
+        "TheCompositionReproducesTheCommittedFixtureTests.test_the_committed_fixture_is_what_this_composition_produces": {
+          "assertEqual": 1
+        },
+        "TheCompositionReproducesTheCommittedFixtureTests.test_the_composition_reads_no_clock_and_no_disk": {
+          "assertEqual": 1
+        },
+        "TheGradeIsTakenFromTheWorstLoadedSourceTests.test_an_empty_manifest_does_not_raise": {
+          "assertEqual": 2,
+          "assertIsNone": 1
+        },
+        "TheGradeIsTakenFromTheWorstLoadedSourceTests.test_the_grade_comes_from_recency_grades_ONE_home": {
+          "assertEqual": 1
+        },
+        "TheGradeIsTakenFromTheWorstLoadedSourceTests.test_the_grade_reads_the_OLDEST_source_not_the_newest": {
+          "assertEqual": 2
+        },
+        "TheGradeIsTakenFromTheWorstLoadedSourceTests.test_with_nothing_dated_the_grade_is_ABSENT_and_never_a_number": {
+          "assertIsNone": 2,
+          "assertTrue": 1
+        },
+        "TheSplitIsTheWholeDesignDecisionTests.test_a_dated_row_is_on_disk_and_an_undated_row_arrives_with_the_sync": {
+          "assertEqual": 2
+        },
+        "TheSplitIsTheWholeDesignDecisionTests.test_an_absent_row_carries_its_reason_and_is_stamped_absent": {
+          "assertEqual": 1
+        },
+        "TheSplitIsTheWholeDesignDecisionTests.test_on_disk_rows_are_ordered_freshest_first": {
+          "assertEqual": 1
+        },
+        "TheStampParsersTests.test_a_label_with_the_em_dash_splits_into_name_and_reason": {
+          "assertEqual": 1
+        },
+        "TheStampParsersTests.test_a_label_without_the_em_dash_returns_itself_as_both_halves": {
+          "assertEqual": 1
+        },
+        "TheStampParsersTests.test_reason_of_never_returns_an_empty_string": {
+          "assertEqual": 1
+        },
+        "TheStampParsersTests.test_reason_of_strips_the_engineering_token": {
+          "assertEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_front_pages_match_their_builders.py": {
       "test_methods": 2,
       "asserts": {

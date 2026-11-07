@@ -31,6 +31,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path.cwd()))
 import design_system as ds
 import front_claims as fc
+import front_page as fp
 import lineup_optimizer as lo
 
 #: Re-exported from their one home (`#333`) so a reader of this file still finds them
@@ -68,10 +69,9 @@ def stamp_kind(stamp):
     return "measured"
 
 
-def reason_of(stamp):
-    """The half of a stamp a reader should see, with the engineering token stripped."""
-    body = (stamp or "").split("--", 1)
-    return (body[1] if len(body) > 1 else body[0]).strip() or "No reason recorded."
+#: Re-exported from its one home (`#334`): `app.py` renders these stamps too, so the parse rule
+#: cannot live in a prototype. `build_empty` imports it from here, which still resolves.
+reason_of = fp.reason_of
 
 
 def num(value, digits, why):
