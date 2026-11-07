@@ -73,7 +73,7 @@ unknown byes, not unpriced ones."
 **4. RIGHT where a committed file is wrong — the unit.** Your table and this design both say
 **trade-value points**, and that is correct: the fixture prices from `trade_value`
 (`capture_front_fixture.py:132`), `depth_chart.positional_depth` sums `trade_value`, and both
-`bye_concentration` and `roster_diagnostics.py:31` state results "in trade_value units". The
+`bye_concentration` and `roster_diagnostics.py:33` state results "in trade_value units". The
 committed prototype renders the same number as **"95 UV pts"** —
 `build_front.py` uses `ds.VALUE_UNIT_SHORT`, and `design_system.py:289-290` defines
 `VALUE_UNIT = "universal-value points"`, a different scale ("signed and unbounded and are NOT

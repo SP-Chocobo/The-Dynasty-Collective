@@ -5,9 +5,12 @@ calculate or retrieve?
 
 **Answer:** no. Most of it is, and the measured core is the best sourcing in the round — the bye
 hero, its six-bar profile, its method caption and the Record absence are all exactly what the
-named functions return, in the engine's own words. But the page carries **two fabricated facts that are not merely unsourced, they are false against the fixture
-it draws from**, a basis legend that contradicts its own page in the quiet state, and a footer
-sentence asserting something about the engine that four modules disprove.
+named functions return, in the engine's own words. But the page carries **five distinct claims
+that are not merely unsourced — they are false against the fixture it draws from or against the
+engine's own source**: "bottom of this league" (drawn four times), the `TE` shield on the bye
+summons, "every position is at or above its league peers", `Seat 5`, and "no week carries more
+than 19%". On top of that, a basis legend that contradicts its own page in the quiet state, and a
+footer sentence asserting something about the engine that four modules disprove.
 
 Verified against source: `front_claims`, `front_page`, `lineup_optimizer`, `depth_ratings`,
 `depth_chart`, `lineup_readiness`, `league_standings`, `pick_ledger`, `freshness`,
