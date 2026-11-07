@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en" class="unknown">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gold Wyrm Dynasty — No check ran</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ---- THE THRESHOLD · unknown · mobile (390 × 664) — generated from one stylesheet and one content table ---- */
+
+:root{
+  --ground:#000;
+  --gold-deep:#755024; --gold:#ba9561; --gold-bright:#f9de99; --gold-spec:#fff4ce;
+  --ink:#e9e0cd; --ink-2:#a99d87; --ink-3:#8a8071;
+  --unknown:#b0a28a;                 /* the ruled absent/unknown token */
+  --hair:rgba(186,149,97,.32); --hair-strong:rgba(186,149,97,.5);
+  --display:"Cinzel","Trajan Pro",Georgia,serif;
+  --text:"EB Garamond",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono","DejaVu Sans Mono",monospace;
+  --metal:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 28%,var(--gold) 64%,var(--gold-deep) 100%);
+  --metal-rest:linear-gradient(180deg,var(--gold-bright) 0%,var(--gold) 48%,var(--gold-deep) 100%);
+  --metal-small:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 45%,var(--gold) 100%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--ground)}
+body{position:relative;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:18px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+.scene{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.lamp{position:absolute;inset:0;background:radial-gradient(70% 55% at 22% 14%,rgba(117,80,36,.30),rgba(117,80,36,0) 68%),radial-gradient(40% 40% at 88% 92%,rgba(117,80,36,.12),rgba(0,0,0,0) 70%)}
+.unknown .lamp{background:radial-gradient(70% 55% at 22% 14%,rgba(117,80,36,.12),rgba(117,80,36,0) 68%)}
+.grain{position:absolute;inset:0;opacity:.055;mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.coil{position:absolute;left:calc(50% + 120px);top:-140px;width:900px;height:900px}
+.page{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 40px}
+
+.gilt{background:var(--metal);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.28))}
+.gilt-rest{background:var(--metal-rest);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.22))}
+.unlit{color:var(--ink-2)}            /* the third face: metal with no light on it */
+
+/* hallmark */
+.hall{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:30px 0 0;min-height:76px}
+.mark{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;min-height:44px}
+.crest-slot{width:36px;height:36px;border-radius:50%;border:1px dashed var(--gold-deep);display:grid;place-items:center;flex:none}
+.crest-slot svg{width:14px;height:14px}
+.wm{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;line-height:1;text-transform:uppercase;white-space:nowrap;
+  background-image:var(--metal-small);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wm-sub{display:block;font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:.42em;margin-top:5px;color:var(--gold);text-transform:uppercase}
+.seat{text-align:right;font-size:15px;color:var(--ink-2);line-height:1.45}
+.seat .l2{font-family:var(--mono);font-size:12.5px;letter-spacing:.01em;color:var(--ink-3);display:block;margin-top:3px}
+.seat .stamp{margin-left:8px}
+.seat .dash{font-family:var(--mono);color:var(--gold)}
+
+/* the threshold: a fixed top offset in every state, so the verdict is always in the same place */
+.threshold{padding:84px 0 44px;min-height:0;display:block}
+.eyebrow{font-family:var(--text);font-style:italic;font-size:19px;color:var(--ink-2);max-width:760px}
+.eyebrow b{font-style:normal;font-weight:500;color:var(--ink)}
+.verdict{font-family:var(--display);font-weight:600;font-size:clamp(54px,7.5vw,96px);line-height:1.04;letter-spacing:.005em;margin:18px 0 0;text-wrap:balance;overflow-wrap:anywhere}
+.verdict .num{font-family:var(--mono);font-weight:400;font-size:.9em;letter-spacing:-.03em}
+.rule{display:flex;align-items:center;margin:30px 0 32px;max-width:680px}
+.rule .dia{width:22px;height:22px;flex:none}
+.rule .line{height:1px;flex:1;background:linear-gradient(90deg,var(--gold-bright),var(--gold) 40%,rgba(186,149,97,0))}
+.unknown .rule .dia path{fill:var(--ink-3)}
+.unknown .rule .line{background:linear-gradient(90deg,var(--ink-3),rgba(138,128,113,0))}
+.controls{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.btn{display:inline-block;padding:1px;border:0;background:linear-gradient(180deg,var(--gold-bright),var(--gold) 55%,var(--gold-deep));cursor:pointer;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.8) inset}
+.btn>span{display:flex;align-items:center;justify-content:center;gap:14px;min-height:58px;padding:0 32px;background:linear-gradient(180deg,#120d06,#000);font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-bright);white-space:nowrap}
+.btn:hover>span{background:linear-gradient(180deg,#1d150a,#060402)}
+.btn:focus-visible{outline:2px solid var(--gold-spec);outline-offset:4px}
+.btn svg{width:16px;height:16px;flex:none}
+.btn.primary>span{background:var(--metal);color:#15100a}
+.btn.primary:hover>span{background:linear-gradient(180deg,#fff8e0,#f9de99 30%,#c9a56c 70%,#8a6230)}
+.btn[disabled]{cursor:default;opacity:.72}
+.aside{font-size:18px;color:var(--ink-2);max-width:520px;font-style:italic;line-height:1.45}
+.aside b{font-style:normal;font-weight:500;color:var(--ink)}
+.aside .stamp{font-style:normal}
+
+/* loud: the hero splits beneath the verdict; the figure takes the column the quiet state leaves empty */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:60px;align-items:start;margin-top:26px}
+.dek{font-size:24px;line-height:1.42;color:var(--ink);max-width:600px}
+.dek .n{font-family:var(--mono);font-size:21px;font-weight:500;color:var(--gold-bright)}
+.dek .q{color:var(--ink-2);font-style:italic}
+.hero .rule{margin:26px 0 28px}
+.figure{padding-top:4px}
+.big{font-family:var(--mono);font-weight:300;font-size:150px;line-height:.9;letter-spacing:-.04em;display:inline-block}
+.cap{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--gold);margin:12px 0 16px}
+.strip-lg{display:block;width:360px;height:108px;overflow:visible}
+.strip-lg text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
+.strip-lg text.hot{font-size:14px;font-weight:500;fill:var(--gold-bright)}
+.strip-lg text.hot-wk{fill:var(--gold-bright)}
+.bar{fill:none;stroke:var(--gold);stroke-width:1.5;vector-effect:non-scaling-stroke}   /* a struck outline, never a dark fill: 7.6:1 on the ground */
+.bar.hot{fill:url(#hot);stroke:none}
+.facts{display:flex;gap:26px;margin-top:14px;font-size:17px;color:var(--ink-2);flex-wrap:wrap}
+.facts b{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--ink);margin-right:6px}
+.qual{margin-top:14px;font-size:15px;line-height:1.45;color:var(--ink-3);font-style:italic;max-width:372px}
+.qual .stamp{font-style:normal;margin-right:6px}
+
+/* ledger + can-wait */
+.ledger,.wait{padding:0 0 44px}
+.ledger-head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;border-bottom:1px solid var(--hair-strong);padding-bottom:12px}
+.ledger-head h2{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.26em;font-size:15px;color:var(--gold)}
+.ledger-head .note{font-style:italic;font-size:17px;color:var(--ink-2);text-align:right}
+.stamp{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--gold);border:1px solid var(--gold-deep);padding:3px 8px 2px;white-space:nowrap;line-height:1.3;vertical-align:2px;font-style:normal;font-variant:normal;text-transform:none}
+.row{display:grid;grid-template-columns:140px minmax(0,1fr) 180px;gap:24px;align-items:center;padding:20px 0;border-bottom:1px solid var(--hair)}
+.row .k{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--ink-3)}
+.row .v{font-size:19px;line-height:1.45;color:var(--ink)}
+.row .v .n{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--gold-bright);letter-spacing:.01em}
+.row .v .dash{font-family:var(--mono);color:var(--gold);margin-right:8px}
+.row .v em{color:var(--ink-2)}
+.row .v .up{color:var(--ink-2);font-style:italic}
+.row .r{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.row.absent .v{color:var(--ink-2)}
+.row.live .k{color:var(--gold)}
+.strip{display:block;width:180px;height:52px;overflow:visible}
+.strip text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
+.row .k .pos{display:inline-block;width:10px;height:10px;transform:rotate(45deg);background:var(--c,var(--unknown));margin-right:12px;box-shadow:0 0 0 1px rgba(0,0,0,.8)}
+.row.claim .k{color:var(--ink);letter-spacing:.14em;font-variant:normal;text-transform:none;font-family:var(--mono);font-size:15px;font-weight:500}
+.door{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 2px;color:var(--gold-bright);text-decoration:none;font-family:var(--text);font-weight:500;letter-spacing:.02em;font-size:17px;border-bottom:1px solid var(--gold);white-space:nowrap}
+.door::after{content:"";width:7px;height:7px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg);opacity:.9}
+.door:hover{color:var(--gold-spec);border-color:var(--gold-bright)}
+.door:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
+
+/* rooms: a line of doors with the ledger's own grammar, not a grid of cards */
+.rooms{padding:0 0 10px}
+.room-row{display:flex;flex-wrap:wrap;gap:0 28px}
+.room-row a{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 2px;color:var(--ink);text-decoration:none;font-size:18px;letter-spacing:.02em;border-bottom:1px solid var(--hair-strong)}
+.room-row a::after{content:"";width:7px;height:7px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(45deg);opacity:.9}
+.room-row a:hover{color:var(--gold-bright);border-color:var(--gold-bright)}
+.room-row a:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
+.room-row a em{font-style:italic;color:var(--ink-3);font-size:15px}
+.basis{font-size:15px;color:var(--ink-3);line-height:1.5;padding:18px 0 48px;max-width:900px;font-style:italic}
+.basis b{font-style:normal;font-weight:500;color:var(--ink-2)}
+.basis .stamp{margin:0 4px}
+@media (prefers-reduced-motion:no-preference){.threshold>*{animation:rise .8s ease-out both}.threshold>*:nth-child(2){animation-delay:.08s}.threshold>*:nth-child(3){animation-delay:.18s}.threshold>*:nth-child(4){animation-delay:.26s}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
+
+/* ---- mobile (390 x 664): one column, the same pieces, the same order ---- */
+body{font-size:17px}
+.page{padding:0 20px;max-width:none}
+.coil{left:auto;right:-520px;top:-300px;width:800px;height:800px}
+.lamp{background:radial-gradient(90% 40% at 30% 14%,rgba(117,80,36,.30),rgba(117,80,36,0) 70%)}
+.hall{padding:12px 0 0;min-height:52px;align-items:center;gap:12px}
+.mark{gap:10px}.crest-slot{width:32px;height:32px}
+.wm{font-size:15px}.wm-sub{font-size:12px;letter-spacing:.34em;margin-top:4px}
+.seat{font-size:13px;line-height:1.35}.seat .l2{font-size:12px;margin-top:3px}
+.threshold{padding:22px 0 14px}
+.eyebrow{font-size:16px;max-width:none}
+.verdict{font-size:46px;line-height:1.02;margin-top:8px}
+.rule{margin:18px 0 18px;max-width:none}
+.controls{flex-direction:column;align-items:stretch;gap:14px}
+.btn{width:100%}.btn>span{min-height:56px;padding:0 16px;white-space:normal;text-align:center;line-height:1.25}
+.aside{font-size:16px;max-width:none}
+.hero{display:flex;flex-direction:column;gap:0;margin-top:14px}
+.hero>div:first-child{display:contents}
+.dek{font-size:18px;line-height:1.42;max-width:none;order:1}
+.figure{order:2;margin-top:18px;padding-top:0}
+.hero .rule{order:3;margin:20px 0 18px}
+.hero .controls{order:4}
+.big{font-size:68px}
+.cap{margin:6px 0 10px;font-size:13.5px;letter-spacing:.16em}
+.strip-lg{width:100%;height:auto;aspect-ratio:360/108;max-width:320px}
+.facts{gap:18px;margin-top:8px;font-size:16px}
+.qual{max-width:none;font-size:14.5px;margin-top:8px}
+.hero .rule{order:3;margin:14px 0 14px}
+.dek{font-size:17.5px}
+.ledger,.wait{padding-bottom:10px}
+.ledger-head{padding-bottom:8px;flex-wrap:wrap;gap:2px 14px}
+.ledger-head h2{font-size:14px}.ledger-head .note{font-size:15px;text-align:left}
+.row{grid-template-columns:1fr;gap:3px;padding:10px 0;align-items:start}
+.row .k{font-size:13px}.row .k .stamp{margin-left:10px}
+.row .v{font-size:16.5px;line-height:1.4}.row .v .n{font-size:15px}
+.row .r{justify-content:flex-start;margin-top:4px;flex-wrap:wrap}
+.row .r:empty{display:none}
+.row.claim{grid-template-columns:1fr auto;align-items:center}
+.row.claim .k{grid-column:1}.row.claim .r{grid-column:2;grid-row:1;margin:0}.row.claim .v{grid-column:1 / -1}
+.door{min-height:44px;font-size:16px}
+.strip{width:180px;height:52px}
+.rooms{padding:0}
+.rooms .ledger-head .note{display:none}
+.fold{border-bottom:0}
+.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--hair-strong);font-size:16px;color:var(--ink)}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::after{content:"";width:8px;height:8px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(135deg);margin-right:4px;transition:transform .2s}
+.fold[open]>summary::after{transform:rotate(-45deg)}
+.fold>summary .k{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.26em;font-size:14px;color:var(--gold)}
+.fold>summary em{font-style:italic;color:var(--ink-2);font-size:15px;margin-left:10px}
+.room-row{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.room-row a{min-height:44px;font-size:16px;justify-content:space-between;border-bottom:1px solid var(--hair)}
+.rooms .ledger-head{padding-bottom:4px}
+.room-row a em{display:none}
+.basis{font-size:14px;line-height:1.45;padding:12px 0 18px}
+
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true"><div class="lamp"></div><div class="grain"></div>
+<svg class="coil" viewBox="0 0 900 900"><defs><linearGradient id="coilg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9de99" stop-opacity=".16"/><stop offset=".55" stop-color="#ba9561" stop-opacity=".07"/><stop offset="1" stop-color="#755024" stop-opacity="0"/></linearGradient></defs>
+<circle cx="450" cy="450" r="372" fill="none" stroke="url(#coilg)" stroke-width="46" stroke-linecap="round" stroke-dasharray="1760 580" transform="rotate(118 450 450)"/>
+<circle cx="450" cy="450" r="300" fill="none" stroke="url(#coilg)" stroke-width="2" stroke-dasharray="900 985" transform="rotate(170 450 450)"/></svg></div>
+<div class="page">
+  <header class="hall">
+    <a class="mark" href="#" aria-label="Gold Wyrm Dynasty, home">
+      <span class="crest-slot" title="crest slot — the 512px mark lands here"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="#ba9561"/></svg></span>
+      <span><span class="wm">Gold Wyrm</span><span class="wm-sub">Dynasty</span></span>
+    </a>
+    <div class="seat"><span class="dash">—</span> no team<span class="l2"><span class="dash">—</span> league not synced · <span class="dash">—</span> never synced</span></div>
+  </header>
+
+  <section class="threshold" aria-labelledby="verdict">
+    <p class="eyebrow">No league is synced, so <b>no check could run</b>.</p>
+    <h1 id="verdict" class="verdict unlit">No check ran.</h1>
+    <div class="rule" aria-hidden="true"><svg class="dia" viewBox="0 0 24 24"><defs><linearGradient id="diag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".5" stop-color="#f9de99"/><stop offset="1" stop-color="#755024"/></linearGradient></defs><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="url(#diag)"/></svg><span class="line"></span></div><div class="controls"><a class="btn primary" href="#"><span>Open Import Audit<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></a><button class="btn" type="button" id="close"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>Close for now</span></button><p class="aside">Until a league is synced the board cannot price to its rules; the player universe and projections arrive with the sync.</p></div>
+  </section>
+
+  
+
+  <section class="ledger" aria-labelledby="checked">
+    <div class="ledger-head"><h2 id="checked">What was checked</h2><span class="note">six could not run; one did.</span></div><div class="row absent"><div class="k">Starters</div><div class="v"><span class="dash">—</span><em>no roster: no league is synced on this machine</em></div><div class="r"></div></div><div class="row absent"><div class="k">Holes</div><div class="v"><span class="dash">—</span><em>no roster: no league is synced on this machine</em></div><div class="r"></div></div><div class="row absent"><div class="k">Depth</div><div class="v"><span class="dash">—</span><em>no roster: no league is synced on this machine</em></div><div class="r"></div></div><div class="row absent"><div class="k">Byes</div><div class="v"><span class="dash">—</span><em>no roster: no league is synced on this machine</em></div><div class="r"></div></div><div class="row live"><div class="k">Sources <span class="stamp" title="measured — recency_grade over the oldest LOADED source; DataMerger loaded from disk with an empty snapshot">measured</span></div><div class="v"><em>Aging</em> — oldest loaded source <span class="n">76</span> d (the trade value chart). Never fetched: Sleeper players, Sleeper projections.</div><div class="r"></div></div><div class="row absent"><div class="k">Clock</div><div class="v"><span class="dash">—</span><em>no draft clock reaches this page yet</em></div><div class="r"></div></div><div class="row absent"><div class="k">Record</div><div class="v"><span class="dash">—</span><em>no capture holds a roster's result</em></div><div class="r"></div></div>
+  </section>
+
+  <nav class="rooms" aria-label="Rooms"><div class="ledger-head"><h2>Rooms</h2><span class="note">five views, and the Prytaneum — a dock under every view, not a room. Trade Calculator and Free Agents sit inside Roster Maintenance; Standings inside League.</span></div><div class="room-row"><a href="#">Matchup</a><a href="#">Roster Maintenance</a><a href="#">Draft Room</a><a href="#">League</a><a href="#">Import Audit</a><a href="#">The Prytaneum <em>a dock beneath every view</em></a></div></nav>
+  <p class="basis">A machine with no league synced, <b>measured</b> from disk with an empty snapshot. Nothing here is constructed; six rows are <b>absent</b> and say why.</p>
+</div>
+<script>
+/* The control is real. A browser only lets a script close a window it opened, so the honest
+   fallback marks the page seen and stops asking for attention. */
+(function(){var b=document.getElementById('close');if(!b)return;b.addEventListener('click',function(){try{window.close();}catch(e){}
+setTimeout(function(){if(document.hidden)return;var t=new Date(),h=t.getHours(),m=t.getMinutes();
+b.querySelector('span').textContent='Seen '+((h%12)||12)+':'+(m<10?'0':'')+m+(h<12?' am':' pm');b.disabled=true;},160);});})();
+</script>
+</body>
+</html>

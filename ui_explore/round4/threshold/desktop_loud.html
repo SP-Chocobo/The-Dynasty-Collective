@@ -1,283 +1,174 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="loud">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gold Wyrm Dynasty — Week 6 needs you</title>
+<title>Gold Wyrm Dynasty — Week 6 costs 95</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-/* ---- THE THRESHOLD · loud state (the real week-6 claim) · desktop -------------------------------------------
-   One world, dark. Gold stops measured off the logo (brushed metal, so always a gradient).
-   Cinzel for voice only; EB Garamond carries copy; JetBrains Mono carries every numeral. */
+/* ---- THE THRESHOLD · loud · desktop — generated from one stylesheet and one content table ---- */
+
 :root{
   --ground:#000;
   --gold-deep:#755024; --gold:#ba9561; --gold-bright:#f9de99; --gold-spec:#fff4ce;
-  --ink:#e9e0cd;      /* body, 15.9:1 on black */
-  --ink-2:#a99d87;    /* secondary, 7.9:1 */
-  --ink-3:#8a8071;    /* recede, 5.4:1 — captions and ledger labels only */
-  --hair:rgba(186,149,97,.22);
-  --hair-strong:rgba(186,149,97,.45);
+  --ink:#e9e0cd; --ink-2:#a99d87; --ink-3:#8a8071;
+  --unknown:#b0a28a;                 /* the ruled absent/unknown token */
+  --hair:rgba(186,149,97,.32); --hair-strong:rgba(186,149,97,.5);
   --display:"Cinzel","Trajan Pro",Georgia,serif;
   --text:"EB Garamond",Georgia,"Times New Roman",serif;
   --mono:"JetBrains Mono","DejaVu Sans Mono",monospace;
   --metal:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 28%,var(--gold) 64%,var(--gold-deep) 100%);
   --metal-rest:linear-gradient(180deg,var(--gold-bright) 0%,var(--gold) 48%,var(--gold-deep) 100%);
+  --metal-small:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 45%,var(--gold) 100%);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--ground)}
-body{
-  position:relative;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:18px;line-height:1.5;
-  min-height:100vh;-webkit-font-smoothing:antialiased;
-}
-/* ground: a lamp on the metal, and the faint grain of the logo's black card */
+body{position:relative;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:18px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
 .scene{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.lamp{position:absolute;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(70% 55% at 22% 18%,rgba(117,80,36,.30),rgba(117,80,36,0) 68%),
-             radial-gradient(40% 40% at 88% 92%,rgba(117,80,36,.12),rgba(0,0,0,0) 70%);}
-.grain{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.055;mix-blend-mode:screen;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-/* the coil: one faint forged arc, the only ornament allowed to be large */
-.coil{position:absolute;left:calc(50% + 120px);top:-140px;width:900px;height:900px;pointer-events:none;z-index:0}
+.lamp{position:absolute;inset:0;background:radial-gradient(70% 55% at 22% 14%,rgba(117,80,36,.30),rgba(117,80,36,0) 68%),radial-gradient(40% 40% at 88% 92%,rgba(117,80,36,.12),rgba(0,0,0,0) 70%)}
+.unknown .lamp{background:radial-gradient(70% 55% at 22% 14%,rgba(117,80,36,.12),rgba(117,80,36,0) 68%)}
+.grain{position:absolute;inset:0;opacity:.055;mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.coil{position:absolute;left:calc(50% + 120px);top:-140px;width:900px;height:900px}
 .page{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 40px}
 
-/* gilt text: the metal, clipped to glyphs, with a struck shadow beneath */
-.gilt{background:var(--metal);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.28));}
-.gilt-rest{background:var(--metal-rest);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.22));}
+.gilt{background:var(--metal);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.28))}
+.gilt-rest{background:var(--metal-rest);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.22))}
+.unlit{color:var(--ink-2)}            /* the third face: metal with no light on it */
 
-/* hallmark: the brand struck small, like a maker's stamp on silver */
-.hall{display:flex;align-items:center;justify-content:space-between;padding:30px 0 0;min-height:76px}
+/* hallmark */
+.hall{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:30px 0 0;min-height:76px}
 .mark{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;min-height:44px}
 .crest-slot{width:36px;height:36px;border-radius:50%;border:1px dashed var(--gold-deep);display:grid;place-items:center;flex:none}
 .crest-slot svg{width:14px;height:14px}
-.wm{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;line-height:1;text-transform:uppercase;
-  background-image:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 45%,var(--gold) 100%)}  /* small text: never run the metal down to the 2.9:1 deep stop; -image, not the shorthand, so background-clip:text survives */
+.wm{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;line-height:1;text-transform:uppercase;white-space:nowrap;
+  background-image:var(--metal-small);-webkit-background-clip:text;background-clip:text;color:transparent}
 .wm-sub{display:block;font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:.42em;margin-top:5px;color:var(--gold);text-transform:uppercase}
 .seat{text-align:right;font-size:15px;color:var(--ink-2);line-height:1.45}
-.seat .mono{font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;color:var(--ink-3);display:block;margin-top:2px}
+.seat .l2{font-family:var(--mono);font-size:12.5px;letter-spacing:.01em;color:var(--ink-3);display:block;margin-top:3px}
+.seat .stamp{margin-left:8px}
+.seat .dash{font-family:var(--mono);color:var(--gold)}
 
-/* the threshold: verdict, rule, control */
-.threshold{padding:118px 0 72px;min-height:calc(100vh - 96px);display:flex;flex-direction:column;justify-content:center}
-.eyebrow{font-family:var(--text);font-variant:small-caps;font-weight:600;letter-spacing:.26em;font-size:15px;color:var(--gold);text-transform:lowercase}
-.eyebrow .note{font-family:var(--text);font-variant:normal;text-transform:none;letter-spacing:.01em;font-weight:400;font-style:italic;font-size:18px;color:var(--ink-2);margin-left:16px}
-h1{font-family:var(--display);font-weight:600;font-size:96px;line-height:1.02;letter-spacing:.005em;margin:22px 0 0;white-space:nowrap}
-.rule{display:flex;align-items:center;gap:0;margin:34px 0 36px;max-width:680px}
+/* the threshold: a fixed top offset in every state, so the verdict is always in the same place */
+.threshold{padding:84px 0 44px;min-height:0;display:block}
+.eyebrow{font-family:var(--text);font-style:italic;font-size:19px;color:var(--ink-2);max-width:760px}
+.eyebrow b{font-style:normal;font-weight:500;color:var(--ink)}
+.verdict{font-family:var(--display);font-weight:600;font-size:clamp(54px,7.5vw,96px);line-height:1.04;letter-spacing:.005em;margin:18px 0 0;text-wrap:balance;overflow-wrap:anywhere}
+.verdict .num{font-family:var(--mono);font-weight:400;font-size:.9em;letter-spacing:-.03em}
+.rule{display:flex;align-items:center;margin:30px 0 32px;max-width:680px}
 .rule .dia{width:22px;height:22px;flex:none}
 .rule .line{height:1px;flex:1;background:linear-gradient(90deg,var(--gold-bright),var(--gold) 40%,rgba(186,149,97,0))}
-.controls{display:flex;align-items:center;gap:30px;flex-wrap:wrap}
-.btn{display:inline-block;padding:1px;border:0;background:linear-gradient(180deg,var(--gold-bright),var(--gold) 55%,var(--gold-deep));cursor:pointer;text-decoration:none;
-  box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.8) inset}
-.btn>span{display:flex;align-items:center;justify-content:center;gap:14px;min-height:58px;padding:0 38px;background:linear-gradient(180deg,#120d06,#000);
-  font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-bright);white-space:nowrap}
+.unknown .rule .dia path{fill:var(--ink-3)}
+.unknown .rule .line{background:linear-gradient(90deg,var(--ink-3),rgba(138,128,113,0))}
+.controls{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.btn{display:inline-block;padding:1px;border:0;background:linear-gradient(180deg,var(--gold-bright),var(--gold) 55%,var(--gold-deep));cursor:pointer;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.8) inset}
+.btn>span{display:flex;align-items:center;justify-content:center;gap:14px;min-height:58px;padding:0 32px;background:linear-gradient(180deg,#120d06,#000);font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-bright);white-space:nowrap}
 .btn:hover>span{background:linear-gradient(180deg,#1d150a,#060402)}
 .btn:focus-visible{outline:2px solid var(--gold-spec);outline-offset:4px}
 .btn svg{width:16px;height:16px;flex:none}
 .btn.primary>span{background:var(--metal);color:#15100a}
 .btn.primary:hover>span{background:linear-gradient(180deg,#fff8e0,#f9de99 30%,#c9a56c 70%,#8a6230)}
-.aside{font-size:19px;color:var(--ink-2);max-width:460px;font-style:italic}
+.btn[disabled]{cursor:default;opacity:.72}
+.aside{font-size:18px;color:var(--ink-2);max-width:520px;font-style:italic;line-height:1.45}
 .aside b{font-style:normal;font-weight:500;color:var(--ink)}
+.aside .stamp{font-style:normal}
 
-/* the ledger: what was checked, by name */
-.ledger{padding:0 0 56px}
+/* loud: the hero splits beneath the verdict; the figure takes the column the quiet state leaves empty */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:60px;align-items:start;margin-top:26px}
+.dek{font-size:24px;line-height:1.42;color:var(--ink);max-width:600px}
+.dek .n{font-family:var(--mono);font-size:21px;font-weight:500;color:var(--gold-bright)}
+.dek .q{color:var(--ink-2);font-style:italic}
+.hero .rule{margin:26px 0 28px}
+.figure{padding-top:4px}
+.big{font-family:var(--mono);font-weight:300;font-size:150px;line-height:.9;letter-spacing:-.04em;display:inline-block}
+.cap{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--gold);margin:12px 0 16px}
+.strip-lg{display:block;width:360px;height:108px;overflow:visible}
+.strip-lg text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
+.strip-lg text.hot{font-size:14px;font-weight:500;fill:var(--gold-bright)}
+.strip-lg text.hot-wk{fill:var(--gold-bright)}
+.bar{fill:none;stroke:var(--gold);stroke-width:1.5;vector-effect:non-scaling-stroke}   /* a struck outline, never a dark fill: 7.6:1 on the ground */
+.bar.hot{fill:url(#hot);stroke:none}
+.facts{display:flex;gap:26px;margin-top:14px;font-size:17px;color:var(--ink-2);flex-wrap:wrap}
+.facts b{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--ink);margin-right:6px}
+.qual{margin-top:14px;font-size:15px;line-height:1.45;color:var(--ink-3);font-style:italic;max-width:372px}
+.qual .stamp{font-style:normal;margin-right:6px}
+
+/* ledger + can-wait */
+.ledger,.wait{padding:0 0 44px}
 .ledger-head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;border-bottom:1px solid var(--hair-strong);padding-bottom:12px}
 .ledger-head h2{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.26em;font-size:15px;color:var(--gold)}
-.stamp{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--gold);border:1px solid var(--gold-deep);padding:3px 8px 2px;white-space:nowrap;line-height:1.3;vertical-align:middle}
-.row{display:grid;grid-template-columns:150px minmax(0,1fr) 260px;gap:28px;align-items:center;padding:22px 0;border-bottom:1px solid var(--hair)}
+.ledger-head .note{font-style:italic;font-size:17px;color:var(--ink-2);text-align:right}
+.stamp{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--gold);border:1px solid var(--gold-deep);padding:3px 8px 2px;white-space:nowrap;line-height:1.3;vertical-align:2px;font-style:normal;font-variant:normal;text-transform:none}
+.row{display:grid;grid-template-columns:140px minmax(0,1fr) 180px;gap:24px;align-items:center;padding:20px 0;border-bottom:1px solid var(--hair)}
 .row .k{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--ink-3)}
 .row .v{font-size:19px;line-height:1.45;color:var(--ink)}
 .row .v .n{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--gold-bright);letter-spacing:.01em}
 .row .v .dash{font-family:var(--mono);color:var(--gold);margin-right:8px}
 .row .v em{color:var(--ink-2)}
-.row .r{display:flex;justify-content:flex-end;align-items:center;gap:14px}
-.strip{display:block;width:216px;height:52px;overflow:visible}
-.strip text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
-
-/* rooms: six doors, as a line of text, not a grid of cards */
-.rooms{display:flex;align-items:center;flex-wrap:wrap;gap:0 6px;padding:28px 0 8px}
-.rooms a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;color:var(--ink-2);text-decoration:none;font-size:17px;letter-spacing:.03em;border-bottom:1px solid transparent}
-.rooms a:first-child{padding-left:0}
-.rooms a:hover{color:var(--gold-bright)}
-.rooms a:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
-.rooms .sep{width:8px;height:8px;flex:none;opacity:.7}
-.basis{font-size:15px;color:var(--ink-3);line-height:1.5;padding:10px 0 48px;max-width:860px;font-style:italic}
-.basis b{font-style:normal;font-weight:500;color:var(--ink-2)}
-.basis .stamp{font-style:normal;margin:0 4px}
-
-/* loud: same slots, more light. The hero splits beneath the headline; the figure takes the right. */
-.hero{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:60px;align-items:start;margin-top:30px}
-.dek{font-size:25px;line-height:1.42;color:var(--ink);max-width:600px;letter-spacing:.002em}
-.dek .n{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--gold-bright)}
-.hero .rule{margin:28px 0 30px}
-.hero .controls{gap:18px}
-.hero .btn>span{padding:0 28px}
-.figure{padding-top:6px}
-.big{font-family:var(--mono);font-weight:300;font-size:150px;line-height:.9;letter-spacing:-.04em;display:inline-block}
-.cap{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--gold);margin:14px 0 20px}
-.strip-lg{display:block;width:360px;height:108px;overflow:visible}
-.strip-lg text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
-.strip-lg text.hot{font-size:14px;font-weight:500;fill:var(--gold-bright)}
-.strip-lg text.hot-wk{fill:var(--gold-bright)}
-.facts{display:flex;gap:28px;margin-top:16px;font-size:17px;color:var(--ink-2)}
-.facts b{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--ink);margin-right:6px}
-.wait{padding:0 0 56px}
-.ledger-head .note{font-style:italic;font-size:17px;color:var(--ink-2)}
-.row .k .pos{display:inline-block;width:10px;height:10px;transform:rotate(45deg);background:var(--c);margin-right:12px;vertical-align:0;box-shadow:0 0 0 1px rgba(0,0,0,.8)}
-.row.claim .k{color:var(--ink);letter-spacing:.14em;font-variant:normal;text-transform:none;font-family:var(--mono);font-size:15px;font-weight:500}
-.door{display:inline-flex;align-items:center;min-height:44px;padding:0 2px;color:var(--gold);text-decoration:none;font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.18em;font-size:15px;border-bottom:1px solid var(--gold-deep);white-space:nowrap}
-.door:hover{color:var(--gold-bright);border-color:var(--gold-bright)}
 .row .v .up{color:var(--ink-2);font-style:italic}
-@media (max-width:1100px){.hero{grid-template-columns:1fr;gap:40px}}
-@media (max-width:1100px){h1{font-size:76px}}
-@media (max-width:900px){h1{font-size:56px;white-space:normal}}
+.row .r{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.row.absent .v{color:var(--ink-2)}
+.row.live .k{color:var(--gold)}
+.strip{display:block;width:180px;height:52px;overflow:visible}
+.strip text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
+.row .k .pos{display:inline-block;width:10px;height:10px;transform:rotate(45deg);background:var(--c,var(--unknown));margin-right:12px;box-shadow:0 0 0 1px rgba(0,0,0,.8)}
+.row.claim .k{color:var(--ink);letter-spacing:.14em;font-variant:normal;text-transform:none;font-family:var(--mono);font-size:15px;font-weight:500}
+.door{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 2px;color:var(--gold-bright);text-decoration:none;font-family:var(--text);font-weight:500;letter-spacing:.02em;font-size:17px;border-bottom:1px solid var(--gold);white-space:nowrap}
+.door::after{content:"";width:7px;height:7px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg);opacity:.9}
+.door:hover{color:var(--gold-spec);border-color:var(--gold-bright)}
+.door:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
+
+/* rooms: a line of doors with the ledger's own grammar, not a grid of cards */
+.rooms{padding:0 0 10px}
+.room-row{display:flex;flex-wrap:wrap;gap:0 28px}
+.room-row a{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 2px;color:var(--ink);text-decoration:none;font-size:18px;letter-spacing:.02em;border-bottom:1px solid var(--hair-strong)}
+.room-row a::after{content:"";width:7px;height:7px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(45deg);opacity:.9}
+.room-row a:hover{color:var(--gold-bright);border-color:var(--gold-bright)}
+.room-row a:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
+.room-row a em{font-style:italic;color:var(--ink-3);font-size:15px}
+.basis{font-size:15px;color:var(--ink-3);line-height:1.5;padding:18px 0 48px;max-width:900px;font-style:italic}
+.basis b{font-style:normal;font-weight:500;color:var(--ink-2)}
+.basis .stamp{margin:0 4px}
 @media (prefers-reduced-motion:no-preference){.threshold>*{animation:rise .8s ease-out both}.threshold>*:nth-child(2){animation-delay:.08s}.threshold>*:nth-child(3){animation-delay:.18s}.threshold>*:nth-child(4){animation-delay:.26s}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
+
 </style>
 </head>
 <body>
-<div class="scene" aria-hidden="true">
-<div class="lamp"></div>
-<div class="grain"></div>
-<svg class="coil" viewBox="0 0 900 900">
-  <defs>
-    <linearGradient id="coilg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f9de99" stop-opacity=".16"/>
-      <stop offset=".55" stop-color="#ba9561" stop-opacity=".07"/>
-      <stop offset="1" stop-color="#755024" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <circle cx="450" cy="450" r="372" fill="none" stroke="url(#coilg)" stroke-width="46" stroke-linecap="round" stroke-dasharray="1760 580" transform="rotate(118 450 450)"/>
-  <circle cx="450" cy="450" r="300" fill="none" stroke="url(#coilg)" stroke-width="2" stroke-dasharray="900 985" transform="rotate(170 450 450)"/>
-</svg>
-</div>
-
+<div class="scene" aria-hidden="true"><div class="lamp"></div><div class="grain"></div>
+<svg class="coil" viewBox="0 0 900 900"><defs><linearGradient id="coilg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9de99" stop-opacity=".16"/><stop offset=".55" stop-color="#ba9561" stop-opacity=".07"/><stop offset="1" stop-color="#755024" stop-opacity="0"/></linearGradient></defs>
+<circle cx="450" cy="450" r="372" fill="none" stroke="url(#coilg)" stroke-width="46" stroke-linecap="round" stroke-dasharray="1760 580" transform="rotate(118 450 450)"/>
+<circle cx="450" cy="450" r="300" fill="none" stroke="url(#coilg)" stroke-width="2" stroke-dasharray="900 985" transform="rotate(170 450 450)"/></svg></div>
 <div class="page">
   <header class="hall">
     <a class="mark" href="#" aria-label="Gold Wyrm Dynasty, home">
       <span class="crest-slot" title="crest slot — the 512px mark lands here"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="#ba9561"/></svg></span>
-      <span><span class="wm gilt-rest">Gold Wyrm</span><span class="wm-sub">Dynasty</span></span>
+      <span><span class="wm">Gold Wyrm</span><span class="wm-sub">Dynasty</span></span>
     </a>
-    <div class="seat">Roster 5 · a replayed battery seat<span class="mono">synced 11 min ago · sources Fresh</span></div>
+    <div class="seat">Team 1 <span class="stamp" title="constructed — a replayed battery seat stands in for a team">constructed</span><span class="l2"><span class="dash">—</span> league not named on this seat · <span class="dash">—</span> no sync on this seat</span></div>
   </header>
 
   <section class="threshold" aria-labelledby="verdict">
-    <p class="eyebrow">week 6<span class="note">one claim on your attention. Two things can wait, and are named below.</span></p>
-    <h1 id="verdict" class="gilt">Week 6 needs you.</h1>
-    <div class="hero">
-      <div>
-        <p class="dek">One starter sits on bye that week. The best lineup you can field without him is worth <span class="n">95</span> trade-value points less — <span class="n">40%</span> of the season's entire bye damage, landing in a single week.</p>
-        <div class="rule" aria-hidden="true">
-          <svg class="dia" viewBox="0 0 24 24"><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="url(#diag)"/><defs><linearGradient id="diag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".5" stop-color="#f9de99"/><stop offset="1" stop-color="#755024"/></linearGradient></defs></svg>
-          <span class="line"></span>
-        </div>
-        <div class="controls">
-          <a class="btn primary" href="#"><span>Open Matchup<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></a>
-          <button class="btn" id="close" type="button"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>Close for now</span></button>
-        </div>
-      </div>
-      <div class="figure">
-        <div class="big gilt" aria-hidden="true">95</div>
-        <div class="cap">trade-value points lost · week 6</div>
-        <svg class="strip-lg" viewBox="0 0 360 108" role="img" aria-label="Bye damage by week in trade-value points. Week 6: 95. Week 7: 8. Week 8: 51. Week 9: 4. Week 10: 56. Week 11: 23.">
-          <defs><linearGradient id="hot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".3" stop-color="#f9de99"/><stop offset="1" stop-color="#ba9561"/></linearGradient></defs>
-          <g fill="#755024" fill-opacity=".8">
-            <rect x="0"   y="18"   width="44" height="70"   fill="url(#hot)" fill-opacity="1"/>
-            <rect x="60"  y="82.1" width="44" height="5.9"/>
-            <rect x="120" y="50.4" width="44" height="37.6"/>
-            <rect x="180" y="85.1" width="44" height="2.9"/>
-            <rect x="240" y="46.7" width="44" height="41.3"/>
-            <rect x="300" y="71"   width="44" height="17"/>
-          </g>
-          <line x1="0" y1="88.5" x2="360" y2="88.5" stroke="#ba9561" stroke-opacity=".5"/>
-          <g text-anchor="middle">
-            <text class="hot" x="22" y="11">95</text><text x="82" y="76">8</text><text x="142" y="44">51</text><text x="202" y="79">4</text><text x="262" y="41">56</text><text x="322" y="65">23</text>
-          </g>
-          <g text-anchor="middle">
-            <text class="hot-wk" x="22" y="104">wk 6</text><text x="82" y="104">7</text><text x="142" y="104">8</text><text x="202" y="104">9</text><text x="262" y="104">10</text><text x="322" y="104">11</text>
-          </g>
-        </svg>
-        <div class="facts"><span><b>1</b>starter out</span><span><b>40%</b>of the season's bye damage</span></div>
-      </div>
-    </div>
+    <p class="eyebrow"><b>One thing is open.</b> Two can wait. Four checks ran; three could not, and say why below.</p>
+    <h1 id="verdict" class="verdict gilt">Week <span class="num">6</span> costs <span class="num">95</span>.</h1>
+    <div class="hero"><div><p class="dek">One starter sits on bye in week 6. The best lineup without him is worth <span class="n">95</span> trade-value points less — <span class="n">40%</span> of the season's bye damage, in one week. <span class="q">The whole season is counted, played weeks included: today's week is not known on this seat.</span></p><div class="rule" aria-hidden="true"><svg class="dia" viewBox="0 0 24 24"><defs><linearGradient id="diag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".5" stop-color="#f9de99"/><stop offset="1" stop-color="#755024"/></linearGradient></defs><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="url(#diag)"/></svg><span class="line"></span></div><div class="controls"><a class="btn primary" href="#"><span>Open Matchup<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span></a><button class="btn" type="button" id="close"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>Close for now</span></button></div></div><div class="figure"><div class="big gilt" aria-hidden="true">95</div><div class="cap">trade-value points lost · week 6 · measured</div>{strip}<div class="facts"><span><b>1</b>starter out</span><span><b>40%</b>of the season's bye damage</span></div><p class="qual"><span class="stamp" title="Bass, Borregales and Knox carry no trade value and enter the solve at 0">3 of 16 unpriced</span>Week 6 holds: the one starter out is priced and no bench body covers him. The other five weeks can move either way.</p></div></div>
   </section>
 
-  <section class="wait" aria-labelledby="canwait">
-    <div class="ledger-head">
-      <h2 id="canwait">Can wait</h2>
-      <span class="note">thin against this league's own rosters — nothing here is unfilled.</span>
-    </div>
-    <div class="row claim">
-      <div class="k"><i class="pos" style="--c:#ef7fc0"></i>DEF</div>
-      <div class="v">Thin. <span class="n">1</span> rostered — bottom of the league at the position.</div>
-      <div class="r"><a class="door" href="#">Roster Maintenance</a></div>
-    </div>
-    <div class="row claim">
-      <div class="k"><i class="pos" style="--c:#ff6042"></i>TE</div>
-      <div class="v">Thin. <span class="n">2</span> rostered — bottom of the league. Only <span class="n">1 of 2</span> could be priced, so the comparison is a floor, not a total.</div>
-      <div class="r"><span class="stamp" title="a floor, not a total">≥ floor</span><a class="door" href="#">Roster Maintenance</a></div>
-    </div>
-  </section>
+  <section class="wait" aria-labelledby="canwait"><div class="ledger-head"><h2 id="canwait">Can wait</h2><span class="note">a label against the league's own rosters, never a rank. Nothing here is unfilled.</span></div><div class="row claim"><div class="k"><i class="pos" style="--c:#ef7fc0"></i>DEF</div><div class="v"><em>Weak</em> — <span class="n">1</span> rostered, under 0.7× the league's average at the position, counted on bodies.</div><div class="r"><a class="door" href="#">League</a></div></div><div class="row claim"><div class="k"><i class="pos" style="--c:#ff6042"></i>TE</div><div class="v"><em>Weak</em> on priced depth — <span class="n">2</span> rostered; only <span class="n">1 of 2</span> could be priced, so the comparison is a floor, not a total.</div><div class="r"><span class="stamp" title="a floor from incomplete pricing: 1 of 2 rostered could be priced. More pricing would sharpen it">≥ floor</span><a class="door" href="#">League</a></div></div></section>
 
   <section class="ledger" aria-labelledby="checked">
-    <div class="ledger-head">
-      <h2 id="checked">What was checked</h2>
-      <span class="note">five checks, every week, the same five.</span>
-    </div>
-    <div class="row">
-      <div class="k">Starters</div>
-      <div class="v"><span class="n">10 of 10</span> filled. No material injury on a starter.</div>
-      <div class="r"><span class="stamp">constructed</span></div>
-    </div>
-    <div class="row">
-      <div class="k">Holes</div>
-      <div class="v">None. There is a body for every slot this league uses.</div>
-      <div class="r"></div>
-    </div>
-    <div class="row">
-      <div class="k">Depth</div>
-      <div class="v"><span class="up">Two thin positions, DEF and TE — above.</span> Every other position rates <em>Average</em> or <em>Strong</em>.</div>
-      <div class="r"></div>
-    </div>
-    <div class="row">
-      <div class="k">Byes</div>
-      <div class="v"><span class="up">Layered into week 6 — above.</span> <span class="n">40%</span> of the season's bye damage lands in one week; the other five carry <span class="n">8</span>, <span class="n">51</span>, <span class="n">4</span>, <span class="n">56</span> and <span class="n">23</span>.</div>
-      <div class="r"></div>
-    </div>
-    <div class="row">
-      <div class="k">Record</div>
-      <div class="v"><span class="dash">—</span><em>no capture holds a roster's result</em></div>
-      <div class="r"></div>
-    </div>
+    <div class="ledger-head"><h2 id="checked">What was checked</h2><span class="note">the same seven rows, every week.</span></div><div class="row"><div class="k">Starters</div><div class="v"><span class="n">10 of 10</span> filled. The optimizer ignores injuries, and it started <b>Jayden Higgins</b>, WR, who is on <span class="n">IR</span>.</div><div class="r"><span class="stamp" title="constructed — the optimizer's best legal lineup stands in for a submitted one, so this cannot read less than 10 of 10">constructed</span></div></div><div class="row"><div class="k">Holes</div><div class="v">None. A body for every starting slot this league uses.</div><div class="r"></div></div><div class="row"><div class="k">Depth</div><div class="v"><span class="up">Two thin — DEF and TE, above.</span> Nothing else you roster is thin.</div><div class="r"></div></div><div class="row"><div class="k">Byes</div><div class="v"><span class="up">Layered into week 6 — above.</span> <span class="n">40%</span> of the season's bye damage lands in one week.</div><div class="r"></div></div><div class="row absent"><div class="k">Sources</div><div class="v"><span class="dash">—</span><em>not captured on this seat: a replayed draft carries no freshness manifest, so the age of the chart the 95 is priced from is not known here</em></div><div class="r"></div></div><div class="row absent"><div class="k">Clock</div><div class="v"><span class="dash">—</span><em>no draft clock reaches this page yet; a pick on the clock would outrank every row here</em></div><div class="r"></div></div><div class="row absent"><div class="k">Record</div><div class="v"><span class="dash">—</span><em>no capture holds a roster's result</em></div><div class="r"></div></div>
   </section>
 
-  <nav class="rooms" aria-label="Rooms">
-    <a href="#">Matchup</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">Roster Maintenance</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">Draft Room</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">League</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">Import Audit</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">The Prytaneum</a>
-  </nav>
-  <p class="basis">Bye profile, thin positions and holes are <b>measured</b> on a real replayed roster: the bye figure is value lost from the solved lineup with each week's byes removed, and depth is rated against this league's own rosters. The lineup is <b>constructed</b> — a replayed battery seat, not a live roster. Record is <b>absent</b>: no capture holds a result. Trade Calculator and Free Agents live inside Roster Maintenance; Standings inside League. 5,357 players in the pool.</p>
+  <nav class="rooms" aria-label="Rooms"><div class="ledger-head"><h2>Rooms</h2><span class="note">five views, and the Prytaneum — a dock under every view, not a room. Trade Calculator and Free Agents sit inside Roster Maintenance; Standings inside League.</span></div><div class="room-row"><a href="#">Matchup</a><a href="#">Roster Maintenance</a><a href="#">Draft Room</a><a href="#">League</a><a href="#">Import Audit</a><a href="#">The Prytaneum <em>a dock beneath every view</em></a></div></nav>
+  <p class="basis">Bye profile, thin positions and holes are <b>measured</b> on a replayed roster — bye figures by solving the lineup with each week's byes removed; depth as a ratio band against the league's own rosters, never a rank. The lineup is <b>constructed</b>: the optimizer's best legal lineup stands in for a submitted one. Three rows are <b>absent</b> and carry their reasons. 5,357 players in this league's player universe.</p>
 </div>
-
 <script>
 /* The control is real. A browser only lets a script close a window it opened, so the honest
-   fallback is to mark the page seen and stop asking for attention. */
-(function(){
-  var b=document.getElementById('close'); if(!b) return;
-  b.addEventListener('click',function(){
-    try{window.close();}catch(e){}
-    setTimeout(function(){
-      if(document.hidden) return;
-      var t=new Date(), h=t.getHours(), m=t.getMinutes();
-      var when=((h%12)||12)+':'+(m<10?'0':'')+m+(h<12?' am':' pm');
-      b.querySelector('span').innerHTML='Seen at '+when+' — you can go';
-      b.disabled=true; b.style.opacity='.72'; b.style.cursor='default';
-    },160);
-  });
-})();
+   fallback marks the page seen and stops asking for attention. */
+(function(){var b=document.getElementById('close');if(!b)return;b.addEventListener('click',function(){try{window.close();}catch(e){}
+setTimeout(function(){if(document.hidden)return;var t=new Date(),h=t.getHours(),m=t.getMinutes();
+b.querySelector('span').textContent='Seen '+((h%12)||12)+':'+(m<10?'0':'')+m+(h<12?' am':' pm');b.disabled=true;},160);});})();
 </script>
 </body>
 </html>

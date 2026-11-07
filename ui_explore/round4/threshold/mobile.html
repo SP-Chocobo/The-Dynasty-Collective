@@ -1,268 +1,230 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="quiet">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gold Wyrm Dynasty — Nothing needs you</title>
+<title>Gold Wyrm Dynasty — Nothing is open</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-/* ---- THE THRESHOLD · quiet state · mobile (390 × 664) -------------------------------------------
-   One world, dark. Gold stops measured off the logo (brushed metal, so always a gradient).
-   Cinzel for voice only; EB Garamond carries copy; JetBrains Mono carries every numeral. */
+/* ---- THE THRESHOLD · quiet · mobile (390 × 664) — generated from one stylesheet and one content table ---- */
+
 :root{
   --ground:#000;
   --gold-deep:#755024; --gold:#ba9561; --gold-bright:#f9de99; --gold-spec:#fff4ce;
-  --ink:#e9e0cd;      /* body, 15.9:1 on black */
-  --ink-2:#a99d87;    /* secondary, 7.9:1 */
-  --ink-3:#8a8071;    /* recede, 5.4:1 — captions and ledger labels only */
-  --hair:rgba(186,149,97,.22);
-  --hair-strong:rgba(186,149,97,.45);
+  --ink:#e9e0cd; --ink-2:#a99d87; --ink-3:#8a8071;
+  --unknown:#b0a28a;                 /* the ruled absent/unknown token */
+  --hair:rgba(186,149,97,.32); --hair-strong:rgba(186,149,97,.5);
   --display:"Cinzel","Trajan Pro",Georgia,serif;
   --text:"EB Garamond",Georgia,"Times New Roman",serif;
   --mono:"JetBrains Mono","DejaVu Sans Mono",monospace;
   --metal:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 28%,var(--gold) 64%,var(--gold-deep) 100%);
   --metal-rest:linear-gradient(180deg,var(--gold-bright) 0%,var(--gold) 48%,var(--gold-deep) 100%);
+  --metal-small:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 45%,var(--gold) 100%);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--ground)}
-body{
-  position:relative;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:18px;line-height:1.5;
-  min-height:100vh;-webkit-font-smoothing:antialiased;
-}
-/* ground: a lamp on the metal, and the faint grain of the logo's black card */
+body{position:relative;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:18px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
 .scene{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.lamp{position:absolute;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(70% 55% at 22% 18%,rgba(117,80,36,.30),rgba(117,80,36,0) 68%),
-             radial-gradient(40% 40% at 88% 92%,rgba(117,80,36,.12),rgba(0,0,0,0) 70%);}
-.grain{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.055;mix-blend-mode:screen;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-/* the coil: one faint forged arc, the only ornament allowed to be large */
-.coil{position:absolute;left:calc(50% + 120px);top:-140px;width:900px;height:900px;pointer-events:none;z-index:0}
+.lamp{position:absolute;inset:0;background:radial-gradient(70% 55% at 22% 14%,rgba(117,80,36,.30),rgba(117,80,36,0) 68%),radial-gradient(40% 40% at 88% 92%,rgba(117,80,36,.12),rgba(0,0,0,0) 70%)}
+.unknown .lamp{background:radial-gradient(70% 55% at 22% 14%,rgba(117,80,36,.12),rgba(117,80,36,0) 68%)}
+.grain{position:absolute;inset:0;opacity:.055;mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.coil{position:absolute;left:calc(50% + 120px);top:-140px;width:900px;height:900px}
 .page{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 40px}
 
-/* gilt text: the metal, clipped to glyphs, with a struck shadow beneath */
-.gilt{background:var(--metal);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.28));}
-.gilt-rest{background:var(--metal-rest);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.22));}
+.gilt{background:var(--metal);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.28))}
+.gilt-rest{background:var(--metal-rest);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.95)) drop-shadow(0 6px 18px rgba(117,80,36,.22))}
+.unlit{color:var(--ink-2)}            /* the third face: metal with no light on it */
 
-/* hallmark: the brand struck small, like a maker's stamp on silver */
-.hall{display:flex;align-items:center;justify-content:space-between;padding:30px 0 0;min-height:76px}
+/* hallmark */
+.hall{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:30px 0 0;min-height:76px}
 .mark{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;min-height:44px}
 .crest-slot{width:36px;height:36px;border-radius:50%;border:1px dashed var(--gold-deep);display:grid;place-items:center;flex:none}
 .crest-slot svg{width:14px;height:14px}
-.wm{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;line-height:1;text-transform:uppercase;
-  background-image:linear-gradient(180deg,var(--gold-spec) 0%,var(--gold-bright) 45%,var(--gold) 100%)}  /* small text: never run the metal down to the 2.9:1 deep stop; -image, not the shorthand, so background-clip:text survives */
+.wm{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;line-height:1;text-transform:uppercase;white-space:nowrap;
+  background-image:var(--metal-small);-webkit-background-clip:text;background-clip:text;color:transparent}
 .wm-sub{display:block;font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:.42em;margin-top:5px;color:var(--gold);text-transform:uppercase}
 .seat{text-align:right;font-size:15px;color:var(--ink-2);line-height:1.45}
-.seat .mono{font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;color:var(--ink-3);display:block;margin-top:2px}
+.seat .l2{font-family:var(--mono);font-size:12.5px;letter-spacing:.01em;color:var(--ink-3);display:block;margin-top:3px}
+.seat .stamp{margin-left:8px}
+.seat .dash{font-family:var(--mono);color:var(--gold)}
 
-/* the threshold: verdict, rule, control */
-.threshold{padding:118px 0 72px;min-height:calc(100vh - 96px);display:flex;flex-direction:column;justify-content:center}
-.eyebrow{font-family:var(--text);font-variant:small-caps;font-weight:600;letter-spacing:.26em;font-size:15px;color:var(--gold);text-transform:lowercase}
-.eyebrow .note{font-family:var(--text);font-variant:normal;text-transform:none;letter-spacing:.01em;font-weight:400;font-style:italic;font-size:18px;color:var(--ink-2);margin-left:16px}
-h1{font-family:var(--display);font-weight:600;font-size:96px;line-height:1.02;letter-spacing:.005em;margin:22px 0 0;white-space:nowrap}
-.rule{display:flex;align-items:center;gap:0;margin:34px 0 36px;max-width:680px}
+/* the threshold: a fixed top offset in every state, so the verdict is always in the same place */
+.threshold{padding:84px 0 44px;min-height:0;display:block}
+.eyebrow{font-family:var(--text);font-style:italic;font-size:19px;color:var(--ink-2);max-width:760px}
+.eyebrow b{font-style:normal;font-weight:500;color:var(--ink)}
+.verdict{font-family:var(--display);font-weight:600;font-size:clamp(54px,7.5vw,96px);line-height:1.04;letter-spacing:.005em;margin:18px 0 0;text-wrap:balance;overflow-wrap:anywhere}
+.verdict .num{font-family:var(--mono);font-weight:400;font-size:.9em;letter-spacing:-.03em}
+.rule{display:flex;align-items:center;margin:30px 0 32px;max-width:680px}
 .rule .dia{width:22px;height:22px;flex:none}
 .rule .line{height:1px;flex:1;background:linear-gradient(90deg,var(--gold-bright),var(--gold) 40%,rgba(186,149,97,0))}
-.controls{display:flex;align-items:center;gap:30px;flex-wrap:wrap}
-.btn{display:inline-block;padding:1px;border:0;background:linear-gradient(180deg,var(--gold-bright),var(--gold) 55%,var(--gold-deep));cursor:pointer;text-decoration:none;
-  box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.8) inset}
-.btn>span{display:flex;align-items:center;justify-content:center;gap:14px;min-height:58px;padding:0 38px;background:linear-gradient(180deg,#120d06,#000);
-  font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-bright);white-space:nowrap}
+.unknown .rule .dia path{fill:var(--ink-3)}
+.unknown .rule .line{background:linear-gradient(90deg,var(--ink-3),rgba(138,128,113,0))}
+.controls{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.btn{display:inline-block;padding:1px;border:0;background:linear-gradient(180deg,var(--gold-bright),var(--gold) 55%,var(--gold-deep));cursor:pointer;text-decoration:none;box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.8) inset}
+.btn>span{display:flex;align-items:center;justify-content:center;gap:14px;min-height:58px;padding:0 32px;background:linear-gradient(180deg,#120d06,#000);font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-bright);white-space:nowrap}
 .btn:hover>span{background:linear-gradient(180deg,#1d150a,#060402)}
 .btn:focus-visible{outline:2px solid var(--gold-spec);outline-offset:4px}
 .btn svg{width:16px;height:16px;flex:none}
 .btn.primary>span{background:var(--metal);color:#15100a}
 .btn.primary:hover>span{background:linear-gradient(180deg,#fff8e0,#f9de99 30%,#c9a56c 70%,#8a6230)}
-.aside{font-size:19px;color:var(--ink-2);max-width:460px;font-style:italic}
+.btn[disabled]{cursor:default;opacity:.72}
+.aside{font-size:18px;color:var(--ink-2);max-width:520px;font-style:italic;line-height:1.45}
 .aside b{font-style:normal;font-weight:500;color:var(--ink)}
+.aside .stamp{font-style:normal}
 
-/* the ledger: what was checked, by name */
-.ledger{padding:0 0 56px}
+/* loud: the hero splits beneath the verdict; the figure takes the column the quiet state leaves empty */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:60px;align-items:start;margin-top:26px}
+.dek{font-size:24px;line-height:1.42;color:var(--ink);max-width:600px}
+.dek .n{font-family:var(--mono);font-size:21px;font-weight:500;color:var(--gold-bright)}
+.dek .q{color:var(--ink-2);font-style:italic}
+.hero .rule{margin:26px 0 28px}
+.figure{padding-top:4px}
+.big{font-family:var(--mono);font-weight:300;font-size:150px;line-height:.9;letter-spacing:-.04em;display:inline-block}
+.cap{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--gold);margin:12px 0 16px}
+.strip-lg{display:block;width:360px;height:108px;overflow:visible}
+.strip-lg text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
+.strip-lg text.hot{font-size:14px;font-weight:500;fill:var(--gold-bright)}
+.strip-lg text.hot-wk{fill:var(--gold-bright)}
+.bar{fill:none;stroke:var(--gold);stroke-width:1.5;vector-effect:non-scaling-stroke}   /* a struck outline, never a dark fill: 7.6:1 on the ground */
+.bar.hot{fill:url(#hot);stroke:none}
+.facts{display:flex;gap:26px;margin-top:14px;font-size:17px;color:var(--ink-2);flex-wrap:wrap}
+.facts b{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--ink);margin-right:6px}
+.qual{margin-top:14px;font-size:15px;line-height:1.45;color:var(--ink-3);font-style:italic;max-width:372px}
+.qual .stamp{font-style:normal;margin-right:6px}
+
+/* ledger + can-wait */
+.ledger,.wait{padding:0 0 44px}
 .ledger-head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;border-bottom:1px solid var(--hair-strong);padding-bottom:12px}
 .ledger-head h2{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.26em;font-size:15px;color:var(--gold)}
-.stamp{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--gold);border:1px solid var(--gold-deep);padding:3px 8px 2px;white-space:nowrap;line-height:1.3;vertical-align:middle}
-.row{display:grid;grid-template-columns:150px minmax(0,1fr) 260px;gap:28px;align-items:center;padding:22px 0;border-bottom:1px solid var(--hair)}
+.ledger-head .note{font-style:italic;font-size:17px;color:var(--ink-2);text-align:right}
+.stamp{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--gold);border:1px solid var(--gold-deep);padding:3px 8px 2px;white-space:nowrap;line-height:1.3;vertical-align:2px;font-style:normal;font-variant:normal;text-transform:none}
+.row{display:grid;grid-template-columns:140px minmax(0,1fr) 180px;gap:24px;align-items:center;padding:20px 0;border-bottom:1px solid var(--hair)}
 .row .k{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.2em;font-size:15px;color:var(--ink-3)}
 .row .v{font-size:19px;line-height:1.45;color:var(--ink)}
 .row .v .n{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--gold-bright);letter-spacing:.01em}
 .row .v .dash{font-family:var(--mono);color:var(--gold);margin-right:8px}
 .row .v em{color:var(--ink-2)}
-.row .r{display:flex;justify-content:flex-end;align-items:center;gap:14px}
-.strip{display:block;width:216px;height:52px;overflow:visible}
+.row .v .up{color:var(--ink-2);font-style:italic}
+.row .r{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.row.absent .v{color:var(--ink-2)}
+.row.live .k{color:var(--gold)}
+.strip{display:block;width:180px;height:52px;overflow:visible}
 .strip text{font-family:var(--mono);font-size:12px;fill:var(--ink-3)}
+.row .k .pos{display:inline-block;width:10px;height:10px;transform:rotate(45deg);background:var(--c,var(--unknown));margin-right:12px;box-shadow:0 0 0 1px rgba(0,0,0,.8)}
+.row.claim .k{color:var(--ink);letter-spacing:.14em;font-variant:normal;text-transform:none;font-family:var(--mono);font-size:15px;font-weight:500}
+.door{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 2px;color:var(--gold-bright);text-decoration:none;font-family:var(--text);font-weight:500;letter-spacing:.02em;font-size:17px;border-bottom:1px solid var(--gold);white-space:nowrap}
+.door::after{content:"";width:7px;height:7px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg);opacity:.9}
+.door:hover{color:var(--gold-spec);border-color:var(--gold-bright)}
+.door:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
 
-/* rooms: six doors, as a line of text, not a grid of cards */
-.rooms{display:flex;align-items:center;flex-wrap:wrap;gap:0 6px;padding:28px 0 8px}
-.rooms a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;color:var(--ink-2);text-decoration:none;font-size:17px;letter-spacing:.03em;border-bottom:1px solid transparent}
-.rooms a:first-child{padding-left:0}
-.rooms a:hover{color:var(--gold-bright)}
-.rooms a:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
-.rooms .sep{width:8px;height:8px;flex:none;opacity:.7}
-.basis{font-size:15px;color:var(--ink-3);line-height:1.5;padding:10px 0 48px;max-width:860px;font-style:italic}
+/* rooms: a line of doors with the ledger's own grammar, not a grid of cards */
+.rooms{padding:0 0 10px}
+.room-row{display:flex;flex-wrap:wrap;gap:0 28px}
+.room-row a{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 2px;color:var(--ink);text-decoration:none;font-size:18px;letter-spacing:.02em;border-bottom:1px solid var(--hair-strong)}
+.room-row a::after{content:"";width:7px;height:7px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(45deg);opacity:.9}
+.room-row a:hover{color:var(--gold-bright);border-color:var(--gold-bright)}
+.room-row a:focus-visible{outline:2px solid var(--gold-spec);outline-offset:2px}
+.room-row a em{font-style:italic;color:var(--ink-3);font-size:15px}
+.basis{font-size:15px;color:var(--ink-3);line-height:1.5;padding:18px 0 48px;max-width:900px;font-style:italic}
 .basis b{font-style:normal;font-weight:500;color:var(--ink-2)}
-.basis .stamp{font-style:normal;margin:0 4px}
+.basis .stamp{margin:0 4px}
+@media (prefers-reduced-motion:no-preference){.threshold>*{animation:rise .8s ease-out both}.threshold>*:nth-child(2){animation-delay:.08s}.threshold>*:nth-child(3){animation-delay:.18s}.threshold>*:nth-child(4){animation-delay:.26s}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
 
-/* ---- mobile overrides: one column, the same pieces, the same order ---- */
+/* ---- mobile (390 x 664): one column, the same pieces, the same order ---- */
 body{font-size:17px}
 .page{padding:0 20px;max-width:none}
 .coil{left:auto;right:-520px;top:-300px;width:800px;height:800px}
 .lamp{background:radial-gradient(90% 40% at 30% 14%,rgba(117,80,36,.30),rgba(117,80,36,0) 70%)}
-.hall{padding:16px 0 0;min-height:56px;align-items:center}
-.wm{white-space:nowrap}
-.mark{gap:10px}
-.crest-slot{width:32px;height:32px}
+.hall{padding:12px 0 0;min-height:52px;align-items:center;gap:12px}
+.mark{gap:10px}.crest-slot{width:32px;height:32px}
 .wm{font-size:15px}.wm-sub{font-size:12px;letter-spacing:.34em;margin-top:4px}
-.seat{font-size:13px;line-height:1.35;padding-top:2px}
-.seat .mono{font-size:12px;margin-top:3px}
-.threshold{padding:34px 0 22px;min-height:0;display:block}
-.eyebrow{font-size:14px}
-.eyebrow .note{display:block;margin:6px 0 0;font-size:16px}
-h1{font-size:46px;line-height:1.02;margin-top:12px;white-space:normal}
-.rule{margin:18px 0 20px;max-width:none}
-.aside{display:none}
-.controls{flex-direction:column;align-items:stretch;gap:18px}
-.btn{width:100%}
-.btn>span{min-height:56px;padding:0 20px}
-.aside{font-size:16.5px;max-width:none}
-.ledger{padding-bottom:24px}
-.ledger-head{padding-bottom:10px}
-.ledger-head .stamp{display:none}
-.ledger-head h2{font-size:14px}
-.row{grid-template-columns:1fr;gap:5px;padding:12px 0;align-items:start}
-.row .k{font-size:13px}
-.row .v{font-size:17px;line-height:1.4}
-.row .v .n{font-size:15.5px}
-.row .r{justify-content:flex-start;margin-top:2px}
+.seat{font-size:13px;line-height:1.35}.seat .l2{font-size:12px;margin-top:3px}
+.threshold{padding:22px 0 14px}
+.eyebrow{font-size:16px;max-width:none}
+.verdict{font-size:46px;line-height:1.02;margin-top:8px}
+.rule{margin:18px 0 18px;max-width:none}
+.controls{flex-direction:column;align-items:stretch;gap:14px}
+.btn{width:100%}.btn>span{min-height:56px;padding:0 16px;white-space:normal;text-align:center;line-height:1.25}
+.aside{font-size:16px;max-width:none}
+.hero{display:flex;flex-direction:column;gap:0;margin-top:14px}
+.hero>div:first-child{display:contents}
+.dek{font-size:18px;line-height:1.42;max-width:none;order:1}
+.figure{order:2;margin-top:18px;padding-top:0}
+.hero .rule{order:3;margin:20px 0 18px}
+.hero .controls{order:4}
+.big{font-size:68px}
+.cap{margin:6px 0 10px;font-size:13.5px;letter-spacing:.16em}
+.strip-lg{width:100%;height:auto;aspect-ratio:360/108;max-width:320px}
+.facts{gap:18px;margin-top:8px;font-size:16px}
+.qual{max-width:none;font-size:14.5px;margin-top:8px}
+.hero .rule{order:3;margin:14px 0 14px}
+.dek{font-size:17.5px}
+.ledger,.wait{padding-bottom:10px}
+.ledger-head{padding-bottom:8px;flex-wrap:wrap;gap:2px 14px}
+.ledger-head h2{font-size:14px}.ledger-head .note{font-size:15px;text-align:left}
+.row{grid-template-columns:1fr;gap:3px;padding:10px 0;align-items:start}
+.row .k{font-size:13px}.row .k .stamp{margin-left:10px}
+.row .v{font-size:16.5px;line-height:1.4}.row .v .n{font-size:15px}
+.row .r{justify-content:flex-start;margin-top:4px;flex-wrap:wrap}
 .row .r:empty{display:none}
-.row .k .stamp{margin-left:10px;vertical-align:1px;font-variant:normal;text-transform:none;letter-spacing:.14em}
-.row .r .stamp{display:none}
-.strip{width:216px;height:52px}
-.rooms{flex-direction:column;align-items:stretch;gap:0;padding:6px 0 0}
-.rooms a{min-height:44px;padding:0 2px;border-bottom:1px solid var(--hair);font-size:17px;justify-content:space-between}
-.rooms a:first-child{padding-left:2px}
-.rooms a::after{content:"";width:7px;height:7px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(45deg);opacity:.8}
-.rooms .sep{display:none}
-.basis{font-size:14px;line-height:1.45;padding:14px 0 24px}
+.row.claim{grid-template-columns:1fr auto;align-items:center}
+.row.claim .k{grid-column:1}.row.claim .r{grid-column:2;grid-row:1;margin:0}.row.claim .v{grid-column:1 / -1}
+.door{min-height:44px;font-size:16px}
+.strip{width:180px;height:52px}
+.rooms{padding:0}
+.rooms .ledger-head .note{display:none}
+.fold{border-bottom:0}
+.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--hair-strong);font-size:16px;color:var(--ink)}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::after{content:"";width:8px;height:8px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(135deg);margin-right:4px;transition:transform .2s}
+.fold[open]>summary::after{transform:rotate(-45deg)}
+.fold>summary .k{font-family:var(--text);font-variant:small-caps;text-transform:lowercase;font-weight:600;letter-spacing:.26em;font-size:14px;color:var(--gold)}
+.fold>summary em{font-style:italic;color:var(--ink-2);font-size:15px;margin-left:10px}
+.room-row{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.room-row a{min-height:44px;font-size:16px;justify-content:space-between;border-bottom:1px solid var(--hair)}
+.rooms .ledger-head{padding-bottom:4px}
+.room-row a em{display:none}
+.basis{font-size:14px;line-height:1.45;padding:12px 0 18px}
 
-@media (prefers-reduced-motion:no-preference){.threshold>*{animation:rise .8s ease-out both}.threshold>*:nth-child(2){animation-delay:.08s}.threshold>*:nth-child(3){animation-delay:.18s}.threshold>*:nth-child(4){animation-delay:.26s}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
 </style>
 </head>
 <body>
-<div class="scene" aria-hidden="true">
-<div class="lamp"></div>
-<div class="grain"></div>
-<svg class="coil" viewBox="0 0 900 900">
-  <defs>
-    <linearGradient id="coilg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f9de99" stop-opacity=".16"/>
-      <stop offset=".55" stop-color="#ba9561" stop-opacity=".07"/>
-      <stop offset="1" stop-color="#755024" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <circle cx="450" cy="450" r="372" fill="none" stroke="url(#coilg)" stroke-width="46" stroke-linecap="round" stroke-dasharray="1760 580" transform="rotate(118 450 450)"/>
-  <circle cx="450" cy="450" r="300" fill="none" stroke="url(#coilg)" stroke-width="2" stroke-dasharray="900 985" transform="rotate(170 450 450)"/>
-</svg>
-</div>
-
+<div class="scene" aria-hidden="true"><div class="lamp"></div><div class="grain"></div>
+<svg class="coil" viewBox="0 0 900 900"><defs><linearGradient id="coilg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9de99" stop-opacity=".16"/><stop offset=".55" stop-color="#ba9561" stop-opacity=".07"/><stop offset="1" stop-color="#755024" stop-opacity="0"/></linearGradient></defs>
+<circle cx="450" cy="450" r="372" fill="none" stroke="url(#coilg)" stroke-width="46" stroke-linecap="round" stroke-dasharray="1760 580" transform="rotate(118 450 450)"/>
+<circle cx="450" cy="450" r="300" fill="none" stroke="url(#coilg)" stroke-width="2" stroke-dasharray="900 985" transform="rotate(170 450 450)"/></svg></div>
 <div class="page">
   <header class="hall">
     <a class="mark" href="#" aria-label="Gold Wyrm Dynasty, home">
       <span class="crest-slot" title="crest slot — the 512px mark lands here"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="#ba9561"/></svg></span>
-      <span><span class="wm gilt-rest">Gold Wyrm</span><span class="wm-sub">Dynasty</span></span>
+      <span><span class="wm">Gold Wyrm</span><span class="wm-sub">Dynasty</span></span>
     </a>
-    <div class="seat">Roster 5 · replayed seat<span class="mono">synced 11 min ago · Fresh</span></div>
+    <div class="seat">Team 1 <span class="stamp" title="constructed — a replayed battery seat stands in for a team">constructed</span><span class="l2"><span class="dash">—</span> league not named · <span class="dash">—</span> no sync</span></div>
   </header>
 
   <section class="threshold" aria-labelledby="verdict">
-    <p class="eyebrow">week 7<span class="note">Every check the engine can run came back clean.</span></p>
-    <h1 id="verdict" class="gilt-rest">Nothing<br>needs you.</h1>
-    <div class="rule" aria-hidden="true">
-      <svg class="dia" viewBox="0 0 24 24"><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="url(#diag)"/><defs><linearGradient id="diag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".5" stop-color="#f9de99"/><stop offset="1" stop-color="#755024"/></linearGradient></defs></svg>
-      <span class="line"></span>
-    </div>
-    <div class="controls">
-      <button class="btn" id="close" type="button"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>Close the app</span></button>
-      <p class="aside">Five checks, named below. <b>Byes</b>, <b>holes</b> and <b>depth</b> are measured against this league's own rosters.</p>
-    </div>
+    <p class="eyebrow">Four checks ran, all clean — <b>starters, holes, depth, byes</b>. Three could not.</p>
+    <h1 id="verdict" class="verdict gilt-rest">Nothing is open.</h1>
+    <div class="rule" aria-hidden="true"><svg class="dia" viewBox="0 0 24 24"><defs><linearGradient id="diag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".5" stop-color="#f9de99"/><stop offset="1" stop-color="#755024"/></linearGradient></defs><path d="M12 0 15 9l9 3-9 3-3 9-3-9-9-3 9-3z" fill="url(#diag)"/></svg><span class="line"></span></div><div class="controls"><button class="btn" type="button" id="close"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>Close the app</span></button><p class="aside">A <b>constructed</b> seat: the four figures below are fabricated, and each is stamped so.</p></div>
   </section>
+
+  
 
   <section class="ledger" aria-labelledby="checked">
-    <div class="ledger-head">
-      <h2 id="checked">What was checked</h2>
-      <span class="stamp" title="This quiet state is drawn on a constructed seat — see the basis line">quiet state · constructed seat</span>
-    </div>
-
-    <div class="row">
-      <div class="k">Starters <span class="stamp">constructed</span></div>
-      <div class="v"><span class="n">10 of 10</span> filled. No material injury on a starter.</div>
-      <div class="r"></div>
-    </div>
-    <div class="row">
-      <div class="k">Holes</div>
-      <div class="v">None. There is a body for every slot this league uses.</div>
-      <div class="r"></div>
-    </div>
-    <div class="row">
-      <div class="k">Depth</div>
-      <div class="v">Nothing thin. Every position rates <em>Average</em> or <em>Strong</em> against the league.</div>
-      <div class="r"></div>
-    </div>
-    <div class="row">
-      <div class="k">Byes</div>
-      <div class="v">Spread. The worst week, <span class="n">8</span>, carries <span class="n">23%</span> of the season's bye damage — value lost, not bodies lost.</div>
-      <div class="r">
-        <svg class="strip" viewBox="0 0 216 52" role="img" aria-label="Bye damage by week, weeks 6 to 11, in trade-value points: 31, 26, 38, 22, 29, 20">
-          <g fill="#755024" fill-opacity=".85">
-            <rect x="4"   y="15.4" width="22" height="20.6"/>
-            <rect x="40"  y="18.7" width="22" height="17.3"/>
-            <rect x="76"  y="10.7" width="22" height="25.3" fill="#ba9561" fill-opacity="1"/>
-            <rect x="112" y="21.4" width="22" height="14.6"/>
-            <rect x="148" y="16.7" width="22" height="19.3"/>
-            <rect x="184" y="22.7" width="22" height="13.3"/>
-          </g>
-          <line x1="0" y1="36.5" x2="216" y2="36.5" stroke="#ba9561" stroke-opacity=".45"/>
-          <g text-anchor="middle"><text x="15" y="50">6</text><text x="51" y="50">7</text><text x="87" y="50">8</text><text x="123" y="50">9</text><text x="159" y="50">10</text><text x="195" y="50">11</text></g>
-        </svg>
-      </div>
-    </div>
-    <div class="row">
-      <div class="k">Record</div>
-      <div class="v"><span class="dash">—</span><em>no capture holds a roster's result</em></div>
-      <div class="r"></div>
-    </div>
+    <div class="ledger-head"><h2 id="checked">What was checked</h2><span class="stamp" title="every figure on this page is fabricated to show the quiet state; the real replayed seat is never quiet">constructed</span></div><div class="row"><div class="k">Starters <span class="stamp" title="constructed — the optimizer's best legal lineup stands in for a submitted one, so this cannot read less than 10 of 10">constructed</span></div><div class="v"><span class="n">10 of 10</span> filled.</div><div class="r"></div></div><div class="row"><div class="k">Holes <span class="stamp" title="constructed — a fabricated figure, drawn to show the shape of this state; no engine call produced it">constructed</span></div><div class="v">None. A body for every starting slot this league uses.</div><div class="r"></div></div><div class="row"><div class="k">Depth <span class="stamp" title="constructed — a fabricated figure, drawn to show the shape of this state; no engine call produced it">constructed</span></div><div class="v">Nothing you roster is thin.</div><div class="r"></div></div><div class="row"><div class="k">Byes <span class="stamp" title="constructed — a fabricated figure, drawn to show the shape of this state; no engine call produced it">constructed</span></div><div class="v">Spread. The worst week, <span class="n">8</span>, carries <span class="n">23%</span> of the season's bye damage — value lost from the solved lineup, not bodies lost.</div><div class="r"><svg class="strip" viewBox="0 0 180 52" role="img" aria-label="Constructed bye profile, weeks 6 to 11, shape only: every week carries a similar, small loss. These figures are fabricated for the quiet state."><defs><linearGradient id="hot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4ce"/><stop offset=".3" stop-color="#f9de99"/><stop offset="1" stop-color="#ba9561"/></linearGradient></defs><rect class="bar" x="4" y="14.8" width="18" height="21.2"/><rect class="bar" x="34" y="18.2" width="18" height="17.8"/><rect class="bar hot" x="64" y="10.0" width="18" height="26.0"/><rect class="bar" x="94" y="20.9" width="18" height="15.1"/><rect class="bar" x="124" y="16.2" width="18" height="19.8"/><rect class="bar" x="154" y="22.3" width="18" height="13.7"/><line x1="0" y1="36.5" x2="180" y2="36.5" stroke="#ba9561" stroke-opacity=".6"/><text x="13" y="50" text-anchor="middle">6</text><text x="43" y="50" text-anchor="middle">7</text><text x="73" y="50" text-anchor="middle">8</text><text x="103" y="50" text-anchor="middle">9</text><text x="133" y="50" text-anchor="middle">10</text><text x="163" y="50" text-anchor="middle">11</text></svg></div></div><div class="row absent"><div class="k">Sources</div><div class="v"><span class="dash">—</span><em>not captured on this seat — no freshness manifest</em></div><div class="r"></div></div><div class="row absent"><div class="k">Clock</div><div class="v"><span class="dash">—</span><em>no draft clock reaches this page yet</em></div><div class="r"></div></div><div class="row absent"><div class="k">Record</div><div class="v"><span class="dash">—</span><em>no capture holds a roster's result</em></div><div class="r"></div></div>
   </section>
 
-  <nav class="rooms" aria-label="Rooms">
-    <a href="#">Matchup</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">Roster Maintenance</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">Draft Room</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">League</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">Import Audit</a><svg class="sep" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0 5 3l3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ba9561"/></svg>
-    <a href="#">The Prytaneum</a>
-  </nav>
-  <p class="basis">The quiet state <span class="stamp">constructed</span> — byes, depth and holes above are fabricated to show the shape of a clean week. Record is <b>absent</b>: no capture holds a result. 5,357 players in the pool.</p>
+  <nav class="rooms" aria-label="Rooms"><div class="ledger-head"><h2>Rooms</h2><span class="note">five views, and the Prytaneum — a dock under every view, not a room. Trade Calculator and Free Agents sit inside Roster Maintenance; Standings inside League.</span></div><div class="room-row"><a href="#">Matchup</a><a href="#">Roster Maintenance</a><a href="#">Draft Room</a><a href="#">League</a><a href="#">Import Audit</a><a href="#">The Prytaneum <em>a dock beneath every view</em></a></div></nav>
+  <p class="basis">Four figures are <b>constructed</b> and stamped where shown; three rows are <b>absent</b> with their reasons. 5,357 players in this league's player universe.</p>
 </div>
-
 <script>
 /* The control is real. A browser only lets a script close a window it opened, so the honest
-   fallback is to mark the page seen and stop asking for attention. */
-(function(){
-  var b=document.getElementById('close'); if(!b) return;
-  b.addEventListener('click',function(){
-    try{window.close();}catch(e){}
-    setTimeout(function(){
-      if(document.hidden) return;
-      var t=new Date(), h=t.getHours(), m=t.getMinutes();
-      var when=((h%12)||12)+':'+(m<10?'0':'')+m+(h<12?' am':' pm');
-      b.querySelector('span').innerHTML='Seen at '+when+' — you can go';
-      b.disabled=true; b.style.opacity='.72'; b.style.cursor='default';
-    },160);
-  });
-})();
+   fallback marks the page seen and stops asking for attention. */
+(function(){var b=document.getElementById('close');if(!b)return;b.addEventListener('click',function(){try{window.close();}catch(e){}
+setTimeout(function(){if(document.hidden)return;var t=new Date(),h=t.getHours(),m=t.getMinutes();
+b.querySelector('span').textContent='Seen '+((h%12)||12)+':'+(m<10?'0':'')+m+(h<12?' am':' pm');b.disabled=true;},160);});})();
 </script>
 </body>
 </html>

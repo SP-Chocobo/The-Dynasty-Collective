@@ -8,21 +8,20 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* ============================================================
-   THE KEEP — desktop front page
-   The world is carried by the frame, the rules, the joinery and
-   the crests. The content panel stays quiet and legible.
-   ============================================================ */
+/* THE KEEP — desktop front page. The place is carried by joinery (rules, frames, crests), never by scenery. */
 :root{
   /* gold stops measured off the logo — always a gradient, never flat */
   --g0:#3d2a12; --g1:#755024; --g2:#ba9561; --g3:#f9de99; --g4:#fff4ce;
   --metal:linear-gradient(90deg,var(--g1) 0%,var(--g2) 22%,var(--g3) 50%,var(--g2) 78%,var(--g1) 100%);
   --metal-v:linear-gradient(180deg,var(--g1) 0%,var(--g2) 25%,var(--g3) 50%,var(--g2) 75%,var(--g1) 100%);
   --metal-text:linear-gradient(180deg,var(--g4) 0%,var(--g3) 30%,var(--g2) 62%,var(--g1) 100%);
+  /* the summons' skin is brighter than any subordinate frame — rank by edge brightness is deliberate */
+  --metal-hi:linear-gradient(90deg,var(--g2) 0%,var(--g3) 30%,var(--g4) 50%,var(--g3) 70%,var(--g2) 100%);
+  --metal-lo:linear-gradient(90deg,var(--g0) 0%,var(--g1) 30%,var(--g2) 50%,var(--g1) 70%,var(--g0) 100%);
   /* ground & stone */
   --ground:#000; --stone:#0d0b09; --stone-2:#141109; --stone-3:#1c1811; --mortar:#2a241b;
-  /* ink — body >= 4.5:1 on --stone */
-  --ink:#ece4d2; --ink-2:#b8ac96; --ink-3:#8c806d;
+  /* ink — body >= 4.5:1 on --stone; --axis >= 3:1 non-text */
+  --ink:#ece4d2; --ink-2:#b8ac96; --ink-3:#8c806d; --axis:#6a6052; --mark:#d8cfbb;
   /* position tokens — one home, from design_system.POSITION_PILL_TOKENS */
   --pos-qb:#2a81fc; --pos-rb:#0ca89c; --pos-wr:#4aa8ef; --pos-te:#ff6042; --pos-k:#fab87e;
   --pos-def:#ef7fc0; --pos-dl:#4cec4c; --pos-lb:#ff45ed; --pos-db:#6ad8f0; --pos-idp:#99a851; --pos-none:#b0a28a;
@@ -32,195 +31,161 @@
 }
 *{box-sizing:border-box}
 html{background:var(--ground)}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-t);font-size:16px;line-height:1.5;
-  -webkit-font-smoothing:antialiased;min-height:100vh;
-  /* the hall: a vignette and a faint stone grain, far below the content's contrast */
-  background-image:
-    radial-gradient(ellipse 70% 40% at 50% -5%,rgba(186,149,97,.10),transparent 60%),
-    radial-gradient(ellipse 60% 50% at 50% 110%,rgba(117,80,36,.08),transparent 60%),
-    repeating-linear-gradient(135deg,rgba(255,244,206,.012) 0 2px,transparent 2px 7px);
-}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-t);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;
+  background-image:radial-gradient(ellipse 70% 40% at 50% -5%,rgba(186,149,97,.10),transparent 60%),radial-gradient(ellipse 60% 50% at 50% 110%,rgba(117,80,36,.08),transparent 60%),repeating-linear-gradient(135deg,rgba(255,244,206,.012) 0 2px,transparent 2px 7px)}
 a{color:inherit;text-decoration:none}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-
-/* ---------- inscriptions (Cinzel: carved, at size, letterspaced, in small amounts) ---------- */
-.ins{font-family:var(--f-d);font-weight:600;text-transform:uppercase;letter-spacing:.18em}
+a:focus-visible,button:focus-visible{outline:2px solid var(--g3);outline-offset:3px}
 .ins-sm{font-family:var(--f-d);font-weight:600;text-transform:uppercase;letter-spacing:.2em;font-size:12px;color:var(--g2)}
-.gild{background:var(--metal-text);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.9))}
+.gild{background:var(--metal-text);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,.9))}
 .num{font-family:var(--f-m);font-variant-numeric:tabular-nums}
-
-/* ---------- forged rules: relief, not a 1px border ---------- */
+.dash{font:500 1em var(--f-m);color:var(--ink-2);margin-right:6px}
 .rule{position:relative;height:2px;background:var(--metal);box-shadow:0 1px 0 #000,0 2px 0 rgba(255,244,206,.07),0 -1px 0 rgba(0,0,0,.8)}
 .rule.fade{background:linear-gradient(90deg,transparent,var(--g1) 12%,var(--g3) 50%,var(--g1) 88%,transparent)}
-.rule .dia{position:absolute;left:50%;top:50%;width:10px;height:10px;transform:translate(-50%,-50%) rotate(45deg);
-  background:var(--metal-v);box-shadow:0 0 0 2px #000,0 0 10px rgba(249,222,153,.35)}
+.rule .dia{position:absolute;left:50%;top:50%;width:10px;height:10px;transform:translate(-50%,-50%) rotate(45deg);background:var(--metal-v);box-shadow:0 0 0 2px #000,0 0 10px rgba(249,222,153,.35)}
+.stamp{display:inline-block;font:600 12px/1 var(--f-m);letter-spacing:.14em;text-transform:uppercase;color:var(--g3);border:1px solid var(--g1);padding:5px 7px 4px;background:rgba(117,80,36,.12);vertical-align:middle}
 
-/* ---------- the hall: pilasters and lintel ---------- */
-.hall{position:relative;max-width:1232px;margin:0 auto;padding:0 30px 40px}
-.pilaster{position:absolute;top:0;bottom:0;width:3px;background:var(--metal-v);opacity:.75;
-  box-shadow:1px 0 0 #000,-1px 0 0 #000}
+.hall{position:relative;max-width:1232px;margin:0 auto;padding:0 36px 40px}
+.pilaster{position:absolute;top:0;bottom:0;width:3px;background:var(--metal-v);opacity:.75;box-shadow:1px 0 0 #000,-1px 0 0 #000}
 .pilaster.l{left:6px}.pilaster.r{right:6px}
-.pilaster:before,.pilaster:after{content:"";position:absolute;left:50%;width:14px;height:14px;transform:translateX(-50%) rotate(45deg);
-  background:var(--metal-v);box-shadow:0 0 0 2px #000}
-.pilaster:before{top:118px}.pilaster:after{bottom:28px}
+.pilaster:before,.pilaster:after{content:"";position:absolute;left:50%;width:14px;height:14px;transform:translateX(-50%) rotate(45deg);background:var(--metal-v);box-shadow:0 0 0 2px #000}
+.pilaster:before{top:112px}.pilaster:after{bottom:28px}
 
-/* lintel: the inscription over the door. Compact; the claim below is the reason you came. */
-.lintel{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:22px 0 14px;gap:24px}
-.lintel .seat{font-size:14px;color:var(--ink-2);font-style:italic}
+.lintel{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:20px 0 12px;gap:24px}
+.lintel .seat{font-size:14px;color:var(--ink-2);font-style:italic;line-height:1.45}
 .lintel .seat b{font-style:normal;font-weight:600;color:var(--ink)}
 .lintel .right{text-align:right}
 .mark{display:flex;align-items:center;gap:18px}
-.mark svg.wyrm{width:74px;height:74px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.9)) drop-shadow(0 0 14px rgba(249,222,153,.18))}
+.mark svg.wyrm{width:70px;height:70px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.9)) drop-shadow(0 0 14px rgba(249,222,153,.18))}
 .wordmark{display:flex;flex-direction:column;align-items:center}
-.wordmark .gw{font-family:var(--f-d);font-weight:700;font-size:30px;letter-spacing:.14em;line-height:1;padding-left:.14em}
-.wordmark .sep{display:flex;align-items:center;gap:8px;width:100%;margin:7px 0 6px}
+.wordmark .gw{font-family:var(--f-d);font-weight:700;font-size:28px;letter-spacing:.14em;line-height:1;padding-left:.14em}
+.wordmark .sep{display:flex;align-items:center;gap:8px;width:100%;margin:6px 0 5px}
 .wordmark .sep i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--g2),transparent)}
 .wordmark .sep b{width:6px;height:6px;transform:rotate(45deg);background:var(--g3)}
-.wordmark .dy{font-family:var(--f-d);font-weight:500;font-size:13px;letter-spacing:.62em;padding-left:.62em;color:var(--g2)}
-.stamp{display:inline-block;font:600 12px/1 var(--f-m);letter-spacing:.14em;text-transform:uppercase;color:var(--g3);
-  border:1px solid var(--g1);padding:5px 7px 4px;background:rgba(117,80,36,.12);vertical-align:middle}
-.stamp.absent{color:var(--ink-2);border-color:var(--mortar);background:transparent}
+.wordmark .dy{font-family:var(--f-d);font-weight:500;font-size:12px;letter-spacing:.62em;padding-left:.62em;color:var(--g2)}
 
-/* ---------- the wall of crests: six doors on a forged rail ---------- */
-.wall{position:relative;padding:18px 0 10px}
-.wall .rail{position:absolute;left:0;right:0;top:30px;height:3px;background:var(--metal);box-shadow:0 1px 0 #000,0 2px 0 rgba(255,244,206,.06)}
-.doors{position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:0;padding:0;list-style:none}
-.door{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 4px 8px;min-height:44px;position:relative;
-  transition:transform .15s ease}
-.door:hover{transform:translateY(-2px)}
-.door .ring{width:10px;height:10px;border-radius:50%;border:2px solid var(--g2);background:#000;margin-bottom:-4px;box-shadow:0 1px 0 #000}
-.door svg.crest{width:64px;height:76px;filter:drop-shadow(0 3px 3px rgba(0,0,0,.9))}
+/* the rail of arms: five doors and one dock, compact — the claim is the reason you came */
+.wall{position:relative;padding:14px 0 6px}
+.wall .rail{position:absolute;left:0;right:0;top:22px;height:3px;background:var(--metal);box-shadow:0 1px 0 #000,0 2px 0 rgba(255,244,206,.06)}
+.doors{position:relative;display:grid;grid-template-columns:repeat(5,1fr) 1.3fr;gap:10px;margin:0;padding:0;list-style:none}
+.door{display:flex;align-items:flex-start;gap:10px;min-height:52px;padding:2px 2px 0;position:relative;transition:transform .15s ease}
+.door .name{padding-top:16px}
+.door:hover{transform:translateY(-1px)}
+.door .hang{display:flex;flex-direction:column;align-items:center;flex:none}
+.door .ring{width:9px;height:9px;border-radius:50%;border:2px solid var(--g2);background:#000;margin-bottom:-2px;box-shadow:0 1px 0 #000}
+.door svg.crest{width:42px;height:50px;filter:drop-shadow(0 3px 3px rgba(0,0,0,.9))}
+.door svg.sillc{width:52px;height:44px;margin-top:4px}
 .door:hover svg.crest{filter:drop-shadow(0 3px 3px rgba(0,0,0,.9)) drop-shadow(0 0 10px rgba(249,222,153,.35))}
-.door .name{font-family:var(--f-d);font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;text-align:center;
-  color:var(--ink);line-height:1.35;max-width:150px}
-.door .name small{display:block;font-family:var(--f-t);font-weight:400;font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink-3);font-style:italic;margin-top:2px}
+.door .name{font-family:var(--f-d);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);line-height:1.3}
+.door .name small{display:block;font-family:var(--f-t);font-weight:400;font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink-2);font-style:italic;margin-top:1px}
+.door.dock{border-left:1px solid var(--mortar);padding-left:12px}
+.door.dock .name small b{font-style:normal;font-weight:600;color:var(--ink-2)}
 
-/* ---------- content grid ---------- */
-.main{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:28px;margin-top:26px;align-items:start}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;margin-top:20px;align-items:start}
 .sect{display:flex;align-items:center;gap:14px;margin:0 0 12px}
-.sect .ins-sm{white-space:nowrap}
 .sect i{flex:1;height:1px;background:linear-gradient(90deg,var(--g1),rgba(117,80,36,.15))}
-.sect .count{font:500 13px var(--f-m);color:var(--ink-3)}
+.sect .count{font:500 13px var(--f-m);color:var(--ink-2)}
+.sect .more{font:500 13px var(--f-m);color:var(--g2);border-bottom:1px dotted var(--g1)}
 
-/* ---------- severity carried by the FRAME SHAPE ----------
-   summons  = gonfalon: hung from a rod, pointed hem   (needs you)
-   standing = cut-stone block: chamfered corners       (standing claims)
-   ledger   = carved tablet: plain joinery             (facts, no claim)
-   gate     = arch: the door is shut                   (quiet state)
----------------------------------------------------------- */
+/* frames: severity by SHAPE and, deliberately, by edge brightness in the same order */
 .frame{position:relative}
 .frame>.skin{position:absolute;inset:0;background:var(--metal);pointer-events:none}
 .frame>.skin:after{content:"";position:absolute;inset:2px;background:linear-gradient(180deg,var(--stone-2),var(--stone))}
 .frame>.body{position:relative;z-index:1}
-
 .gonfalon{--hem:28px;margin-top:10px}
+.gonfalon>.skin{background:var(--metal-hi);box-shadow:0 0 18px rgba(249,222,153,.12)}
 .gonfalon>.skin,.gonfalon>.skin:after{clip-path:polygon(0 0,100% 0,100% calc(100% - var(--hem)),50% 100%,0 calc(100% - var(--hem)))}
 .gonfalon>.skin:after{background:linear-gradient(180deg,#171309,var(--stone) 40%)}
-.gonfalon>.rod{position:absolute;left:-12px;right:-12px;top:-6px;height:5px;background:var(--metal);z-index:2;
-  box-shadow:0 1px 0 #000,0 2px 3px rgba(0,0,0,.8)}
+.gonfalon>.rod{position:absolute;left:-8px;right:-8px;top:-7px;height:5px;background:var(--metal-hi);z-index:2;box-shadow:0 -1px 0 #000}
 .gonfalon>.rod:before,.gonfalon>.rod:after{content:"";position:absolute;top:-5px;width:14px;height:14px;transform:rotate(45deg);background:var(--metal-v);box-shadow:0 0 0 2px #000}
-.gonfalon>.rod:before{left:-8px}.gonfalon>.rod:after{right:-8px}
-.gonfalon>.body{padding:34px 36px calc(var(--hem) + 26px)}
-
+.gonfalon>.rod:before{left:-4px}.gonfalon>.rod:after{right:-4px}
+.gonfalon>.body{padding:32px 36px calc(var(--hem) + 22px)}
 .block{--ch:12px}
+.block>.skin{background:var(--metal-lo)}
 .block>.skin,.block>.skin:after{clip-path:polygon(var(--ch) 0,calc(100% - var(--ch)) 0,100% var(--ch),100% calc(100% - var(--ch)),calc(100% - var(--ch)) 100%,var(--ch) 100%,0 calc(100% - var(--ch)),0 var(--ch))}
 .block>.body{padding:20px 22px 18px}
-
 .tablet>.skin{background:linear-gradient(180deg,var(--mortar),#1a150e)}
 .tablet>.skin:after{inset:1px;background:var(--stone)}
 .tablet>.body{padding:6px 22px 8px}
-
 .gate>.skin,.gate>.skin:after{border-radius:160px 160px 0 0}
 .gate>.skin:after{inset:2px 2px 0}
 .gate{margin-top:10px}
-.gate>.body{padding:54px 36px 30px;text-align:center}
+.gate>.body{padding:54px 36px 34px;text-align:center}
 
-/* ---------- the summons ---------- */
 .summons .kicker{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .summons h1{margin:0;font-family:var(--f-d);font-weight:600;font-size:34px;letter-spacing:.04em;line-height:1.15;color:var(--ink)}
 .summons h1 .n{font-family:var(--f-m);font-weight:600;letter-spacing:0}
-.summons .cost{display:flex;align-items:baseline;gap:14px;margin:18px 0 6px}
+.summons .who{margin:10px 0 0;font-size:18px;color:var(--ink)}
+.summons .cost{display:flex;align-items:baseline;gap:14px;margin:14px 0 4px}
 .summons .cost .big{font:600 64px/1 var(--f-m);letter-spacing:-.02em}
-.summons .cost .unit{font-family:var(--f-d);font-weight:600;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--g2);line-height:1.5;max-width:220px}
-.summons p{margin:8px 0 0;font-size:17px;max-width:62ch;color:var(--ink)}
-.summons p .num{font-size:15px;font-weight:500;color:var(--ink)}
-.summons .act{display:inline-flex;align-items:center;gap:10px;margin-top:20px;min-height:44px;padding:0 18px;
-  font-family:var(--f-d);font-weight:600;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--g3);
-  border:1px solid var(--g1);background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.06));box-shadow:inset 0 1px 0 rgba(255,244,206,.12)}
+.summons .cost .unit{font-family:var(--f-d);font-weight:600;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--g2);line-height:1.5}
+.summons p{margin:8px 0 0;font-size:17px;max-width:64ch;color:var(--ink)}
+.summons p .num{font-size:15px;font-weight:500}
+.summons .caveat{font-size:15px;color:var(--ink-2);font-style:italic;max-width:70ch}
+.summons .caveat b{font-style:normal;font-weight:600;color:var(--ink)}
+.summons .act{display:inline-flex;align-items:center;gap:10px;margin-top:18px;min-height:44px;padding:0 18px;font-family:var(--f-d);font-weight:600;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--g3);border:1px solid var(--g1);background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.06));box-shadow:inset 0 1px 0 rgba(255,244,206,.12)}
 .summons .act:hover{border-color:var(--g2);color:var(--g4)}
 .summons .act svg{width:16px;height:16px}
 
-/* position crest (small heraldic badge, colour = the position's own token) */
-.pos{display:inline-grid;place-items:center;width:34px;height:40px;position:relative;flex:none}
+.pos{--c:var(--pos-none);display:inline-grid;place-items:center;width:34px;height:40px;position:relative;flex:none;overflow:hidden}
 .pos svg{position:absolute;inset:0;width:100%;height:100%}
-.pos b{position:relative;font:600 12px var(--f-m);letter-spacing:.02em;color:var(--c);transform:translateY(-2px)}
+.pos b{position:relative;font:600 12px var(--f-m);letter-spacing:.02em;color:var(--c);transform:translateY(-2px);max-width:30px;overflow:hidden}
 .pos.sm{width:30px;height:35px}
 
-/* bye profile */
-.bye{margin-top:26px;padding-top:18px;border-top:1px solid var(--mortar)}
-.bye .hd{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:10px}
-.bye .hd .ins-sm{color:var(--g2)}
+/* the bye strip: marks are ivory dots (>=3:1 non-text) and one gilded diamond; stems and axis sit at 3:1 */
+.bye{margin-top:24px;padding-top:16px;border-top:1px solid var(--mortar)}
+.bye .hd{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:6px}
 .bye .hd .how{font-size:14px;color:var(--ink-2);font-style:italic}
-.bars{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;height:150px;align-items:end;
-  border-bottom:1px solid var(--mortar);padding:0 6px}
-.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}
-.bar .v{font:500 13px var(--f-m);color:var(--ink-3);margin-bottom:5px}
-.bar .f{width:24px;min-height:3px;height:calc(var(--p) * 1%);background:linear-gradient(180deg,#4a4237,#2e2921);border-radius:4px 4px 0 0}
-.bar.worst .v{color:var(--ink);font-weight:600}
-.bar.worst .f{background:linear-gradient(180deg,var(--g3),var(--g2) 40%,var(--g1));box-shadow:0 0 12px rgba(249,222,153,.25)}
-.bars+.wk{display:grid;grid-template-columns:repeat(6,1fr);padding:7px 6px 0}
-.wk span{text-align:center;font:500 12px var(--f-m);letter-spacing:.08em;color:var(--ink-3)}
+.pts{display:grid;grid-template-columns:repeat(6,1fr);height:134px;align-items:end;border-bottom:1px solid var(--axis);padding:0 6px;margin-top:4px}
+.pt{position:relative;height:100px}
+.pt .stem{position:absolute;left:50%;bottom:0;width:2px;height:calc(var(--p) * 1%);background:var(--axis);transform:translateX(-50%)}
+.pt .dot{position:absolute;left:50%;bottom:calc(var(--p) * 1% - 5px);width:10px;height:10px;border-radius:50%;background:var(--mark);transform:translateX(-50%);box-shadow:0 0 0 2px var(--stone)}
+.pt .v{position:absolute;left:50%;bottom:calc(var(--p) * 1% + 9px);transform:translateX(-50%);font:500 13px var(--f-m);color:var(--ink-2)}
+.pt.worst .dot{width:16px;height:16px;border-radius:0;transform:translateX(-50%) rotate(45deg);bottom:calc(var(--p) * 1% - 8px);background:var(--metal-v);box-shadow:0 0 0 2px var(--stone),0 0 14px rgba(249,222,153,.45)}
+.pt.worst .v{color:var(--ink);font-weight:600;bottom:calc(var(--p) * 1% + 13px)}
+.wk{display:grid;grid-template-columns:repeat(6,1fr);padding:7px 6px 0}
+.wk span{text-align:center;font:500 12px var(--f-m);letter-spacing:.08em;color:var(--ink-2)}
 .wk span.worst{color:var(--g3)}
 .bye .cap{margin:12px 0 0;font-size:14px;color:var(--ink-2);font-style:italic}
 
-/* ---------- standing claims ---------- */
 .standing{display:flex;flex-direction:column;gap:12px}
 .claim{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
-.claim h3{margin:0;font-family:var(--f-d);font-weight:600;font-size:16px;letter-spacing:.06em;color:var(--ink);line-height:1.3}
+.claim h2{margin:0;font-family:var(--f-d);font-weight:600;font-size:16px;letter-spacing:.06em;color:var(--ink);line-height:1.3}
 .claim .fact{display:flex;align-items:baseline;gap:8px;margin:6px 0 4px}
 .claim .fact .big{font:600 30px/1 var(--f-m);color:var(--ink)}
 .claim .fact .lbl{font-size:15px;color:var(--ink-2)}
 .claim p{margin:0;font-size:15px;color:var(--ink-2)}
+.claim p b{font-weight:600;color:var(--ink)}
 .claim .floor{display:inline-block;margin-top:8px;font:500 12px var(--f-m);letter-spacing:.06em;color:var(--g2);border-bottom:1px dotted var(--g1)}
 .claim .go{display:inline-flex;align-items:center;min-height:44px;margin:4px 0 -10px;font-family:var(--f-d);font-weight:600;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--g2)}
 .claim .go:hover{color:var(--g3)}
 
-/* ---------- the ledger ---------- */
 .ledger{margin-top:22px}
-.row{display:grid;grid-template-columns:112px 1fr;gap:12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--mortar)}
+.row{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--mortar)}
 .row:last-child{border-bottom:0}
 .row .k{font-family:var(--f-d);font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--g2)}
-.row .v{font-size:15px;color:var(--ink)}
+.row .v{font-size:15px;color:var(--ink);line-height:1.45}
 .row .v .num{font-weight:500}
 .row .v .why{font-size:14px;color:var(--ink-2);font-style:italic}
 .row .v .why:before{content:" · ";color:var(--ink-3);font-style:normal}
-.row .v .dash{font:500 16px var(--f-m);color:var(--ink-2);margin-right:6px}
-.row .v .stamp{margin-left:8px}
+.row .v .stamp{margin-right:4px}
 
-/* ---------- plinth / basis line ---------- */
 .plinth{margin-top:34px;padding-top:16px;display:flex;justify-content:space-between;gap:24px;align-items:baseline;color:var(--ink-2);font-size:14px;font-style:italic}
 .plinth b{font-style:normal;font-weight:600;color:var(--ink)}
-.plinth .toggle{font-family:var(--f-d);font-style:normal;font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--g2);
-  min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;cursor:pointer;background:none;border:0;padding:0}
+.plinth .toggle{font-family:var(--f-d);font-style:normal;font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--g2);min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;cursor:pointer;background:none;border:0;padding:0}
 .plinth .toggle:hover{color:var(--g3)}
 
-/* ---------- quiet state ---------- */
 .q{display:none}
 html.quiet .q{display:block}
+html.quiet span.q{display:inline}
 html.quiet .live{display:none}
-.gate .kicker{justify-content:center}
-.gate h1{margin:0;font-family:var(--f-d);font-weight:600;font-size:34px;letter-spacing:.06em;line-height:1.15;color:var(--ink)}
-.gate p{margin:14px auto 0;font-size:17px;max-width:48ch;color:var(--ink-2)}
-.gate .close{display:inline-flex;align-items:center;gap:12px;margin-top:22px;min-height:48px;padding:0 22px;
-  font-family:var(--f-d);font-weight:600;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#000;
-  background:var(--metal-text);box-shadow:0 1px 0 rgba(255,244,206,.5) inset,0 3px 10px rgba(0,0,0,.7)}
+.gate h1{margin:6px 0 0;font-family:var(--f-d);font-weight:600;font-size:34px;letter-spacing:.06em;line-height:1.15;color:var(--ink)}
+.gate p{margin:14px auto 0;font-size:17px;max-width:52ch;color:var(--ink)}
+.gate p .fn{font-size:14px;color:var(--ink-2);font-style:italic;margin-left:4px}
+.gate .close{display:inline-flex;align-items:center;gap:12px;margin-top:22px;min-height:48px;padding:0 22px;font-family:var(--f-d);font-weight:600;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#000;background:var(--metal-text);box-shadow:0 1px 0 rgba(255,244,206,.5) inset,0 3px 10px rgba(0,0,0,.7)}
 .gate .close svg{width:18px;height:18px}
-html.quiet .bar .f{background:linear-gradient(180deg,#4a4237,#2e2921);box-shadow:none}
-html.quiet .bar .v{color:var(--ink-3);font-weight:500}
-html.quiet .wk span{color:var(--ink-3)}
-.calm{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
-.calm .laurel{width:34px;height:40px;flex:none}
+.gate .qbye{margin:26px auto 0;font-size:15px;color:var(--ink-2);font-style:italic;max-width:60ch}
+.calm .row .v{font-size:15px}
+
 </style>
 </head>
 <body>
@@ -246,11 +211,17 @@ html.quiet .wk span{color:var(--ink-3)}
   <ellipse cx="79" cy="19" rx="3" ry="2" fill="#120c04"/>
   <circle cx="80" cy="18.6" r=".9" fill="#fff4ce"/>
 </symbol>
-    <!-- heater shield -->
+    <!-- heater shield: a door -->
     <symbol id="shield" viewBox="0 0 100 120">
       <path d="M4 4 H96 V58 C96 88 74 108 50 117 C26 108 4 88 4 58 Z" fill="url(#goldx)"/>
       <path d="M8 8 H92 V58 C92 85 72 104 50 112.5 C28 104 8 85 8 58 Z" fill="url(#stone)"/>
       <path d="M12 12 H88 V56" fill="none" stroke="rgba(255,244,206,.12)" stroke-width="1.5"/>
+    </symbol>
+    <!-- hearth sill: the dock, which is not a door -->
+    <symbol id="sill" viewBox="0 0 120 100">
+      <path d="M4 96 H116 V70 C116 64 110 60 104 60 H16 C10 60 4 64 4 70 Z" fill="url(#goldx)"/>
+      <path d="M8 92 H112 V72 C112 68 108 64 104 64 H16 C12 64 8 68 8 72 Z" fill="url(#stone)"/>
+      <path d="M60 6 C72 22 80 30 72 46 C80 42 80 38 82 30 C92 46 84 60 68 64 H52 C36 60 32 44 44 32 C44 44 52 48 52 48 C44 32 52 18 60 6 Z" fill="url(#gold)" stroke="#2a1b08" stroke-width=".8" stroke-linejoin="round"/>
     </symbol>
     <symbol id="posshield" viewBox="0 0 34 40">
       <path d="M2 2 H32 V20 C32 30 24 36 17 38.5 C10 36 2 30 2 20 Z" fill="#000" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -267,160 +238,84 @@ html.quiet .wk span{color:var(--ink-3)}
       <path d="M8 34 L6 14 L16 22 L24 10 L32 22 L42 14 L40 34 Z"/><rect x="8" y="36" width="32" height="4"/></g><circle cx="24" cy="10" r="2.2" fill="#fff4ce"/></symbol>
     <symbol id="c-audit" viewBox="0 0 48 48"><g fill="none" stroke="url(#gold)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="16" cy="18" r="8"/><path d="M22 24 L40 42 M34 36 L38 32 M30 32 L34 28"/><circle cx="16" cy="18" r="2.5" fill="url(#gold)"/></g></symbol>
-    <symbol id="c-pryt" viewBox="0 0 48 48"><g fill="none" stroke="url(#gold)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M24 6 C30 14 34 18 30 26 C34 24 34 22 35 18 C40 26 36 34 28 36 H20 C12 34 10 26 16 20 C16 26 20 28 20 28 C16 20 20 12 24 6 Z" fill="url(#gold)"/><path d="M10 38 H38 M14 42 H34"/></g></symbol>
     <symbol id="c-close" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 44 V18 C8 8 16 4 24 4 C32 4 40 8 40 18 V44"/><path d="M8 44 H40 M14 44 V16 M24 44 V10 M34 44 V16"/><path d="M8 28 H40"/></g></symbol>
     <symbol id="c-arrow" viewBox="0 0 16 16"><path d="M2 8 H13 M9 3 L14 8 L9 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="c-laurel" viewBox="0 0 34 40"><g fill="none" stroke="#ba9561" stroke-width="1.6" stroke-linecap="round">
-      <path d="M17 36 C6 32 4 20 8 8"/><path d="M17 36 C28 32 30 20 26 8"/>
-      <path d="M8 26 C4 26 3 22 5 20 C8 22 8 24 8 26 Z M9 18 C5 18 4 14 6 12 C9 14 9 16 9 18 Z M26 26 C30 26 31 22 29 20 C26 22 26 24 26 26 Z M25 18 C29 18 30 14 28 12 C25 14 25 16 25 18 Z" fill="#755024"/>
-      <path d="M12 20 L16 25 L24 13" stroke="#f9de99" stroke-width="2.2"/></g></symbol>
   </defs>
 </svg>
-
 <div class="hall">
   <span class="pilaster l" aria-hidden="true"></span><span class="pilaster r" aria-hidden="true"></span>
-
-  <!-- LINTEL -->
   <header class="lintel">
-    <div class="seat">Seat <b class="num">5</b> · a replayed battery seat<br><span class="stamp">Constructed</span></div>
+    <div class="seat">Seat <b class="num">1</b> · Team <b class="num">1</b><br>a replayed battery seat</div>
     <a class="mark" href="#" aria-label="Gold Wyrm Dynasty">
       <svg class="wyrm" aria-hidden="true"><use href="#wyrm"/></svg>
       <span class="wordmark"><span class="gw gild">Gold Wyrm</span><span class="sep"><i></i><b></b><i></i></span><span class="dy">Dynasty</span></span>
     </a>
-    <div class="seat right">League · <span class="num" style="color:var(--ink-2)">—</span> name not in this capture<br>Pool <b class="num">5,357</b> players</div>
+    <div class="seat right">League <span class="dash">—</span>name not in this capture<br><b class="num">5,357</b> players ranked for this league</div>
   </header>
   <div class="rule fade"><span class="dia"></span></div>
 
-  <!-- THE WALL OF CRESTS: the six doors that exist, hung on a forged rail -->
   <nav class="wall" aria-label="Rooms of the Keep">
     <span class="rail" aria-hidden="true"></span>
     <ul class="doors">
-      <li><a class="door" href="#"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-matchup"/></svg></svg><span class="name">Matchup<small>this week · lineup</small></span></a></li>
-      <li><a class="door" href="#"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-roster"/></svg></svg><span class="name">Roster Maintenance<small>depth · free agents</small></span></a></li>
-      <li><a class="door" href="#"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-draft"/></svg></svg><span class="name">Draft Room<small>boards · pick counts</small></span></a></li>
-      <li><a class="door" href="#"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-league"/></svg></svg><span class="name">League<small>standings · trades</small></span></a></li>
-      <li><a class="door" href="#"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-audit"/></svg></svg><span class="name">Import Audit<small>sources · freshness</small></span></a></li>
-      <li><a class="door" href="#"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-pryt"/></svg></svg><span class="name">The Prytaneum<small>the council · four voices</small></span></a></li>
+      <li><a class="door" href="#"><span class="hang"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-matchup"/></svg></svg></span><span class="name">Matchup<small>lineup readiness · projections</small></span></a></li><li><a class="door" href="#"><span class="hang"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-roster"/></svg></svg></span><span class="name">Roster Maintenance<small>depth · free agents · trade calculator</small></span></a></li><li><a class="door" href="#"><span class="hang"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-draft"/></svg></svg></span><span class="name">Draft Room<small>boards · mock drafts</small></span></a></li><li><a class="door" href="#"><span class="hang"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-league"/></svg></svg></span><span class="name">League<small>standings · depth map · picks acquired</small></span></a></li><li><a class="door" href="#"><span class="hang"><span class="ring"></span><svg class="crest" viewBox="0 0 100 120" aria-hidden="true"><use href="#shield"/><svg x="20" y="18" width="60" height="60"><use href="#c-audit"/></svg></svg></span><span class="name">Import Audit<small>what Sleeper returned</small></span></a></li>
+      <li><a class="door dock" href="#"><span class="hang"><svg class="crest sillc" viewBox="0 0 120 100" aria-hidden="true"><use href="#sill"/></svg></span><span class="name">The Prytaneum<small><b>dock</b> under every room · the council, four voices</small></span></a></li>
     </ul>
   </nav>
 
   <main class="main">
-    <!-- LEFT: the summons -->
     <section>
-      <div class="sect"><span class="ins-sm">Needs you</span><i></i><span class="count live">1 of 1</span><span class="count q">0</span></div>
-
-      <!-- live: gonfalon -->
+      <div class="sect"><span class="ins-sm">Open</span><i></i><span class="count live">1</span><span class="count q">0</span></div>
       <article class="frame gonfalon summons live" aria-labelledby="h-summons">
         <span class="rod" aria-hidden="true"></span><span class="skin" aria-hidden="true"></span>
-        <div class="body">
-          <div class="kicker"><span class="pos" style="--c:var(--pos-te)"><svg style="color:var(--pos-te)"><use href="#posshield"/></svg><b>TE</b></span><span class="ins-sm">Bye collision · a starter sits</span></div>
-          <h1 id="h-summons">Week <span class="n">6</span> is the one that hurts.</h1>
-          <div class="cost"><span class="big gild num">95</span><span class="unit">trade-value points lost that week</span></div>
-          <p>One starter sits in week <span class="num">6</span>, and <span class="num">40%</span> of the season's entire bye damage lands there. Nothing else on your schedule comes close — the next worst week costs <span class="num">56</span>.</p>
-          <a class="act" href="#">Open Matchup <svg aria-hidden="true"><use href="#c-arrow"/></svg></a>
-
-          <div class="bye">
-            <div class="hd"><span class="ins-sm">Bye damage by week</span><span class="how">value lost, not bodies lost</span></div>
-            <div class="bars" role="img" aria-label="Bye damage by week in trade-value points: week 6 95, week 7 8, week 8 51, week 9 4, week 10 56, week 11 23">
-              <div class="bar worst" style="--p:100"><span class="v">95</span><span class="f"></span></div>
-              <div class="bar" style="--p:8.4"><span class="v">8</span><span class="f"></span></div>
-              <div class="bar" style="--p:53.7"><span class="v">51</span><span class="f"></span></div>
-              <div class="bar" style="--p:4.2"><span class="v">4</span><span class="f"></span></div>
-              <div class="bar" style="--p:58.9"><span class="v">56</span><span class="f"></span></div>
-              <div class="bar" style="--p:24.2"><span class="v">23</span><span class="f"></span></div>
-            </div>
-            <div class="wk"><span class="worst">WK 6</span><span>WK 7</span><span>WK 8</span><span>WK 9</span><span>WK 10</span><span>WK 11</span></div>
-            <p class="cap">Measured by solving your lineup with each week's byes removed and pricing the difference in trade value. Weeks <span class="num">1–5</span> and <span class="num">12+</span> carry no byes for this roster.</p>
-          </div>
-        </div>
+        <div class="body"><div class="kicker"><span class="pos" style="--c:var(--pos-rb,var(--pos-none))"><svg style="color:var(--c)"><use href="#posshield"/></svg><b>RB</b></span><span class="ins-sm">Bye collision · measured</span></div>
+        <h1 id="h-summons">Week <span class="n">6</span> is the one that hurts.</h1>
+        <p class="who">Jahmyr Gibbs, RB, sits in week <span class="num">6</span>. No bench player fills the slot, so it stays empty.</p>
+        <div class="cost"><span class="big gild num">95</span><span class="unit">trade-value points lost<br>— his whole value</span></div>
+        <p><span class="num">40%</span> of the season's bye cost (<span class="num">237</span> points over six weeks) lands in week <span class="num">6</span>. The next worst week is <span class="num">10</span>, at <span class="num">56</span>.</p>
+        <p class="caveat"><span class="dash">—</span><b>now:</b> not in this capture. A replayed draft has no point in a season, so nothing here says week <span class="num">6</span> is still ahead. This is the season's shape, not a deadline.</p>
+        <a class="act" href="#">Open Matchup <svg aria-hidden="true"><use href="#c-arrow"/></svg></a>
+        <div class="bye">
+          <div class="hd"><span class="ins-sm">Bye cost by week</span><span class="how">value lost, not bodies lost</span></div>
+          <div class="pts" role="img" aria-label="Bye damage by week in trade-value points: week 6 95, week 7 8, week 8 51, week 9 4, week 10 56, week 11 23; total 237"><div class="pt worst" style="--p:100.0"><span class="v">95</span><span class="stem"></span><span class="dot"></span></div><div class="pt" style="--p:8.4"><span class="v">8</span><span class="stem"></span><span class="dot"></span></div><div class="pt" style="--p:53.7"><span class="v">51</span><span class="stem"></span><span class="dot"></span></div><div class="pt" style="--p:4.2"><span class="v">4</span><span class="stem"></span><span class="dot"></span></div><div class="pt" style="--p:58.9"><span class="v">56</span><span class="stem"></span><span class="dot"></span></div><div class="pt" style="--p:24.2"><span class="v">23</span><span class="stem"></span><span class="dot"></span></div></div><div class="wk"><span class="worst">WK 6</span><span class="">WK 7</span><span class="">WK 8</span><span class="">WK 9</span><span class="">WK 10</span><span class="">WK 11</span></div>
+          <p class="cap">The lineup solved with each week's byes removed, priced in trade value. Weeks <span class="num">1–5</span> and <span class="num">12+</span> carry no byes for this roster.</p>
+        </div></div>
       </article>
-
-      <!-- quiet: the gate is shut -->
       <article class="frame gate q" aria-labelledby="h-gate">
         <span class="skin" aria-hidden="true"></span>
-        <div class="body">
-          <div class="kicker summons"><span class="ins-sm">Nothing stands against you this week</span></div>
-          <h1 id="h-gate">Nothing needs you.</h1>
-          <p>No slot lacks a body, no position is thin against this league, and the byes fall evenly. You can close the Keep.</p>
-          <a class="close" href="#">Close the Keep <svg aria-hidden="true"><use href="#c-close"/></svg></a>
-          <div class="bye" style="text-align:left">
-            <div class="hd"><span class="ins-sm">Bye damage by week <span class="stamp" style="margin-left:8px">Constructed</span></span><span class="how">an even profile, drawn for the demo</span></div>
-            <div class="bars" role="img" aria-label="Constructed even bye profile">
-              <div class="bar" style="--p:60"><span class="v">24</span><span class="f"></span></div>
-              <div class="bar" style="--p:52"><span class="v">21</span><span class="f"></span></div>
-              <div class="bar" style="--p:65"><span class="v">26</span><span class="f"></span></div>
-              <div class="bar" style="--p:47"><span class="v">19</span><span class="f"></span></div>
-              <div class="bar" style="--p:57"><span class="v">23</span><span class="f"></span></div>
-              <div class="bar" style="--p:55"><span class="v">22</span><span class="f"></span></div>
-            </div>
-            <div class="wk"><span>WK 6</span><span>WK 7</span><span>WK 8</span><span>WK 9</span><span>WK 10</span><span>WK 11</span></div>
-            <p class="cap">No week carries more than <span class="num">19%</span> of the season's bye damage, so no single week is worth a move.</p>
-          </div>
-        </div>
+        <div class="body"><span class="ins-sm">Checks · holes · depth · byes · starters</span>
+        <h1 id="h-gate">Nothing is open.</h1>
+        <p>Four checks, nothing found. Starters are constructed<span class="fn">(no lineup was submitted)</span>. Record <span class="dash">—</span>absent.</p>
+        <a class="close" href="#">Close the Keep <svg aria-hidden="true"><use href="#c-close"/></svg></a>
+        <p class="qbye"><span class="stamp">Constructed</span> Byes: no week carries more than a fifth of the season's bye cost, so no week stands out.</p></div>
       </article>
     </section>
-
-    <!-- RIGHT: standing claims + the ledger -->
     <aside>
-      <div class="sect"><span class="ins-sm">Also standing</span><i></i><span class="count live">2</span><span class="count q">0</span></div>
-      <div class="standing live">
-        <article class="frame block claim-wrap">
-          <span class="skin" aria-hidden="true"></span>
-          <div class="body claim">
-            <span class="pos" style="--c:var(--pos-def)"><svg style="color:var(--pos-def)"><use href="#posshield"/></svg><b>DEF</b></span>
-            <div>
-              <h3>Thin at DEF</h3>
-              <div class="fact"><span class="big">1</span><span class="lbl">rostered</span></div>
-              <p>Bottom of this league at the position. One injury or bye and the slot is empty.</p>
-              <a class="go" href="#">Roster Maintenance&nbsp;→</a>
-            </div>
-          </div>
-        </article>
-        <article class="frame block">
-          <span class="skin" aria-hidden="true"></span>
-          <div class="body claim">
-            <span class="pos" style="--c:var(--pos-te)"><svg style="color:var(--pos-te)"><use href="#posshield"/></svg><b>TE</b></span>
-            <div>
-              <h3>Thin at TE</h3>
-              <div class="fact"><span class="big">2</span><span class="lbl">rostered</span></div>
-              <p>Bottom of this league at the position. Only <span class="num">1</span> of the <span class="num">2</span> could be priced, so the comparison is a floor, not a total.</p>
-              <span class="floor">≥ floor · 1 of 2 priced</span><br>
-              <a class="go" href="#">Roster Maintenance&nbsp;→</a>
-            </div>
-          </div>
-        </article>
-      </div>
-      <article class="frame block q">
-        <span class="skin" aria-hidden="true"></span>
-        <div class="body calm">
-          <svg class="laurel" aria-hidden="true"><use href="#c-laurel"/></svg>
-          <div>
-            <h3 style="margin:0;font-family:var(--f-d);font-weight:600;font-size:16px;letter-spacing:.06em">No position is thin</h3>
-            <p style="margin:6px 0 0;font-size:15px;color:var(--ink-2)">Every position is at or above its league peers, and every slot has a body who can fill it.</p>
-          </div>
-        </div>
-      </article>
-
+      <div class="sect"><span class="ins-sm">Can wait</span><i></i><span class="count live">2</span><span class="more live" hidden>+0 hidden</span><span class="count q">0</span></div>
+      <div class="standing live"><article class="frame block"><span class="skin" aria-hidden="true"></span>
+          <div class="body claim"><span class="pos" style="--c:var(--pos-def,var(--pos-none))"><svg style="color:var(--c)"><use href="#posshield"/></svg><b>DEF</b></span><div>
+            <h2>Thin at DEF</h2>
+            <div class="fact"><span class="big">1</span><span class="lbl">rostered</span></div>
+            <p><b>Weak</b> — at or below <span class="num">0.7×</span> this league's average DEF room, by <b>count</b>. Three peers are unpriced, so value was not compared.</p>
+            <a class="go" href="#">League · depth map&nbsp;→</a></div></div></article>
+        <article class="frame block"><span class="skin" aria-hidden="true"></span>
+          <div class="body claim"><span class="pos" style="--c:var(--pos-te,var(--pos-none))"><svg style="color:var(--c)"><use href="#posshield"/></svg><b>TE</b></span><div>
+            <h2>Thin at TE</h2>
+            <div class="fact"><span class="big">2</span><span class="lbl">rostered</span></div>
+            <p><b>Weak</b> — at or below <span class="num">0.7×</span> this league's average TE room, by <b>value</b>. One of the two could not be priced, so the room's value is a floor.</p>
+            <span class="floor">≥ 23 · 1 of 2 priced</span><br>
+            <a class="go" href="#">League · depth map&nbsp;→</a></div></div></article></div>
+      <article class="frame tablet q"><span class="skin" aria-hidden="true"></span>
+        <div class="body calm"><div class="row"><span class="k">Depth</span><span class="v">No position room is thin against this league<span class="why">no label at or below 0.7× the league mean; Average is not "above peers"</span></span></div></div></article>
       <div class="sect" style="margin-top:22px"><span class="ins-sm">The ledger</span><i></i></div>
-      <article class="frame tablet">
-        <span class="skin" aria-hidden="true"></span>
-        <div class="body">
-          <div class="row"><span class="k">Lineup</span><span class="v"><span class="num">10</span> of <span class="num">10</span> starters filled <span class="stamp">Constructed</span><span class="why">a replayed seat, not a live roster</span></span></div>
-          <div class="row"><span class="k">Holes</span><span class="v">None<span class="why">every slot has a rostered body who can fill it</span></span></div>
-          <div class="row"><span class="k">Hurt</span><span class="v"><span class="dash">—</span>not measured<span class="why">material injuries on starters are read off a live roster only</span></span></div>
-          <div class="row"><span class="k">Record</span><span class="v"><span class="dash">—</span>absent<span class="why">no capture holds a roster's result</span></span></div>
-          <div class="row"><span class="k">Picks</span><span class="v"><span class="dash">—</span>not in this capture<span class="why">counts only, never prices, when it is</span></span></div>
-        </div>
-      </article>
+      <article class="frame tablet"><span class="skin" aria-hidden="true"></span><div class="body"><div class="row"><span class="k">Lineup</span><span class="v"><span class="stamp">Constructed</span> <span class="num">10</span> of <span class="num">10</span> starters<span class="why">the optimizer's best legal lineup; none was submitted</span></span></div><div class="row"><span class="k">Holes</span><span class="v">None across the roster<span class="why">every slot has a body; week 6's bye leaves one empty</span></span></div><div class="row"><span class="k">Hurt</span><span class="v"><span class="dash">—</span>not measured<span class="why">the lineup is constructed, so "on starters" has no measured referent</span></span></div><div class="row"><span class="k">Record</span><span class="v"><span class="dash">—</span>absent<span class="why">no capture holds a roster's result</span></span></div><div class="row"><span class="k">Picks</span><span class="v"><span class="dash">—</span>not in this capture<span class="why">picks acquired or given away, never priced</span></span></div><div class="row"><span class="k">Fresh</span><span class="v"><span class="dash">—</span>not in this capture<span class="why">reachable; Fresh / Recent / Aging / Stale per source</span></span></div></div></article>
     </aside>
   </main>
 
   <div class="rule fade" style="margin-top:34px"><span class="dia"></span></div>
   <footer class="plinth">
-    <span>Bye profile and thin positions are <b>measured</b>. Lineup and seat are <b>constructed</b>. Record, picks and injuries are <b>absent</b>, each with its reason. Nothing here is a grade, a rating or a probability — the engine does not compute those.</span>
-    <button class="toggle" type="button" onclick="document.documentElement.classList.toggle('quiet')"><span class="live">View a quiet week</span><span class="q">View this week</span></button>
+    <span><span class="live">Bye profile, thin positions and holes are <b>measured</b>. The lineup is <b>constructed</b>. Injuries, record, picks and freshness are <b>absent</b>, each with its reason.</span><span class="q">Holes and depth are <b>measured</b>; the lineup is <b>constructed</b>; the bye line is <b>constructed</b> for this demo. Injuries, record, picks and freshness are <b>absent</b>, each with its reason.</span> No team rating, no letter grade, no odds — none is computed; the depth label behind "thin" is four named steps, never a score.</span>
+    <button class="toggle" type="button" onclick="document.documentElement.classList.toggle('quiet')"><span class="live">View a quiet week</span><span class="q">View this roster</span></button>
   </footer>
 </div>
 </body>
