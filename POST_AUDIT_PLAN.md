@@ -18975,3 +18975,29 @@ case) and the command returned zero (unlike `#333`'s case), so neither previous 
 it. **The general form, finally stated properly: an uncommitted change means `git checkout` is
 not an undo, it is a discard.** Restore from a pristine copy taken immediately before the
 mutation, and verify with `cmp` every time.
+
+### CERTIFICATION — `#333` / `#333b`
+
+```
+Ran 4393 tests in 1377.540s
+OK (skipped=2, expected failures=1)
+
+eight ratchets green, re-run against the STAGED tree per `#333`'s own finding
+front.html / front_empty.html rebuilt byte-identical -- they do not appear in `git status`
+```
+
+4375 → **4393**: the 18 tests `front_claims` brings. Fifth consecutive green suite.
+
+| commit | tests | seconds | ms/test | verdict |
+|---|---|---|---|---|
+| `bfc2420` | 4373 | 1409.280 | 322.2 | OK |
+| `f410ca9` | 4373 | 1366.836 | 312.5 | OK |
+| `ce8879d` | 4375 | 1341.210 | 306.6 | OK |
+| **`4259a4d`** | **4393** | **1377.540** | **313.6** | **OK** |
+
+Budget from the worst recent total: **1508s**.
+
+The render gate was not run, for the same reason recorded under `#332`: it covers
+`ui_explore/round2/fableA/` and the diff touches `round3` and top-level modules. The two built
+pages are held by `#332`'s guard instead, which is exactly what it was shipped for — and here it
+did real work, proving the claim-band lift byte-identical rather than merely plausible.
