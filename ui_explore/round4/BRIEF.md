@@ -87,11 +87,11 @@ failed here. Treat this table as law.
 | share of season's bye damage in the worst week | `bye_concentration` |
 | thin positions | `depth_ratings` WEAK + NO_PLAYERS, peer-relative |
 | positional depth **label** | `depth_label` → exactly `Strong` / `Average` / `Weak` / `None — no rostered players here` |
-| starters filled / total slots | `lineup_readiness.compute_readiness` |
+| starters filled / total slots | `lineup_readiness.compute_readiness` **in production**. In THIS fixture it is `optimize_lineup` + `slots_from_roster_positions`, which is exactly why it is stamped CONSTRUCTED — no human submitted a lineup for a replayed seat. |
 | material injuries **on starters** | same call, gated by `is_material_injury_status` |
-| structural holes (no body who can fill a slot) | set difference against `league_usable_positions` |
+| structural holes (no body who can fill a slot) | `lineup_optimizer.slots_from_roster_positions` + `slot_coverage`. **NOT `league_usable_positions`** — `capture_front_fixture.py:139-144` argues at length that it is wrong here because it expands flex slots. The fixture's own provenance string carries the same wrong attribution; both are defects. |
 | record, points for / against | `league_standings.team_standings`, from Sleeper's own settings |
-| which future picks you own | `pick_ledger.build_pick_ledger`, from Sleeper's `traded_picks` |
+| which future picks have MOVED | `pick_ledger.build_pick_ledger` — its docstring says "deliberately just the diffs, not a full inventory". **"Which picks you own" is NOT reachable**; Sleeper lists a pick only once it has been traded. |
 | data freshness grade + per-source ages | `freshness.build_freshness_manifest` + `recency_grade` |
 
 ### Forbidden — do not draw these, in any styling
@@ -103,6 +103,7 @@ failed here. Treat this table as law.
 | positional strength as a **0-100 bar or meter** | the LABEL is real; the continuous score is not. Draw four discrete steps tied to the four labels, never a meter. |
 | "% rostered", trending adds, "primary add" | no ownership/trending call exists in `sleeper_client` |
 | anything about **Questionable** players | `compute_readiness` deliberately excludes it — the engine measured that designation as carrying nothing, and surfacing it spends attention on noise |
+| a POSITIVE all-clear for injuries | production renders an empty `starter_injury_flags` as **silence**, not as "no injuries". Absence of a flag is not evidence of health — the fixture's own starters include a player on IR. |
 | rookie pick **value** | `estimate_future_pick_value` is withheld: 1.89 slots mean error on 12. Pick COUNTS are fine; pick PRICES are not. |
 
 ### Absence has a grammar
@@ -117,8 +118,16 @@ different states and a reader must be able to tell them apart.
 ```
 bye profile   wk6 95   wk7 8   wk8 51   wk9 4   wk10 56   wk11 23      (trade-value pts)
               worst week 6, carrying 40% of the season's bye damage, 1 starter out
-thin          DEF: 1 rostered (bottom of league)
-              TE:  2 rostered (bottom of league) — only 1 of 2 could be priced, so a FLOOR
+thin          DEF: 1 rostered, label `Weak`  -- earned on the COUNT branch (three peers unpriced)
+              TE:  2 rostered, label `Weak`  -- earned on the VALUE branch, 1 of 2 priced, a FLOOR
+
+              *** CORRECTION. An earlier version of this block said "(bottom of league)" for both,
+              and three designs drew that sentence because I licensed it. IT IS FALSE AND THE
+              ENGINE COMPUTES NO RANK. `depth_label` is a ratio band against the league mean
+              (>=1.3 Strong, <=0.7 Weak, else Average); nothing in the tree ranks teams within a
+              position. Two independent replays measured this seat: DEF is a FIVE-WAY TIE at
+              count 1 and is the JOINT-HIGHEST PRICED DEF room in the league; TE's count of 2 is
+              the MODAL count, held by 8 of 12 teams. Say the label. Never say the rank. ***
 holes         none
 lineup        10 of 10 filled    [CONSTRUCTED — a replayed battery seat, not a live roster]
 record        absent — no capture holds a roster's result
@@ -130,7 +139,10 @@ look like this and it must not look like a broken page.
 
 ## Destinations that actually exist
 
-`Matchup` · `Roster Maintenance` · `Draft Room` · `League` · `Import Audit` · `The Prytaneum`
+`Matchup` · `Roster Maintenance` · `Draft Room` · `League` · `Import Audit` — **five** views in
+`app.py`'s `st.segmented_control`. **The Prytaneum is NOT a sixth view**: it is
+`st.container(key="debate_dock")`, a persistent dock rendered under every view. Five rooms and
+one dock, and a design that draws six identical doors is wrong about one of them.
 
 Trade Calculator, Free Agents and Standings exist **inside** those views, not as top-level
 destinations. **Player Compare, Trade Finder, Waiver Wire, Pick Calculator, Roster Health,
