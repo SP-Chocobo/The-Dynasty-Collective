@@ -19236,3 +19236,75 @@ The ordering was not planned and `#332` was luck: I went looking for a byte-iden
 before refactoring and found it broken. Had the refactor gone first, its proof would have been
 meaningless and nothing would have said so. **Establish the baseline before trusting it** is the
 transferable part.
+
+---
+
+## `#336` — TWO REAL DEFECTS IN THE FRONT FIXTURE, FOUND BY AN ADVERSARY REVIEWING A MOCKUP
+
+Recorded, **not yet repaired**: five sibling critiques are still reading `front_fixture.json` and
+`capture_front_fixture.py`, and editing them mid-review would void those reviews. Repair follows
+once round 4's critiques land.
+
+Both were found by the product adversary assigned to `ui_explore/round4/deck/`, whose brief was
+to audit a *design*. It audited the design's inputs instead and found the inputs wrong. Both are
+verified independently here, not taken on report.
+
+### 1. The `structural_holes` basis string names the function the code REJECTS
+
+```
+capture_front_fixture.py:146     cover = lo.slot_coverage(mine, slots)
+capture_front_fixture.py:139-144 "league_usable_positions EXPANDS flex slots -- its docstring
+                                  says so ... slot_coverage answers the counting question
+                                  directly and takes no `value` by design."
+capture_front_fixture.py:14      "structural holes   player_universe.league_usable_positions
+                                  against what the roster holds"
+front_fixture.json               "structural_holes": "measured -- league_usable_positions vs
+                                  the roster"
+```
+
+Eight lines of comment argue that `league_usable_positions` is the wrong call. Two lines away,
+the module docstring and the emitted provenance string both cite it anyway.
+
+**This is worse than a stale comment, because the repo already knew.** Task 8 of this session's
+own list reads *"slot_coverage not league_usable_positions"* — the distinction was understood
+when the fixture was captured, and the basis string was written wrong regardless. A surface that
+rendered its own provenance would have cited a function the pipeline deliberately does not call,
+in a repo whose entire discipline is that a figure carries its basis.
+
+### 2. A material injury on a starter is suppressed behind a FALSE reason
+
+The fixture renders `Material injuries on starters — no live injury feed for a replayed seat`.
+Joining the fixture's own ten starters against the capture's `injury_status`:
+
+```
+11560  Caleb Williams     QB   None
+12484  Jayden Higgins     WR   'IR'            <<< MATERIAL
+4866   Saquon Barkley     RB   None
+8126   Wan'Dale Robinson  WR   'Questionable'  <- correctly excluded, that ruling IS honoured
+...
+is_material_injury_status('IR') -> True
+capture carries injury_status on 494 players: IR 126, Questionable 290, PUP 21, Sus 8, DNR 2
+```
+
+**The data is present and the reason given for its absence is false.** `compute_readiness` would
+return one flag. `front_page.split_reason`'s own docstring is the indictment: *"a wrong reason
+reads as reassurance, which is worse than a clumsy one."*
+
+Note what is NOT wrong: Robinson is Questionable and correctly excluded. The injury gate works.
+It is the fixture that never asked it.
+
+### Why an adversary pointed at a mockup found this
+
+The brief told it to verify every displayed element against the SOURCE rather than against my
+summary table, and to treat that table as correctable. It then found **my table wrong in two
+places** — `structural_holes` (above) and `pick_ledger`, which returns the acquired/given-away
+**diffs**, not a full inventory, exactly as its own docstring says and as my table did not.
+
+An instrument that cannot be corrected by what it measures is the failure mode this register
+keeps finding. This time the correction ran upward: the review of the drawing corrected the
+description, which corrected the fixture.
+
+**The reviewer's own summary of the design, worth keeping as a general shape:** *it reads the
+engine's quantities carefully and its rulings carelessly. Every number was right; every written
+rule about what may be SAID about a number — futurity, per-player attribution, rank-vs-label —
+the prose crossed. A numbers-only audit would have passed this page.*
