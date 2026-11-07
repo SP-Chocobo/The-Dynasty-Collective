@@ -2,10 +2,18 @@
 
 WHY A WIRING TEST AND NOT ONLY A COMPOSITION TEST. `app.py` has 69 top-level Streamlit calls and
 no `__main__` guard, so importing it runs the application -- no test in this repo can call the
-empty-state branch. `test_maintenance_view_wiring` set the precedent for this: read `app.py`'s
-SOURCE and assert the call is there. It is a weaker check than executing it and is named as one,
-but the alternative is a composition that is perfectly tested and reachable by nobody, which is
-the exact state this item exists to end.
+empty-state branch. Source scanning is the only coverage this contract can have. It is weaker
+than executing the branch and is named as one, but the alternative is a composition that is
+perfectly tested and reachable by nobody, which is the exact state this item exists to end.
+
+READ THROUGH `ui_source`, NEVER `app.py` OFF DISK, and the first version of this file got that
+wrong. It opened `app.py` directly, citing `test_maintenance_view_wiring` as precedent -- which
+does read the UI source, but through `ui_source.text()`, a distinction I asserted past without
+checking. `test_ui_source` caught it in the certification run. The rule exists because an
+`app.py` read STOPS COVERING ANYTHING the moment a view is extracted: the text simply is not in
+that file any more, and an `assertNotIn` guard then passes forever while guarding nothing. The
+UI surface is derived -- a module is UI if it imports Streamlit -- so these assertions keep
+meaning "somewhere in the UI" rather than "in this particular file".
 """
 import ast
 import json
@@ -17,6 +25,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 import front_page as fp
+import ui_source
 from data_merger import recency_grade
 
 FIXTURE = ROOT / "ui_explore" / "empty_fixture.json"
@@ -118,34 +127,57 @@ class TheStampParsersTests(unittest.TestCase):
 
 
 class TheAppActuallyRendersItTests(unittest.TestCase):
-    """Source-read, because importing `app.py` runs the application. See the module docstring."""
+    """Source-scanned through `ui_source`, because importing the app runs it. See the docstring."""
+
+    CALL = "front_page.compose_unsynced("
 
     @classmethod
     def setUpClass(cls):
-        cls.src = (ROOT / "app.py").read_text()
-        cls.tree = ast.parse(cls.src)
+        cls.src = ui_source.text()
 
-    def test_app_imports_the_one_home(self):
-        self.assertIn("import front_page", self.src)
+    def test_the_ui_imports_the_one_home(self):
+        """AST, NOT A SUBSTRING, and the first version was the substring.
+
+        `assertIn("import front_page", ui_source.text())` passes against
+        `# import front_page` -- commenting the import out leaves the needle intact, so the
+        mutation that removes the import entirely fired NO test. That is the third hollow check
+        this session (`#332`'s arm 4, `#333`'s thin-ordering fixture, this), and the shape is
+        always the same: the probe cannot distinguish the two states it claims to separate.
+        An `ast.Import` node cannot be satisfied by a comment.
+        """
+        tree = ast.parse(ui_source.unit_containing(self.CALL))
+        imported = {a.name.split(".")[0] for n in ast.walk(tree)
+                    if isinstance(n, ast.Import) for a in n.names}
+        imported |= {n.module.split(".")[0] for n in ast.walk(tree)
+                     if isinstance(n, ast.ImportFrom) and n.module}
+        self.assertIn("front_page", imported,
+                      "the unit that calls compose_unsynced does not import front_page")
 
     def test_the_empty_state_branch_calls_the_composition(self):
         """The wiring this whole item exists for. Without it the composition is perfectly tested
         and reachable by nobody -- which is exactly the state `front_claims` was in before
         `#333` and `positional_depth` before `#297`."""
-        self.assertIn("front_page.compose_unsynced(", self.src)
+        self.assertIn(self.CALL, self.src)
 
     def test_the_composition_is_called_ABOVE_the_only_stop(self):
-        """`app.py` has exactly one `st.stop()`, and everything below it is unreachable in the
-        state this page exists to serve. A call that drifted below it would render nothing and
-        fail no other test here."""
-        stops = [n.lineno for n in ast.walk(self.tree)
-                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-                 and n.func.attr == "stop"]
-        self.assertEqual(1, len(stops), f"app.py should have exactly one st.stop(); found {stops}")
-        calls = [n.lineno for n in ast.walk(self.tree)
-                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-                 and n.func.attr == "compose_unsynced"]
-        self.assertEqual(1, len(calls), "expected exactly one compose_unsynced call")
+        """Everything below the UI's single `st.stop()` is unreachable in the state this page
+        exists to serve, so a call that drifted below it would render nothing and fail no other
+        test here.
+
+        Scoped to the UNIT that holds the call rather than to the whole surface, because order
+        across concatenated modules is an artefact of the join, not of execution. Asserting the
+        stop is in that same unit is the other half: if a later extraction ever separates them,
+        this fails rather than silently comparing two unrelated line numbers.
+        """
+        unit = ui_source.unit_containing(self.CALL)
+        tree = ast.parse(unit)
+        attrs = lambda name: [n.lineno for n in ast.walk(tree)
+                              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                              and n.func.attr == name]
+        stops, calls = attrs("stop"), attrs("compose_unsynced")
+        self.assertEqual(1, len(stops),
+                         f"expected exactly one st.stop() in the unit holding the call; got {stops}")
+        self.assertEqual(1, len(calls), f"expected exactly one {self.CALL} call; got {calls}")
         self.assertLess(calls[0], stops[0],
                         "compose_unsynced is BELOW the st.stop(); it can never run")
 

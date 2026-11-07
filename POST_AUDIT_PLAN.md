@@ -19139,3 +19139,58 @@ about it — and the answer will be RENDER for the same reason.
 - **The record band and the dynasty facts remain absent**, for the reasons `#306` establishes: a
   pick count derived from `league_type` and `total_rosters` is plausible, cheap, and wrong in
   exactly the case the product exists to serve.
+
+### `#334b` — I CITED A PRECEDENT WITHOUT CHECKING HOW IT WORKED, AND THE SUITE CAUGHT IT
+
+The certification run came back `FAILED (failures=1)`:
+
+```
+FAIL: test_ui_source.NoTestReadsAppPyDirectlyTests.test_no_test_module_reads_app_py_off_disk
+AssertionError: ['test_front_page.py'] != []
+  : read the UI surface through ui_source.text() instead -- an app.py read stops
+    covering anything the moment a view is extracted
+```
+
+`test_front_page.py` opened `app.py` with `read_text()`, and its docstring justified that by
+citing `test_maintenance_view_wiring` as precedent. **That module does read the UI source — but
+through `ui_source.text()`**, which is exactly the distinction I asserted past without opening
+the file. The precedent was real and I described its mechanism from memory.
+
+The rule exists for a reason better than tidiness, and `ui_source`'s own docstring states it: an
+`app.py` read stops covering anything the moment a view is extracted. `assertIn` fails loudly
+then — noisy but safe. **`assertNotIn` PASSES, forever**, because the pattern genuinely is absent
+from `app.py` once the code it polices moved elsewhere. A correct guard that can never execute is
+the defect class this repo keeps finding.
+
+Moved onto `ui_source`, and the ordering test got **stronger** in the process. It now scopes its
+AST to the unit that actually holds the call (`ui_source.unit_containing`), because line order
+across concatenated modules is an artefact of the join rather than of execution — and it asserts
+the `st.stop()` is in that same unit, so a future extraction that separates them fails here
+instead of silently comparing two unrelated line numbers.
+
+### Re-running the mutation panel found a THIRD hollow test
+
+The wiring tests changed, so their arms had to be re-run — a panel that validated the old
+implementation says nothing about the new one. Arm 9, removing the import, then fired **nothing**:
+
+```
+app.py:   import front_page   ->   # import front_page
+assertIn("import front_page", ui_source.text())   ->   still passes
+```
+
+Commenting an import out leaves the needle intact. The probe could not distinguish the two states
+it claimed to separate, so it was not a weak test, it was not a test. Now an `ast.Import` walk
+over the calling unit, which a comment cannot satisfy; the arm fires.
+
+**Three hollow checks in three items, same shape every time:**
+
+| item | the probe | why it proved nothing |
+|---|---|---|
+| `#332` | mutated `"Nothing needs you"` | that string only renders when the band is EMPTY; the fixture has two claims |
+| `#333` | `TE(2), QB(1)` ordering fixture | count-order and alphabet give the same answer |
+| `#334b` | `assertIn("import front_page", …)` | a commented-out import still contains the needle |
+
+The common failure is not carelessness about mutation testing — it is the same question as the
+four restore failures, one level over: **what is this probe actually able to tell apart?** A
+mutation and its test are one instrument, and an instrument that cannot separate the two states
+reads green in both.

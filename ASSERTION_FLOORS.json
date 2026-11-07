@@ -8693,9 +8693,6 @@
         "assertTrue": 1
       },
       "by_method": {
-        "TheAppActuallyRendersItTests.test_app_imports_the_one_home": {
-          "assertIn": 1
-        },
         "TheAppActuallyRendersItTests.test_the_composition_is_called_ABOVE_the_only_stop": {
           "assertEqual": 2,
           "assertLess": 1
@@ -8704,6 +8701,9 @@
           "assertIn": 1
         },
         "TheAppActuallyRendersItTests.test_the_sidebar_grade_is_suppressed_while_unsynced": {
+          "assertIn": 1
+        },
+        "TheAppActuallyRendersItTests.test_the_ui_imports_the_one_home": {
           "assertIn": 1
         },
         "TheCompositionReproducesTheCommittedFixtureTests.test_the_committed_fixture_is_what_this_composition_produces": {
