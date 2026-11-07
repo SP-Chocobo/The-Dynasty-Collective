@@ -19308,3 +19308,64 @@ description, which corrected the fixture.
 engine's quantities carefully and its rulings carelessly. Every number was right; every written
 rule about what may be SAID about a number — futurity, per-player attribution, rank-vs-label —
 the prose crossed. A numbers-only audit would have passed this page.*
+
+### `#336b` — A SENTENCE I CERTIFIED TODAY ASSERTS A RANK THE ENGINE NEVER COMPUTES
+
+Three independent adversaries, reviewing three different designs, traced the same false sentence
+to the same source: **shipped code**, certified eleven hours ago under `#333`.
+
+```
+ui_explore/round3/build_front.py:131
+    f"<b>{count}</b> rostered &mdash; bottom of this league at the position.{scope}"
+
+ui_explore/round3/front.html:113          <- the byte-identity-guarded artifact carries it
+
+depth_ratings.py:62
+    ratio = (cell["value"] if use_value else cell["count"]) / avg
+    return STRONG if ratio >= _STRONG_RATIO else WEAK if ratio <= _WEAK_RATIO else AVERAGE
+```
+
+`depth_label` is a **ratio band against the league mean**. Nothing in the tree ranks teams within
+a position — grepped, not assumed. "Bottom of this league at the position" is a rank, and the
+engine does not produce one.
+
+**It is also false.** Two adversaries replayed the fixture independently, by different methods,
+and agreed:
+
+| | the page says | the replay measures |
+|---|---|---|
+| DEF | bottom of the league | **5-way tie at count 1**, and the **joint-highest priced DEF room in the league** (9.0) |
+| TE | bottom of the league | **8 of 12 teams hold exactly 2** — the modal count; 3rd-lowest by value |
+
+The DEF line tells the reader their best-priced room is their worst.
+
+**Worse, the two Weak labels were earned on different measurements.** DEF's came from the count
+branch (three peers carry `value: None`); TE's from the value branch, resting on a 1-of-2-priced
+floor. One sentence, rendered identically, flattening two different judgments.
+
+### Why 4,393 tests and a byte-identity guard did not catch it
+
+Because every one of them checks a **number**, and this is **prose**. `#333` added 18 tests for
+the claim band's judgment — ladder order, cap, futurity, floors, absence — and `#332` shipped a
+guard proving the page is byte-identical to its builder. Both pass. Both would still pass with
+this sentence in place, because the sentence is downstream of every quantity they verify and
+nothing asserts a relationship between a rung's PROSE and what its function returns.
+
+The product adversary's own summary of the pattern, which generalizes past this item: *the design
+reads the engine's quantities carefully and its rulings carelessly. Every number was right; every
+written rule about what may be SAID about a number — futurity, per-player attribution,
+rank-vs-label — the prose crossed. A numbers-only audit would have passed this page.*
+
+**This is the argument for the two-front split, made by the split itself.** A combined reviewer
+holding both briefs would have weighed "the sentence makes the card land" against "the sentence
+is unsourced". Separated, the product adversary had no design stake to trade and simply checked
+whether a function returns a rank. Three of them did, independently, and all three found it.
+
+### The defect class, named
+
+**Prose that outruns its function.** A figure is measured, and the sentence beside it asserts a
+relation the measurement does not establish — a rank from a band, a cause from a cost, a deadline
+from a season total. Every surface in this repo renders figures with a basis stamp; **no surface
+stamps its sentences**, and no ratchet reads them.
+
+Recorded with `#336`'s two fixture defects; repair follows once the last critique lands.
