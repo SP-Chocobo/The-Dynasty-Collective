@@ -19194,3 +19194,45 @@ The common failure is not carelessness about mutation testing — it is the same
 four restore failures, one level over: **what is this probe actually able to tell apart?** A
 mutation and its test are one instrument, and an instrument that cannot separate the two states
 reads green in both.
+
+### CERTIFICATION — `#334` / `#334b`
+
+```
+Ran 4410 tests in 1379.622s
+OK (skipped=2, expected failures=1)
+
+eight ratchets green (api_surface now claims `front_page` as RENDER, with evidence)
+both built pages rebuilt byte-identical -- absent from `git status`
+the running app screenshotted: grade, two dated sources, two absent sources, one action, no console errors
+```
+
+4393 → **4410**: the 17 tests `front_page` brings. Sixth consecutive green suite.
+
+| commit | tests | seconds | ms/test | verdict |
+|---|---|---|---|---|
+| `f410ca9` | 4373 | 1366.836 | 312.5 | OK |
+| `ce8879d` | 4375 | 1341.210 | 306.6 | OK |
+| `4259a4d` | 4393 | 1377.540 | 313.6 | OK |
+| **`d5739a5`** | **4410** | **1379.622** | **312.8** | **OK** |
+
+Budget from the worst recent total: **1508s**. The suite has grown 37 tests across these four
+items and the per-test cost has not moved — 306.6 to 313.6 ms, inside the run-to-run spread.
+
+### The four items as one arc
+
+`#331` sanctioned "the front page" as the next build. What that turned out to require, in order:
+
+1. **`#332`** — a baseline that could be trusted. Both committed pages were painted in a palette
+   the system of record had abandoned, and no guard held them. Without this, every byte-identity
+   proof below would have compared against a file that was already wrong.
+2. **`#333`** — the claim band's judgment out of a prototype's HTML emitter, so production could
+   reach it. `test_quantity_readers` independently confirmed it by moving two engine quantities
+   out of the write-only set.
+3. **`#334`** — the unsynced page's split out of a prototype's fixture generator, and **into the
+   app**, where it was run and looked at.
+4. **`#334b`** — the suite rejecting a precedent I had cited from memory.
+
+The ordering was not planned and `#332` was luck: I went looking for a byte-identity baseline
+before refactoring and found it broken. Had the refactor gone first, its proof would have been
+meaningless and nothing would have said so. **Establish the baseline before trusting it** is the
+transferable part.
