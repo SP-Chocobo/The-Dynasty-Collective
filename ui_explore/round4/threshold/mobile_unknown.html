@@ -107,7 +107,7 @@ body{position:relative;background:var(--ground);color:var(--ink);font-family:var
 .row .v .dash{font-family:var(--mono);color:var(--gold);margin-right:8px}
 .row .v em{color:var(--ink-2)}
 .row .v .up{color:var(--ink-2);font-style:italic}
-.row .r{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.row .r{display:flex;justify-content:flex-end;align-items:center;gap:8px 12px;flex-wrap:wrap}   /* a stamp and a strip together wrap, never overlap the sentence */
 .row.absent .v{color:var(--ink-2)}
 .row.live .k{color:var(--gold)}
 .strip{display:block;width:180px;height:52px;overflow:visible}
