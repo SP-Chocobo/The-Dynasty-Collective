@@ -74,6 +74,7 @@
    "id": "9221",
    "name": "Jahmyr Gibbs",
    "position": "RB",
+   "priced": true,
    "team": "DET",
    "value": 95.0
   },
@@ -83,6 +84,7 @@
    "id": "4866",
    "name": "Saquon Barkley",
    "position": "RB",
+   "priced": true,
    "team": "PHI",
    "value": 42.0
   },
@@ -92,6 +94,7 @@
    "id": "8144",
    "name": "Chris Olave",
    "position": "WR",
+   "priced": true,
    "team": "NO",
    "value": 52.0
   },
@@ -101,6 +104,7 @@
    "id": "5927",
    "name": "Terry McLaurin",
    "position": "WR",
+   "priced": true,
    "team": "WAS",
    "value": 24.0
   },
@@ -110,6 +114,7 @@
    "id": "7553",
    "name": "Kyle Pitts",
    "position": "TE",
+   "priced": true,
    "team": "ATL",
    "value": 23.0
   },
@@ -119,6 +124,7 @@
    "id": "HOU",
    "name": "Houston Texans",
    "position": "DEF",
+   "priced": true,
    "team": "HOU",
    "value": 9.0
   },
@@ -128,6 +134,7 @@
    "id": "11560",
    "name": "Caleb Williams",
    "position": "QB",
+   "priced": true,
    "team": "CHI",
    "value": 29.0
   },
@@ -137,6 +144,7 @@
    "id": "4037",
    "name": "Chris Godwin",
    "position": "WR",
+   "priced": true,
    "team": "TB",
    "value": 15.0
   },
@@ -146,6 +154,7 @@
    "id": "9754",
    "name": "Quentin Johnston",
    "position": "WR",
+   "priced": true,
    "team": "LAC",
    "value": 14.0
   },
@@ -155,6 +164,7 @@
    "id": "8121",
    "name": "Romeo Doubs",
    "position": "WR",
+   "priced": true,
    "team": "NE",
    "value": 16.0
   },
@@ -164,6 +174,7 @@
    "id": "8126",
    "name": "Wan'Dale Robinson",
    "position": "WR",
+   "priced": true,
    "team": "TEN",
    "value": 20.0
   },
@@ -173,6 +184,7 @@
    "id": "7042",
    "name": "Tyler Bass",
    "position": "K",
+   "priced": false,
    "team": "BUF",
    "value": 0.0
   },
@@ -182,6 +194,7 @@
    "id": "12713",
    "name": "Andy Borregales",
    "position": "K",
+   "priced": false,
    "team": "NE",
    "value": 0.0
   },
@@ -191,6 +204,7 @@
    "id": "4943",
    "name": "Sam Darnold",
    "position": "QB",
+   "priced": true,
    "team": "SEA",
    "value": 15.0
   },
@@ -200,6 +214,7 @@
    "id": "12484",
    "name": "Jayden Higgins",
    "position": "WR",
+   "priced": true,
    "team": "HOU",
    "value": 21.0
   },
@@ -209,6 +224,7 @@
    "id": "5906",
    "name": "Dawson Knox",
    "position": "TE",
+   "priced": false,
    "team": "BUF",
    "value": 0.0
   }

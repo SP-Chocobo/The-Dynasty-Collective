@@ -149,7 +149,22 @@ def byes_ahead(bye_profile, current_week):
     ahead = {w: v for w, v in weeks.items()
              if str(w).lstrip("-").isdigit() and int(w) >= int(current_week)}
     if not ahead:
-        return {**bp, "worst_week": None, "_ahead_only": True}
+        # `#346` DEFECT 2: this cleared `worst_week` and left `worst_week_loss` and
+        # `worst_week_detail` behind, so the reduced profile carried a LOSS FOR A WEEK IT HAD
+        # JUST SAID DOES NOT EXIST -- `worst_week: None` beside `worst_week_loss: 68.0`.
+        # `compose` happens to guard on both keys, so no claim was built from it; but `compose`
+        # RETURNS this profile as `band["bye_profile"]` and surfaces read it directly, which is
+        # where the orphaned figure was reachable. A quantity whose subject has been removed is
+        # not a smaller truth, it is a number with nothing to be about.
+        #
+        # `weeks` is deliberately NOT emptied here, and the asymmetry is the point: with weeks
+        # ahead, `weeks` is reduced to them; with none ahead, the caller still needs the season
+        # shape to be able to say "all seven are behind week 15" instead of showing an empty
+        # ledger. So `_ahead_only` means "a current week was known and applied", not "weeks has
+        # been filtered". Stated because the two branches genuinely differ and a reader is owed
+        # the reason rather than left to infer one.
+        return {**bp, "worst_week": None, "worst_week_loss": None,
+                "worst_week_detail": None, "_ahead_only": True}
     worst = max(ahead, key=lambda w: ahead[w])
     return {**bp, "worst_week": int(worst), "worst_week_loss": ahead[worst],
             "weeks": ahead, "_ahead_only": True}

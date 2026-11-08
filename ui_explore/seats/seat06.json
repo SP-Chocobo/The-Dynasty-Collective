@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -46,7 +46,7 @@
   },
   "worst_week_loss": 97.0
  },
- "current_week": 15,
+ "current_week": null,
  "league": {
   "roster_positions": [
    "QB",
@@ -77,6 +77,7 @@
    "id": "6813",
    "name": "Jonathan Taylor",
    "position": "RB",
+   "priced": true,
    "team": "IND",
    "value": 75.0
   },
@@ -86,6 +87,7 @@
    "id": "8112",
    "name": "Drake London",
    "position": "WR",
+   "priced": true,
    "team": "ATL",
    "value": 74.0
   },
@@ -95,6 +97,7 @@
    "id": "12518",
    "name": "Tyler Warren",
    "position": "TE",
+   "priced": true,
    "team": "IND",
    "value": 33.0
   },
@@ -104,6 +107,7 @@
    "id": "12526",
    "name": "Tetairoa McMillan",
    "position": "WR",
+   "priced": true,
    "team": "CAR",
    "value": 57.0
   },
@@ -113,6 +117,7 @@
    "id": "7543",
    "name": "Travis Etienne",
    "position": "RB",
+   "priced": true,
    "team": "NO",
    "value": 23.0
   },
@@ -122,6 +127,7 @@
    "id": "3294",
    "name": "Dak Prescott",
    "position": "QB",
+   "priced": true,
    "team": "DAL",
    "value": 19.0
   },
@@ -131,6 +137,7 @@
    "id": "7021",
    "name": "Rico Dowdle",
    "position": "RB",
+   "priced": true,
    "team": "PIT",
    "value": 13.0
   },
@@ -140,6 +147,7 @@
    "id": "11620",
    "name": "Rome Odunze",
    "position": "WR",
+   "priced": true,
    "team": "CHI",
    "value": 32.0
   },
@@ -149,6 +157,7 @@
    "id": "NE",
    "name": "New England Patriots",
    "position": "DEF",
+   "priced": true,
    "team": "NE",
    "value": 3.0
   },
@@ -158,6 +167,7 @@
    "id": "12711",
    "name": "Tyler Loop",
    "position": "K",
+   "priced": true,
    "team": "BAL",
    "value": 6.0
   },
@@ -167,6 +177,7 @@
    "id": "PIT",
    "name": "Pittsburgh Steelers",
    "position": "DEF",
+   "priced": true,
    "team": "PIT",
    "value": 4.0
   },
@@ -176,6 +187,7 @@
    "id": "11786",
    "name": "Cam Little",
    "position": "K",
+   "priced": false,
    "team": "JAX",
    "value": 0.0
   },
@@ -185,6 +197,7 @@
    "id": "421",
    "name": "Matthew Stafford",
    "position": "QB",
+   "priced": true,
    "team": "LAR",
    "value": 11.0
   },
@@ -194,6 +207,7 @@
    "id": "11834",
    "name": "Devaughn Vele",
    "position": "WR",
+   "priced": false,
    "team": "NO",
    "value": 0.0
   },
@@ -203,6 +217,7 @@
    "id": "8408",
    "name": "Jordan Mason",
    "position": "RB",
+   "priced": true,
    "team": "MIN",
    "value": 14.0
   },
@@ -212,6 +227,7 @@
    "id": "8172",
    "name": "Greg Dulcich",
    "position": "TE",
+   "priced": true,
    "team": "MIA",
    "value": 4.0
   }

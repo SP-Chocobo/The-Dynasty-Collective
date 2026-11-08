@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -44,7 +44,7 @@
   },
   "worst_week_loss": 58.0
  },
- "current_week": 15,
+ "current_week": null,
  "league": {
   "roster_positions": [
    "QB",
@@ -75,6 +75,7 @@
    "id": "8130",
    "name": "Trey McBride",
    "position": "TE",
+   "priced": true,
    "team": "ARI",
    "value": 60.0
   },
@@ -84,6 +85,7 @@
    "id": "9224",
    "name": "Chase Brown",
    "position": "RB",
+   "priced": true,
    "team": "CIN",
    "value": 38.0
   },
@@ -93,6 +95,7 @@
    "id": "7526",
    "name": "Jaylen Waddle",
    "position": "WR",
+   "priced": true,
    "team": "DEN",
    "value": 36.0
   },
@@ -102,6 +105,7 @@
    "id": "5892",
    "name": "David Montgomery",
    "position": "RB",
+   "priced": true,
    "team": "HOU",
    "value": 17.0
   },
@@ -111,6 +115,7 @@
    "id": "10222",
    "name": "Jayden Reed",
    "position": "WR",
+   "priced": true,
    "team": "GB",
    "value": 16.0
   },
@@ -120,6 +125,7 @@
    "id": "8146",
    "name": "Garrett Wilson",
    "position": "WR",
+   "priced": true,
    "team": "NYJ",
    "value": 42.0
   },
@@ -129,6 +135,7 @@
    "id": "12508",
    "name": "Jaxson Dart",
    "position": "QB",
+   "priced": true,
    "team": "NYG",
    "value": 22.0
   },
@@ -138,6 +145,7 @@
    "id": "DEN",
    "name": "Denver Broncos",
    "position": "DEF",
+   "priced": true,
    "team": "DEN",
    "value": 7.0
   },
@@ -147,6 +155,7 @@
    "id": "11628",
    "name": "Marvin Harrison",
    "position": "WR",
+   "priced": true,
    "team": "ARI",
    "value": 22.0
   },
@@ -156,6 +165,7 @@
    "id": "5947",
    "name": "Jakobi Meyers",
    "position": "WR",
+   "priced": true,
    "team": "JAX",
    "value": 16.0
   },
@@ -165,6 +175,7 @@
    "id": "6797",
    "name": "Justin Herbert",
    "position": "QB",
+   "priced": true,
    "team": "LAC",
    "value": 28.0
   },
@@ -174,6 +185,7 @@
    "id": "12489",
    "name": "RJ Harvey",
    "position": "RB",
+   "priced": true,
    "team": "DEN",
    "value": 16.0
   },
@@ -183,6 +195,7 @@
    "id": "3678",
    "name": "Wil Lutz",
    "position": "K",
+   "priced": true,
    "team": "DEN",
    "value": 4.0
   },
@@ -192,6 +205,7 @@
    "id": "8210",
    "name": "Chig Okonkwo",
    "position": "TE",
+   "priced": true,
    "team": "WAS",
    "value": 8.0
   },
@@ -201,6 +215,7 @@
    "id": "6806",
    "name": "J.K. Dobbins",
    "position": "RB",
+   "priced": true,
    "team": "DEN",
    "value": 9.0
   },
@@ -210,6 +225,7 @@
    "id": "12534",
    "name": "Kyle Monangai",
    "position": "RB",
+   "priced": true,
    "team": "CHI",
    "value": 15.0
   }

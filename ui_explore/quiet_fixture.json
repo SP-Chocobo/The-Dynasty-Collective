@@ -75,6 +75,7 @@
    "id": "8138",
    "name": "James Cook",
    "position": "RB",
+   "priced": true,
    "team": "BUF",
    "value": 54.0
   },
@@ -84,6 +85,7 @@
    "id": "6786",
    "name": "CeeDee Lamb",
    "position": "WR",
+   "priced": true,
    "team": "DAL",
    "value": 82.0
   },
@@ -93,6 +95,7 @@
    "id": "7525",
    "name": "DeVonta Smith",
    "position": "WR",
+   "priced": true,
    "team": "PHI",
    "value": 37.0
   },
@@ -102,6 +105,7 @@
    "id": "9484",
    "name": "Tucker Kraft",
    "position": "TE",
+   "priced": true,
    "team": "GB",
    "value": 28.0
   },
@@ -111,6 +115,7 @@
    "id": "6790",
    "name": "D'Andre Swift",
    "position": "RB",
+   "priced": true,
    "team": "CHI",
    "value": 19.0
   },
@@ -120,6 +125,7 @@
    "id": "11632",
    "name": "Malik Nabers",
    "position": "WR",
+   "priced": true,
    "team": "NYG",
    "value": 81.0
   },
@@ -129,6 +135,7 @@
    "id": "4046",
    "name": "Patrick Mahomes",
    "position": "QB",
+   "priced": true,
    "team": "KC",
    "value": 28.0
   },
@@ -138,6 +145,7 @@
    "id": "12514",
    "name": "Emeka Egbuka",
    "position": "WR",
+   "priced": true,
    "team": "TB",
    "value": 51.0
   },
@@ -147,6 +155,7 @@
    "id": "3451",
    "name": "Ka'imi Fairbairn",
    "position": "K",
+   "priced": true,
    "team": "HOU",
    "value": 12.0
   },
@@ -156,6 +165,7 @@
    "id": "6804",
    "name": "Jordan Love",
    "position": "QB",
+   "priced": true,
    "team": "GB",
    "value": 18.0
   },
@@ -165,6 +175,7 @@
    "id": "CHI",
    "name": "Chicago Bears",
    "position": "DEF",
+   "priced": false,
    "team": "CHI",
    "value": 0.0
   },
@@ -174,6 +185,7 @@
    "id": "7839",
    "name": "Evan McPherson",
    "position": "K",
+   "priced": true,
    "team": "CIN",
    "value": 6.0
   },
@@ -183,6 +195,7 @@
    "id": "SF",
    "name": "San Francisco 49ers",
    "position": "DEF",
+   "priced": false,
    "team": "SF",
    "value": 0.0
   },
@@ -192,6 +205,7 @@
    "id": "13286",
    "name": "Jadarian Price",
    "position": "RB",
+   "priced": true,
    "team": "SEA",
    "value": 30.0
   },
@@ -201,6 +215,7 @@
    "id": "11586",
    "name": "Blake Corum",
    "position": "RB",
+   "priced": true,
    "team": "LAR",
    "value": 15.0
   },
@@ -210,6 +225,7 @@
    "id": "9480",
    "name": "Brenton Strange",
    "position": "TE",
+   "priced": true,
    "team": "JAX",
    "value": 10.0
   }

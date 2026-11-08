@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -44,7 +44,7 @@
   },
   "worst_week_loss": 127.0
  },
- "current_week": 15,
+ "current_week": null,
  "league": {
   "roster_positions": [
    "QB",
@@ -75,6 +75,7 @@
    "id": "9509",
    "name": "Bijan Robinson",
    "position": "RB",
+   "priced": true,
    "team": "ATL",
    "value": 99.0
   },
@@ -84,6 +85,7 @@
    "id": "12517",
    "name": "Colston Loveland",
    "position": "TE",
+   "priced": true,
    "team": "CHI",
    "value": 50.0
   },
@@ -93,6 +95,7 @@
    "id": "10229",
    "name": "Rashee Rice",
    "position": "WR",
+   "priced": true,
    "team": "KC",
    "value": 41.0
   },
@@ -102,6 +105,7 @@
    "id": "12512",
    "name": "Quinshon Judkins",
    "position": "RB",
+   "priced": true,
    "team": "CLE",
    "value": 41.0
   },
@@ -111,6 +115,7 @@
    "id": "6770",
    "name": "Joe Burrow",
    "position": "QB",
+   "priced": true,
    "team": "CIN",
    "value": 32.0
   },
@@ -120,6 +125,7 @@
    "id": "SEA",
    "name": "Seattle Seahawks",
    "position": "DEF",
+   "priced": true,
    "team": "SEA",
    "value": 6.0
   },
@@ -129,6 +135,7 @@
    "id": "8142",
    "name": "Alec Pierce",
    "position": "WR",
+   "priced": true,
    "team": "IND",
    "value": 20.0
   },
@@ -138,6 +145,7 @@
    "id": "9756",
    "name": "Jordan Addison",
    "position": "WR",
+   "priced": true,
    "team": "MIN",
    "value": 23.0
   },
@@ -147,6 +155,7 @@
    "id": "11631",
    "name": "Brian Thomas",
    "position": "WR",
+   "priced": true,
    "team": "JAX",
    "value": 24.0
   },
@@ -156,6 +165,7 @@
    "id": "7611",
    "name": "Rhamondre Stevenson",
    "position": "RB",
+   "priced": true,
    "team": "NE",
    "value": 17.0
   },
@@ -165,6 +175,7 @@
    "id": "12490",
    "name": "Bhayshul Tuten",
    "position": "RB",
+   "priced": true,
    "team": "JAX",
    "value": 19.0
   },
@@ -174,6 +185,7 @@
    "id": "5189",
    "name": "Eddy Pineiro",
    "position": "K",
+   "priced": false,
    "team": "SF",
    "value": 0.0
   },
@@ -183,6 +195,7 @@
    "id": "4227",
    "name": "Harrison Butker",
    "position": "K",
+   "priced": true,
    "team": "KC",
    "value": 8.0
   },
@@ -192,6 +205,7 @@
    "id": "IND",
    "name": "Indianapolis Colts",
    "position": "DEF",
+   "priced": false,
    "team": "IND",
    "value": 0.0
   },
@@ -201,6 +215,7 @@
    "id": "5849",
    "name": "Kyler Murray",
    "position": "QB",
+   "priced": true,
    "team": "MIN",
    "value": 16.0
   },
@@ -210,6 +225,7 @@
    "id": "12498",
    "name": "Mason Taylor",
    "position": "TE",
+   "priced": false,
    "team": "NYJ",
    "value": 0.0
   }

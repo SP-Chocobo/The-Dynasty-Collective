@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -45,7 +45,7 @@
   },
   "worst_week_loss": 68.0
  },
- "current_week": 15,
+ "current_week": null,
  "league": {
   "roster_positions": [
    "QB",
@@ -76,6 +76,7 @@
    "id": "7547",
    "name": "Amon-Ra St. Brown",
    "position": "WR",
+   "priced": true,
    "team": "DET",
    "value": 83.0
   },
@@ -85,6 +86,7 @@
    "id": "8151",
    "name": "Kenneth Walker",
    "position": "RB",
+   "priced": true,
    "team": "KC",
    "value": 50.0
   },
@@ -94,6 +96,7 @@
    "id": "8137",
    "name": "George Pickens",
    "position": "WR",
+   "priced": true,
    "team": "DAL",
    "value": 53.0
   },
@@ -103,6 +106,7 @@
    "id": "8228",
    "name": "Jaylen Warren",
    "position": "RB",
+   "priced": true,
    "team": "PIT",
    "value": 18.0
   },
@@ -112,6 +116,7 @@
    "id": "12519",
    "name": "Luther Burden",
    "position": "WR",
+   "priced": true,
    "team": "CHI",
    "value": 37.0
   },
@@ -121,6 +126,7 @@
    "id": "5012",
    "name": "Mark Andrews",
    "position": "TE",
+   "priced": true,
    "team": "BAL",
    "value": 9.0
   },
@@ -130,6 +136,7 @@
    "id": "11564",
    "name": "Drake Maye",
    "position": "QB",
+   "priced": true,
    "team": "NE",
    "value": 42.0
   },
@@ -139,6 +146,7 @@
    "id": "10232",
    "name": "Michael Wilson",
    "position": "WR",
+   "priced": true,
    "team": "ARI",
    "value": 22.0
   },
@@ -148,6 +156,7 @@
    "id": "BAL",
    "name": "Baltimore Ravens",
    "position": "DEF",
+   "priced": true,
    "team": "BAL",
    "value": 4.0
   },
@@ -157,6 +166,7 @@
    "id": "11533",
    "name": "Brandon Aubrey",
    "position": "K",
+   "priced": true,
    "team": "DAL",
    "value": 18.0
   },
@@ -166,6 +176,7 @@
    "id": "GB",
    "name": "Green Bay Packers",
    "position": "DEF",
+   "priced": true,
    "team": "GB",
    "value": 5.0
   },
@@ -175,6 +186,7 @@
    "id": "5022",
    "name": "Dallas Goedert",
    "position": "TE",
+   "priced": true,
    "team": "PHI",
    "value": 9.0
   },
@@ -184,6 +196,7 @@
    "id": "2020",
    "name": "Cairo Santos",
    "position": "K",
+   "priced": false,
    "team": "CHI",
    "value": 0.0
   },
@@ -193,6 +206,7 @@
    "id": "7523",
    "name": "Trevor Lawrence",
    "position": "QB",
+   "priced": true,
    "team": "JAX",
    "value": 25.0
   },
@@ -202,6 +216,7 @@
    "id": "12533",
    "name": "Jacory Croskey-Merritt",
    "position": "RB",
+   "priced": true,
    "team": "WAS",
    "value": 16.0
   },
@@ -211,6 +226,7 @@
    "id": "7600",
    "name": "Pat Freiermuth",
    "position": "TE",
+   "priced": true,
    "team": "PIT",
    "value": 7.0
   }

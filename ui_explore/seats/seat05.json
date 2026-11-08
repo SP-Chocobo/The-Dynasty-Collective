@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -45,7 +45,7 @@
   },
   "worst_week_loss": 122.0
  },
- "current_week": 15,
+ "current_week": null,
  "league": {
   "roster_positions": [
    "QB",
@@ -76,6 +76,7 @@
    "id": "9493",
    "name": "Puka Nacua",
    "position": "WR",
+   "priced": true,
    "team": "LAR",
    "value": 94.0
   },
@@ -85,6 +86,7 @@
    "id": "12507",
    "name": "Omarion Hampton",
    "position": "RB",
+   "priced": true,
    "team": "LAC",
    "value": 73.0
   },
@@ -94,6 +96,7 @@
    "id": "8150",
    "name": "Kyren Williams",
    "position": "RB",
+   "priced": true,
    "team": "LAR",
    "value": 35.0
   },
@@ -103,6 +106,7 @@
    "id": "4217",
    "name": "George Kittle",
    "position": "TE",
+   "priced": true,
    "team": "SF",
    "value": 12.0
   },
@@ -112,6 +116,7 @@
    "id": "4881",
    "name": "Lamar Jackson",
    "position": "QB",
+   "priced": true,
    "team": "BAL",
    "value": 32.0
   },
@@ -121,6 +126,7 @@
    "id": "2133",
    "name": "Davante Adams",
    "position": "WR",
+   "priced": true,
    "team": "LAR",
    "value": 21.0
   },
@@ -130,6 +136,7 @@
    "id": "PHI",
    "name": "Philadelphia Eagles",
    "position": "DEF",
+   "priced": true,
    "team": "PHI",
    "value": 2.0
   },
@@ -139,6 +146,7 @@
    "id": "2449",
    "name": "Stefon Diggs",
    "position": "WR",
+   "priced": true,
    "team": "WAS",
    "value": 7.0
   },
@@ -148,6 +156,7 @@
    "id": "5045",
    "name": "Courtland Sutton",
    "position": "WR",
+   "priced": true,
    "team": "DEN",
    "value": 20.0
   },
@@ -157,6 +166,7 @@
    "id": "11624",
    "name": "Xavier Worthy",
    "position": "WR",
+   "priced": true,
    "team": "KC",
    "value": 21.0
   },
@@ -166,6 +176,7 @@
    "id": "10213",
    "name": "Tre Tucker",
    "position": "WR",
+   "priced": true,
    "team": "LV",
    "value": 5.0
   },
@@ -175,6 +186,7 @@
    "id": "8136",
    "name": "Rachaad White",
    "position": "RB",
+   "priced": true,
    "team": "WAS",
    "value": 6.0
   },
@@ -184,6 +196,7 @@
    "id": "5967",
    "name": "Tony Pollard",
    "position": "RB",
+   "priced": true,
    "team": "TEN",
    "value": 15.0
   },
@@ -193,6 +206,7 @@
    "id": "6083",
    "name": "Matt Gay",
    "position": "K",
+   "priced": false,
    "team": "LV",
    "value": 0.0
   },
@@ -202,6 +216,7 @@
    "id": "4892",
    "name": "Baker Mayfield",
    "position": "QB",
+   "priced": true,
    "team": "TB",
    "value": 16.0
   },
@@ -211,6 +226,7 @@
    "id": "4993",
    "name": "Mike Gesicki",
    "position": "TE",
+   "priced": true,
    "team": "CIN",
    "value": 3.0
   }

@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -43,7 +43,7 @@
   },
   "worst_week_loss": 128.0
  },
- "current_week": 15,
+ "current_week": null,
  "league": {
   "roster_positions": [
    "QB",
@@ -74,6 +74,7 @@
    "id": "9488",
    "name": "Jaxon Smith-Njigba",
    "position": "WR",
+   "priced": true,
    "team": "SEA",
    "value": 96.0
   },
@@ -83,6 +84,7 @@
    "id": "12527",
    "name": "Ashton Jeanty",
    "position": "RB",
+   "priced": true,
    "team": "LV",
    "value": 81.0
   },
@@ -92,6 +94,7 @@
    "id": "8155",
    "name": "Breece Hall",
    "position": "RB",
+   "priced": true,
    "team": "NYJ",
    "value": 47.0
   },
@@ -101,6 +104,7 @@
    "id": "1466",
    "name": "Travis Kelce",
    "position": "TE",
+   "priced": true,
    "team": "KC",
    "value": 8.0
   },
@@ -110,6 +114,7 @@
    "id": "8167",
    "name": "Christian Watson",
    "position": "WR",
+   "priced": true,
    "team": "GB",
    "value": 27.0
   },
@@ -119,6 +124,7 @@
    "id": "LAR",
    "name": "Los Angeles Rams",
    "position": "DEF",
+   "priced": true,
    "team": "LAR",
    "value": 1.0
   },
@@ -128,6 +134,7 @@
    "id": "11566",
    "name": "Jayden Daniels",
    "position": "QB",
+   "priced": true,
    "team": "WAS",
    "value": 39.0
   },
@@ -137,6 +144,7 @@
    "id": "8134",
    "name": "Khalil Shakir",
    "position": "WR",
+   "priced": true,
    "team": "BUF",
    "value": 20.0
   },
@@ -146,6 +154,7 @@
    "id": "6819",
    "name": "Michael Pittman",
    "position": "WR",
+   "priced": true,
    "team": "PIT",
    "value": 21.0
   },
@@ -155,6 +164,7 @@
    "id": "5872",
    "name": "Deebo Samuel",
    "position": "WR",
+   "priced": true,
    "team": "SF",
    "value": 1.0
   },
@@ -164,6 +174,7 @@
    "id": "12501",
    "name": "Matthew Golden",
    "position": "WR",
+   "priced": true,
    "team": "GB",
    "value": 18.0
   },
@@ -173,6 +184,7 @@
    "id": "650",
    "name": "Nick Folk",
    "position": "K",
+   "priced": false,
    "team": "ATL",
    "value": 0.0
   },
@@ -182,6 +194,7 @@
    "id": "8676",
    "name": "Rashid Shaheed",
    "position": "WR",
+   "priced": true,
    "team": "SEA",
    "value": 13.0
   },
@@ -191,6 +204,7 @@
    "id": "13298",
    "name": "KC Concepcion",
    "position": "WR",
+   "priced": true,
    "team": "CLE",
    "value": 25.0
   },
@@ -200,6 +214,7 @@
    "id": "6768",
    "name": "Tua Tagovailoa",
    "position": "QB",
+   "priced": true,
    "team": "ATL",
    "value": 0.0
   },
@@ -209,6 +224,7 @@
    "id": "6865",
    "name": "Colby Parkinson",
    "position": "TE",
+   "priced": true,
    "team": "LAR",
    "value": 2.0
   }

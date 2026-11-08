@@ -152,9 +152,27 @@ def main() -> int:
         info = players_db.get(pid) or {}
         team, name = info.get("team"), pu.player_name(info, pid)
         priced = merger.merge_player(name, position=pu.player_position(info), team=team)
+        # `#346` DEFECT 1, and the shape of the fix is `#190`'s, not None.
+        #
+        # `trade_value or 0.0` collapsed TWO different facts into one number: a player with no
+        # price and a player measured at zero both became 0.0. The dashboard then printed
+        # "Dawson Knox 0" one card away from a TE panel saying only one of two could be priced
+        # -- the page contradicting itself with a straight face.
+        #
+        # NONE IS NOT THE FIX, and that was measured rather than assumed: `optimize_lineup` and
+        # `bye_collision` both raise `TypeError: bad operand type for unary -: 'NoneType'` on a
+        # None value, because they negate it to build a maximisation. So the numeric field KEEPS
+        # a number for the solvers, and `priced` travels beside it carrying what the number
+        # cannot -- exactly as `valued_count` travels with `count` (`#190`).
+        #
+        # `is not None`, NOT truthiness: a player genuinely valued at 0.0 is PRICED, and `or`
+        # was what erased that distinction in the first place. Repeating it here would fix the
+        # missing case and keep the measured-zero one.
+        trade_value = priced.get("trade_value")
         mine.append({"id": pid, "name": name, "position": pu.player_position(info),
                      "team": team, "bye": byes.get(team),
-                     "value": priced.get("trade_value") or 0.0,
+                     "value": float(trade_value) if trade_value is not None else 0.0,
+                     "priced": trade_value is not None,
                      "eligible": set(pu.player_eligible_positions(info))})
     unknown_byes = sum(1 for m in mine if m["bye"] is None)
     shape = lo.bye_concentration(mine, roster_positions)
