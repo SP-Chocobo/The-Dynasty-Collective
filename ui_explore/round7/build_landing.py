@@ -511,8 +511,8 @@ def emblem(size: int = 44) -> str:
 
     WHY THE KEYING MATTERED. The crop has no alpha and its ground is a textured dark grey
     slightly LIGHTER than this page's `--bg`. Dropped in as-is it renders as a visible grey
-    plaque behind the dragon, and neither `lighten` nor `screen` fixes that -- both leave the
-    ground showing, because it is brighter than what it sits on. Keying is the only treatment
+    plaque behind the dragon, and neither of the lighten/screen blend modes fixes that -- both
+    leave the ground showing, because it is brighter than what it sits on. Keying is the only treatment
     that lets the mark antialias against the page instead of carrying its own rectangle.
 
     Falls back to `WYRM` when the asset is unreadable, per `asset_data_uri`'s rule.

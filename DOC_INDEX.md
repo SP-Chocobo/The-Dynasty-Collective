@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 280 markdown documents.
+`python3 doc_index.py` regenerates this. 286 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 50 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 51 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 47 | says what kind of document it is before making claims. |
-| UNDECLARED | 153 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 158 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -96,6 +96,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ui_explore/round4/keep/REFINEMENT.md`
 - `ui_explore/round4/threshold/NOTES.md`
 - `ui_explore/round4/threshold/REFINEMENT.md`
+- `ui_explore/round7/NOTES.md`
 
 ## DECLARED
 
@@ -152,6 +153,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `.claude/skills/close-register-item/SKILL.md`
 - `FREEZE_RECORD.md`
 - `FREEZE_RECORD_V3.md`
+- `HANDOFF.md`
 - `OWNER_DECISIONS_PENDING.md`
 - `README.md`
 - `REPAIR_HANDOFF.md`
@@ -302,3 +304,7 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ui_explore/round4/threshold/CRITIQUE_PRODUCT.md`
 - `ui_explore/round5/STRUCTURE.md`
 - `ui_explore/round6/BRIEF.md`
+- `ui_explore/round6/dispatch/NOTES.md`
+- `ui_explore/round6/ledger/NOTES.md`
+- `ui_explore/round6/standing/NOTES.md`
+- `ui_explore/round7/ART_BRIEF.md`
