@@ -20533,3 +20533,81 @@ planted `Portfolio health 86` inside the leagues block is still caught.
 This is the fifth hollow-instrument finding of the session, and the first where the instrument
 was not merely stale but **structurally unable to distinguish the defect from its opposite**.
 
+---
+
+## `#346` — TWO DEFECTS IN MY OWN CODE, FOUND BY A SUBAGENT SENT TO DRAW A PAGE
+
+Round 6's `dispatch` agent was asked to explore how the information might READ. It returned a
+design and, more valuably, **two defects in code I wrote and certified**. Both verified here
+independently rather than taken on its report. This is the `#336` pattern repeating: adversaries
+sent to review drawings find defects in the engine.
+
+### 1. A ZERO THAT IS NOT A ZERO, and the page contradicts itself about it
+
+`ui_explore/capture_front_fixture.py:157`:
+
+```python
+"value": priced.get("trade_value") or 0.0,
+```
+
+`trade_value` is `None` for a player the merger could not price. `or 0.0` turns that into
+**0.0**, so an UNPRICED player becomes indistinguishable from one priced at nothing. Measured on
+the committed fixture:
+
+```
+roster TE/K values   Kyle Pitts 23.0   Tyler Bass 0.0   Andy Borregales 0.0   Dawson Knox 0.0
+TE claim             count 2, valued_count 1, label Weak
+```
+
+**The dashboard prints both at once.** Its bye ledger renders `Dawson Knox 0` and `Tyler Bass 0`
+— asserting they were priced and are worth nothing — while the TE card beside it says *"Only 1
+of 2 could be priced, so that comparison is a floor."* One page, two incompatible statements
+about the same player, and the zero is the one that looks authoritative.
+
+This is `#187` at the producer: an absence rendered as a reassuring default. It is upstream of
+every surface, which is why no render-layer guard caught it.
+
+**THE FIX IS NOT `None`.** Measured: `optimize_lineup` and `bye_collision` both raise
+`TypeError: bad operand type for unary -: 'NoneType'` on a `None` value. The solver REQUIRES a
+number, so `or 0.0` is load-bearing and removing it breaks the optimizer.
+
+The correct shape is `#190`'s: **the field the solver needs stays numeric, and a SECOND field
+carries whether it was priced**, because one field cannot serve two consumers whose needs
+differ. `valued_count` travels with `count` for exactly this reason. So the roster rows gain
+`priced`, and a renderer showing a player's value reads that before choosing between the figure
+and an em dash with its reason.
+
+### 2. A STALE LOSS ON A NULL WEEK
+
+`front_claims.byes_ahead`, certified under `#333`:
+
+```python
+if not ahead:
+    return {**bp, "worst_week": None, "_ahead_only": True}
+```
+
+It clears the WEEK and keeps the LOSS. Measured on the quiet fixture:
+
+```
+worst_week       None
+worst_week_loss  68.0
+_ahead_only      True
+```
+
+A renderer reading `worst_week_loss` alone would print **68.0 for a week that is None**. The
+function's own docstring says `worst_week: None` is "a real answer and not a missing one" —
+pairing that real answer with a live figure from a week now behind us contradicts it.
+
+Nothing ships it today: `compose` fires the bye claim only when BOTH are non-None, and the
+dashboard guards on `worst_week`. So this is a latent leak in a returned contract rather than a
+visible defect — which is precisely the kind `#339` was, and `#339` became visible the moment a
+new consumer appeared.
+
+### Status and sequencing
+
+**Recorded, not yet fixed, and the order matters.** Fixing (1) means regenerating
+`front_fixture.json`, `quiet_fixture.json` and the twelve seat fixtures, which would invalidate
+every page built from them — including the round-6 agents' pages. **One agent is still building
+against these fixtures**, so the fix waits for it rather than pulling the ground out from under
+work in flight. Then: both fixes, regenerate every fixture and page, one full suite.
+
