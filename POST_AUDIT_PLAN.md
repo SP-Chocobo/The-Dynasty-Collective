@@ -19646,3 +19646,78 @@ different module with its own tests to write, so it does not ride along. The rep
 `count` and `valued_count` through `compute_readiness`, add the cross-interface test that was
 missing (production shape → `compose` → rendered sentence), and mutation-check that the "0
 rostered" sentence and the alphabetical ordering both fire. `#335` must not be wired until then.
+---
+
+### `#337b` — THE SUITE CAUGHT TWO REAL FAILURES, ONE OF THEM MINE AND SELF-DEFEATING
+
+The `#337` run returned **4430 tests in 1454.536s, FAILED (failures=2, skipped=2, expected
+failures=1)**. Both failures were real. Neither was flake, and neither was pre-existing noise to
+wave through. Recorded in full because the first one would have silently undone the item it
+shipped with.
+
+#### Failure 1 — MINE. `#337`'s cache used a truncating write
+
+`test_no_empty_player_universe.TheCacheIsWrittenAtomicallyTests.test_no_truncating_write_is_left_in_the_client`
+
+The first version wrote the shared cache with `path.write_text(json.dumps(...))`. The guard is
+stated over the WHOLE module rather than over the three write sites known when it was written,
+and its docstring says exactly why:
+
+> The derived half: any NEW cache write added here would reintroduce the same defect, so the rule
+> is stated over the module rather than over the three sites known today.
+
+**It worked as designed, on the first new write added to that module since it was written.**
+
+THE PART THAT MATTERS MORE THAN THE RULE. `write_text` truncates before it writes, so a reader
+arriving mid-write sees an empty file. This cache is read by **every league's sync** — which is
+the whole point of `#337`. So a torn read during one league's write sends the next league back
+for eighteen fetches. **The truncating write would have quietly re-created the exact cost the
+item exists to remove, under a green panel of sixteen tests.** Atomicity here is load-bearing,
+not hygienic.
+
+Repaired with `store_io.replace_atomically`, and NOT `store_io.write` — that module's own
+docstring draws the line this needs: a STORE refuses to overwrite bytes it found damaged because
+they are the only copy, while a CACHE is re-fetchable by definition and a corrupt one SHOULD be
+replaced. Giving a cache the store's protection would make a torn one permanently
+un-refreshable, "a worse bug than the one being fixed, installed by the fix".
+
+**Why this file's own sixteen tests missed it.** Every one of them watched the FETCH COUNT or the
+RETURNED SUMS. Not one watched the write MECHANISM. A 17th test now does, by watching the call
+the way `test_the_players_cache_never_passes_through_a_truncating_write` does — asserting the
+bytes never appear at the real path until they are all there, rather than reading the source.
+Mutation arm D (revert to `write_text`) fires it, and fires the module-wide guard too.
+
+#### Failure 2 — a round-4 regression that no suite had ever seen
+
+`test_prytaneum_terminology.TheGuardCoversTheWholeRepositoryNotJustItsOwnDirectory.test_every_remaining_carrier_is_a_mockup_and_the_count_cannot_grow`
+
+```
+retired terminology in live product copy:
+  ui_explore/round4/deck/desktop.html: 'debate dock'
+  ui_explore/round4/deck/mobile.html:  'debate dock'
+```
+
+The guard permits a retired term only under `mockups/`; anything else is live product copy. The
+round-4 design files sit under `ui_explore/`, so they are in scope. `mobile.html` was the worse
+of the two: it wrote "The Prytaneum" and then glossed it with the retired term in the same
+`title` attribute.
+
+**The real finding is not the copy. It is that the round-4 design commits were pushed without a
+full suite**, or this would have fired then — it is a committed-file scan, not a flake. `#182`
+widened that guard from top-level Python to the whole repository precisely so new directories
+would be in range, and the first new directory added after the widening proved it right.
+
+Repaired to "the dock", which the guard's own test confirms is current: it asserts
+`_STALE_PATTERN.search("six absence breaks in the Dock")` is None. Only "debate dock" is retired.
+
+#### What this rules out
+
+- **Not flake.** Both are deterministic file scans. Re-running would have returned the same two.
+- **Not pre-existing-and-ignorable.** Failure 1 was introduced by this item. Failure 2 was
+  introduced by this session's design round and had simply never been measured.
+- **The guard that caught failure 1 is NOT redundant with `#337`'s own panel.** The panel tests
+  behaviour; the guard tests the module. Both were needed, and only the guard fired.
+
+Mutation record for `#337`, all four arms restored from a pristine copy verified with `cmp` and
+with `__pycache__` cleared between them: **2 / 1 / 4 / 1**.
+

@@ -66,7 +66,7 @@ must not open by demanding your attention.
 | `ALSO STANDING` | `CAN WAIT` | Names the reader's decision, not the app's taxonomy. |
 | `ALL SYSTEMS GREEN` | `Five checks, all clean.` | Rule 5. Names them. |
 | `YOU'RE GOOD THIS WEEK` | `The week is quiet.` | Rule 3 — the reader is not being graded. |
-| `Week 6 is the one that hurts.` | **keep** | Indicative, provable, the week is the subject. |
+| `Week 6 is the one that hurts.` | `Week 6 costs 95, the largest of six weeks ahead.` | **CORRECTED — see below.** Rule 7. |
 | `CLOSE THE APP` | **keep** | The single most on-voice element produced so far. It is the app getting out of the way, as a control. |
 | `CLEARED — CAN WAIT` | **keep** | Rule 5 and rule 8 together. |
 
@@ -75,3 +75,31 @@ must not open by demanding your attention.
 Read any line aloud. If it could appear on a poster that wants you to enlist, buy, or feel good
 about yourself, it is wrong. If it could appear in a ledger kept by someone who works for you and
 expects no thanks, it is right.
+
+## The correction to this file's own table
+
+The row above said **keep**, reasoned as "Indicative, provable, the week is the subject." Two of
+those three are true. It is indicative and the week is the subject. **It is not provable.**
+
+"The one that hurts" is a superlative over an OBJECTIVE, and it holds only under maximisation.
+The owner's chop league decides last place weekly — eliminations run at midnight after the Monday
+night game, and *"if you're in last on that monday, you're done and gone"*. Under that objective
+the week that hurts is the week that ELIMINATES you, which is not the week with the largest
+measured loss, and which this engine cannot identify: naming it would need a last-place
+threshold, a forward-looking distributional quantity of exactly the kind already withheld
+alongside playoff odds.
+
+`byes_ahead` picks its week with `max(ahead, key=lambda w: ahead[w])` — largest loss among weeks
+at or after now, with **no term for distance.** On the fixture's own data the largest and the
+nearest coincide at week 6, which is why this never surfaced. Invert them (week 6 at 51, week 10
+at 95) and the band names a week the reader may never reach while the nearer week is the gate.
+
+So the figure stays and the superlative goes. `Week 6 costs 95, the largest of six weeks ahead`
+states a magnitude and its scope, both measured, and claims nothing about which week matters
+most. The reader supplies the survival reasoning, which the standing constraint already
+anticipated: *"for any pick you make, there are going to be multiple valid options, which means
+that not taking the engine's #1 isn't inherently wrong."*
+
+**This is `#336b`'s defect class — prose outrunning its function — found in a voice spec rather
+than in shipped code, and found by the owner describing their league rather than by any ratchet.**
+Rule 7 was already written here and this file broke it three rows below stating it.

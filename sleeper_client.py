@@ -761,8 +761,20 @@ class SleeperClient:
         # result would hand the next eight leagues the failure instead of a retry.
         if projections and not coverage.get("error"):
             try:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(
+                # ATOMIC, through store_io.replace_atomically and never `write_text`
+                # (`#52` phase 7.5 / J-13). `write_text` TRUNCATES before it writes, so a
+                # reader arriving mid-write sees an empty file -- and THIS cache is read by
+                # every league's sync, so a torn read during one league's write sends the next
+                # league back for eighteen fetches, degrading the exact cost `#337` exists to
+                # remove. Atomicity is therefore load-bearing here rather than hygienic.
+                #
+                # replace_atomically, NOT store_io.write: its own docstring draws the line --
+                # a STORE refuses to overwrite bytes it has found damaged because they are the
+                # only copy, while a CACHE is re-fetchable by definition and a corrupt one
+                # SHOULD be replaced. Giving this the store's protection would make a torn
+                # cache permanently un-refreshable. It also makes the parent directory, so the
+                # mkdir this replaced was its job rather than ours.
+                store_io.replace_atomically(path, json.dumps(
                     {"fetched_at": now, "season": season, "season_type": season_type,
                      "weeks": weeks,
                      "projections": projections, "weekly": weekly,

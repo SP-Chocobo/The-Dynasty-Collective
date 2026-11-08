@@ -133,30 +133,103 @@ before the measurement:
 **Next action: measure it, on an idle machine, before drawing anything.** A timing taken while
 the test suite is running would be a plausible number about something else.
 
-### The chop league — what is actually known, and the one question worth asking
+### The chop league — ANSWERED, and I was wrong TWICE before getting here
 
-Checked rather than assumed. `draft_battery.league_format_hint` discriminates on exactly
-`{scoring, superflex, te_premium}`, derived from `scoring_settings` and `roster_positions`.
-**There is no elimination concept anywhere in this engine.** A chop league therefore presents to
-it as an ordinary league, and `compose` would say TRUE things about that roster — holes, byes and
-depth are roster facts and do not care about the format.
+Both of my earlier positions are recorded because the second was a retraction of a correct one.
 
-The narrow thing that does not survive: **the bye rung's justification is futurity.** The ladder
-earns the bye claim its place because it is "a known FUTURE week with a measured cost, and
-planning only works in advance". In an elimination format a week-10 cost is conditional on still
-being alive in week 10, and nothing here models elimination. The claim is not false; its WEIGHT
-rests on an assumption the engine cannot check.
+**First draft:** worried an elimination format breaks the bye rung, since a week-10 cost is
+conditional on being alive in week 10.
 
-*(Not to be confused with `survival_probability`, which this engine DOES compute and deliberately
-withholds — `test_withheld_propagation.py` exists to prove it never leaks, including as a delta.
-That quantity is DRAFT-PICK availability, "will this player last to my next turn". It has nothing
-to do with league elimination, and I nearly connected the two while writing this section.
-Conflating them would have invented a capability.)*
+**Second draft — WRONG, and withdrawn.** On being told elimination happens weekly rather than at
+a season boundary, I concluded the concern dissolved: "you play every week either way, so a
+future week's cost is actionable in exactly the same sense." That is false. The owner's
+correction:
 
-So the question for the owner is specific rather than open-ended: **in your chop league, does
-elimination happen early enough to change which week you should care about?** If yes, the bye
-rung is mis-weighted there and that is a real ruling to make. If the chop is a side pot over an
-otherwise normal season, nothing changes.
+> if you're in last on that monday, however, you're done and gone, so
+
+You play every week *until you don't*. **Each Monday is a gate.** Week 11 exists for you only if
+you clear 6, 7, 8, 9 and 10. The first draft was right and the retraction was the error.
+
+#### Scope: one rung of four
+
+```
+clock   a deadline you can actually miss          declared, UNREACHABLE, has never fired
+hole    cannot field a legal lineup at all        immediate
+bye     "a known future week with a measured cost, and planning only works in advance"
+thin    a standing weakness, no deadline          standing
+```
+
+Only `bye` reasons about future weeks, so the entire impact is confined to one rung — and the
+assumption sits in that rung's OWN justification string. The comment above `LADDER` says the
+reason is written beside each rung "so the order can be argued with rather than merely obeyed."
+This is that mechanism working: an owner argued with a stated reason and the reason lost.
+
+#### The defect, stated precisely
+
+`byes_ahead` picks its week with `max(ahead, key=lambda w: ahead[w])` — largest loss among weeks
+at or after now, with **no term for distance**. On the fixture's real data the largest and the
+nearest coincide (week 6, 95), which is why this has never surfaced. Invert them:
+
+```
+week 6: 51     week 10: 95     ->  the band names WEEK 10
+```
+
+In an elimination format that names a week the reader may never reach, while week 6 is the gate
+they must actually pass. For a surface whose whole purpose is ranking claims on attention, that
+is the worst available failure.
+
+#### Why there is NO ranking fix, and what is already correct
+
+- Ordering by elimination risk needs a LAST-PLACE THRESHOLD: forward-looking, distributional,
+  the family this engine withholds alongside playoff odds.
+- Ordering by nearness needs a MATERIALITY threshold — a week costing 4 is not a gate — and that
+  is a constant nobody has argued for. `#56`: a bound is not a threshold; if a repair needs a
+  magnitude nobody has defended, that IS the finding.
+
+So the ordering stays as it is, and the thing that makes it safe already exists: **the week strip
+shows every week ahead carrying its own cost.** The reader supplies the survival reasoning the
+engine cannot. The owner's standing constraint is the licence, and it anticipated exactly this:
+
+> for any pick you make, there are going to be multiple valid options, which means that not
+> taking the engine's #1 isn't inherently wrong
+
+#### THE ONE CONCRETE CHANGE — and it is against `VOICE.md`, which I wrote
+
+`VOICE.md` rule 7 is "No superlative it cannot prove", and its applied table then marks
+**"Week 6 is the one that hurts"** as `keep`, reasoned as "indicative, provable, the week is the
+subject." It is indicative and the week is the subject. It is **not provable**: "the one that
+hurts" is a superlative over an objective, and it only holds under maximisation. Under
+floor-avoidance the week that hurts is the one that eliminates you, which the engine cannot
+identify.
+
+```
+was        Week 6 is the one that hurts.
+becomes    Week 6 costs 95, the largest of six weeks ahead.
+```
+
+Magnitude and scope, both measured; no claim about which week matters most. This is the same
+defect class as `#336b` — prose outrunning its function — caught in a voice spec rather than in
+shipped code, and caught by the owner describing their league rather than by any ratchet.
+
+#### Reachable, not real: "am I near the bottom this week"
+
+Computable from parts that exist — `optimize_lineup` per team, `compute_points_from_stats` under
+this league's settings, rank the twelve — and **`#337` just made it cheaper**, since the per-week
+projection lines are now fetched once per season rather than eighteen times per league.
+
+Two qualifications to settle before anything is drawn:
+
+1. It is a RANK, immediately after an item spent on a fabricated one. The difference is
+   categorical: `#336b`'s rank was INFERRED from a ratio band that ranks nothing; this one would
+   be COMPUTED from each team's own projected lineup. Computed is admissible, inferred is not.
+2. Whether projected 11th separates from projected 10th is unmeasured. `estimate_future_pick_value`
+   was withheld at 1.89 slots of error on 12; measure the separation before rendering an ordinal.
+
+#### The risk posture is UNREACHABLE, which closes the question
+
+Floor-avoidance implies a minimise-downside lineup. Sleeper publishes POINT ESTIMATES, not
+distributions — there is no variance to minimise. Not unimplemented: unreachable. Saying so
+settles it rather than parking it.
 
 ---
 

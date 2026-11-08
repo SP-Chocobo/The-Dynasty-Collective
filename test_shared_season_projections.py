@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -201,6 +202,45 @@ class TheKeyCarriesTheWeekCountTests(unittest.TestCase):
         held = json.loads(
             sc.season_projections_cache_path("2026", "regular", WEEKS, self.dir).read_text())
         self.assertEqual(WEEKS, held["weeks"])
+
+
+class TheSharedCacheIsWrittenAtomicallyTests(unittest.TestCase):
+    """CAUGHT BY THE SUITE, NOT BY THIS FILE, and that is the point of recording it here.
+
+    The first version of `#337` wrote this cache with `path.write_text(...)`.
+    `test_no_empty_player_universe.test_no_truncating_write_is_left_in_the_client` failed it --
+    a guard stated over the WHOLE module precisely so that a write added later cannot reintroduce
+    the defect, and its docstring says so. Sixteen tests in this file passed, because not one of
+    them watched the write MECHANISM; they all watched the fetch count and the returned sums.
+
+    Atomicity is load-bearing here rather than hygienic. `write_text` truncates before it writes,
+    and THIS cache is read by every league's sync -- so a reader arriving mid-write sees an empty
+    file, falls through to a fetch, and pays the eighteen requests `#337` exists to remove. The
+    truncating write would therefore have quietly re-created the very cost it was fixing, under a
+    green panel.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def test_the_shared_cache_never_passes_through_a_truncating_write(self):
+        """Asserted by watching the call, like its sibling in the players cache: the point is
+        that the bytes never appear at the real path until they are all there."""
+        seen = []
+        real = sc.store_io.replace_atomically
+        with mock.patch.object(
+                sc.store_io, "replace_atomically",
+                side_effect=lambda p, t: (seen.append(pathlib.Path(p).name), real(p, t))[1]):
+            _Counting(self.dir).get_season_projections_shared("2026", "regular")
+        self.assertIn(
+            season_projections_cache_path_name(), seen,
+            f"the shared season cache must be written atomically, saw {seen}")
+
+
+def season_projections_cache_path_name():
+    """The cache's filename, derived rather than spelled out, so this test cannot disagree with
+    the key it is checking (`#126`)."""
+    return sc.season_projections_cache_path("2026", "regular", WEEKS, "/tmp").name
 
 
 if __name__ == "__main__":

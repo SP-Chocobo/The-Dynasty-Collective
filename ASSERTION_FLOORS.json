@@ -16033,11 +16033,11 @@
       }
     },
     "test_shared_season_projections.py": {
-      "test_methods": 16,
+      "test_methods": 17,
       "asserts": {
         "assertEqual": 13,
         "assertFalse": 1,
-        "assertIn": 1,
+        "assertIn": 2,
         "assertIsNone": 2,
         "assertIsNotNone": 1,
         "assertNotEqual": 1,
@@ -16092,6 +16092,9 @@
         },
         "TheKeyCarriesTheWeekCountTests.test_two_week_counts_do_not_share_a_file": {
           "assertNotEqual": 1
+        },
+        "TheSharedCacheIsWrittenAtomicallyTests.test_the_shared_cache_never_passes_through_a_truncating_write": {
+          "assertIn": 1
         },
         "TheSyncPathUsesItTests.test_sync_league_calls_the_shared_path_not_the_per_league_one": {
           "assertIn": 1,
