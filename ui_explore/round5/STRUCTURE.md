@@ -94,7 +94,7 @@ checked, not a verdict.
 
 ---
 
-## 3. n-scaling — the layout holds, the COMPUTE is the open question
+## 3. n-scaling — the layout holds, and the compute is now MEASURED
 
 The owner is in 9 leagues plus a chop league, and names people in 20+.
 
@@ -104,34 +104,50 @@ The owner is in 9 leagues plus a chop league, and names people in 20+.
 | 2–9 | the landing page is the home screen |
 | 20+ | still one line each — twenty lines is scannable. The layout does not break |
 
-What breaks at 20 is not layout. It is **cost**, and the shape of the problem is `#337`'s
-exactly one level up: a per-league loop over a quantity whose price nobody measured.
+What breaks at 20 is not layout. It is **cost** — and the shape is `#337`'s one level up: a
+per-league price for work that does not vary per league. **Now measured (`#340`), on an idle
+machine, instrumenting the production calls.**
 
-`compose(fx)` needs `structural_holes`, `bye_profile`, `thin_positions`, `current_week`. Of
-those, `bye_profile` comes from `lineup_optimizer.bye_collision`, which **solves the lineup once
-per week** — and `thin_positions` needs `positional_depth` across every team in the league.
+### The answer: cost is `k` DISTINCT FORMATS, not `n` leagues
 
 ```
-UNMEASURED: the wall-clock cost of one league's claim band.
+n=9, grouped by format     k=1  1024 ms     k=2  2006 ms     k=3  2975 ms
+n=9, interleaved           flat ~7100 ms regardless of k
 ```
 
-That number decides the design, and it has not been taken. `#337` is the precedent for why a
-guess is not good enough here: `get_season_projections` *looked* like one request and was
-eighteen, and nine leagues made it 162.
+A format switch both reloads the rankings export (~330 ms) AND clears `merge_player`'s price
+memo, which lives in `_load()`. So grouped is ~1.0 s per distinct format, interleaved pays it per
+LEAGUE, and the warm marginal per extra league is **3-9 ms**. Grouped cost is therefore
+essentially independent of `n`: twenty leagues in three formats costs about what nine in three
+costs. **Sort order is worth 7x, and a merger pool was tested and loses to sorting.**
 
-Three designs follow from three possible answers, and it is not worth choosing between them
-before the measurement:
+Three predictions of mine were wrong and `#340` records all three; the one that matters for this
+document is that I expected `bye_collision` to dominate because it solves the lineup per week. It
+is **0.4 ms**. The cost is `positional_depth` pricing a ~6,594-row universe. Cost here lives in
+DATA VOLUME, not loop counts.
 
-- **cheap (< ~100ms/league)** — compute all N live on load. Simplest; no new state.
-- **middling** — compute on load from the **persisted** snapshot (`load_latest_snapshot` already
-  writes `{league_id}_latest.json`), never from the network. The landing page becomes a disk read.
-- **expensive (> ~1s/league)** — the crystallization must be **persisted with the snapshot** at
-  sync time, so the landing page reads a stored claim rather than recomputing one. This is the
-  only arm that needs new engine work, and it is also the only arm that makes the landing page
-  instant at n=20.
+### What that settles
 
-**Next action: measure it, on an idle machine, before drawing anything.** A timing taken while
-the test suite is running would be a plausible number about something else.
+| arm | verdict |
+|---|---|
+| compute all N live | **VIABLE at `k <= 2`** (~1-2 s, inside the three-second test) — but only iterating GROUPED BY FORMAT |
+| read persisted snapshots instead of the network | **MIS-FRAMED BY ME.** I assumed the cost was I/O; it is CPU. A snapshot read avoids nothing unless the snapshot CONTAINS the computed depth, which is the third arm |
+| persist the crystallization at sync time | **the fallback, for large `k`.** At `k=5` the live path is ~5 s and over budget. Sync already pays this cost and already makes dozens of HTTP calls, so computing the band there is marginal |
+
+**`k` is knowable, not guessable:** it is `league_format_hint` over the owner's actual leagues.
+The open question is no longer "what does it cost" but "how many distinct formats do nine leagues
+plus a chop league span".
+
+### Two orderings, and they must not become one list
+
+There is **no multi-league loop today** — `sync_league` runs once for the active league
+(`app.py:1130`). But `league_prefs.py` already discovers the league list and keeps
+`prefs["order"]`.
+
+That order is a **display** preference. Format grouping is a **compute** order. Collapsing them
+would either silently reorder the user's chosen display for performance, or make the compute
+order follow a display preference and lose the 7x. One home each.
+
 
 ### The chop league — ANSWERED, and I was wrong TWICE before getting here
 

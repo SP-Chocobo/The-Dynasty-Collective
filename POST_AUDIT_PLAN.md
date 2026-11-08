@@ -19780,3 +19780,140 @@ both with git operations running concurrently. That is the noise floor on this n
 move between measurements is not a change in the suite, and timeouts should still be sized from
 the table's worst total (1976.7s) rather than its latest.
 
+---
+
+## `#340` — THE LANDING PAGE'S COST IS `k` DISTINCT FORMATS, NOT `n` LEAGUES, AND SORT ORDER IS WORTH 7x
+
+The measurement `ui_explore/round5/STRUCTURE.md` said was needed before drawing a landing page.
+Taken on an idle machine, instrumenting the PRODUCTION calls `capture_front_fixture.py` makes, in
+its order and its shapes (`#222`). **Three of my own predictions were wrong and the corrections
+are the content.**
+
+### WRONG PREDICTION 1 — I expected `bye_collision` to dominate. It is 0.4 ms.
+
+I reasoned from the ALGORITHM's shape: `bye_collision` "solves the lineup once per week", so
+eighteen optimizer runs looked like the expensive part. Measured, one league:
+
+```
+      401.6 ms   DataMerger()                      <- shared, once
+      373.8 ms   set_league_format                 <- PER FORMAT, a file reload
+      324.2 ms   positional_depth                  <- the real per-league cost
+       43.5 ms   build_player_universe
+        7.4 ms   build `mine` (merge_player per rostered player)
+        0.6 ms   bye_concentration
+        0.4 ms   bye_collision                     <- the one I predicted would dominate
+        0.1 ms   slot_coverage / depth_label loop / slots_from_roster_positions
+```
+
+A 16-player roster against ten slots is a trivial assignment problem, eighteen times over. **The
+cost is in DATA VOLUME, not algorithmic iteration** -- `positional_depth` prices a ~6,594-row
+universe through `merge_player`. Reasoning about cost from the loop count is what produced the
+wrong answer; the profile is what produced the right one.
+
+### WRONG PREDICTION 2 — my first multi-league measurement used a fixture no manager has
+
+I built nine leagues with NON-OVERLAPPING player slices and measured ~350-580 ms per league,
+concluding 9 leagues cost ~4.9 s and 20 cost ~9.9 s. **Those numbers are about a manager whose
+nine leagues share no players, which is nobody.** Real leagues overlap heavily -- the same stars
+are rostered everywhere.
+
+`merge_player` memoises on `(name, position, team)` in `self._merge_memo`, so overlap matters
+enormously. Re-measured with nine leagues drawn from one 300-player slice:
+
+```
+ONE FORMAT      753  161   58   24    8    9    5    3    3 ms    -> 9 leagues  1023 ms
+ALTERNATING     762  806  842  776  733  749  817  787  836 ms    -> 9 leagues  7108 ms
+```
+
+The warm memo collapses the per-league cost to **3-9 ms**. This is the skill's own warning
+landing on me: the failure mode is not a crash, it is a plausible number about something else.
+
+### WRONG PREDICTION 3 — I nearly recorded a correctness defect that does not exist
+
+`_merge_memo` is assigned at one line and no `clear()` appears anywhere, so reading the source I
+concluded a format switch reloads a different rankings export while already-priced players keep
+the old format's price -- which would silently defeat `set_league_format`, the mechanism the
+engine-measurement skill calls "THE BIG ONE".
+
+**Tested instead of asserted, and it is correct.** 109 players price differently between
+`12T_ppr_K_DEF` and `8T_standard` on fresh mergers. One merger, same player across a switch:
+
+```
+after set_league_format(ppr):       5.0     (fresh-ppr ground truth 5.0)
+after set_league_format(standard):  8.0     (fresh-standard ground truth 8.0)
+```
+
+The mechanism: **the memo is initialised inside `_load()`, not `__init__`** (line 2049 is the
+enclosing def), so every `reload()` resets it. Its lifetime is exactly one loaded dataset, which
+is precisely right. I had the line number and still read the scope wrong; the experiment caught
+it before it reached this register as a finding.
+
+### THE ACTUAL RESULT: cost is `k x ~1.0 s`, and `n` is nearly free
+
+Because a format switch both reloads the export AND clears the price memo, order dominates.
+n=9, varying the number of distinct formats `k`:
+
+| `k` | grouped (runs of one format) | interleaved (round-robin) | ratio |
+|---|---|---|---|
+| 1 | 1024.3 ms | 1018.7 ms | 0.99x |
+| 2 | **2006.4 ms** | 7106.2 ms | **3.54x** |
+| 3 | **2975.0 ms** | 7118.7 ms | **2.39x** |
+
+Grouped is almost exactly linear in `k` at ~1.0 s per format, and interleaved is FLAT at ~7.1 s
+regardless of `k`, because every league is a switch. Since the warm marginal is 3-9 ms, **grouped
+cost is essentially independent of `n`**: twenty leagues in three formats costs about what nine in
+three costs.
+
+**This is `#337`'s shape one level up** -- a per-league price for work that does not vary per
+league -- except the remedy is not a cache. It is sort order.
+
+### A merger POOL was tested and is worse than sorting
+
+One `DataMerger` per format, each keeping a warm memo, interleaved access:
+
+| `k` | one merger switching | one merger PER FORMAT | grouped, one merger |
+|---|---|---|---|
+| 2 | 7687.6 ms | 2790.3 ms | **2006.4 ms** |
+| 3 | 7188.9 ms | 4027.0 ms | **2975.0 ms** |
+
+A pool beats thrashing but loses to sorting, because each merger pays its own ~335 ms
+construction. **The cheapest fix is also the fastest one**, which is worth stating because the
+pool is the more sophisticated-looking answer and this project has a standing preference for the
+simpler construction when it measures better.
+
+### What this settles for the landing page
+
+`STRUCTURE.md` listed three arms. The measurement eliminates one and corrects my framing of
+another:
+
+- **Arm 1, compute all N live: VIABLE, conditionally.** At `k <= 2` it is ~1-2 s, inside the
+  brief's three-second test. It is only viable iterating GROUPED BY FORMAT.
+- **Arm 2, read persisted snapshots instead of the network: MIS-FRAMED BY ME.** I assumed the
+  cost was I/O. It is CPU -- `positional_depth` over the universe. Reading a snapshot avoids
+  nothing unless the snapshot CONTAINS the computed depth, which is arm 3.
+- **Arm 3, persist the crystallization at sync time: the fallback, needed when `k` is large.**
+  At `k = 5` the live path is ~5 s and over budget. Sync already pays these costs and already
+  makes dozens of HTTP calls, so computing the band there is marginal.
+
+**`k` is knowable rather than guessable** -- it is a property of the owner's actual leagues, from
+`league_format_hint` on each. The right next question is how many distinct formats nine leagues
+plus a chop league actually span.
+
+### Two orderings, one home each
+
+There is **no multi-league loop today**: `sync_league` is called once for the active league
+(`app.py:1130`). But `league_prefs.py` already discovers the league list and maintains
+`prefs["order"]`.
+
+That order is a DISPLAY preference. Format grouping is a COMPUTE order. They are different
+quantities and must not be collapsed into one list, or the user's chosen display order would
+silently reorder itself for performance reasons, or the compute order would silently follow a
+display preference and lose the 7x. **Recorded now, before the loop exists**, because the loop is
+where they would get conflated.
+
+### Status
+
+**Measured and recorded. No code changed.** There is no N-league loop to fix yet; this is the
+constraint that loop must satisfy when `#335` and the landing page are built. The instruments are
+in the session scratchpad and are reconstructable from this entry.
+
