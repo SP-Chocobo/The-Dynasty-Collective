@@ -141,43 +141,67 @@ def currency_stamp(text: str) -> str:
 # ---------------------------------------------------------------------------------------------
 # CLAIM PROSE AND ITS EXPANSION
 # ---------------------------------------------------------------------------------------------
-def claim_prose(c: dict) -> tuple[str, str]:
-    """Headline and body for one claim. Indicative, never imperative; the week or the position is
-    the subject and the app is never the subject (`VOICE.md` rules 1 and 2)."""
+def claim_parts(c: dict) -> dict:
+    """`{eyebrow, figure, unit, headline, body}` for one claim.
+
+    THE FIGURE IS THE HERO, which is the structural correction this page needed. The first pass
+    buried every number inside a sentence at 13.76px and the owner's verdict was "too spartan ...
+    uninspiring font usage/sizing". `deck` -- the design chosen for feel -- carries its figures in
+    `.big`: 44px mono, gold-bright, negative tracking. A triage surface must read at a GLANCE,
+    and a glance reads a number, not a clause.
+
+    The eyebrow is the device `deck` uses thirteen times: Cinzel, uppercase, heavily letterspaced.
+    It names the KIND of claim, so the headline can be the subject and the body the
+    qualification -- three tiers rather than one run-on sentence.
+
+    MONO FOR EVERY FIGURE, NEVER THE DISPLAY FACE. `design_system.FONT_DISPLAY` carries a written
+    rule -- brand voice, never for data -- and Cinzel's letterspaced numerals turn "11" into
+    Roman "II".
+    """
     kind = c["kind"]
     if kind == "hole":
         positions = c.get("positions") or []
-        return ("No legal lineup",
-                f'<b>{esc(len(positions))}</b> slot'
-                f'{"s" if len(positions) != 1 else ""} no rostered player can fill: '
-                f'{esc(", ".join(positions))}.')
+        return {"eyebrow": "No legal lineup",
+                "figure": str(len(positions)),
+                "unit": "slot" + ("s" if len(positions) != 1 else ""),
+                "headline": esc(", ".join(positions)) or "&mdash;",
+                "body": "No rostered player can fill these. No amount of value fixes it."}
     if kind == "bye":
         loss = ds.figure(c.get("worst_week_loss")) or "?"
         floor = "&ge;&thinsp;" if c.get("partial") else ""
         out = c.get("starters_out")
         # SAY THE MAGNITUDE AND ITS SCOPE, NOT A SUPERLATIVE (`VOICE.md` rule 7, corrected).
-        # This read "Week 6 is the one that hurts" and the voice spec marked it keep. "The one
-        # that hurts" is a superlative over an OBJECTIVE, true only under maximisation -- and in
-        # the owner's chop league the week that hurts is the week that eliminates you, which
-        # needs a last-place threshold this engine withholds the neighbours of. `byes_ahead`
-        # picks by largest loss with NO term for distance, so it can name a week the reader may
-        # never reach.
-        return (f'Week <b>{esc(c["worst_week"])}</b> costs {floor}<b>{esc(loss)}</b>',
-                f'the largest of the weeks still ahead, in {currency_stamp("trade value")}.'
-                + (f' <b>{esc(out)}</b> starter{"s" if out != 1 else ""} out that week.'
-                   if out else ""))
+        # "The one that hurts" is a superlative over an OBJECTIVE, true only under maximisation;
+        # in the owner's chop league the week that hurts is the week that eliminates you, which
+        # needs a last-place threshold this engine withholds the neighbours of.
+        return {"eyebrow": "Bye damage",
+                "figure": f"{floor}{esc(loss)}",
+                "unit": currency_stamp("trade value"),
+                "headline": f'Week <b>{esc(c["worst_week"])}</b>',
+                "body": ("The largest of the weeks still ahead."
+                         + (f' <b>{esc(out)}</b> starter{"s" if out != 1 else ""} out that week.'
+                            if out else ""))}
     if kind == "thin":
         count, covered = c.get("count") or 0, c.get("valued_count")
         band = c.get("label")
         # THE LABEL, NEVER A RANK (`#336b`). `depth_label` is a ratio band against the league
-        # MEAN; nothing in this tree ranks teams within a position.
-        rated = (f' Depth here rates <b>{esc(band)}</b> against this league\'s own rosters.'
+        # MEAN, and nothing in this tree ranks teams within a position.
+        rated = (f"Depth here rates <b>{esc(band)}</b> against this league's own rosters."
                  if band else "")
         scope = (f' Only <b>{esc(covered)}</b> of {esc(count)} could be priced, so that '
                  f'comparison is a floor.' if c.get("priced_floor") else "")
-        return (f'Thin at <b>{esc(c["position"])}</b>',
-                f'<b>{esc(count)}</b> rostered.{rated}{scope}')
-    return (esc(kind), "")
+        return {"eyebrow": "Thin room",
+                "figure": esc(count),
+                "unit": "rostered",
+                "headline": esc(c["position"]),
+                "body": (rated + scope).strip()}
+    return {"eyebrow": esc(kind), "figure": "", "unit": "", "headline": esc(kind), "body": ""}
+
+
+def claim_headline(c: dict) -> str:
+    """Plain text for the capped-out list, with no markup to strip downstream."""
+    parts = claim_parts(c)
+    return f'{parts["eyebrow"]}: {parts["headline"].replace("<b>", "").replace("</b>", "")}'
 
 
 def expansion(c: dict, fx: dict) -> str:
@@ -239,107 +263,126 @@ def expansion(c: dict, fx: dict) -> str:
 CSS = """
 *{{box-sizing:border-box}}
 html,body{{margin:0;background:var(--bg);color:var(--ink)}}
-body{{font:400 1rem/1.55 {sans};-webkit-text-size-adjust:100%}}
-.wrap{{max-width:46rem;margin:0 auto;padding:24px 16px 56px}}
+body{{font:400 1rem/1.6 {sans};-webkit-text-size-adjust:100%}}
+.wrap{{max-width:50rem;margin:0 auto;padding:40px 20px 72px}}
 
-/* ---- brand. Cinzel for the wordmark and top-level headings ONLY, never for data: its
-   numerals are letterspaced and "11" reads as Roman "II". ---- */
-.crest{{display:flex;align-items:center;gap:12px;margin:0 0 4px}}
-.wyrm{{flex:0 0 auto}}
-.word{{font:600 1.5rem/1 {display};letter-spacing:.11em;text-transform:uppercase;
+/* ---- THE TYPE SCALE, with real jumps. A measured correction: the first pass of this page put
+   ELEVEN sizes between 12.16px and 24px -- a 1.97:1 range -- which reads as "everything is the
+   same size" no matter how correct the content is. `deck`, the design the owner chose for feel,
+   spans 12px to 44px with deliberate jumps at 22, 30 and 44. The brief's own rule is RESTRAINT
+   IN INFORMATION, GENEROSITY IN CRAFT, and the first pass cut the craft along with the
+   information -- the exact failure the brief was written to prevent. ---- */
+.eyebrow{{font:600 .78rem/1 {display};letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin:0 0 10px}}
+.big{{font:600 2.75rem/1 {mono};letter-spacing:-.02em;color:var(--gold-b);
+  font-variant-numeric:tabular-nums;display:block}}
+.big .u{{font-size:.95rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  font-family:{display};margin-left:10px;vertical-align:.42em}}
+.n{{font:600 1.375rem/1 {mono};color:var(--ink);font-variant-numeric:tabular-nums}}
+
+/* ---- brand. Cinzel carries the wordmark and every LABEL; figures are always mono, because
+   Cinzel's numerals are letterspaced and "11" reads as Roman "II". ---- */
+.crest{{display:flex;align-items:center;gap:14px;margin:0 0 6px}}
+.word{{font:600 1.75rem/1 {display};letter-spacing:.12em;text-transform:uppercase;margin:0;
   background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}}
-/* IN REM, NOT EM. At .5em of the wordmark this computed to 10.56px desktop and 9.12px on
-   the phone -- under the 12px floor, and invisible to any check that reads declared sizes
-   without resolving the em chain. Small type is declared in rem throughout this file so
-   `_assert_type_floor` can verify the floor WITHOUT a browser. */
-.word b{{display:block;font-size:.78rem;letter-spacing:.44em;font-weight:400;margin-top:6px}}
-.seat{{color:var(--muted);font-size:.84rem;margin:0 0 22px;padding-left:46px}}
-.seat .st{{color:var(--dim)}}
+.word b{{display:block;font-size:.78rem;letter-spacing:.44em;font-weight:400;margin-top:8px}}
+/* the logo's own device: a hairline with a diamond, fading out rather than stopping dead */
+.orn{{display:flex;align-items:center;gap:10px;margin:0 0 26px}}
+.orn i{{height:1px;flex:1;background:linear-gradient(90deg,rgba(117,80,36,.55),
+  rgba(117,80,36,.04))}}
+.orn i:last-child{{background:linear-gradient(270deg,rgba(117,80,36,.55),rgba(117,80,36,.04))}}
+.orn s{{width:5px;height:5px;background:var(--gold);transform:rotate(45deg);flex:0 0 auto}}
+.seat{{font:400 .82rem/1.5 {display};letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin:0;text-align:center}}
+.seat .st{{color:var(--line-2)}}
 
-/* ---- the band. Severity by FRAME SHAPE, grafted from `keep`: the hole rung gets a solid left
-   rule, the bye rung a thinner one, the thin rung none. It survives greyscale and forced
-   colours, which a colour-only encoding does not. ---- */
-.claims{{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}}
-.claim{{background:var(--surface);border:1px solid var(--line);border-radius:3px;
-  padding:14px 16px;position:relative}}
+/* ---- the band. Surfaces are vertical GRADIENTS, not flat fills, and severity is carried by
+   FRAME WEIGHT as well as colour so it survives greyscale and forced-colours. ---- */
+.claims{{display:flex;flex-direction:column;gap:14px;margin:0 0 18px}}
+.claim{{background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  border:1px solid var(--line);border-left-width:1px;border-radius:5px;padding:22px 24px;
+  position:relative;overflow:hidden}}
+/* a 45-degree hatch at low opacity, bled from the left edge -- texture, not decoration: it is
+   what keeps a near-black panel from reading as an empty div */
+.claim::before{{content:"";position:absolute;inset:0 auto 0 0;width:92px;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 3px,rgba(176,162,138,.07) 3px 4px);
+  mask-image:linear-gradient(90deg,#000,transparent)}}
 .claim.hole{{border-left:4px solid var(--gold-b)}}
 .claim.bye{{border-left:3px solid var(--gold)}}
-.claim.thin{{border-left:1px solid var(--line-2)}}
-.claim.none{{border-left:1px solid var(--line);text-align:left}}
-.claim h3{{font:400 1.06rem/1.35 {sans};margin:0 0 5px;color:var(--ink)}}
-.claim p{{margin:0;color:var(--muted);font-size:.9rem}}
-/* SPLIT, because the two parents differ (1.06rem and .9rem) and one em value cannot be
-   resolved statically for both. .95em was SAFE here at 13.68px -- the rule rejects it
-   anyway, so that the floor stays checkable without a browser rather than case by case. */
-.claim h3 b,.claim p b{{color:var(--ink);font-weight:600;font-family:{mono}}}
-.claim h3 b{{font-size:1rem}}
-.claim p b{{font-size:.86rem}}
-.row{{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:11px}}
+.claim.thin{{border-left:2px solid var(--line-2)}}
+.claim.none{{border-left:2px solid var(--gold)}}
+.claim h3{{font:400 1.375rem/1.25 {sans};margin:0 0 8px;color:var(--ink);
+  letter-spacing:-.01em}}
+.claim h3 b{{font-family:{mono};font-weight:600}}
+.claim p{{margin:0;color:var(--muted);font-size:.9rem;max-width:44ch}}
+.claim p b{{color:var(--ink);font-weight:600;font-family:{mono};font-size:.86rem}}
+.figline{{display:flex;align-items:baseline;gap:14px;margin:0 0 4px}}
+.row{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}}
 
-/* ---- controls. 44px minimum, which is why these are padded rather than text-sized. ---- */
-.btn{{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;
-  border:1px solid var(--line-2);border-radius:3px;background:var(--surface-2);
-  color:var(--ink);font:400 .82rem/1 {sans};cursor:pointer;text-decoration:none}}
-.btn:hover,.btn:focus-visible{{border-color:var(--gold);color:var(--gold-b)}}
-.btn.route{{border-style:dashed;color:var(--muted)}}
+/* ---- controls. Cinzel, letterspaced, 48px tall, on a gold wash rather than a grey box. ---- */
+.btn{{display:inline-flex;align-items:center;min-height:48px;padding:0 20px;
+  border:1px solid var(--line-2);border-radius:4px;
+  background:linear-gradient(180deg,rgba(117,80,36,.28),rgba(117,80,36,.05));
+  color:var(--gold-b);font:400 .82rem/1 {display};letter-spacing:.16em;
+  text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap}}
+.btn:hover,.btn:focus-visible{{border-color:var(--gold);color:var(--pure)}}
+.btn.route{{background:none;border-style:dashed;color:var(--muted)}}
 
-/* ---- popovers, not inline disclosure. The owner's ruling: "a popout or pop-over, not in-line
-   in the dashboard". Native `popover`, so it is an overlay with keyboard and escape handling
-   and no script. ---- */
-[popover]{{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);
-  border-radius:4px;padding:18px;max-width:min(32rem,92vw);
-  box-shadow:0 18px 50px rgba(0,0,0,.72)}}
-[popover]::backdrop{{background:rgba(4,3,2,.66)}}
-[popover] h4{{font:400 1rem/1.3 {sans};margin:0 0 10px;color:var(--gold-b)}}
-.popnote{{color:var(--dim);font-size:.78rem;margin:12px 0 0}}
-.popclose{{margin-top:14px}}
+[popover]{{border:1px solid var(--line-2);border-radius:6px;padding:26px;
+  background:linear-gradient(180deg,var(--surface),var(--bg));color:var(--ink);
+  max-width:min(34rem,92vw);box-shadow:0 24px 64px rgba(0,0,0,.8)}}
+[popover]::backdrop{{background:rgba(4,3,2,.74)}}
+[popover] h4{{font:600 .82rem/1 {display};letter-spacing:.2em;text-transform:uppercase;
+  margin:0 0 18px;color:var(--gold)}}
+.popnote{{color:var(--dim);font-size:.78rem;margin:16px 0 0;max-width:46ch}}
+.popclose{{margin-top:20px}}
 
-/* ---- the week table. A table, because it is tabular, and the bar is a second encoding beside
-   a readable number rather than the only encoding. ---- */
 table.weeks{{width:100%;border-collapse:collapse;font-size:.84rem}}
-.weeks th{{text-align:left;font-weight:400;color:var(--muted);padding:5px 10px 5px 0;
-  white-space:nowrap}}
-.weeks td{{padding:5px 0}}
-.weeks td.n{{font-family:{mono};text-align:right;padding-right:12px;color:var(--ink);
-  font-variant-numeric:tabular-nums}}
-.barcell{{width:52%}}
-.bar{{display:block;height:9px;border-radius:2px}}
+.weeks th{{font:400 .78rem/1 {display};letter-spacing:.14em;text-transform:uppercase;
+  text-align:left;color:var(--muted);padding:7px 12px 7px 0;white-space:nowrap}}
+.weeks td{{padding:7px 0}}
+.weeks td.n{{font-family:{mono};font-size:.95rem;text-align:right;padding-right:14px;
+  color:var(--ink);font-variant-numeric:tabular-nums}}
+.barcell{{width:50%}}
+.bar{{display:block;height:10px;border-radius:2px}}
 .bar.recede{{background:var(--dim)}}
 .bar.mid{{background:var(--gold)}}
-.bar.hot{{background:var(--gold-b)}}
+.bar.hot{{background:linear-gradient(90deg,var(--gold),var(--gold-b))}}
 
-dl.kv{{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:.86rem}}
-dl.kv dt{{color:var(--muted)}}
-dl.kv dd{{margin:0;color:var(--ink)}}
-dl.kv dd.n{{font-family:{mono};font-variant-numeric:tabular-nums}}
-ul.slots{{margin:0;padding-left:20px;font-size:.88rem}}
+dl.kv{{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0}}
+dl.kv dt{{font:400 .78rem/1.4 {display};letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted)}}
+dl.kv dd{{margin:0;color:var(--ink);font-size:.9rem}}
+dl.kv dd.n{{font-family:{mono};font-variant-numeric:tabular-nums;font-size:1.05rem}}
+ul.slots{{margin:0;padding-left:20px;font-size:.95rem}}
 
-/* ---- the checks line. Most weeks this is the whole page. ---- */
-.checks{{margin:0 0 20px;padding:12px 14px;border:1px dashed var(--line-2);border-radius:3px;
-  color:var(--muted);font-size:.84rem}}
-.checks b{{font-family:{mono};color:var(--ink)}}
+/* ---- the checks line. Most weeks this is the whole page, so it gets a rule and a label
+   rather than being a sentence in the margin. ---- */
+.checks{{margin:0;padding:18px 0 0;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}}
+.checks .eyebrow{{margin-bottom:8px}}
+.checks b{{font-family:{mono};color:var(--ink);font-size:1.05rem;font-weight:600}}
 
 .absent{{color:var(--dim);cursor:help;border-bottom:1px dotted var(--dim)}}
 .currency{{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}}
-.stamp{{font-size:.76rem;color:var(--dim)}}
+.stamp{{font:400 .76rem/1.5 {sans};color:var(--dim)}}
 
-/* ---- five rooms and one dock. Not six doors. ---- */
-nav{{border-top:1px solid var(--line);margin-top:26px;padding-top:18px}}
-nav h2{{font:400 .78rem/1 {sans};letter-spacing:.17em;text-transform:uppercase;
-  color:var(--dim);margin:0 0 10px}}
-.rooms{{display:flex;flex-wrap:wrap;gap:8px}}
-.dock{{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}}
-.dock .stamp{{display:block;margin-top:7px}}
-
-.close{{margin-top:20px}}
-.close .btn{{border-color:var(--gold);color:var(--gold-b)}}
+nav{{margin-top:36px}}
+nav .orn{{margin:0 0 18px}}
+.rooms{{display:flex;flex-wrap:wrap;gap:10px}}
+.dock{{margin-top:18px;padding-top:18px;border-top:1px dashed var(--line)}}
+.dock .stamp{{display:block;margin-top:9px}}
+.close{{margin-top:26px}}
+.close .btn{{border-color:var(--gold)}}
 
 @media (max-width:460px){{
-  .wrap{{padding:18px 16px 44px}}
-  .seat{{padding-left:0}}
-  .word{{font-size:1.2rem}}
-  .barcell{{width:44%}}
+  .wrap{{padding:26px 16px 52px}}
+  .word{{font-size:1.32rem}}
+  .big{{font-size:2.25rem}}
+  .claim{{padding:18px 18px}}
+  .claim h3{{font-size:1.2rem}}
+  .barcell{{width:42%}}
 }}
 @media (prefers-reduced-motion:reduce){{*{{transition:none!important}}}}
 """
@@ -369,17 +412,21 @@ def build(fx: dict) -> str:
     # ---- the band, each claim with its popout where the engine computes one ------------------
     cards = []
     for i, c in enumerate(shown):
-        head, body = claim_prose(c)
+        parts = claim_parts(c)
         exp, pid = expansion(c, fx), f"exp{i}"
         controls = [f'<a class="btn route" href="#{esc(c["route"].lower().replace(" ", "-"))}">'
                     f'{esc(c["route"])} &rsaquo;</a>']
         if exp:
             controls.insert(0, f'<button class="btn" popovertarget="{pid}">What it is made of'
                                f'</button>')
-        pop = (f'<div id="{pid}" popover><h4>{head}</h4>{exp}'
+        pop = (f'<div id="{pid}" popover><h4>{parts["eyebrow"]}</h4>{exp}'
                f'<div class="popclose"><button class="btn" popovertarget="{pid}" '
                f'popovertargetaction="hide">Close</button></div></div>') if exp else ""
-        cards.append(f'<article class="claim {esc(c["kind"])}"><h3>{head}</h3><p>{body}</p>'
+        fig = (f'<p class="figline"><span class="big">{parts["figure"]}'
+               f'<span class="u">{parts["unit"]}</span></span></p>') if parts["figure"] else ""
+        cards.append(f'<article class="claim {esc(c["kind"])}">'
+                     f'<p class="eyebrow">{parts["eyebrow"]}</p>'
+                     f'{fig}<h3>{parts["headline"]}</h3><p>{parts["body"]}</p>'
                      f'<div class="row">{"".join(controls)}</div></article>{pop}')
 
     if not cards:
@@ -387,18 +434,25 @@ def build(fx: dict) -> str:
         # rule 8: leaving is a success state. The brief's test is whether a person can tell in
         # three seconds that they may close the app, and `threshold`'s CLOSE THE APP control --
         # the best single idea in the whole prior round -- turns that test into an affordance.
-        cards.append('<article class="claim none"><h3>Nothing open this week</h3>'
-                     '<p>No unfillable slot, no bye week still ahead with a measured cost, no '
-                     'position thin against this league.</p></article>')
+        # THE QUIET STATE GETS A HERO FIGURE TOO, and it is the one number this page can
+        # always defend: how many checks ran. A quiet page with no figure at all is what read as
+        # "too spartan" -- correct, and indistinguishable from unfinished.
+        cards.append(f'<article class="claim none">'
+                     f'<p class="eyebrow">Nothing open this week</p>'
+                     f'<p class="figline"><span class="big">{summary["ran"]}'
+                     f'<span class="u">checks, all clean</span></span></p>'
+                     f'<h3>{esc(", ".join(summary["clean"]))}</h3>'
+                     f'<p>No unfillable slot, no bye week still ahead with a measured cost, no '
+                     f'position thin against this league.</p></article>')
 
     more = (f'<p class="stamp">Also standing: '
-            + ", ".join(esc(claim_prose(c)[0].replace("<b>", "").replace("</b>", ""))
-                        for c in hidden) + ".</p>") if hidden else ""
+            + "; ".join(claim_headline(c) for c in hidden) + ".</p>") if hidden else ""
 
     # ---- the checks line. DERIVED, never a hardcoded list (`#338`) ---------------------------
     if summary["all_clean"]:
-        checks = (f'<b>{summary["ran"]}</b> checks, all clean &mdash; '
-                  f'{esc(", ".join(summary["clean"]))}.')
+        # The quiet card already carries this as its hero figure; repeating it below would be
+        # the same fact twice, which the standing constraint names as the failure.
+        checks = ""
     else:
         bits = []
         if summary["clean"]:
@@ -431,6 +485,9 @@ def build(fx: dict) -> str:
              '<div class="popclose"><button class="btn" popovertarget="bye-note" '
              'popovertargetaction="hide">Close</button></div></div>') if summary["all_clean"] else ""
 
+    checks_block = (f'<div class="checks"><p class="eyebrow">What was examined</p>{checks}</div>'
+                    if checks else "")
+    orn = '<p class="orn"><i></i><s></s><i></i></p>'
     css = CSS.format(sans=ds.FONT_SANS, mono=ds.FONT_MONO, display=ds.FONT_DISPLAY)
     return f"""<!doctype html>
 <html lang="en"><head>
@@ -446,13 +503,15 @@ def build(fx: dict) -> str:
 </head><body>
 <main class="wrap">
   <div class="crest">{WYRM}<h1 class="word">Gold Wyrm<b>Dynasty</b></h1></div>
+  {orn}
   {seat}
   <div class="claims">{"".join(cards)}</div>
   {more}
-  <p class="checks">{checks}</p>
+  {checks_block}
   {close}
   <nav>
-    <h2>Rooms</h2>
+    {orn}
+    <h2 class="eyebrow">Rooms</h2>
     <div class="rooms">{rooms}</div>
     <div class="dock">
       <a class="btn" href="#prytaneum">{esc(DOCK)}</a>

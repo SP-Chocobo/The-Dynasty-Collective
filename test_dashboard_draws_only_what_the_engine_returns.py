@@ -82,7 +82,7 @@ class TheTypeFloorIsEnforcedAtBuildTimeTests(unittest.TestCase):
     def test_the_build_refuses_a_size_below_the_floor(self):
         real = bd.CSS
         try:
-            bd.CSS = real.replace("nav h2{{font:400 .78rem", "nav h2{{font:400 .72rem")
+            bd.CSS = real.replace(".stamp{{font:400 .76rem", ".stamp{{font:400 .72rem")
             with self.assertRaises(SystemExit):
                 bd._assert_type_floor()
         finally:
@@ -109,11 +109,24 @@ class ThePageDrawsTheEnginesClaimsAndNoOthersTests(unittest.TestCase):
         self.assertTrue(out["hidden"], "fixture must overflow the cap")
         self.assertIn("Also standing", bd.build(fx))
 
-    def test_the_checks_line_states_the_engines_count(self):
+    def test_the_quiet_state_carries_the_engines_check_count_as_its_HERO_figure(self):
+        """Updated with the design, not around it. The count used to sit in a sentence below the
+        band; it is now the quiet page's `.big` figure, because a page whose only content was
+        three small lines read as "too spartan" and was indistinguishable from unfinished. The
+        FACT asserted is unchanged -- the number on the page is the engine's, not the renderer's.
+        """
         page = bd.build(QUIET)
         summary = fc.checks_summary(fc.compose(QUIET)["checks"])
         self.assertTrue(summary["all_clean"])
-        self.assertIn(f'<b>{summary["ran"]}</b> checks, all clean', page)
+        self.assertIn(f'class="big">{summary["ran"]}', page)
+        self.assertIn("checks, all clean", page)
+        # non-vacuity: a wrong count must not also pass
+        self.assertNotIn(f'class="big">{summary["ran"] + 1}', page)
+
+    def test_the_check_count_is_not_repeated_once_it_is_the_hero(self):
+        """The standing constraint: the same fact twice is the failure it names."""
+        page = bd.build(QUIET)
+        self.assertEqual(1, page.count("checks, all clean"))
 
 
 class ForbiddenQuantitiesAppearNowhereTests(unittest.TestCase):
