@@ -73,9 +73,27 @@ basis_note, bye_ledger, claim_headline = _r5.basis_note, _r5.bye_ledger, _r5.cla
 claim_parts, expansion, pill, verdict_prose = (_r5.claim_parts, _r5.expansion, _r5.pill,
                                                _r5.verdict_prose)
 # ---- THE CHROME: one home, and it is the landing page's (see the module docstring) ----------
-from build_landing import (asset_data_uri, assert_type_floor, assert_vars_resolve, css as
-                           shell_css, emblem, esc, font_vars, hero_band, icon, panel, sechead,
-                           topbar)
+#
+# ALSO LOADED BY PATH, AND FOR THE SAME REASON AS ROUND 5 ABOVE -- which I half-learned and then
+# only half-applied. `build_landing.py` exists in BOTH round5 and round7. Run on its own this
+# file's directory is first on sys.path and the plain import resolves correctly; under
+# `unittest discover`, round5's directory is already on sys.path (its own tests put it there),
+# so `from build_landing import ...` binds ROUND 5's module and fails with
+# `ImportError: cannot import name 'asset_data_uri'` -- naming a symbol that plainly exists in
+# the file I meant.
+#
+# It passed standalone and failed in the suite, which is exactly the trap `close-register-item`
+# names: the full suite is what licenses a push, because a targeted run shares neither sys.path
+# nor import order with it. Ten errors, one cause, and the cause was a filename I had already
+# written a paragraph about twenty lines up.
+_lspec = _ilu.spec_from_file_location("round7_landing", HERE / "build_landing.py")
+_r7l = _ilu.module_from_spec(_lspec)
+_lspec.loader.exec_module(_r7l)
+asset_data_uri, assert_type_floor = _r7l.asset_data_uri, _r7l.assert_type_floor
+assert_vars_resolve, shell_css = _r7l.assert_vars_resolve, _r7l.css
+emblem, esc, font_vars = _r7l.emblem, _r7l.esc, _r7l.font_vars
+hero_band, icon, panel = _r7l.hero_band, _r7l.icon, _r7l.panel
+sechead, topbar = _r7l.sechead, _r7l.topbar
 
 LOUD = ROOT / "ui_explore" / "front_fixture.json"
 QUIET = ROOT / "ui_explore" / "quiet_fixture.json"

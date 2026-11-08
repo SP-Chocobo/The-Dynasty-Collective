@@ -2,7 +2,7 @@
  "_provenance": {
   "basis": {
    "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
-   "current_week": "ABSENT -- a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
@@ -45,7 +45,7 @@
   },
   "worst_week_loss": 122.0
  },
- "current_week": null,
+ "current_week": 15,
  "league": {
   "roster_positions": [
    "QB",

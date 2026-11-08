@@ -1,6 +1,6 @@
 {
   "_comment": "Registered skip GATES per test module -- see skip_gates.py. A gate is a place the suite is allowed to decline to prove something. GROWTH is the regression: a new gate must be registered here, in the same commit, with the reason in the commit message. Shrinkage is free. Regenerate with `python3 skip_gates.py --write`.",
-  "total": 46,
+  "total": 47,
   "modules": {
     "test_216_displacement.py": 1,
     "test_216_room_integrity.py": 3,
@@ -18,6 +18,7 @@
     "test_identity_partition_boundary.py": 4,
     "test_instruments_check_rather_than_count.py": 1,
     "test_kdst_integration.py": 3,
+    "test_landing_ranks_leagues_without_inventing_a_score.py": 1,
     "test_one_eligibility_vocabulary_everywhere.py": 1,
     "test_one_identity_one_answer.py": 1,
     "test_parser_integrity.py": 1,
