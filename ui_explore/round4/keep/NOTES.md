@@ -1,5 +1,11 @@
 # The Keep — notes
 
+> **Refined after the adversary pass.** `REFINEMENT.md` records what was taken, rejected and
+> deferred, with re-measured numbers. Where this file was wrong (attributions below, the
+> "bottom of league" sentence, the TE badge, `Seat 5`, the footer's claim about the engine, the
+> bar chart, the quiet chart) it has been corrected in place; the measured table at the end is
+> the refined one.
+
 Pair: `desktop.html` (1280 wide, two columns) and `mobile.html` (390 × 664, one column).
 Both carry a `View a quiet week` toggle in the plinth that swaps the live roster for the
 quiet state, so the four screens (live/quiet × desktop/mobile) are in two files.
@@ -21,14 +27,19 @@ only for inscriptions, the one hero number, and the worst-week bar. The castle p
 behind mock_60's headline is the thing I most wanted to beat: here the headline sits on a
 flat 15.5:1 surface and the atmosphere is in the edge of the panel it sits in.
 
-## Severity is carried by the SHAPE of the frame
+## The KIND of a panel is carried by the shape of its frame; its rank by size and edge
 
-| frame | shape | used for |
-|---|---|---|
-| **gonfalon** | hung from a rod with two finials, pointed hem | the one thing that needs you |
-| **cut-stone block** | chamfered corners, flat base | standing claims (thin positions) |
-| **carved tablet** | plain joinery, inset mortar edge | the ledger — facts, no claim |
-| **gate** | arched top, open base | the quiet state: the door is shut, go |
+| frame | shape | edge | used for |
+|---|---|---|---|
+| **gonfalon** | hung from a rod with two finials, pointed hem | brightest (`--metal-hi`, L255) | the first rung the claim ladder returned |
+| **cut-stone block** | chamfered corners, flat base | dimmer (`--metal-lo`, L186) | standing claims that can wait |
+| **carved tablet** | plain joinery, inset mortar edge | mortar (L3) | the ledger — facts, no claim |
+| **gate** | arched top, open base | — | the quiet state: nothing is open, go |
+
+(Refined: the first pass claimed the shapes ranked by themselves. The design adversary measured
+that they do not, and that the rod's own shadow had made the subordinate blocks brighter than
+the summons. Rank is now carried by width, headline size, the hero numeral and edge brightness,
+all in the same order as the shapes; the shapes carry the *kind* of thing a panel holds.)
 
 So the page has no coloured severity stripe and no red/amber/green. The position tokens
 (`TE #ff6042`, `DEF #ef7fc0`) are the only non-gold hues on the page and they appear only in
@@ -58,17 +69,19 @@ Everything drawn traces to the BRIEF's *Real* table:
 
 | on the page | source |
 |---|---|
-| "Week 6 is the one that hurts", 95, the six bars | `lineup_optimizer.bye_collision` |
-| "40% of the season's bye damage" | `bye_concentration` |
-| "1 starter sits" | the bye profile's worst-week starter count |
-| Thin at DEF (1), Thin at TE (2), "bottom of this league" | `depth_ratings` WEAK, peer-relative |
-| `≥ floor · 1 of 2 priced` | the TE pricing coverage in the brief's data |
-| Lineup 10 of 10, stamped CONSTRUCTED | `lineup_readiness.compute_readiness` on a replayed seat |
-| Holes: none | set difference against `league_usable_positions` |
+| "Week 6 is the one that hurts", 95, the six marks, 237 | `lineup_optimizer.bye_collision` (`bye_profile.weeks`, `total_loss`) |
+| "40% of the season's bye cost" | `bye_concentration` (0.401) |
+| "Jahmyr Gibbs, RB, sits … no bench player fills the slot" | `roster[].bye == worst_week` ∩ `starters`; `worst_week_detail.starters_out = 1`, `bench_used = 0` |
+| "— now: not in this capture" | `current_week: null`, `front_claims.byes_ahead` |
+| Thin at DEF (1) Weak by count; Thin at TE (2) Weak by value | `depth_chart.positional_depth` + `depth_ratings.depth_label` (a ratio band, ≤ 0.7× the mean; **no rank exists**) |
+| `≥ 23 · 1 of 2 priced` | `valued_count` / `depth_value_label` — the floor is on the value, the count is exact |
+| Lineup 10 of 10, stamped CONSTRUCTED | `optimize_lineup` + `slots_from_roster_positions` in this fixture (`compute_readiness` only in production) |
+| Holes: none; "week 6's bye leaves one empty" | `lineup_optimizer.slot_coverage` (**not** `league_usable_positions`); `bench_used = 0` |
 | Record: — absent, with its reason | `league_standings` — no capture holds it |
-| Picks: — not in this capture, "counts only, never prices" | `pick_ledger` absent here; pick prices are withheld |
-| Hurt: — not measured | `is_material_injury_status` is a live-roster gate |
-| Pool 5,357 | the capture |
+| Picks: — not in this capture, "acquired or given away, never priced" | `build_pick_ledger` is diffs only; prices withheld |
+| Hurt: — not measured | `is_material_injury_status` needs `slot == "Starter"`, which a constructed lineup lacks |
+| Fresh: — not in this capture | `build_freshness_manifest` / `recency_grade`, reachable, not captured |
+| Seat 1 · Team 1; 5,357 players ranked | `_provenance.seat`, `_provenance.universe_rows` |
 
 The absence grammar is on the page in all four states: a measured value (95), a floor
 (`≥`), a constructed value (`CONSTRUCTED` stamp on the seat, the lineup and the quiet
@@ -125,15 +138,18 @@ No grade, no rating, no odds, no meter, no ownership, no Questionable, no pick p
   the other labels without data would be invention. The cut-stone block is the natural
   frame for a four-step discrete depth row if the owner wants it; it must never become a bar.
 
-## Measured (Chromium via Playwright, fonts loaded from Google Fonts)
+## Measured (Chromium via Playwright, fonts loaded from Google Fonts) — refined pass
 
 | | desktop 1280×800 | mobile 390×664 |
 |---|---|---|
-| computed minimum font size | **12px** (CONSTRUCTED stamp, DYNASTY) | **12px** (DYNASTY, week labels, stamps) |
-| horizontal overflow | none (`scrollWidth` 1280) | none (`scrollWidth` 390) |
-| total scroll height, live | 1413px | **1296px** (budget 1328 — 32px to spare) |
-| total scroll height, quiet | 1146px | 1159px |
+| computed minimum font size | **12px** (DYNASTY, stamps, section labels) | **12px** (DYNASTY, week labels, stamps) |
+| horizontal overflow | none (`scrollWidth` 1280) | none (`scrollWidth` 390, no `overflow-x:hidden`) |
+| total scroll height, live | 1475px | **1294px** (budget 1328 — 34px to spare) |
+| total scroll height, quiet | 1099px | 998px |
 | tap targets under 44px | none | none |
+| digits outside the mono face | 0 | 0 |
+| frame top-edge peak luminance, summons / block / tablet | 255 / 186 / 3 | 255 / 186 / 4 |
+| chart marks (ivory dots) vs ground; stems and axis | 12.7:1; 3.2:1 | 12.7:1; 3.2:1 |
 | fonts resolved | Cinzel, Source Serif 4, JetBrains Mono | same |
 
 Contrast, computed from the hex values:
@@ -204,19 +220,24 @@ Each piece as it would be lifted into an assembled version. "Depends on" is hone
 **3. Summons** (the gonfalon's content: kicker, Cinzel headline with mono numeral, gilded
 hero number + unit, one sentence, one route)
 - Carries the one thing that needs the user, its cost in one number, and where to go.
-- Rule: exactly one, exactly one number, exactly one route. The sentence must contain the
-  share (40%) and the runner-up (56) so the reader can judge "nothing else comes close"
-  without the chart.
+- Rule: exactly one, exactly one number, exactly one route, and it is the first rung
+  `front_claims.compose` returned — not "urgent". The sentence must contain the share (40%)
+  and the runner-up (56); the "who" line names the starter from `roster ∩ starters`; the
+  `— now:` line renders `current_week`'s absence in the four-state grammar. The gonfalon may
+  not render without its number: a `partial` basis puts `≥` on the figure, and a null loss
+  demotes the claim to a cut-stone block reading `— not priced · reason`, with no route.
 - Depends on: Cinzel + a mono face; the hero number must be a mono digit; needs the
   `.pos` badge. It works outside the gonfalon but loses its rank without it.
 
-**4. Bye profile** (`.bye`: six-column bar strip, 24px/20px bars, mono values and week
-labels, worst week gilded)
+**4. Bye profile** (`.bye`: six-column lollipop strip — 2px stems on `--axis`, 10px ivory
+dots on `--mark`, a gilded diamond for the worst week, mono values and week labels)
 - Shows where in the season the bye cost lands.
-- Rule: the worst week is the only gold and the only primary-ink value; bars are thin with
-  air; every number is mono. Never a meter, never a 0–100 scale — the axis is the max bar.
-- Depends on: `--p` per bar as a percent of the max; stone/ink tokens; ≥ 300px wide.
-  Portable; it is self-contained CSS grid.
+- Rule: the marker, not the stem, carries the value, so a 4-point week is a dot on the axis
+  and still reads at 12:1; the worst week is the only gold; every number is mono. Never a
+  meter, never a 0–100 scale — the axis is the max marker. Gold-on-near-black cannot carry a
+  low bar at 3:1, which is why this is not a bar chart.
+- Depends on: `--p` per week as a percent of the max; `--axis` (≥ 3:1 on stone) and `--mark`
+  tokens; ≥ 300px wide. Portable; it is self-contained CSS grid.
 
 **5. Standing claim block** (`.block` + `.claim`)
 - One peer-relative fact (thin at X, count rostered), its caveat (floor), its route.
@@ -237,11 +258,14 @@ labels, worst week gilded)
   may contain a bare `0` or be blank. Keys in Cinzel, values in prose, numerals in mono.
 - Depends on: the `.stamp` and the key/value grid; keys need ~110px. Portable.
 
-**8. Wall of crests** (`.wall`, `.doors`, `#shield` + six `#c-*` charges)
-- The six destinations that exist, as escutcheons hung by rings from a forged rail.
+**8. Wall of crests** (`.wall`, `.doors`, `#shield` + five `#c-*` charges, `#sill` for the dock)
+- The five rooms that exist as escutcheons hung by rings from a forged rail, plus the
+  Prytaneum as a hearth sill — a dock under every room, drawn as a different shape so it
+  cannot be mistaken for a sixth door.
 - Rule: a door exists only if the room exists; the charge is a drawn emblem, not a UI
-  icon; the sub-line names what lives *inside* (trades, free agents, standings) so those
-  do not need doors of their own.
+  icon; the sub-line names what lives *inside*, checked against `app.py` (trade calculator
+  and free agents in Roster Maintenance; standings, depth map and picks acquired in League;
+  boards and mock drafts in Draft Room), so those do not need doors of their own.
 - Depends on: the shield symbol with `viewBox="0 0 100 120"` on the crest svg (without
   it the charges drift — found and fixed in render), the rail rule, Cinzel at 12px. The
   3 × 2 mobile layout and the 6-across desktop layout are both just grid columns. Portable.

@@ -211,70 +211,61 @@ body[data-state="live"] .q{display:none!important}
 body[data-state="quiet"] .l{display:none!important}
 body[data-state="quiet"] .row-1{grid-template-columns:1fr}
 
-/* ---------- between the two fixed targets ---------- */
-@media (max-width:1180px){.door span{display:none}.door{padding:0 12px}}
-@media (max-width:1000px){.row-1,.row-2{grid-template-columns:1fr}.verdict{grid-template-columns:1fr}.strip{grid-template-columns:repeat(3,1fr)}.strip .r{grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}}
-@media (max-width:700px){.top{grid-template-columns:auto 1fr}.chip{display:none}.slots{grid-template-columns:repeat(2,1fr)}}
 
-/* ---------- mobile overrides ---------- */
-body{font-size:13px;padding:0 0 62px;overflow-x:hidden}
+/* ---------- mobile metrics ---------- */
 html{overflow-x:hidden}
+body{font-size:13px;line-height:1.32;padding:0 0 56px;overflow-x:hidden}
 .wrap{padding:0 12px;max-width:none}
 .top{display:flex;justify-content:space-between;height:44px;margin-bottom:6px;gap:8px}
 .crest{width:32px;height:32px}.crest svg{width:24px;height:24px}
 .wordmark .wm{font-size:15px}.wordmark .dy{font-size:12px;letter-spacing:.34em;margin-top:2px}
 .doors{display:none}
 .chip{border:0;background:none;padding:0 4px}
-.verdict{grid-template-columns:1fr;gap:8px;padding:9px 12px 10px;margin-bottom:6px}
-.verdict h1{font-size:22px;letter-spacing:.04em;margin:4px 0 5px}
-.verdict p{font-size:13.5px}
+.verdict{grid-template-columns:1fr;gap:7px;padding:9px 12px 9px;margin-bottom:6px}
+.verdict h1{font-size:22px;letter-spacing:.04em;margin:3px 0 5px}
+.verdict p{font-size:13px;line-height:1.35}
 .verdict p .num{font-size:13px}
-.mag{grid-template-columns:auto 1fr;gap:0 12px;padding:7px 10px}
-.mag .big{font-size:34px}.mag .big small{font-size:13px}
-.mag .cap{font-size:12px;max-width:none}
-.mag .sec{margin-top:6px;padding-top:5px;gap:8px}
-.mag .sec .n{font-size:18px}
+.mag{grid-template-columns:auto 1fr;gap:0 12px;padding:6px 10px;align-items:center}
+.mag .big{font-size:32px}.mag .big small{font-size:13px}
+.mag .cap{font-size:12px;max-width:none;line-height:1.3}
 .qmag{align-items:stretch}.qmag .closebtn{justify-content:center}.qmag .basis{text-align:left;max-width:none}
-.panel{padding:7px 10px 7px;margin-bottom:6px}
-.ph{margin-bottom:5px;padding-bottom:5px}
+.panel{padding:7px 10px 7px;margin-bottom:5px}
+.ph{margin-bottom:4px;padding-bottom:4px}
 .ph h2{font-size:13px;letter-spacing:.14em}
 .ph .sub{font-size:12px;line-height:1.25}
-.bye th{padding:0 3px 5px;letter-spacing:.02em}
-.bye td{padding:3px 3px;vertical-align:top}
+.bye th{padding:0 2px 4px;letter-spacing:.02em}
+.bye td{padding:2px 2px;vertical-align:middle}
 .bye .wk{font-size:12px}
 .bye .pts{font-size:13px}.bye tr.hot .pts{font-size:15px}
 .bye .eng{font-size:12px}
-.bye .who{font-size:12px}
-.pl{margin-right:6px;gap:4px}.pl i{width:7px;height:7px}
-.tot{gap:6px 9px;margin-top:5px;padding-top:5px;font-size:12px}
-.legend{gap:5px 10px;margin-top:4px}
-.claim{padding:6px 9px;margin-bottom:0}
-.claim h3{font-size:13px}.claim p{font-size:12px}
+.bye .who{font-size:12px;line-height:1.3}
+.bye .more{font:400 12px var(--mono);color:var(--ink-3);white-space:nowrap}
+.pl{margin-right:5px;gap:4px}.pl i{width:7px;height:7px}
+.tot{gap:5px 9px;margin-top:4px;padding-top:4px;font-size:12px}
+.legend{gap:4px 7px;margin-top:3px;font-size:12px}.legend span{gap:4px}
+.open1{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:6px 9px;border:1px solid var(--g-body);border-radius:6px;background:rgba(117,80,36,.12);margin-bottom:6px}
+.open1 h3{font-size:13px;color:var(--ink);font-weight:600}
+.open1 p{font-size:12px;color:var(--ink-2);line-height:1.3}
 .ladder{font-size:12.5px}
-.ladder th{padding:0 3px 5px;letter-spacing:.02em}
-.ladder td{padding:3px 3px}
+.ladder th{padding:0 2px 4px;letter-spacing:.02em}
+.ladder td{padding:2px 2px}
 .ladder td.num{font-size:12.5px}.ladder td.lg{font-size:12px}
 .lbl{padding:3px 6px 2px;letter-spacing:.06em}
-.lfoot{margin-top:5px;line-height:1.3}
-.ok{grid-template-columns:12px 1fr auto;gap:7px;padding:2px 0;font-size:12px}
+.lfoot{margin-top:4px;line-height:1.3}
+.ok{grid-template-columns:12px 1fr auto;gap:7px;padding:1px 0;font-size:12px}
 .ok svg{width:11px;height:11px}
 .ok:first-of-type{border-top:0}
 .one svg{height:30px}
-.marks{gap:4px 10px;font-size:12px;margin-top:4px}
+.marks{gap:3px 10px;font-size:12px;margin-top:3px}
 .marks b{font-size:12px}
-.sync{margin-top:6px;padding-top:5px}
 .kv{padding:3px 0}.kv .k,.kv .v{font-size:12.5px}
-.strip{grid-template-columns:repeat(5,1fr);margin-bottom:6px}
-.strip div{padding:6px 8px}
-.strip .k{letter-spacing:.02em;margin-bottom:5px}
-.strip .v{font-size:16px}
-.strip .r{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);font-size:12px;padding:5px 10px}
-.foot{padding-top:6px;gap:6px}
-.foot .key{gap:8px}.foot .key span{gap:4px;white-space:nowrap}
+.ln{font-size:12px;color:var(--ink-2);line-height:1.35;padding:1px 0}.ln b{color:var(--ink);font-weight:600}
+.foot{padding-top:6px;gap:6px;margin-top:2px}
+.foot .key{gap:6px;font-size:12px}.foot .key span{gap:3px;white-space:nowrap}
 .review{margin-top:0;padding:2px}
-.review button{height:44px;min-width:44px;padding:0 8px;font-size:12.5px}
+.review button{height:44px;min-width:44px;padding:0 5px;font-size:12px}
 /* the five doors and the dock: a fixed bar, every target 44px+ */
-.bar{position:fixed;left:0;right:0;bottom:0;height:58px;display:grid;grid-template-columns:repeat(5,1fr) 1.15fr;background:rgba(0,0,0,.94);border-top:1px solid var(--line-2);backdrop-filter:blur(6px);z-index:9}
+.bar{position:fixed;left:0;right:0;bottom:0;height:56px;display:grid;grid-template-columns:repeat(5,1fr) 1.15fr;background:rgba(0,0,0,.94);border-top:1px solid var(--line-2);backdrop-filter:blur(6px);z-index:9}
 .bar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;color:var(--ink-2);font:500 12px/1 var(--text);min-height:44px}
 .bar a svg{width:19px;height:19px;stroke:var(--g-body);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .bar a.dk{border-left:1px dashed var(--line-2);color:var(--g-bright);background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.04))}
@@ -311,12 +302,11 @@ html{overflow-x:hidden}
   <div class="l">
     <div class="eyebrow">The three-second answer</div>
     <h1 class="gold">Four things are open.</h1>
-    <p>Week 6 costs <b class="num">95</b> of <span class="num">237</span> bye trade-value points. A starter in the constructed lineup is on IR. TE and DEF are <b>Weak</b>. No current week is on file, so none of these carries a deadline.</p>
+    <p>Week 6 costs <b class="num">95</b> of <span class="num">237</span> bye points; a constructed starter is on IR; TE and DEF are <b>Weak</b>. No current week is on file, so none is a deadline.</p>
   </div>
   <div class="mag l" aria-label="Largest open cost">
     <div class="big">95<small>pts</small></div>
-    <div class="cap"><b>Week 6 bye</b> · <b class="num">40%</b> of the season's bye damage · 1 starter out<span class="why">season shape, not a deadline — no current week on file</span></div>
-    <div class="sec"><span class="n">4</span><span class="lab">open</span><span class="what">bye · starter on IR · TE · DEF</span></div>
+    <div class="cap"><b>Wk 6 bye</b> · <b class="num">40%</b> of season · 1 starter out<span class="why">season shape, not a deadline</span></div>
   </div>
   <div class="q">
     <div class="eyebrow">The three-second answer</div>
@@ -325,81 +315,31 @@ html{overflow-x:hidden}
   </div>
   <div class="qmag q">
     <a class="closebtn" href="#"><svg><use href="#i-close"/></svg>CLOSE THE APP</a>
-    <span class="basis">worst bye week <span class="num">44</span> pts · <span class="num">19%</span> of season · no room above 1.3× or below 0.7× league depth</span>
   </div>
 </section>
 
 <!-- BYE LEDGER (live) -->
 <section class="panel hot l" aria-label="Bye ledger">
   <div class="ph"><h2 class="gold">Bye ledger</h2><span class="sub">wk 6–11 · <b>value lost, not bodies</b></span></div>
-  <table class="bye">
-    <colgroup><col style="width:38px"><col style="width:34px"><col style="width:50px"><col style="width:56px"><col></colgroup>
-    <thead><tr><th>wk</th><th style="text-align:right">lost</th><th>out·st</th><th>up·val</th><th>on bye</th></tr></thead>
-    <tbody>
-      <tr class="hot"><td class="wk">6</td><td class="pts">95</td><td class="eng">1<i>·</i>1</td><td class="eng">0<i>·</i>0</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>Gibbs <span class="v">95</span></span></td></tr>
-      <tr><td class="wk">7</td><td class="pts">8</td><td class="eng">4<i>·</i>2</td><td class="eng">2<i>·</i>16</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>McLaurin</span><span class="pl st" style="--c:var(--K)"><i></i>Bass</span><span class="pl" style="--c:var(--WR)"><i></i>Johnston</span><span class="pl" style="--c:var(--TE)"><i></i>Knox</span></td></tr>
-      <tr><td class="wk">8</td><td class="pts">51</td><td class="eng">3<i>·</i>3</td><td class="eng">2<i>·</i>31</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>Olave</span><span class="pl st" style="--c:var(--WR)"><i></i>Higgins</span><span class="pl st" style="--c:var(--DEF)"><i></i>Texans</span></td></tr>
-      <tr><td class="wk">9</td><td class="pts">4</td><td class="eng">1<i>·</i>1</td><td class="eng">1<i>·</i>16</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>Robinson</span></td></tr>
-      <tr><td class="wk">10</td><td class="pts">56</td><td class="eng">3<i>·</i>2</td><td class="eng">1<i>·</i>15</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>Barkley</span><span class="pl st" style="--c:var(--QB)"><i></i>Williams</span><span class="pl" style="--c:var(--WR)"><i></i>Godwin</span></td></tr>
-      <tr><td class="wk">11</td><td class="pts">23</td><td class="eng">4<i>·</i>1</td><td class="eng">1<i>·</i>0</td><td class="who"><span class="pl st" style="--c:var(--TE)"><i></i>Pitts</span><span class="pl" style="--c:var(--WR)"><i></i>Doubs</span><span class="pl" style="--c:var(--QB)"><i></i>Darnold</span><span class="pl" style="--c:var(--K)"><i></i>Borregales</span></td></tr>
-    </tbody>
-  </table>
+  <table class="bye"><colgroup><col style="width:26px"><col style="width:36px"><col style="width:50px"><col style="width:52px"><col></colgroup><thead><tr><th>wk</th><th style="text-align:right">lost</th><th>out·st</th><th>up·val</th><th>on bye</th></tr></thead><tbody><tr class=hot><td class="wk">6</td><td class="pts">95</td><td class="eng">1<i>·</i>1</td><td class="eng">0<i>·</i>0</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>Gibbs <span class=v>95</span></span></td></tr><tr><td class="wk">7</td><td class="pts">8</td><td class="eng">4<i>·</i>2</td><td class="eng">2<i>·</i>16</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>McLaurin</span><span class="pl st" style="--c:var(--K)"><i></i>Bass</span><span class="more">+2</span></td></tr><tr><td class="wk">8</td><td class="pts">51</td><td class="eng">3<i>·</i>3</td><td class="eng">2<i>·</i>31</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>Olave</span><span class="pl st" style="--c:var(--WR)"><i></i>Higgins</span><span class="pl st" style="--c:var(--DEF)"><i></i>Texans</span></td></tr><tr><td class="wk">9</td><td class="pts">4</td><td class="eng">1<i>·</i>1</td><td class="eng">1<i>·</i>16</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>Robinson</span></td></tr><tr><td class="wk">10</td><td class="pts">56</td><td class="eng">3<i>·</i>2</td><td class="eng">1<i>·</i>15</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>Barkley</span><span class="pl st" style="--c:var(--QB)"><i></i>Williams</span><span class="more">+1</span></td></tr><tr><td class="wk">11</td><td class="pts">23</td><td class="eng">4<i>·</i>1</td><td class="eng">1<i>·</i>0</td><td class="who"><span class="pl st" style="--c:var(--TE)"><i></i>Pitts</span><span class="more">+3</span></td></tr></tbody></table>
   <div class="tot"><span>season <b>237</b></span><span>worst wk <b class="hot">40%</b></span><span>unknown byes <b>0</b></span><span class="basis" style="margin-left:auto">measured · bye_collision</span></div>
-  <div class="legend"><span><i class="st"></i>starter</span><span><i></i>bench</span><span>out·st: bodies on bye / starters</span><span>up·val: bench moved up / their price</span></div>
+  <div class="legend"><span><i class="st"></i>starter</span><span>+n bench</span><span>out·st on bye/starters</span><span>up·val bench up/price</span></div>
 </section>
 
 <!-- BYE LEDGER (quiet) -->
 <section class="panel q" aria-label="Bye ledger (quiet)">
   <div class="ph"><h2 class="gold">Bye ledger</h2><span class="sub">wk 6–11 · <b>value lost, not bodies</b></span></div>
-  <table class="bye">
-    <colgroup><col style="width:38px"><col style="width:34px"><col style="width:50px"><col style="width:56px"><col></colgroup>
-    <thead><tr><th>wk</th><th style="text-align:right">lost</th><th>out·st</th><th>up·val</th><th>on bye</th></tr></thead>
-    <tbody>
-      <tr><td class="wk">6</td><td class="pts">41</td><td class="eng">3<i>·</i>2</td><td class="eng">2<i>·</i>30</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>two starters</span><span class="pl" style="--c:var(--K)"><i></i>one bench</span></td></tr>
-      <tr><td class="wk">7</td><td class="pts">36</td><td class="eng">3<i>·</i>1</td><td class="eng">1<i>·</i>18</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>one starter</span><span class="pl" style="--c:var(--WR)"><i></i>two bench</span></td></tr>
-      <tr><td class="wk">8</td><td class="pts">44</td><td class="eng">2<i>·</i>1</td><td class="eng">1<i>·</i>12</td><td class="who"><span class="pl st" style="--c:var(--QB)"><i></i>one starter</span><span class="pl" style="--c:var(--TE)"><i></i>one bench</span></td></tr>
-      <tr><td class="wk">9</td><td class="pts">39</td><td class="eng">2<i>·</i>2</td><td class="eng">2<i>·</i>25</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>two starters</span></td></tr>
-      <tr><td class="wk">10</td><td class="pts">42</td><td class="eng">2<i>·</i>1</td><td class="eng">1<i>·</i>20</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>one starter</span><span class="pl" style="--c:var(--DEF)"><i></i>one bench</span></td></tr>
-      <tr><td class="wk">11</td><td class="pts">35</td><td class="eng">2<i>·</i>1</td><td class="eng">1<i>·</i>14</td><td class="who"><span class="pl st" style="--c:var(--TE)"><i></i>one starter</span><span class="pl" style="--c:var(--WR)"><i></i>one bench</span></td></tr>
-    </tbody>
-  </table>
+  <table class="bye"><colgroup><col style="width:26px"><col style="width:36px"><col style="width:50px"><col style="width:52px"><col></colgroup><thead><tr><th>wk</th><th style="text-align:right">lost</th><th>out·st</th><th>up·val</th><th>on bye</th></tr></thead><tbody><tr><td class="wk">6</td><td class="pts">41</td><td class="eng">3<i>·</i>2</td><td class="eng">2<i>·</i>30</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>two starters</span><span class="more">+1</span></td></tr><tr><td class="wk">7</td><td class="pts">36</td><td class="eng">3<i>·</i>1</td><td class="eng">1<i>·</i>18</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>one starter</span><span class="more">+2</span></td></tr><tr><td class="wk">8</td><td class="pts">44</td><td class="eng">2<i>·</i>1</td><td class="eng">1<i>·</i>12</td><td class="who"><span class="pl st" style="--c:var(--QB)"><i></i>one starter</span><span class="more">+1</span></td></tr><tr><td class="wk">9</td><td class="pts">39</td><td class="eng">2<i>·</i>2</td><td class="eng">2<i>·</i>25</td><td class="who"><span class="pl st" style="--c:var(--WR)"><i></i>two starters</span></td></tr><tr><td class="wk">10</td><td class="pts">42</td><td class="eng">2<i>·</i>1</td><td class="eng">1<i>·</i>20</td><td class="who"><span class="pl st" style="--c:var(--RB)"><i></i>one starter</span><span class="more">+1</span></td></tr><tr><td class="wk">11</td><td class="pts">35</td><td class="eng">2<i>·</i>1</td><td class="eng">1<i>·</i>14</td><td class="who"><span class="pl st" style="--c:var(--TE)"><i></i>one starter</span><span class="more">+1</span></td></tr></tbody></table>
   <div class="tot"><span>season <b>237</b></span><span>worst wk <b>19%</b></span><span>unknown byes <b>0</b></span><span class="stamp" style="margin-left:auto">constructed</span></div>
 </section>
 
-<!-- ALSO OPEN: the starter on IR; the two thin rooms are the Weak rows of the ladder below -->
-<section class="panel l" aria-label="Also open">
-  <div class="ph"><h2 class="gold">Also open</h2><span class="sub">no deadline attached</span></div>
-  <div class="claim" style="--c:var(--WR)"><span class="pos">WR</span><div><h3>Higgins is on IR, in the FLEX slot</h3><p>The constructed lineup starts him at <span class="num">21</span>; a submitted one would have to replace him. Questionable players are not raised, by rule.<span class="basis">measured · is_material_injury_status; slot constructed</span></p></div></div>
-</section>
-
-<!-- DEPTH LADDER -->
-<section class="panel" aria-label="Depth ladder">
-  <div class="ph"><h2 class="gold">Depth ladder</h2><span class="sub l"><b>TE · DEF</b> open · four labels, no meter</span><span class="sub q">four labels, no meter</span></div>
-  <table class="ladder l">
-    <colgroup><col style="width:40px"><col style="width:82px"><col style="width:78px"><col style="width:58px"><col></colgroup>
-    <thead><tr><th>pos</th><th>this room</th><th>league avg</th><th>on</th><th>label</th></tr></thead>
-    <tbody>
-      <tr><td><span class="pos" style="--c:var(--QB)">QB</span></td><td class="num">2 · 44</td><td class="lg">1.8 · 43</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--RB)">RB</span></td><td class="num">2 · 137</td><td class="lg">3.4 · 121</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--WR)">WR</span></td><td class="num">7 · 162</td><td class="lg">4.8 · 167</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr>
-      <tr class="thin"><td><span class="pos" style="--c:var(--TE)">TE</span></td><td class="num">2 · <span class="floor">23</span></td><td class="lg">2.7 · 39</td><td class="b">value</td><td><span class="lbl weak">Weak</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--K)">K</span></td><td class="num">2 · <span class="dash">—</span></td><td class="lg">1.7 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl">Average</span></td></tr>
-      <tr class="thin"><td><span class="pos" style="--c:var(--DEF)">DEF</span></td><td class="num">1 · 9</td><td class="lg">1.6 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl weak">Weak</span></td></tr>
-    </tbody>
-  </table>
-  <table class="ladder q">
-    <colgroup><col style="width:40px"><col style="width:82px"><col style="width:78px"><col style="width:58px"><col></colgroup>
-    <thead><tr><th>pos</th><th>this room</th><th>league avg</th><th>on</th><th>label</th></tr></thead>
-    <tbody>
-      <tr><td><span class="pos" style="--c:var(--QB)">QB</span></td><td class="num">2 · 44</td><td class="lg">1.8 · 43</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--RB)">RB</span></td><td class="num">4 · 171</td><td class="lg">3.6 · 123</td><td class="b">value</td><td><span class="lbl strong">Strong</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--WR)">WR</span></td><td class="num">6 · 162</td><td class="lg">4.8 · 167</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--TE)">TE</span></td><td class="num">2 · 38</td><td class="lg">2.7 · 40</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--K)">K</span></td><td class="num">2 · <span class="dash">—</span></td><td class="lg">1.7 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl">Average</span></td></tr>
-      <tr><td><span class="pos" style="--c:var(--DEF)">DEF</span></td><td class="num">2 · 17</td><td class="lg">1.7 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl">Average</span></td></tr>
-    </tbody>
-  </table>
-  <div class="lfoot l">bodies · priced value, this room vs the average of all twelve. ≥1.3× Strong, ≤0.7× Weak — on value only when every room is priced, otherwise on bodies (league <span class="num">—</span>). <span class="floor num">23</span>: 1 of 2 priced; K 0 of 2. <span class="basis">measured · depth_label</span></div>
+<!-- DEPTH LADDER, with the other open items above it -->
+<section class="panel" aria-label="Also open and depth ladder">
+  <div class="ph"><h2 class="gold l">Also open</h2><h2 class="gold q">Depth ladder</h2><span class="sub l">no deadline attached</span><span class="sub q">four labels, no meter</span></div>
+  <div class="open1 l" style="--c:var(--WR)"><span class="pos">WR</span><div><h3>Higgins · IR · in the FLEX slot</h3><p>Started at <span class="num">21</span> by the constructed lineup; a submitted one would replace him. <span class="basis">measured</span></p></div></div>
+  <table class="ladder l"><colgroup><col style="width:36px"><col style="width:78px"><col style="width:86px"><col style="width:52px"><col></colgroup><thead><tr><th>pos</th><th>this room</th><th>league avg</th><th>on</th><th>label</th></tr></thead><tbody><tr><td><span class="pos" style="--c:var(--QB)">QB</span></td><td class="num">2 · 44</td><td class="lg">1.8 · 43</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr><tr><td><span class="pos" style="--c:var(--RB)">RB</span></td><td class="num">2 · 137</td><td class="lg">3.4 · 121</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr><tr><td><span class="pos" style="--c:var(--WR)">WR</span></td><td class="num">7 · 162</td><td class="lg">4.8 · 167</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr><tr class=thin><td><span class="pos" style="--c:var(--TE)">TE</span></td><td class="num">2 · <span class="floor">23</span></td><td class="lg">2.7 · 39</td><td class="b">value</td><td><span class="lbl weak">Weak</span></td></tr><tr><td><span class="pos" style="--c:var(--K)">K</span></td><td class="num">2 · <span class="dash">—</span></td><td class="lg">1.7 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl">Average</span></td></tr><tr class=thin><td><span class="pos" style="--c:var(--DEF)">DEF</span></td><td class="num">1 · 9</td><td class="lg">1.6 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl weak">Weak</span></td></tr></tbody></table>
+  <table class="ladder q"><colgroup><col style="width:36px"><col style="width:78px"><col style="width:86px"><col style="width:52px"><col></colgroup><thead><tr><th>pos</th><th>this room</th><th>league avg</th><th>on</th><th>label</th></tr></thead><tbody><tr><td><span class="pos" style="--c:var(--QB)">QB</span></td><td class="num">2 · 44</td><td class="lg">1.8 · 43</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr><tr><td><span class="pos" style="--c:var(--RB)">RB</span></td><td class="num">4 · 171</td><td class="lg">3.6 · 123</td><td class="b">value</td><td><span class="lbl strong">Strong</span></td></tr><tr><td><span class="pos" style="--c:var(--WR)">WR</span></td><td class="num">6 · 162</td><td class="lg">4.8 · 167</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr><tr><td><span class="pos" style="--c:var(--TE)">TE</span></td><td class="num">2 · 38</td><td class="lg">2.7 · 40</td><td class="b">value</td><td><span class="lbl">Average</span></td></tr><tr><td><span class="pos" style="--c:var(--K)">K</span></td><td class="num">2 · <span class="dash">—</span></td><td class="lg">1.7 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl">Average</span></td></tr><tr><td><span class="pos" style="--c:var(--DEF)">DEF</span></td><td class="num">2 · 17</td><td class="lg">1.7 · <span class="dash">—</span></td><td class="b">bodies</td><td><span class="lbl">Average</span></td></tr></tbody></table>
+  <div class="lfoot l">≥1.3× lg avg Strong · ≤0.7× Weak · on value when every room is priced, else bodies (league <span class="num">—</span>) · <span class="floor num">23</span>: 1 of 2 priced · <span class="basis">measured</span></div>
   <div class="lfoot q">Same rule, quiet week; nothing between labels exists. <span class="stamp">constructed</span></div>
 </section>
 
@@ -408,7 +348,7 @@ html{overflow-x:hidden}
   <div class="ph"><h2 class="gold l">Cleared</h2><h2 class="gold q">Checked</h2><span class="sub">can wait · each with its basis</span></div>
   <div class="ok"><svg><use href="#i-check"/></svg><span>Structural holes: none</span><span class="b">measured</span></div>
   <div class="ok l"><svg><use href="#i-check"/></svg><span>QB · RB · WR at league-average value</span><span class="b">measured</span></div>
-  <div class="ok l"><svg><use href="#i-check"/></svg><span>K at league-average bodies; no K priced league-wide</span><span class="b">measured</span></div>
+  <div class="ok l"><svg><use href="#i-check"/></svg><span>K at league-average bodies (none priced)</span><span class="b">measured</span></div>
   <div class="ok q"><svg><use href="#i-check"/></svg><span>QB · WR · TE · K · DEF average, RB above</span><span class="b">constructed</span></div>
   <div class="ok l"><svg><use href="#i-check"/></svg><span>Weeks 7 and 9 cost ≤ <span class="num">8</span> pts each</span><span class="b">measured</span></div>
   <div class="ok q"><svg><use href="#i-check"/></svg><span>No bye week above <span class="num">44</span> pts</span><span class="b">constructed</span></div>
@@ -417,28 +357,20 @@ html{overflow-x:hidden}
   <div class="ok q"><svg><use href="#i-check"/></svg><span>Starter injury flags: none raised — silence, not "none"</span><span class="b">constructed</span></div>
 </section>
 
-<!-- DATA AGE -->
-<section class="panel" aria-label="Data age">
-  <div class="ph"><h2 class="gold">Data age</h2><span class="sub">grade <b>Aging</b> · oldest loaded <b class="num">79d</b></span></div>
+<!-- DATA: ages on an axis, then every absence with its reason -->
+<section class="panel" aria-label="Data">
+  <div class="ph"><h2 class="gold">Data</h2><span class="sub">grade <b>Aging</b> · oldest loaded <b class="num">79d</b></span></div>
   <div class="one"><svg aria-label="Age of each loaded source on a days axis with the Fresh, Recent, Aging and Stale bands"><rect x="0" y="6" width="6.36%" height="8" fill="rgba(249,222,153,.18)"/><rect x="6.36%" y="6" width="20.9%" height="8" fill="rgba(249,222,153,.10)"/><rect x="27.3%" y="6" width="54.5%" height="8" fill="rgba(117,80,36,.26)"/><rect x="81.8%" y="6" width="18.2%" height="8" fill="rgba(176,162,138,.12)"/><circle cx="55.5%" cy="10" r="4.5" fill="#f9de99"/><circle cx="67.3%" cy="10" r="4.5" fill="#f9de99"/><circle cx="71.8%" cy="10" r="4.5" fill="#f9de99"/><text x="6.36%" y="29" font-size="12" fill="#8d8170" text-anchor="middle">7d</text><text x="27.3%" y="29" font-size="12" fill="#8d8170" text-anchor="middle">30d</text><text x="81.8%" y="29" font-size="12" fill="#8d8170" text-anchor="middle">90d</text></svg></div>
-  <div class="marks"><span><b>61d</b> player database</span><span><b>74d</b> dynasty rankings</span><span><b>79d</b> trade value chart</span></div>
-  <div class="kv" style="margin-top:5px;border-top:1px dotted var(--line)"><span class="k">Season proj. sums · no day-age by design</span><span class="v">2026 · <span class="num">18</span>/<span class="num">18</span> wks</span></div>
-  <div class="kv"><span class="k">League rosters & scoring · arrives with a sync</span><span class="v"><span class="dash">—</span> <span class="why">no league</span></span></div>
-  <div class="basis" style="margin-top:4px">Fresh ≤7 · Recent ≤30 · Aging ≤90 · Stale · <span class="num">5,357</span> in pool, <span class="num">347</span> priced</div>
-</section>
-
-<!-- ABSENCE STRIP -->
-<section class="strip" aria-label="Record and picks">
-  <div><div class="k">W – L</div><div class="v">—</div></div>
-  <div><div class="k">Pts for</div><div class="v">—</div></div>
-  <div><div class="k">Pts agst</div><div class="v">—</div></div>
-  <div><div class="k">Week</div><div class="v">—</div></div>
-  <div><div class="k">Picks</div><div class="v">—</div></div>
-  <div class="r">Absent, not zero — no capture holds a result or a point in the season, so no bye above is a deadline; picks list only once moved, held or sent, never priced.</div>
+  <div class="marks"><span><b>61d</b> players</span><span><b>74d</b> rankings</span><span><b>79d</b> trade values</span></div>
+  <div class="ln" style="margin-top:4px;border-top:1px dotted var(--line);padding-top:4px"><b>Season proj. sums</b> 2026 · <span class="num">18</span>/<span class="num">18</span> wks <span class="why">— no day-age by design</span></div>
+  <div class="ln"><b>League sync</b> <span class="dash">—</span> <span class="why">arrives with a sync; no league here</span></div>
+  <div class="ln"><b>Record · PF · PA · week</b> <span class="dash">—</span> <span class="why">no capture holds a result</span></div>
+  <div class="ln"><b>Picks acquired · sent</b> <span class="dash">—</span> <span class="why">listed once moved, never priced</span></div>
+  <div class="basis" style="margin-top:3px">bands at 7 · 30 · 90 days · <span class="num">5,357</span> in the pool, <span class="num">347</span> priced</div>
 </section>
 
 <footer class="foot">
-  <div class="key"><span><b class="num" style="color:var(--ink)">95</b> measured</span><span><b class="floor num">23</b> floor</span><span><b class="dash">—</b> <i class="why">absent</i></span><span class="stamp">constructed</span></div>
+  <div class="key"><span><b class="floor num">23</b> floor</span><span><b class="dash">—</b> <i class="why">absent + reason</i></span><span class="stamp">constructed</span></div>
   <div class="review" role="group" aria-label="Design review: page state" title="design review: page state"><button class="on" data-s="live">live</button><button data-s="quiet">quiet</button></div>
 </footer>
 
