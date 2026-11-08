@@ -88,11 +88,11 @@ $PY -m unittest $mods          # 54 modules, 1082 tests, 104 seconds
 That is the whole risk class for any `#137` extraction at one seventeenth of a full suite's cost.
 Grepping for the symbol you moved is NOT this check and is not a substitute for it.
 
-**Budget it from a measurement that carries its own date.** The last one: **4318 tests in
-1939.9s** at `d781af2` (2026-11-04), measured with `__pycache__` cleared first per `#240`.
-**Size a timeout from 1939.9s.**
+**Budget it from a measurement that carries its own date.** The last one: **4431 tests in
+1538.5s** at `b3313a9` (2026-11-08), measured with `__pycache__` cleared first per `#240`.
+**Size a timeout from 1976.7s**, the worst total in the table, NOT from the latest.
 
-Six measurements -- five on one day, the sixth the next -- which is far more useful than any one of them:
+Eleven measurements, which is far more useful than any one of them:
 
 | tests | seconds | per test | commit |
 |---|---|---|---|
@@ -101,7 +101,24 @@ Six measurements -- five on one day, the sixth the next -- which is far more use
 | 4276 | 1976.7 | 462ms | `029b31e` |
 | 4311 | 1968.7 | 457ms | `b4dbffb` |
 | 4318 | 1939.9 | 449ms | `d781af2` |
-| **4342** | **1344.0** | **309ms** | **`25c4aa0`** (2026-11-05) |
+| 4342 | 1344.0 | 309ms | `25c4aa0` (2026-11-05) |
+| 4375 | 1341.2 | 307ms | `ce8879d` (`#332`) |
+| 4393 | 1377.5 | 314ms | `98b372f` (`#333`) |
+| 4410 | 1379.6 | 313ms | `375c47c` (`#334`) |
+| 4430 | 1462.0 | 330ms | *discarded run*, 2026-11-08 -- see note |
+| **4431** | **1538.5** | **347ms** | **`b3313a9`** (2026-11-08, `#337`) |
+
+**THE LAST TWO ROWS ARE THE SAME TREE AND THEY DISAGREE BY 5%.** 4430 tests in 1462.0s and 4431
+in 1538.5s, one test apart, on the same machine within the hour. The 1462.0s run was DISCARDED as
+a verdict -- `POST_AUDIT_PLAN.md` was edited while it ran and ten-plus modules read that file, so
+its green would have described a tree that no longer existed -- but its WALL CLOCK is still a
+real measurement of ~4430 tests, which is why it is listed and labelled rather than dropped.
+
+What the pair establishes: **this figure carries roughly 5% noise**, and git operations were
+running concurrently in both. So do not read a 5% move between two measurements as a change in
+the suite. Four rows earlier the per-test cost reads 307-314ms across three consecutive items,
+then 330 and 347 here; that is more likely this noise plus concurrent load than a real 11%
+regression, and the honest response is to re-measure on an idle machine before believing either.
 
 **THE SIXTH MEASUREMENT BROKE THE TREND DOWNWARD, AND IT IS THE ONE THAT MATTERS MOST HERE.**
 309ms is a 31% drop from 449ms, taken with the count UP 24, and it lands within 8ms of where the

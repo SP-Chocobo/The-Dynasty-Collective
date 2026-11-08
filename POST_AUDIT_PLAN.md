@@ -19721,3 +19721,62 @@ Repaired to "the dock", which the guard's own test confirms is current: it asser
 Mutation record for `#337`, all four arms restored from a pristine copy verified with `cmp` and
 with `__pycache__` cleared between them: **2 / 1 / 4 / 1**.
 
+---
+
+### CERTIFICATION — `#337` / `#337b`
+
+```
+4431 tests in 1538.518s    OK (skipped=2, expected failures=1)    0 failures, 0 errors
+```
+
+Eight ratchets green on the staged tree. Mutation record **2 / 1 / 4 / 1**, every arm restored
+from a pristine copy verified with `cmp` and with `__pycache__` cleared between arms (`#240`).
+
+| | |
+|---|---|
+| fetch cost, 9 leagues | 162 weekly requests -> **18** |
+| fetch cost, 20 leagues | 360 weekly requests -> **18** |
+| cache key | now carries the week count, so a different one MISSES rather than mis-hits |
+| cache write | `store_io.replace_atomically`, never `write_text` |
+
+#### THREE SUITE RUNS, AND ONLY THE THIRD COUNTS — the process record
+
+1. **Run 1, abandoned mid-flight.** I appended `#338` and `#339` to `POST_AUDIT_PLAN.md` while it
+   was running, and ten-plus test modules read that file — `test_prose_names` among them, which is
+   precisely the test that would have validated the new prose. Tests that ran early read the old
+   file and tests running later read the new one, so whether the new prose was checked at all was
+   a coin flip on discovery order. Killed rather than reported.
+2. **Run 2, 4430 tests in 1462.0s, FAILED (failures=2).** The frozen-tree run. Both failures
+   real, both recorded in `#337b`: my own truncating write, and round 4's retired copy.
+3. **Run 3, 4431 tests in 1538.518s, OK.** The verdict above.
+
+**The rule this earns, stated plainly because it cost ~25 minutes to learn:** the tree is FROZEN
+from the moment a certifying suite launches until it returns. Not just source — the register and
+the design docs too, because tests read them. A commit is safe (it moves the index and git
+objects, not working-tree files, and the only git-reading test uses `git check-ignore`); an EDIT
+is not.
+
+#### What the suite caught that nothing else did
+
+`#337` shipped with sixteen tests, a full mutation panel, and eight green ratchets — and still
+carried a defect that would have **re-created the exact cost the item exists to remove.** Every
+one of those sixteen tests watched the fetch count or the returned sums; not one watched the
+write mechanism. The guard that caught it is stated over the whole module rather than over its
+known call sites, and that is the entire reason it worked.
+
+The generalisation, which is this session's third instance of the same shape: **a panel built
+around an item's PURPOSE will not test the item's MECHANISM.** `#336b` was prose nothing read,
+`#339` is an interface neither side's tests cross, and this was a write mechanism sixteen
+behavioural tests had no reason to look at. In all three the local tests passed and a guard
+written at a different altitude was what fired — or, in `#339`'s case, nothing fired at all.
+
+#### Suite budget, re-measured
+
+`close-register-item` is the one home for this figure and now carries eleven dated measurements.
+The new ones: **4431 / 1538.5s** at `b3313a9`, plus the discarded run's **4430 / 1462.0s** —
+listed and labelled rather than dropped, because its verdict was void while its wall clock was
+real. The pair is the useful part: **two runs of the same tree, one test apart, disagree by 5%**,
+both with git operations running concurrently. That is the noise floor on this number, so a 5%
+move between measurements is not a change in the suite, and timeouts should still be sized from
+the table's worst total (1976.7s) rather than its latest.
+
