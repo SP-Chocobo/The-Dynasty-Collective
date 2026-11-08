@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm Dynasty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #0c0a07;
+  --surface: #17130d;
+  --surface-2: #120f0a;
+  --line: #2a2318;
+  --line-2: #443823;
+  --ink: #f2ead9;
+  --muted: #b0a28a;
+  --dim: #897c61;
+  --emerald: #0b8f57;
+  --emerald-b: #2fd08b;
+  --gold: #c9961a;
+  --gold-b: #f5c93f;
+  --violet: #6d3fd6;
+  --violet-b: #b593f5;
+  --crimson: #a60f3a;
+  --crimson-b: #f2546e;
+  --sky: #1356c9;
+  --sky-b: #56a0fa;
+  --amber: #d4700a;
+  --amber-b: #f8a52a;
+  --cliff: #07837a;
+  --cliff-b: #2fcfc0;
+  --block: #b53a09;
+  --block-b: #f79a53;
+  --pure: #efe5cd;
+  --tie: #6f6550;
+  --tie-b: #a1947b;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+:root {
+  --qb: #2a81fc;
+  --rb: #0ca89c;
+  --wr: #4aa8ef;
+  --te: #ff6042;
+  --k: #fab87e;
+  --def: #ef7fc0;
+  --dl: #4cec4c;
+  --lb: #ff45ed;
+  --db: #6ad8f0;
+  --idp: #99a851;
+  --absent: #b0a28a;
+}
+
+*{box-sizing:border-box}
+html{height:100%}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:400 .95rem/1.5 "Segoe UI", system-ui, sans-serif;-webkit-text-size-adjust:100%;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column}
+.stage{flex:1 1 auto;width:100%;max-width:92rem;margin:0 auto;padding:0 24px 16px;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr auto;gap:18px}
+.stage>*{min-width:0}
+
+/* ---- TOP BAR: crest, the five rooms, who this is about. One row, 64px. ---- */
+.top{display:flex;align-items:center;gap:22px;min-height:64px;position:relative}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,rgba(117,80,36,.42),rgba(117,80,36,.06))}
+.crest{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.word{font:600 1.3rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.11em;text-transform:uppercase;margin:0;
+  background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.word b{display:block;font-size:.76rem;letter-spacing:.42em;font-weight:400;margin-top:5px}
+.doors{display:flex;gap:2px;flex:1 1 auto;flex-wrap:nowrap}
+.door{display:inline-flex;align-items:center;min-height:44px;padding:0 13px;border-radius:4px;
+  color:var(--muted);font:400 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.1em;text-decoration:none;
+  border:1px solid transparent;white-space:nowrap}
+.door:hover,.door:focus-visible{color:var(--gold-b);border-color:var(--line-2);
+  background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.04))}
+.btn.roomsbtn{display:none}
+.hh{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.whoami{display:flex;align-items:center;gap:12px;min-height:34px;padding:0 12px;
+  border:1px solid var(--line-2);border-radius:4px;background:var(--surface-2);font-size:.8rem;
+  color:var(--muted);flex:0 1 auto;flex-wrap:wrap}
+.whoami b{color:var(--ink);font-weight:600;font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace}
+
+/* ---- THE HERO: the three-second answer as a statement, and beside it the ledger of what
+   was checked. Gradient surface, hatch, fading gold hairline. ---- */
+.hero{display:grid;grid-template-columns:1fr 21rem;gap:30px;align-items:stretch;
+  padding:22px 30px 22px;border:1px solid var(--line-2);border-radius:6px;position:relative;
+  overflow:hidden;background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+.hero::before{content:"";position:absolute;inset:0 auto 0 0;width:260px;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(176,162,138,.07) 4px 5px);
+  mask-image:linear-gradient(90deg,#000,transparent);-webkit-mask-image:linear-gradient(90deg,#000,transparent)}
+.hero>div{position:relative}
+.eyebrow{font:600 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--gold);margin:0}
+.hero h1{font:400 2.75rem/1.05 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;margin:10px 0 12px;letter-spacing:.005em;
+  background:linear-gradient(176deg,#ba9561 0%,#f9de99 60%,#fff4ce 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lede{margin:0;color:var(--muted);max-width:64ch;font-size:1.02rem}
+.hero p.lede b{color:var(--ink);font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600;font-size:.95rem}
+.hero p.lede.short{display:none}
+.tile p.body.short{display:none}
+.res-s{display:none}
+.checks{border-left:1px solid var(--line-2);padding-left:28px;display:flex;flex-direction:column}
+.checks ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:9px}
+.checks li{display:grid;grid-template-columns:12px auto 1fr;gap:12px;align-items:center}
+.st{width:10px;height:10px;border-radius:2px;display:block}
+.st.clean{background:var(--status-ok)}
+.st.fired{background:var(--gold-b);box-shadow:0 0 0 3px rgba(245,201,63,.18)}
+.st.absent{background:none;border:2px solid var(--muted);width:10px;height:10px}
+.checks .nm{font:400 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.checks .res{font-size:.84rem;color:var(--muted)}
+.checks .res b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--gold-b);font-weight:600}
+.checks .row{margin-top:auto;padding-top:14px}
+
+/* ---- THE BAND. The claims as tiles, the lead at display scale. In the quiet state the three
+   checks stand here instead, each with a figure of its own. The row is 1fr of the viewport:
+   the tiles stretch to the fold and the figures sit on the baseline of the stretch. ---- */
+.band{display:grid;gap:18px;grid-template-columns:repeat(3,1fr);min-height:0}
+.tile{position:relative;display:flex;flex-direction:column;padding:20px 24px 20px 26px;
+  border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:0;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+.tile::before{content:"";position:absolute;inset:0 0 auto auto;width:55%;height:110px;pointer-events:none;
+  background:repeating-linear-gradient(45deg,transparent 0 5px,rgba(176,162,138,.065) 5px 6px);
+  mask-image:linear-gradient(225deg,#000,transparent 85%);-webkit-mask-image:linear-gradient(225deg,#000,transparent 85%)}
+.tile::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rail)}
+.tile>*{position:relative}
+.th{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:3px;
+  font:600 .76rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.04em}
+.pill.bn{background:var(--surface-2);color:var(--muted);border:1px solid var(--line-2)}
+.hair{height:1px;margin:12px 0 0;background:linear-gradient(90deg,rgba(117,80,36,.42),rgba(117,80,36,.04))}
+.fig{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:auto 0;padding:16px 0 10px}
+.fig .n{font:600 4.2rem/.95 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--gold-b);letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums}
+.fig .n .floor{font-size:2rem;vertical-align:baseline;margin-right:.08em;color:var(--gold)}
+.fig .n .absent{font-size:2.2rem}
+.fig .u{font:400 .78rem/1.3 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.lead .fig .n{font-size:8rem;letter-spacing:-.05em}
+.quiet .fig .n{font-size:5rem}
+.lead .fig .n .floor{font-size:3.4rem}
+.tile h3{font:400 1.3rem/1.25 "Segoe UI", system-ui, sans-serif;margin:0 0 4px;color:var(--ink)}
+.tile h3 b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600}
+.lead h3{font-size:1.55rem}
+.tile p.body{margin:0;color:var(--muted);font-size:.92rem;max-width:46ch}
+.tile p.body b{color:var(--ink);font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600;font-size:.86rem}
+.who{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.tile .who{margin-top:10px}
+.who .wl{font:400 .75rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;color:var(--ink);white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+.chip s{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--muted);text-decoration:none;font-size:.8rem}
+.basis{display:block;margin-top:12px;font:400 .75rem/1.45 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 15px;
+  border:1px solid var(--line-2);border-radius:4px;
+  background:linear-gradient(180deg,rgba(117,80,36,.26),rgba(117,80,36,.05));
+  color:var(--gold-b);font:400 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover,.btn:focus-visible{border-color:var(--gold);color:var(--pure)}
+.btn.route{background:none;border-style:dashed;color:var(--muted)}
+.btn.ghost{background:none;color:var(--muted);border-color:var(--line)}
+.btn.more .glyph{display:none;font:400 1.6rem/1 "Segoe UI", system-ui, sans-serif}
+
+/* ---- THE FOOT: the dock, anything the cap hid, and the one freshness stamp. ---- */
+.foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding-top:12px;position:relative}
+.foot::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,rgba(117,80,36,.06),rgba(117,80,36,.34),rgba(117,80,36,.06))}
+.foot .left{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.note{font-size:.8rem;color:var(--muted);margin:0}
+.stamp{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0 14px 0 16px;
+  border:1px solid var(--line);border-radius:4px;background:var(--surface);cursor:pointer;color:var(--muted)}
+.stamp .k{font:400 .75rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.stamp .d{font:600 .95rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);font-variant-numeric:tabular-nums}
+.stamp:hover,.stamp:focus-visible{border-color:var(--gold)}
+
+/* ---- the grammar of absence: four states, visually distinct ---- */
+.absent{color:var(--muted);cursor:help;border-bottom:1px dotted var(--muted)}
+.currency{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}
+.constructed{display:inline-block;font:600 .75rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--amber-b);border:1px solid var(--amber);border-radius:3px;padding:3px 5px;cursor:help}
+.tag{display:inline-block;font:400 .75rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--muted);border:1px solid var(--line-2);
+  border-radius:3px;padding:2px 5px;margin-left:6px;text-transform:none;letter-spacing:0}
+
+/* ---- POPOVERS: every second layer. The page never scrolls; a popover may, inside itself. ---- */
+[popover]{border:1px solid var(--line-2);border-radius:6px;padding:26px 28px;
+  background:linear-gradient(180deg,var(--surface),var(--bg));color:var(--ink);
+  width:min(40rem,92vw);max-height:min(84vh,46rem);overflow:auto;box-shadow:0 24px 64px rgba(0,0,0,.8)}
+[popover]::backdrop{background:rgba(4,3,2,.74)}
+[popover] h4{font:600 .82rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.22em;text-transform:uppercase;margin:0 0 16px;color:var(--gold)}
+.popnote{color:var(--muted);font-size:.82rem;margin:14px 0 0;max-width:56ch}
+.popnote.top{margin:0 0 14px}
+.popclose{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+table.weeks{width:100%;border-collapse:collapse;font-size:.86rem}
+.weeks thead th{font:400 .75rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;text-align:left;
+  color:var(--muted);padding:0 10px 8px 0;border-bottom:1px solid var(--line)}
+.weeks tbody th{font:400 .82rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.1em;text-transform:uppercase;text-align:left;
+  color:var(--muted);padding:9px 12px 9px 0;white-space:nowrap;vertical-align:top}
+.weeks td{padding:8px 10px 8px 0;vertical-align:top;border-bottom:1px solid var(--surface-2)}
+.weeks tbody th{border-bottom:1px solid var(--surface-2)}
+.weeks th.n,.weeks td.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;text-align:right;padding-right:14px;color:var(--ink);
+  font-variant-numeric:tabular-nums;font-weight:600;font-size:1.02rem}
+.weeks thead th.n{font:400 .75rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em}
+.weeks tr.peak th{color:var(--gold-b)}
+.weeks tr.peak td.n{color:var(--gold-b);font-size:1.2rem}
+.weeks tr.behind th,.weeks tr.behind td.n{color:var(--muted);font-weight:400}
+.weeks tr.behind .bar{opacity:.55}
+.weeks .barcell{width:30%}
+.bar{display:block;height:9px;border-radius:2px;min-width:3px;margin-top:5px}
+.bar.recede{background:var(--dim)}
+.bar.mid{background:var(--gold)}
+.bar.hot{background:linear-gradient(90deg,var(--gold),var(--gold-b))}
+.kvrow{display:flex;flex-wrap:wrap;gap:22px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+  font-size:.84rem;color:var(--muted)}
+.kvrow b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);font-weight:600}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0}
+dl.kv dt{font:400 .78rem/1.4 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+dl.kv dd{margin:0;color:var(--ink);font-size:.92rem}
+dl.kv dd.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:600}
+.who.pad{margin-top:14px}
+.slots{display:flex;flex-wrap:wrap;gap:6px}
+.rooms{display:grid;gap:12px}
+.room .rh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.room .rh .n{font:600 .95rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink)}
+.cklist{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.cklist li{display:grid;grid-template-columns:12px 1fr;gap:12px;align-items:start}
+.cklist .st{margin-top:5px}
+.cklist .nm{font:400 .84rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.cklist .res{color:var(--muted);font-size:.86rem;margin-left:10px}
+.cklist .basis{margin-top:6px}
+.kvs{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:14px 0 0;font-size:.86rem}
+.kvs dt{font:400 .75rem/1.5 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.kvs dd{margin:0;font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink)}
+.roomlist{display:grid;gap:4px}
+.roomlist .door{min-height:48px;font-size:.9rem;color:var(--ink)}
+.dimnote{font-size:.82rem;color:var(--muted)}
+
+/* ---- PHONE: 390x664. The rooms fold into a popover, the hero's ledger becomes one line, the
+   tiles become rows with the figure at left. No column is narrower than its longest word. ---- */
+@media (max-width:760px){
+  .stage{padding:0 16px 10px;gap:10px}
+  .top{min-height:52px;gap:10px;justify-content:space-between}
+  .word{font-size:1.05rem}
+  .word b{display:none}
+  .doors{display:none}
+  .btn.roomsbtn{display:inline-flex}
+  .hero{grid-template-columns:1fr;gap:10px;padding:12px 14px 12px}
+  .hero::before{width:160px}
+  .hh{gap:6px 12px}
+  .hh .eyebrow{display:none}
+  .whoami{min-height:auto;padding:0;border:0;background:none;gap:6px 8px;font-size:.78rem}
+  .constructed{letter-spacing:.03em;padding:2px 4px}
+  .hero h1{font-size:1.42rem;margin:6px 0 6px}
+  .hero p.lede{display:none}
+  .hero p.lede.short{display:block;font-size:.88rem;line-height:1.4}
+  .hero p.lede b{font-size:.84rem}
+  .checks{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:10px}
+  .checks .eyebrow{display:none}
+  .checks ul{margin:0;display:flex;flex-wrap:wrap;gap:6px 14px}
+  .checks li{grid-template-columns:10px auto auto;gap:7px}
+  .checks .res{display:none}
+  .checks .res-s{display:inline;font-size:.78rem;color:var(--muted)}
+  .checks .res-s.clean{display:none}
+  .checks .nm{font-size:.75rem}
+  .checks .row{display:none}
+  .band{grid-template-columns:1fr;gap:10px}
+  .tile{padding:10px 10px 10px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"fig th row" "fig body row";column-gap:14px;row-gap:2px;align-items:center}
+  .tile::before{height:100%;width:40%}
+  .th{grid-area:th;justify-content:flex-start;gap:8px;align-self:end}
+  .hair{display:none}
+  .fig{grid-area:fig;flex-direction:column;align-items:flex-start;gap:3px;padding:0;margin:0;min-width:4.4rem}
+  .fig .n,.lead .fig .n{font-size:2.6rem;letter-spacing:-.04em}
+  .fig .n .floor,.lead .fig .n .floor{font-size:1.2rem}
+  .fig .n .absent{font-size:1.8rem}
+  .fig .u{font-size:.75rem;letter-spacing:.1em}
+  .tbody{grid-area:body;min-width:0;align-self:start}
+  .tile h3,.lead h3{font-size:1.05rem;margin:0 0 2px}
+  .tile p.body{display:none}
+  .tile p.body.short{display:block;font-size:.8rem;line-height:1.35}
+  .tile p.body b{font-size:.78rem}
+  .tile .who{display:none}
+  .basis{display:none}
+  .row{grid-area:row;margin:0;gap:6px}
+  .row .route{display:none}
+  .btn.more{width:44px;padding:0;justify-content:center}
+  .btn.more .lbl{display:none}
+  .btn.more .glyph{display:inline}
+  .foot{padding-top:10px;gap:10px;justify-content:flex-end}
+  .foot .left{display:none}
+  .stamp{padding:0 10px 0 12px;gap:8px}
+  .stamp .k{font-size:.75rem;letter-spacing:.12em}
+  .stamp .d{font-size:.86rem}
+  [popover]{padding:20px 18px}
+  .weeks .barcell{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+</style>
+</head><body>
+<div class="stage">
+  <header class="top">
+    <span class="crest"><svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+<defs><linearGradient id="g" x1="0" y1="0" x2=".3" y2="1">
+<stop offset="0" stop-color="#755024"/><stop offset=".4" stop-color="#ba9561"/>
+<stop offset=".72" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
+</linearGradient></defs>
+<path d="M17 2a15 15 0 1 0 10.6 25.6" fill="none" stroke="url(#g)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M17 8a9 9 0 1 1-6.4 15.3" fill="none" stroke="url(#g)" stroke-width="1.9" stroke-linecap="round" opacity=".82"/>
+<circle cx="21.4" cy="10.6" r="1.9" fill="url(#g)"/>
+</svg><h1 class="word">Gold Wyrm<b>Dynasty</b></h1></span>
+    <nav class="doors"><a class="door" href="#matchup">Matchup</a><a class="door" href="#roster-maintenance">Roster Maintenance</a><a class="door" href="#draft-room">Draft Room</a><a class="door" href="#league">League</a><a class="door" href="#import-audit">Import Audit</a></nav>
+    <button class="btn ghost roomsbtn" popovertarget="roomsp">Rooms</button>
+  </header>
+
+  <section class="hero">
+    <div class="answer">
+      <div class="hh"><p class="eyebrow">The three-second answer</p><div class="whoami"><span><b>Team 11</b></span><span>wk <b>15</b></span><span class="constructed" tabindex="0" title="Team 11: the seat's label in a replayed battery, not an owner's team name. A live league has the real one; wk 15: week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen">constructed</span><span>no league name <span class="absent" tabindex="0" title="a format label is a battery arm, not a league's name">&mdash;</span></span></div></div>
+      <h1>Nothing open this week.</h1>
+      <p class="lede"><b>3</b> checks ran &mdash; holes, byes, depth &mdash; and each came back clean. The page keeps the ledger while you are gone.</p>
+      <p class="lede short"><b>3</b> checks ran &mdash; holes, byes, depth &mdash; each clean.</p>
+    </div>
+    <div class="checks"><p class="eyebrow">What was checked</p><ul><li><i class="st clean"></i><span class="nm">holes</span><span class="res">nothing found</span><span class="res-s clean">clean</span></li><li><i class="st clean"></i><span class="nm">byes</span><span class="res">nothing found</span><span class="res-s clean">clean</span></li><li><i class="st clean"></i><span class="nm">depth</span><span class="res">nothing found</span><span class="res-s clean">clean</span></li></ul><div class="row"><button class="btn ghost" popovertarget="checks">Each with its basis</button></div></div>
+  </section>
+
+  <section class="band"><article class="tile quiet" style="--rail:var(--status-ok)"><div class="th"><p class="eyebrow">Holes &middot; clean</p></div><div class="hair"></div><div class="fig"><span class="n">10</span><span class="u">starting slots</span></div><div class="tbody"><h3>Every slot has a body</h3><p class="body">The solver left no starting slot empty.</p><p class="body short">No starting slot left empty.</p><span class="basis" title="slots_from_roster_positions + slot_coverage">measured &middot; slots_from_roster_positions + slot_coverage</span></div><div class="row"><button class="btn more" popovertarget="chk0" aria-label="What was examined"><span class="lbl">What was examined</span><span class="glyph" aria-hidden="true">&rsaquo;</span></button></div></article><article class="tile quiet" style="--rail:var(--status-ok)"><div class="th"><p class="eyebrow">Byes &middot; clean</p></div><div class="hair"></div><div class="fig"><span class="n">7</span><span class="u">bye weeks</span></div><div class="tbody"><h3>All behind week <b>15</b></h3><p class="body">Each was measured as its own solve of the lineup; no week at or after now carries a cost.</p><p class="body short">No week at or after now carries a cost.</p><span class="basis" title="lineup_optimizer.bye_collision / bye_concentration">measured &middot; lineup_optimizer.bye_collision / bye_concentration</span></div><div class="row"><button class="btn more" popovertarget="chk1" aria-label="What was examined"><span class="lbl">What was examined</span><span class="glyph" aria-hidden="true">&rsaquo;</span></button></div></article><article class="tile quiet" style="--rail:var(--status-ok)"><div class="th"><p class="eyebrow">Depth &middot; clean</p></div><div class="hair"></div><div class="fig"><span class="n">16</span><span class="u">rostered</span></div><div class="tbody"><h3>No room rates Weak</h3><p class="body">Every position&rsquo;s depth label came back Strong or Average against this league&rsquo;s own rosters.</p><p class="body short">Every room rates Strong or Average here.</p><span class="basis" title="positional_depth + depth_ratings.depth_label">measured &middot; positional_depth + depth_ratings.depth_label</span></div><div class="row"><button class="btn more" popovertarget="chk2" aria-label="What was examined"><span class="lbl">What was examined</span><span class="glyph" aria-hidden="true">&rsaquo;</span></button></div></article></section>
+
+  <footer class="foot">
+    <div class="left"><a class="btn route" href="#prytaneum">The Prytaneum</a>
+      <p class="note">A dock rendered under every room, not a sixth room.</p></div>
+    <button class="stamp" popovertarget="fresh"><span class="k">Player database captured</span><span class="d">2026-09-07</span></button>
+  </footer>
+</div>
+<div id="checks" popover><h4>What was checked</h4><ul class="cklist"><li><i class="st clean"></i><div><span class="nm">holes</span><span class="res">nothing found</span><span class="basis" title="slots_from_roster_positions + slot_coverage">measured &middot; slots_from_roster_positions + slot_coverage</span></div></li><li><i class="st clean"></i><div><span class="nm">byes</span><span class="res">nothing found</span><span class="basis" title="lineup_optimizer.bye_collision / bye_concentration">measured &middot; lineup_optimizer.bye_collision / bye_concentration</span></div></li><li><i class="st clean"></i><div><span class="nm">depth</span><span class="res">nothing found</span><span class="basis" title="positional_depth + depth_ratings.depth_label">measured &middot; positional_depth + depth_ratings.depth_label</span></div></li></ul><p class="popnote">Three checks, because three is what `compose` evaluates. Starters and record are not checked here; record is off the front by ruling, as true but inert. A check that was never run says so rather than reading clean.</p><div class="popclose"><button class="btn ghost" popovertarget="checks" popovertargetaction="hide">Close</button></div></div><div id="chk0" popover><h4>Holes &middot; clean</h4><div class="slots"><span class="pill" style="background:rgba(42,129,252,0.18);color:#2a81fc">QB</span><span class="pill" style="background:rgba(12,168,156,0.18);color:#0ca89c">RB</span><span class="pill" style="background:rgba(12,168,156,0.18);color:#0ca89c">RB</span><span class="pill" style="background:rgba(74,168,239,0.18);color:#4aa8ef">WR</span><span class="pill" style="background:rgba(74,168,239,0.18);color:#4aa8ef">WR</span><span class="pill" style="background:rgba(255,96,66,0.18);color:#ff6042">TE</span><span class="pill" style="background:rgba(176,162,138,0.18);color:#b0a28a">FLEX</span><span class="pill" style="background:rgba(176,162,138,0.18);color:#b0a28a">FLEX</span><span class="pill bn">BN</span><span class="pill bn">BN</span><span class="pill bn">BN</span><span class="pill bn">BN</span><span class="pill bn">BN</span><span class="pill bn">BN</span><span class="pill" style="background:rgba(250,184,126,0.18);color:#fab87e">K</span><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span></div><p class="popnote">The league&rsquo;s slot shape, as `slots_from_roster_positions` read it. A hole would be one of these the solver could not fill from this roster; there is none.</p><div class="popclose"><button class="btn ghost" popovertarget="chk0" popovertargetaction="hide">Close</button></div></div><div id="chk1" popover><h4>Byes &middot; clean</h4><p class="popnote top">Every week with a measured bye cost, in <span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint -- so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built yet">trade value</span>. Each week is its own solve of the lineup with that week&rsquo;s byes removed &mdash; 7 separate results, not one number spread out.</p><table class="weeks"><thead><tr><th>Week</th><th class="n">Lost</th><th></th><th>Away</th></tr></thead><tbody><tr class="behind"><th>Wk 5 <span class="tag">behind</span></th><td class="n">10</td><td class="barcell"><span class="bar recede" style="width:15%"></span></td><td><div class="who"><span class="chip"><i style="background:#2a81fc"></i>Patrick Mahomes<s>28</s></span></div></td></tr><tr class="behind"><th>Wk 6 <span class="tag">behind</span></th><td class="n">0</td><td class="barcell"><span class="bar recede" style="width:3%"></span></td><td><div class="who"><span class="chip"><i style="background:#fab87e"></i>Evan McPherson<s>6</s></span></div></td></tr><tr class="behind"><th>Wk 7 <span class="tag">behind</span></th><td class="n">35</td><td class="barcell"><span class="bar mid" style="width:51%"></span></td><td><div class="who"><span class="chip"><i style="background:#0ca89c"></i>James Cook<s>54</s></span><span class="chip"><i style="background:#ff6042"></i>Brenton Strange<s>10</s></span></div></td></tr><tr class="behind"><th>Wk 8 <span class="tag">behind</span></th><td class="n">68</td><td class="barcell"><span class="bar hot" style="width:100%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>Malik Nabers<s>81</s></span><span class="chip"><i style="background:#fab87e"></i>Ka'imi Fairbairn<s>12</s></span><span class="chip"><i style="background:#ef7fc0"></i>San Francisco 49ers<s>0</s></span></div></td></tr><tr class="behind"><th>Wk 10 <span class="tag">behind</span></th><td class="n">63</td><td class="barcell"><span class="bar hot" style="width:93%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>DeVonta Smith<s>37</s></span><span class="chip"><i style="background:#0ca89c"></i>D'Andre Swift<s>19</s></span><span class="chip"><i style="background:#4aa8ef"></i>Emeka Egbuka<s>51</s></span><span class="chip"><i style="background:#ef7fc0"></i>Chicago Bears<s>0</s></span></div></td></tr><tr class="behind"><th>Wk 11 <span class="tag">behind</span></th><td class="n">29</td><td class="barcell"><span class="bar mid" style="width:43%"></span></td><td><div class="who"><span class="chip"><i style="background:#ff6042"></i>Tucker Kraft<s>28</s></span><span class="chip"><i style="background:#2a81fc"></i>Jordan Love<s>18</s></span><span class="chip"><i style="background:#0ca89c"></i>Jadarian Price<s>30</s></span><span class="chip"><i style="background:#0ca89c"></i>Blake Corum<s>15</s></span></div></td></tr><tr class="behind"><th>Wk 14 <span class="tag">behind</span></th><td class="n">63</td><td class="barcell"><span class="bar hot" style="width:93%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>CeeDee Lamb<s>82</s></span></div></td></tr></tbody></table><div class="kvrow"><span>season <b>268</b></span><span>worst week <b>25%</b> of it</span><span>unknown byes <b>0</b></span></div><div class="popclose"><button class="btn ghost" popovertarget="chk1" popovertargetaction="hide">Close</button></div></div><div id="chk2" popover><h4>Depth &middot; clean</h4><div class="rooms"><div class="room"><div class="rh"><span class="pill" style="background:rgba(12,168,156,0.18);color:#0ca89c">RB</span><span class="n">4</span></div><div class="who"><span class="chip"><i style="background:#0ca89c"></i>James Cook<s>54</s></span><span class="chip"><i style="background:#0ca89c"></i>D'Andre Swift<s>19</s></span><span class="chip"><i style="background:#0ca89c"></i>Jadarian Price<s>30</s></span><span class="chip"><i style="background:#0ca89c"></i>Blake Corum<s>15</s></span></div></div><div class="room"><div class="rh"><span class="pill" style="background:rgba(74,168,239,0.18);color:#4aa8ef">WR</span><span class="n">4</span></div><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>CeeDee Lamb<s>82</s></span><span class="chip"><i style="background:#4aa8ef"></i>DeVonta Smith<s>37</s></span><span class="chip"><i style="background:#4aa8ef"></i>Malik Nabers<s>81</s></span><span class="chip"><i style="background:#4aa8ef"></i>Emeka Egbuka<s>51</s></span></div></div><div class="room"><div class="rh"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><span class="n">2</span></div><div class="who"><span class="chip"><i style="background:#ef7fc0"></i>Chicago Bears<s>0</s></span><span class="chip"><i style="background:#ef7fc0"></i>San Francisco 49ers<s>0</s></span></div></div><div class="room"><div class="rh"><span class="pill" style="background:rgba(250,184,126,0.18);color:#fab87e">K</span><span class="n">2</span></div><div class="who"><span class="chip"><i style="background:#fab87e"></i>Ka'imi Fairbairn<s>12</s></span><span class="chip"><i style="background:#fab87e"></i>Evan McPherson<s>6</s></span></div></div><div class="room"><div class="rh"><span class="pill" style="background:rgba(42,129,252,0.18);color:#2a81fc">QB</span><span class="n">2</span></div><div class="who"><span class="chip"><i style="background:#2a81fc"></i>Patrick Mahomes<s>28</s></span><span class="chip"><i style="background:#2a81fc"></i>Jordan Love<s>18</s></span></div></div><div class="room"><div class="rh"><span class="pill" style="background:rgba(255,96,66,0.18);color:#ff6042">TE</span><span class="n">2</span></div><div class="who"><span class="chip"><i style="background:#ff6042"></i>Tucker Kraft<s>28</s></span><span class="chip"><i style="background:#ff6042"></i>Brenton Strange<s>10</s></span></div></div></div><p class="popnote">The roster by room, with each man&rsquo;s priced value. This capture carries only the rooms that fell to Weak or None, and there are none; the full label table is not in it, so none is drawn.</p><div class="popclose"><button class="btn ghost" popovertarget="chk2" popovertargetaction="hide">Close</button></div></div><div id="fresh" popover><h4>Player database</h4><p class="popnote top">A capture DATE, deliberately not a grade. `recency_grade` grades an average age in days as Fresh, Recent, Aging or Stale, and an age needs today&rsquo;s clock, which a built page does not have. The date is what this fixture records; the subtraction is yours.</p><dl class="kvs"><dt>captured</dt><dd>2026-09-07</dd><dt>source</dt><dd>data/fixtures/sleeper_capture.json</dd><dt>season</dt><dd>2026</dd><dt>in capture</dt><dd>6595</dd><dt>in pool</dt><dd>6594</dd></dl><div class="popclose"><button class="btn ghost" popovertarget="fresh" popovertargetaction="hide">Close</button></div></div><div id="roomsp" popover><h4>Rooms</h4><nav class="roomlist"><a class="door" href="#matchup">Matchup</a><a class="door" href="#roster-maintenance">Roster Maintenance</a><a class="door" href="#draft-room">Draft Room</a><a class="door" href="#league">League</a><a class="door" href="#import-audit">Import Audit</a><a class="door" href="#prytaneum">The Prytaneum</a></nav><p class="popnote">Five rooms and one dock. The Prytaneum is rendered under every room, not as a sixth.</p><div class="popclose"><button class="btn ghost" popovertarget="roomsp" popovertargetaction="hide">Close</button></div></div>
+</body></html>
