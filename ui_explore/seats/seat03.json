@@ -1,0 +1,240 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 3,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.506,
+  "total_loss": 251.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "5": 30.0,
+   "6": 36.0,
+   "7": 7.0,
+   "8": 0.0,
+   "10": 50.0,
+   "11": 127.0,
+   "13": 1.0
+  },
+  "worst_week": 11,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 2,
+   "bench_value_used": 19.0,
+   "lineup_value": 217.0,
+   "players_out": 4,
+   "starters_out": 3,
+   "value_lost": 127.0
+  },
+  "worst_week_loss": 127.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 11,
+   "eligible": "{'RB'}",
+   "id": "9509",
+   "name": "Bijan Robinson",
+   "position": "RB",
+   "team": "ATL",
+   "value": 99.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'TE'}",
+   "id": "12517",
+   "name": "Colston Loveland",
+   "position": "TE",
+   "team": "CHI",
+   "value": 50.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'WR'}",
+   "id": "10229",
+   "name": "Rashee Rice",
+   "position": "WR",
+   "team": "KC",
+   "value": 41.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'RB'}",
+   "id": "12512",
+   "name": "Quinshon Judkins",
+   "position": "RB",
+   "team": "CLE",
+   "value": 41.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'QB'}",
+   "id": "6770",
+   "name": "Joe Burrow",
+   "position": "QB",
+   "team": "CIN",
+   "value": 32.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'DEF'}",
+   "id": "SEA",
+   "name": "Seattle Seahawks",
+   "position": "DEF",
+   "team": "SEA",
+   "value": 6.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'WR'}",
+   "id": "8142",
+   "name": "Alec Pierce",
+   "position": "WR",
+   "team": "IND",
+   "value": 20.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'WR'}",
+   "id": "9756",
+   "name": "Jordan Addison",
+   "position": "WR",
+   "team": "MIN",
+   "value": 23.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'WR'}",
+   "id": "11631",
+   "name": "Brian Thomas",
+   "position": "WR",
+   "team": "JAX",
+   "value": 24.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'RB'}",
+   "id": "7611",
+   "name": "Rhamondre Stevenson",
+   "position": "RB",
+   "team": "NE",
+   "value": 17.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'RB'}",
+   "id": "12490",
+   "name": "Bhayshul Tuten",
+   "position": "RB",
+   "team": "JAX",
+   "value": 19.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'K'}",
+   "id": "5189",
+   "name": "Eddy Pineiro",
+   "position": "K",
+   "team": "SF",
+   "value": 0.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'K'}",
+   "id": "4227",
+   "name": "Harrison Butker",
+   "position": "K",
+   "team": "KC",
+   "value": 8.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'DEF'}",
+   "id": "IND",
+   "name": "Indianapolis Colts",
+   "position": "DEF",
+   "team": "IND",
+   "value": 0.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'QB'}",
+   "id": "5849",
+   "name": "Kyler Murray",
+   "position": "QB",
+   "team": "MIN",
+   "value": 16.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'TE'}",
+   "id": "12498",
+   "name": "Mason Taylor",
+   "position": "TE",
+   "team": "NYJ",
+   "value": 0.0
+  }
+ ],
+ "starters": [
+  "9509",
+  "12517",
+  "10229",
+  "12512",
+  "6770",
+  "SEA",
+  "8142",
+  "9756",
+  "11631",
+  "4227"
+ ],
+ "structural_holes": [],
+ "team": "Team 3",
+ "thin_positions": [
+  {
+   "count": 4,
+   "label": "Weak",
+   "position": "WR",
+   "value_label": " (108)",
+   "valued_count": 4
+  }
+ ]
+}

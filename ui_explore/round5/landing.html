@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm Dynasty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #0c0a07;
+  --surface: #17130d;
+  --surface-2: #120f0a;
+  --line: #2a2318;
+  --line-2: #443823;
+  --ink: #f2ead9;
+  --muted: #b0a28a;
+  --dim: #897c61;
+  --emerald: #0b8f57;
+  --emerald-b: #2fd08b;
+  --gold: #c9961a;
+  --gold-b: #f5c93f;
+  --violet: #6d3fd6;
+  --violet-b: #b593f5;
+  --crimson: #a60f3a;
+  --crimson-b: #f2546e;
+  --sky: #1356c9;
+  --sky-b: #56a0fa;
+  --amber: #d4700a;
+  --amber-b: #f8a52a;
+  --cliff: #07837a;
+  --cliff-b: #2fcfc0;
+  --block: #b53a09;
+  --block-b: #f79a53;
+  --pure: #efe5cd;
+  --tie: #6f6550;
+  --tie-b: #a1947b;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+:root {
+  --qb: #2a81fc;
+  --rb: #0ca89c;
+  --wr: #4aa8ef;
+  --te: #ff6042;
+  --k: #fab87e;
+  --def: #ef7fc0;
+  --dl: #4cec4c;
+  --lb: #ff45ed;
+  --db: #6ad8f0;
+  --idp: #99a851;
+  --absent: #b0a28a;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:400 .95rem/1.55 "Segoe UI", system-ui, sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:66rem;margin:0 auto;padding:0 20px 64px}
+
+.top{display:flex;align-items:center;gap:22px;padding:18px 0;
+  border-bottom:1px solid var(--line);flex-wrap:wrap}
+.crest{display:flex;align-items:center;gap:12px}
+.word{font:600 1.32rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.11em;text-transform:uppercase;margin:0;
+  background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.word b{display:block;font-size:.76rem;letter-spacing:.42em;font-weight:400;margin-top:5px}
+.top .stamp{margin-left:auto;text-align:right;max-width:30rem}
+
+/* ---- the verdict: a COUNT, never a grade ---- */
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;
+  margin:26px 0 20px;padding:24px 28px;border:1px solid var(--line-2);border-radius:6px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));position:relative;
+  overflow:hidden}
+.verdict::before{content:"";position:absolute;inset:0 auto 0 0;width:170px;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(176,162,138,.06) 4px 5px);
+  mask-image:linear-gradient(90deg,#000,transparent)}
+.tally{font:600 3.5rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--gold-b);letter-spacing:-.03em;position:relative;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.tally s{font-size:1.5rem;color:var(--dim);text-decoration:none;margin-left:4px}
+.verdict h1{font:400 1.68rem/1.2 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;color:var(--gold-b);margin:0 0 8px;position:relative}
+.verdict p{margin:0;color:var(--muted);font-size:.9rem;position:relative;max-width:58ch}
+.eyebrow{font:600 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin:0 0 9px}
+
+/* ---- THE LIST. One line per league, which is what makes twenty scannable. The dashboard's
+   panels would become twenty panels; this is the shape difference the owner named. ---- */
+.leagues{border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+.lrow{display:grid;grid-template-columns:5px 14rem 1fr auto auto;gap:0 18px;align-items:center;
+  padding:0;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}
+.lrow:last-child{border-bottom:0}
+.lrow:hover,.lrow:focus-visible{background:rgba(117,80,36,.1)}
+.rail{align-self:stretch}
+.lrow.hole .rail{background:var(--gold-b)}
+.lrow.bye  .rail{background:var(--gold)}
+.lrow.thin .rail{background:var(--tie-b)}
+.lrow.quiet .rail{background:var(--status-ok);opacity:.5}
+.lid{padding:16px 0 16px 18px}
+.lname{font:400 1rem/1.25 "Segoe UI", system-ui, sans-serif;color:var(--ink);margin:0}
+.lmeta{font:400 .78rem/1.4 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--dim);margin:3px 0 0}
+.lclaim{padding:16px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.lclaim .txt{font-size:.9rem;color:var(--muted)}
+.lclaim .txt b{color:var(--ink);font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600;font-size:.86rem}
+.lclaim.q .txt{color:var(--dim)}
+.tick{color:var(--status-ok)}
+.more{font:400 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim);white-space:nowrap;padding:16px 0}
+.go{padding:16px 18px 16px 0;color:var(--gold);font-size:1.1rem}
+.pill{display:inline-flex;align-items:center;height:21px;padding:0 8px;border-radius:3px;
+  font:600 .76rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.04em;flex:0 0 auto}
+
+.foot{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;font-size:.82rem;color:var(--muted)}
+.foot b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);font-weight:600}
+.stamp{font:400 .78rem/1.5 "Segoe UI", system-ui, sans-serif;color:var(--dim)}
+.absent{color:var(--dim);cursor:help;border-bottom:1px dotted var(--dim)}
+.currency{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}
+
+@media (max-width:760px){
+  .verdict{grid-template-columns:1fr;gap:14px}
+  .lrow{grid-template-columns:4px 1fr auto;row-gap:0}
+  .lid{padding:14px 0 0 16px}
+  .lclaim{grid-column:2/4;padding:6px 16px 14px 0}
+  .more{padding:14px 0 0}
+  .go{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <span class="crest"><svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+<defs><linearGradient id="g" x1="0" y1="0" x2=".3" y2="1">
+<stop offset="0" stop-color="#755024"/><stop offset=".4" stop-color="#ba9561"/>
+<stop offset=".72" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
+</linearGradient></defs>
+<path d="M17 2a15 15 0 1 0 10.6 25.6" fill="none" stroke="url(#g)" stroke-width="2.4"
+ stroke-linecap="round"/>
+<path d="M17 8a9 9 0 1 1-6.4 15.3" fill="none" stroke="url(#g)" stroke-width="1.9"
+ stroke-linecap="round" opacity=".82"/>
+<circle cx="21.4" cy="10.6" r="1.9" fill="url(#g)"/>
+</svg><h1 class="word">Gold Wyrm<b>Dynasty</b></h1></span>
+    <span class="stamp"><span class="absent" tabindex="0" title="twelve seats of one replayed league, on one clock, standing in for twelve leagues. Real leagues differ in format, scoring and bye schedule; these do not, so the spread of rungs here is narrower than a real portfolio's">&mdash;</span> constructed stand-in data &middot;
+      no league names in this capture</span>
+  </header>
+
+  <section class="verdict">
+    <div class="tally">10<s>/12</s></div>
+    <div>
+      <p class="eyebrow">Across your leagues</p>
+      <h1>10 of 12 have something open.</h1>
+      <p>Ordered by what KIND of thing is open, never by its size &mdash; a hole is a hole in
+      any league, but two leagues' point figures are different units wearing the same label.
+       Quiet: Team 10, Team 11.</p>
+    </div>
+  </section>
+
+  <div class="leagues"><a class="lrow thin" href="#team-2"><span class="rail"></span><span class="lid"><p class="lname">Team 2</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><span class="txt">DEF &middot; <b>1</b> rostered</span></span><span class="more">+2 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-4"><span class="rail"></span><span class="lid"><p class="lname">Team 4</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><span class="txt">DEF &middot; <b>1</b> rostered</span></span><span class="more">+2 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-5"><span class="rail"></span><span class="lid"><p class="lname">Team 5</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><span class="txt">DEF &middot; <b>1</b> rostered</span></span><span class="more">+2 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-1"><span class="rail"></span><span class="lid"><p class="lname">Team 1</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><span class="txt">DEF &middot; <b>1</b> rostered</span></span><span class="more">+1 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-12"><span class="rail"></span><span class="lid"><p class="lname">Team 12</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><span class="txt">DEF &middot; <b>1</b> rostered</span></span><span class="more">+1 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-7"><span class="rail"></span><span class="lid"><p class="lname">Team 7</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(12,168,156,0.18);color:#0ca89c">RB</span><span class="txt">RB &middot; <b>3</b> rostered</span></span><span class="more">+1 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-8"><span class="rail"></span><span class="lid"><p class="lname">Team 8</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(42,129,252,0.18);color:#2a81fc">QB</span><span class="txt">QB &middot; <b>1</b> rostered</span></span><span class="more">+1 more</span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-3"><span class="rail"></span><span class="lid"><p class="lname">Team 3</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(74,168,239,0.18);color:#4aa8ef">WR</span><span class="txt">WR &middot; <b>4</b> rostered</span></span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-6"><span class="rail"></span><span class="lid"><p class="lname">Team 6</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(42,129,252,0.18);color:#2a81fc">QB</span><span class="txt">QB &middot; <b>2</b> rostered</span></span><span class="go">&rsaquo;</span></a><a class="lrow thin" href="#team-9"><span class="rail"></span><span class="lid"><p class="lname">Team 9</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim"><span class="pill" style="background:rgba(74,168,239,0.18);color:#4aa8ef">WR</span><span class="txt">WR &middot; <b>3</b> rostered</span></span><span class="go">&rsaquo;</span></a><a class="lrow quiet" href="#team-10"><span class="rail"></span><span class="lid"><p class="lname">Team 10</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim q"><span class="tick">&check;</span><span class="txt">Nothing open. 3 checks, all clean &mdash; holes, byes, depth.</span></span><span class="go">&rsaquo;</span></a><a class="lrow quiet" href="#team-11"><span class="rail"></span><span class="lid"><p class="lname">Team 11</p><p class="lmeta">12T_ppr_K_DEF</p></span><span class="lclaim q"><span class="tick">&check;</span><span class="txt">Nothing open. 3 checks, all clean &mdash; holes, byes, depth.</span></span><span class="go">&rsaquo;</span></a></div>
+
+  <div class="foot">
+    <span>leagues <b>12</b></span>
+    <span>something open <b>10</b></span>
+    <span>nothing open <b>2</b></span>
+  </div>
+  <p class="stamp" style="margin-top:14px">A count of real things, never a score. No portfolio
+  grade, no worst-league ranking and no cross-league total exists to show.</p>
+</div>
+</body></html>

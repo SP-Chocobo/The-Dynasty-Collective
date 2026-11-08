@@ -20425,3 +20425,80 @@ owner has since ruled for `deck`'s density. Whether the phone layout should drop
 popout is a design question for the owner, not a number to quietly meet by cutting the panel
 that earned the rebuild.
 
+---
+
+## `#344` — THE LANDING PAGE, WHICH I HAD NOT BUILT
+
+The owner's correction, and it names a real conflation:
+
+> i like deck more still. i think youre confounding the landing page with the deck dashboard,
+> just recreating the same information type without addressing the need for the landing page
+
+Right on both counts. `deck` is the IN-LEAGUE dashboard, and `#343` rebuilt that same job
+slightly worse while **the surface that actually did not exist stayed undrawn**. Two rounds of
+work went into re-deciding a question `deck` had already answered better.
+
+### They answer different questions, so they want different shapes
+
+```
+dashboard   ONE league, many facts      -> panels with internal grids, a ledger, density
+landing     MANY leagues, one fact each -> a LIST, one line per league, scannable at twenty
+```
+
+A landing page built as a dashboard is a dashboard with twelve of everything, which is precisely
+the failure the standing constraint names.
+
+### What it shows, and what it refuses
+
+Twelve rows, each: the league's identity, ONE claim in its own words with its position pill, how
+many more are open, and a severity rail by RUNG. Quiet leagues get a green rail and
+`Nothing open. 3 checks, all clean -- holes, byes, depth` rather than being filtered out, because
+seeing that two of twelve want nothing is the page's entire value.
+
+**Ordered by rung, never by figure.** A hole is a hole in any league, so the rung compares. A bye
+costing 95 in one league and 95 in another does not: `bye_collision` prices in whatever currency
+its caller supplies, each league applies its own scoring, and `set_league_format` picks a
+different export per format, so two leagues' figures are different units wearing one label
+(`#341`). Ordering a portfolio by a number is the most confident wrong thing this surface could
+do.
+
+**The headline is a count: `10 of 12 have something open`.** Not a grade. A portfolio score, a
+worst-league ranking and a cross-league total are all unreachable, and this is the page where
+they are most tempting, because its natural shape is N rows plus a summary and that shape begs
+for a summary that cannot exist.
+
+### The data is a stamped stand-in
+
+Twelve SEATS of one replayed battery league, all on one clock (week 15), generated through
+`capture_front_fixture.py --seat N --week 15`. Real leagues differ in format, scoring and bye
+schedule; these share all three, **so the spread of rungs here is narrower than a real
+portfolio's**. Said on the page, not only here. Week 15 was chosen by scanning weeks 12-17 for
+the clock that produced both quiet and open leagues: no week produced all three rungs at once,
+which is itself a property of the stand-in rather than of the design.
+
+### Two absence defects the render exposed, both the same rule
+
+1. **Every row's name was a bare em dash.** The capture carries no league name, so the most
+   prominent thing on a page about CHOOSING a league was the thing that was missing. The team is
+   now the identifier and the absence drops to the meta line.
+2. **Then the absence repeated on all twelve rows**, wrapping each meta line onto two. The same
+   non-fact twelve times on a page whose job is to differentiate. It is now stated ONCE, in the
+   header, where it is true of the whole capture rather than of any row.
+
+Both are the rule `#343` first stated and neither surface had applied: **an absence must read as
+information, not as damage** -- and an absence identical on every row is noise, which the
+standing constraint already forbids.
+
+### Render gate
+
+```
+1280px   height 1324px   no overflow   min font 12.16px   0 sub-44px targets   0 console errors
+ 390px   height 2157px   no overflow   min font 12.16px   0 sub-44px targets   0 console errors
+```
+
+### Status
+
+**Built, not certified.** Owed: tests, the eight ratchets, a full suite. `build_landing.py`
+imports its escaper, absence grammar, currency stamp, position pill, brand mark and both
+build-time assertions from `build_dashboard.py` rather than copying them (`#126`).
+

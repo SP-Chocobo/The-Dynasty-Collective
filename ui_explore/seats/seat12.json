@@ -1,0 +1,247 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 12,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.403,
+  "total_loss": 144.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "6": 22.0,
+   "7": 6.0,
+   "8": 1.0,
+   "10": 31.0,
+   "11": 0.0,
+   "13": 26.0,
+   "14": 58.0
+  },
+  "worst_week": 14,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 2,
+   "bench_value_used": 24.0,
+   "lineup_value": 212.0,
+   "players_out": 2,
+   "starters_out": 2,
+   "value_lost": 58.0
+  },
+  "worst_week_loss": 58.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 14,
+   "eligible": "{'TE'}",
+   "id": "8130",
+   "name": "Trey McBride",
+   "position": "TE",
+   "team": "ARI",
+   "value": 60.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'RB'}",
+   "id": "9224",
+   "name": "Chase Brown",
+   "position": "RB",
+   "team": "CIN",
+   "value": 38.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'WR'}",
+   "id": "7526",
+   "name": "Jaylen Waddle",
+   "position": "WR",
+   "team": "DEN",
+   "value": 36.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'RB'}",
+   "id": "5892",
+   "name": "David Montgomery",
+   "position": "RB",
+   "team": "HOU",
+   "value": 17.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "10222",
+   "name": "Jayden Reed",
+   "position": "WR",
+   "team": "GB",
+   "value": 16.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'WR'}",
+   "id": "8146",
+   "name": "Garrett Wilson",
+   "position": "WR",
+   "team": "NYJ",
+   "value": 42.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'QB'}",
+   "id": "12508",
+   "name": "Jaxson Dart",
+   "position": "QB",
+   "team": "NYG",
+   "value": 22.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'DEF'}",
+   "id": "DEN",
+   "name": "Denver Broncos",
+   "position": "DEF",
+   "team": "DEN",
+   "value": 7.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'WR'}",
+   "id": "11628",
+   "name": "Marvin Harrison",
+   "position": "WR",
+   "team": "ARI",
+   "value": 22.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'WR'}",
+   "id": "5947",
+   "name": "Jakobi Meyers",
+   "position": "WR",
+   "team": "JAX",
+   "value": 16.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'QB'}",
+   "id": "6797",
+   "name": "Justin Herbert",
+   "position": "QB",
+   "team": "LAC",
+   "value": 28.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'RB'}",
+   "id": "12489",
+   "name": "RJ Harvey",
+   "position": "RB",
+   "team": "DEN",
+   "value": 16.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'K'}",
+   "id": "3678",
+   "name": "Wil Lutz",
+   "position": "K",
+   "team": "DEN",
+   "value": 4.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'TE'}",
+   "id": "8210",
+   "name": "Chig Okonkwo",
+   "position": "TE",
+   "team": "WAS",
+   "value": 8.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'RB'}",
+   "id": "6806",
+   "name": "J.K. Dobbins",
+   "position": "RB",
+   "team": "DEN",
+   "value": 9.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'RB'}",
+   "id": "12534",
+   "name": "Kyle Monangai",
+   "position": "RB",
+   "team": "CHI",
+   "value": 15.0
+  }
+ ],
+ "starters": [
+  "8130",
+  "9224",
+  "7526",
+  "5892",
+  "10222",
+  "8146",
+  "DEN",
+  "11628",
+  "6797",
+  "3678"
+ ],
+ "structural_holes": [],
+ "team": "Team 12",
+ "thin_positions": [
+  {
+   "count": 1,
+   "label": "Weak",
+   "position": "DEF",
+   "value_label": " (7)",
+   "valued_count": 1
+  },
+  {
+   "count": 1,
+   "label": "Weak",
+   "position": "K",
+   "value_label": " (4)",
+   "valued_count": 1
+  }
+ ]
+}

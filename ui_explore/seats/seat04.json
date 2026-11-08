@@ -1,0 +1,253 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 4,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.424,
+  "total_loss": 302.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "5": 6.0,
+   "7": 39.0,
+   "8": 0.0,
+   "9": 1.0,
+   "11": 128.0,
+   "13": 128.0
+  },
+  "worst_week": 11,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 2,
+   "bench_value_used": 21.0,
+   "lineup_value": 217.0,
+   "players_out": 9,
+   "starters_out": 5,
+   "value_lost": 128.0
+  },
+  "worst_week_loss": 128.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "9488",
+   "name": "Jaxon Smith-Njigba",
+   "position": "WR",
+   "team": "SEA",
+   "value": 96.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'RB'}",
+   "id": "12527",
+   "name": "Ashton Jeanty",
+   "position": "RB",
+   "team": "LV",
+   "value": 81.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'RB'}",
+   "id": "8155",
+   "name": "Breece Hall",
+   "position": "RB",
+   "team": "NYJ",
+   "value": 47.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'TE'}",
+   "id": "1466",
+   "name": "Travis Kelce",
+   "position": "TE",
+   "team": "KC",
+   "value": 8.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "8167",
+   "name": "Christian Watson",
+   "position": "WR",
+   "team": "GB",
+   "value": 27.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'DEF'}",
+   "id": "LAR",
+   "name": "Los Angeles Rams",
+   "position": "DEF",
+   "team": "LAR",
+   "value": 1.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'QB'}",
+   "id": "11566",
+   "name": "Jayden Daniels",
+   "position": "QB",
+   "team": "WAS",
+   "value": 39.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'WR'}",
+   "id": "8134",
+   "name": "Khalil Shakir",
+   "position": "WR",
+   "team": "BUF",
+   "value": 20.0
+  },
+  {
+   "bye": 9,
+   "eligible": "{'WR'}",
+   "id": "6819",
+   "name": "Michael Pittman",
+   "position": "WR",
+   "team": "PIT",
+   "value": 21.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'WR'}",
+   "id": "5872",
+   "name": "Deebo Samuel",
+   "position": "WR",
+   "team": "SF",
+   "value": 1.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "12501",
+   "name": "Matthew Golden",
+   "position": "WR",
+   "team": "GB",
+   "value": 18.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'K'}",
+   "id": "650",
+   "name": "Nick Folk",
+   "position": "K",
+   "team": "ATL",
+   "value": 0.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "8676",
+   "name": "Rashid Shaheed",
+   "position": "WR",
+   "team": "SEA",
+   "value": 13.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "13298",
+   "name": "KC Concepcion",
+   "position": "WR",
+   "team": "CLE",
+   "value": 25.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'QB'}",
+   "id": "6768",
+   "name": "Tua Tagovailoa",
+   "position": "QB",
+   "team": "ATL",
+   "value": 0.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'TE'}",
+   "id": "6865",
+   "name": "Colby Parkinson",
+   "position": "TE",
+   "team": "LAR",
+   "value": 2.0
+  }
+ ],
+ "starters": [
+  "9488",
+  "12527",
+  "8155",
+  "1466",
+  "8167",
+  "LAR",
+  "11566",
+  "6819",
+  "650",
+  "13298"
+ ],
+ "structural_holes": [],
+ "team": "Team 4",
+ "thin_positions": [
+  {
+   "count": 1,
+   "label": "Weak",
+   "position": "DEF",
+   "value_label": " (1)",
+   "valued_count": 1
+  },
+  {
+   "count": 1,
+   "label": "Weak",
+   "position": "K",
+   "value_label": "",
+   "valued_count": 0
+  },
+  {
+   "count": 2,
+   "label": "Weak",
+   "position": "TE",
+   "value_label": " (10)",
+   "valued_count": 2
+  }
+ ]
+}

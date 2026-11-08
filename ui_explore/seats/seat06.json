@@ -1,0 +1,242 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 6,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.402,
+  "total_loss": 241.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "5": 44.0,
+   "6": 1.0,
+   "7": 0.0,
+   "8": 10.0,
+   "9": 1.0,
+   "10": 19.0,
+   "11": 61.0,
+   "13": 97.0,
+   "14": 8.0
+  },
+  "worst_week": 13,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 3,
+   "bench_value_used": 17.0,
+   "lineup_value": 240.0,
+   "players_out": 3,
+   "starters_out": 3,
+   "value_lost": 97.0
+  },
+  "worst_week_loss": 97.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 13,
+   "eligible": "{'RB'}",
+   "id": "6813",
+   "name": "Jonathan Taylor",
+   "position": "RB",
+   "team": "IND",
+   "value": 75.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'WR'}",
+   "id": "8112",
+   "name": "Drake London",
+   "position": "WR",
+   "team": "ATL",
+   "value": 74.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'TE'}",
+   "id": "12518",
+   "name": "Tyler Warren",
+   "position": "TE",
+   "team": "IND",
+   "value": 33.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'WR'}",
+   "id": "12526",
+   "name": "Tetairoa McMillan",
+   "position": "WR",
+   "team": "CAR",
+   "value": 57.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'RB'}",
+   "id": "7543",
+   "name": "Travis Etienne",
+   "position": "RB",
+   "team": "NO",
+   "value": 23.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'QB'}",
+   "id": "3294",
+   "name": "Dak Prescott",
+   "position": "QB",
+   "team": "DAL",
+   "value": 19.0
+  },
+  {
+   "bye": 9,
+   "eligible": "{'RB'}",
+   "id": "7021",
+   "name": "Rico Dowdle",
+   "position": "RB",
+   "team": "PIT",
+   "value": 13.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'WR'}",
+   "id": "11620",
+   "name": "Rome Odunze",
+   "position": "WR",
+   "team": "CHI",
+   "value": 32.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'DEF'}",
+   "id": "NE",
+   "name": "New England Patriots",
+   "position": "DEF",
+   "team": "NE",
+   "value": 3.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'K'}",
+   "id": "12711",
+   "name": "Tyler Loop",
+   "position": "K",
+   "team": "BAL",
+   "value": 6.0
+  },
+  {
+   "bye": 9,
+   "eligible": "{'DEF'}",
+   "id": "PIT",
+   "name": "Pittsburgh Steelers",
+   "position": "DEF",
+   "team": "PIT",
+   "value": 4.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'K'}",
+   "id": "11786",
+   "name": "Cam Little",
+   "position": "K",
+   "team": "JAX",
+   "value": 0.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'QB'}",
+   "id": "421",
+   "name": "Matthew Stafford",
+   "position": "QB",
+   "team": "LAR",
+   "value": 11.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'WR'}",
+   "id": "11834",
+   "name": "Devaughn Vele",
+   "position": "WR",
+   "team": "NO",
+   "value": 0.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'RB'}",
+   "id": "8408",
+   "name": "Jordan Mason",
+   "position": "RB",
+   "team": "MIN",
+   "value": 14.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'TE'}",
+   "id": "8172",
+   "name": "Greg Dulcich",
+   "position": "TE",
+   "team": "MIA",
+   "value": 4.0
+  }
+ ],
+ "starters": [
+  "6813",
+  "8112",
+  "12518",
+  "12526",
+  "7543",
+  "3294",
+  "11620",
+  "12711",
+  "PIT",
+  "8408"
+ ],
+ "structural_holes": [],
+ "team": "Team 6",
+ "thin_positions": [
+  {
+   "count": 2,
+   "label": "Weak",
+   "position": "QB",
+   "value_label": " (30)",
+   "valued_count": 2
+  }
+ ]
+}

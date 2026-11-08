@@ -1,0 +1,247 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 8,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.692,
+  "total_loss": 253.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "5": 14.0,
+   "6": 175.0,
+   "7": 7.0,
+   "10": 48.0,
+   "11": 0.0,
+   "13": 0.0,
+   "14": 9.0
+  },
+  "worst_week": 6,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 5,
+   "bench_value_used": 32.0,
+   "lineup_value": 160.0,
+   "players_out": 5,
+   "starters_out": 5,
+   "value_lost": 175.0
+  },
+  "worst_week_loss": 175.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 6,
+   "eligible": "{'WR'}",
+   "id": "7564",
+   "name": "Ja'Marr Chase",
+   "position": "WR",
+   "team": "CIN",
+   "value": 100.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'WR'}",
+   "id": "6794",
+   "name": "Justin Jefferson",
+   "position": "WR",
+   "team": "MIN",
+   "value": 82.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'RB'}",
+   "id": "7588",
+   "name": "Javonte Williams",
+   "position": "RB",
+   "team": "DAL",
+   "value": 24.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'TE'}",
+   "id": "10859",
+   "name": "Sam LaPorta",
+   "position": "TE",
+   "team": "DET",
+   "value": 20.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'RB'}",
+   "id": "11584",
+   "name": "Bucky Irving",
+   "position": "RB",
+   "team": "TB",
+   "value": 36.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'QB'}",
+   "id": "6904",
+   "name": "Jalen Hurts",
+   "position": "QB",
+   "team": "PHI",
+   "value": 27.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'WR'}",
+   "id": "11646",
+   "name": "Jalen Coker",
+   "position": "WR",
+   "team": "CAR",
+   "value": 12.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'WR'}",
+   "id": "9487",
+   "name": "Parker Washington",
+   "position": "WR",
+   "team": "JAX",
+   "value": 22.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'DEF'}",
+   "id": "DET",
+   "name": "Detroit Lions",
+   "position": "DEF",
+   "team": "DET",
+   "value": 0.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'K'}",
+   "id": "2747",
+   "name": "Jason Myers",
+   "position": "K",
+   "team": "SEA",
+   "value": 0.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'K'}",
+   "id": "11792",
+   "name": "Will Reichard",
+   "position": "K",
+   "team": "MIN",
+   "value": 5.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'DEF'}",
+   "id": "ATL",
+   "name": "Atlanta Falcons",
+   "position": "DEF",
+   "team": "ATL",
+   "value": 0.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'RB'}",
+   "id": "7594",
+   "name": "Chuba Hubbard",
+   "position": "RB",
+   "team": "CAR",
+   "value": 15.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'WR'}",
+   "id": "1479",
+   "name": "Keenan Allen",
+   "position": "WR",
+   "team": "IND",
+   "value": 0.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'RB'}",
+   "id": "11583",
+   "name": "Jonathon Brooks",
+   "position": "RB",
+   "team": "CAR",
+   "value": 19.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'TE'}",
+   "id": "8111",
+   "name": "Cade Otton",
+   "position": "TE",
+   "team": "TB",
+   "value": 5.0
+  }
+ ],
+ "starters": [
+  "7564",
+  "6794",
+  "7588",
+  "10859",
+  "11584",
+  "6904",
+  "9487",
+  "DET",
+  "11792",
+  "11583"
+ ],
+ "structural_holes": [],
+ "team": "Team 8",
+ "thin_positions": [
+  {
+   "count": 1,
+   "label": "Weak",
+   "position": "QB",
+   "value_label": " (27)",
+   "valued_count": 1
+  },
+  {
+   "count": 2,
+   "label": "Weak",
+   "position": "TE",
+   "value_label": " (25)",
+   "valued_count": 2
+  }
+ ]
+}

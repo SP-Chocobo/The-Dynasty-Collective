@@ -1,0 +1,248 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 7,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.324,
+  "total_loss": 210.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "5": 34.0,
+   "6": 67.0,
+   "7": 0.0,
+   "9": 2.0,
+   "10": 21.0,
+   "11": 18.0,
+   "13": 0.0,
+   "14": 68.0
+  },
+  "worst_week": 14,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 3,
+   "bench_value_used": 25.0,
+   "lineup_value": 269.0,
+   "players_out": 3,
+   "starters_out": 3,
+   "value_lost": 68.0
+  },
+  "worst_week_loss": 68.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 6,
+   "eligible": "{'WR'}",
+   "id": "7547",
+   "name": "Amon-Ra St. Brown",
+   "position": "WR",
+   "team": "DET",
+   "value": 83.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'RB'}",
+   "id": "8151",
+   "name": "Kenneth Walker",
+   "position": "RB",
+   "team": "KC",
+   "value": 50.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'WR'}",
+   "id": "8137",
+   "name": "George Pickens",
+   "position": "WR",
+   "team": "DAL",
+   "value": 53.0
+  },
+  {
+   "bye": 9,
+   "eligible": "{'RB'}",
+   "id": "8228",
+   "name": "Jaylen Warren",
+   "position": "RB",
+   "team": "PIT",
+   "value": 18.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'WR'}",
+   "id": "12519",
+   "name": "Luther Burden",
+   "position": "WR",
+   "team": "CHI",
+   "value": 37.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'TE'}",
+   "id": "5012",
+   "name": "Mark Andrews",
+   "position": "TE",
+   "team": "BAL",
+   "value": 9.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'QB'}",
+   "id": "11564",
+   "name": "Drake Maye",
+   "position": "QB",
+   "team": "NE",
+   "value": 42.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'WR'}",
+   "id": "10232",
+   "name": "Michael Wilson",
+   "position": "WR",
+   "team": "ARI",
+   "value": 22.0
+  },
+  {
+   "bye": 13,
+   "eligible": "{'DEF'}",
+   "id": "BAL",
+   "name": "Baltimore Ravens",
+   "position": "DEF",
+   "team": "BAL",
+   "value": 4.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'K'}",
+   "id": "11533",
+   "name": "Brandon Aubrey",
+   "position": "K",
+   "team": "DAL",
+   "value": 18.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'DEF'}",
+   "id": "GB",
+   "name": "Green Bay Packers",
+   "position": "DEF",
+   "team": "GB",
+   "value": 5.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'TE'}",
+   "id": "5022",
+   "name": "Dallas Goedert",
+   "position": "TE",
+   "team": "PHI",
+   "value": 9.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'K'}",
+   "id": "2020",
+   "name": "Cairo Santos",
+   "position": "K",
+   "team": "CHI",
+   "value": 0.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'QB'}",
+   "id": "7523",
+   "name": "Trevor Lawrence",
+   "position": "QB",
+   "team": "JAX",
+   "value": 25.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'RB'}",
+   "id": "12533",
+   "name": "Jacory Croskey-Merritt",
+   "position": "RB",
+   "team": "WAS",
+   "value": 16.0
+  },
+  {
+   "bye": 9,
+   "eligible": "{'TE'}",
+   "id": "7600",
+   "name": "Pat Freiermuth",
+   "position": "TE",
+   "team": "PIT",
+   "value": 7.0
+  }
+ ],
+ "starters": [
+  "7547",
+  "8151",
+  "8137",
+  "8228",
+  "12519",
+  "5012",
+  "11564",
+  "10232",
+  "11533",
+  "GB"
+ ],
+ "structural_holes": [],
+ "team": "Team 7",
+ "thin_positions": [
+  {
+   "count": 3,
+   "label": "Weak",
+   "position": "RB",
+   "value_label": " (84)",
+   "valued_count": 3
+  },
+  {
+   "count": 3,
+   "label": "Weak",
+   "position": "TE",
+   "value_label": " (25)",
+   "valued_count": 3
+  }
+ ]
+}

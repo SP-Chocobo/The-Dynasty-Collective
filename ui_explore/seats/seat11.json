@@ -1,0 +1,232 @@
+{
+ "_provenance": {
+  "basis": {
+   "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
+   "current_week": "CONSTRUCTED -- week 15 is a CHOSEN clock reading, not a measured one. A replayed draft has no point in a season; a live league reads season/week from Sleeper's NFL state. The roster, byes, holes and depth around it are measured -- only the clock is chosen",
+   "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
+   "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
+   "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
+   "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
+   "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
+  },
+  "format": "12T_ppr_K_DEF",
+  "players_db": "{'source': 'data/fixtures/sleeper_capture.json', 'captured_at': '2026-09-07T08:14:10.990206+00:00', 'season': '2026', 'players_in_capture': 6595, 'players_in_pool': 6594, 'injury_statuses_present': ['",
+  "rounds": 16,
+  "seat": 11,
+  "strategy": "sharp_auto",
+  "teams": 12,
+  "universe_rows": 5357
+ },
+ "bye_profile": {
+  "basis": "measured",
+  "concentration": 0.254,
+  "total_loss": 268.0,
+  "unknown_byes": 0,
+  "weeks": {
+   "5": 10.0,
+   "6": 0.0,
+   "7": 35.0,
+   "8": 68.0,
+   "10": 63.0,
+   "11": 29.0,
+   "14": 63.0
+  },
+  "worst_week": 8,
+  "worst_week_detail": {
+   "basis": "measured",
+   "bench_used": 2,
+   "bench_value_used": 25.0,
+   "lineup_value": 335.0,
+   "players_out": 3,
+   "starters_out": 2,
+   "value_lost": 68.0
+  },
+  "worst_week_loss": 68.0
+ },
+ "current_week": 15,
+ "league": {
+  "roster_positions": [
+   "QB",
+   "RB",
+   "RB",
+   "WR",
+   "WR",
+   "TE",
+   "FLEX",
+   "FLEX",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "BN",
+   "K",
+   "DEF"
+  ],
+  "starting_slots": 10
+ },
+ "league_name": null,
+ "record": null,
+ "roster": [
+  {
+   "bye": 7,
+   "eligible": "{'RB'}",
+   "id": "8138",
+   "name": "James Cook",
+   "position": "RB",
+   "team": "BUF",
+   "value": 54.0
+  },
+  {
+   "bye": 14,
+   "eligible": "{'WR'}",
+   "id": "6786",
+   "name": "CeeDee Lamb",
+   "position": "WR",
+   "team": "DAL",
+   "value": 82.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'WR'}",
+   "id": "7525",
+   "name": "DeVonta Smith",
+   "position": "WR",
+   "team": "PHI",
+   "value": 37.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'TE'}",
+   "id": "9484",
+   "name": "Tucker Kraft",
+   "position": "TE",
+   "team": "GB",
+   "value": 28.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'RB'}",
+   "id": "6790",
+   "name": "D'Andre Swift",
+   "position": "RB",
+   "team": "CHI",
+   "value": 19.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'WR'}",
+   "id": "11632",
+   "name": "Malik Nabers",
+   "position": "WR",
+   "team": "NYG",
+   "value": 81.0
+  },
+  {
+   "bye": 5,
+   "eligible": "{'QB'}",
+   "id": "4046",
+   "name": "Patrick Mahomes",
+   "position": "QB",
+   "team": "KC",
+   "value": 28.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'WR'}",
+   "id": "12514",
+   "name": "Emeka Egbuka",
+   "position": "WR",
+   "team": "TB",
+   "value": 51.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'K'}",
+   "id": "3451",
+   "name": "Ka'imi Fairbairn",
+   "position": "K",
+   "team": "HOU",
+   "value": 12.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'QB'}",
+   "id": "6804",
+   "name": "Jordan Love",
+   "position": "QB",
+   "team": "GB",
+   "value": 18.0
+  },
+  {
+   "bye": 10,
+   "eligible": "{'DEF'}",
+   "id": "CHI",
+   "name": "Chicago Bears",
+   "position": "DEF",
+   "team": "CHI",
+   "value": 0.0
+  },
+  {
+   "bye": 6,
+   "eligible": "{'K'}",
+   "id": "7839",
+   "name": "Evan McPherson",
+   "position": "K",
+   "team": "CIN",
+   "value": 6.0
+  },
+  {
+   "bye": 8,
+   "eligible": "{'DEF'}",
+   "id": "SF",
+   "name": "San Francisco 49ers",
+   "position": "DEF",
+   "team": "SF",
+   "value": 0.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'RB'}",
+   "id": "13286",
+   "name": "Jadarian Price",
+   "position": "RB",
+   "team": "SEA",
+   "value": 30.0
+  },
+  {
+   "bye": 11,
+   "eligible": "{'RB'}",
+   "id": "11586",
+   "name": "Blake Corum",
+   "position": "RB",
+   "team": "LAR",
+   "value": 15.0
+  },
+  {
+   "bye": 7,
+   "eligible": "{'TE'}",
+   "id": "9480",
+   "name": "Brenton Strange",
+   "position": "TE",
+   "team": "JAX",
+   "value": 10.0
+  }
+ ],
+ "starters": [
+  "8138",
+  "6786",
+  "7525",
+  "9484",
+  "11632",
+  "4046",
+  "12514",
+  "3451",
+  "CHI",
+  "13286"
+ ],
+ "structural_holes": [],
+ "team": "Team 11",
+ "thin_positions": []
+}
