@@ -811,6 +811,16 @@ a{color:inherit}
   .commands{grid-template-columns:1fr 1fr}
 }
 @media (max-width:720px){
+  /* THE GLYPHS BECOME THE BUTTONS. The owner's call, and the measurements back it: the glyph
+     is legible at 19px (`#349h` rendered the set down to it) while the LABEL is what overflows
+     a 390px bar -- six labelled tabs cannot fit, six 48px glyph targets can, with room spare.
+     The label is not deleted, it moves to `aria-label`/`title`, so the tab is still named for a
+     screen reader and on a long press. Targets stay at 48px, over the 44px floor. */
+  .room{min-width:48px;width:48px;height:48px;padding:0;place-items:center;display:grid;
+    font-size:0;gap:0}
+  .room .ic{width:22px;height:22px}
+  .rooms{gap:6px;justify-content:space-between;width:100%}
+  .rooms::before{inset:-8px -12px}
   .band{display:none}
   .commands{grid-template-columns:1fr}
   .lrow{grid-template-columns:4px 1fr auto;row-gap:0}
@@ -834,9 +844,17 @@ ROOMS = (("layers", "Matchup"), ("swap", "Roster"), ("chart", "Draft Room"),
          ("crown", "League"), ("search", "Import Audit"))
 
 
-def topbar(sl=None, uri=None, home=True):
+def topbar(sl=None, uri=None, home=True, active=None):
+    """The shared top bar. `active` names the ROOM that is current, for the in-league pages.
+
+    Default `None` keeps Home lit, which is what the landing pages want and what this rendered
+    before the parameter existed -- so both landing pages still rebuild byte-identically, which
+    is how this edit was checked rather than assumed.
+    """
     rooms = "".join(
-        f'<a class="room" href="#{esc(label.lower().replace(" ", "-"))}">{icon(name, 19)}{esc(label)}</a>'
+        f'<a class="room{" on" if label == active else ""}" title="{esc(label)}" '
+        f'aria-label="{esc(label)}" '
+        f'href="#{esc(label.lower().replace(" ", "-"))}">{icon(name, 19)}{esc(label)}</a>'
         for name, label in ROOMS)
     conn = ""
     if sl:
@@ -848,7 +866,7 @@ def topbar(sl=None, uri=None, home=True):
     {hero_band(uri)}
     <div class="crestmark">{emblem()}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
     <nav class="rooms">
-      <a class="room{' on' if home else ''}" href="#home">{icon("disk", 19)}Home</a>
+      <a class="room{' on' if home and not active else ''}" title="Home" aria-label="Home" href="#home">{icon("disk", 19)}Home</a>
       {rooms}
     </nav>
     {conn}
