@@ -524,6 +524,29 @@ def emblem(size: int = 44) -> str:
             f'alt="" aria-hidden="true">')
 
 
+def wyrm_mark():
+    """The empty-state wyrm, composited by SCREEN rather than by an alpha channel.
+
+    WHY NO ALPHA. The emblem needed keying because its ground was a textured dark grey
+    measurably BRIGHTER than this page's --bg, so a blend mode would have left the ground
+    showing. This image's void measures a maximum channel value of 1 -- effectively pure black
+    -- and `screen` leaves the backdrop untouched wherever the source is darker than it. So the
+    ground composites to nothing on its own, and the file ships with no alpha plane at all.
+
+    That is not a stylistic choice, it is 3-6x the file. Keyed and graded with alpha the same
+    art costs 150KB at 560px (and 490KB at 760px): WebP keeps alpha LOSSLESS by default, and the
+    alpha plane of a filigree dragon is essentially noise, which is why dropping quality from 72
+    to 55 moved the size by 4% and nothing else. Without the alpha plane it is 77KB.
+
+    The rule this generalises to, for every future piece: ask for a PURE BLACK void and the art
+    needs no mask. Ask for atmosphere and it needs one, and the mask costs more than the art.
+    """
+    uri = asset_data_uri("wyrm_coiled.webp", "image/webp")
+    if not uri:
+        return ""
+    return f'<div class="wyrmmark" aria-hidden="true" style="background-image:url({uri})"></div>'
+
+
 def hero_band(uri):
     """The art layer. A SLOT, so replacing the image is a one-line change.
 
@@ -630,6 +653,20 @@ a{color:inherit}
 .crest{position:relative;display:flex;align-items:center;justify-content:center;
   color:var(--line-2)}
 .crest .shield{display:block}
+/* The empty state's wyrm. `screen` over a near-black ground, so the image's own void
+   contributes nothing and no alpha channel is shipped. Sits behind the lede, which is capped
+   at 64ch and therefore never reaches it. */
+.wyrmmark{position:absolute;right:26px;top:50%;transform:translateY(-50%);
+  height:calc(100% - 34px);aspect-ratio:1/.98;background-size:contain;
+  background-repeat:no-repeat;background-position:center;mix-blend-mode:screen;
+  opacity:.95;pointer-events:none;z-index:0}
+/* The verdict card is sized by its text on every other page. The empty state has one short
+   lede, so the card collapses to a height that crops the coil in half -- and a coil cropped in
+   half stops reading as a dragon and becomes texture. The empty state gets its own floor. */
+.verdict.empty{min-height:290px;padding-right:330px}
+.verdict.empty .vtext{max-width:46ch}
+@media (max-width:980px){.wyrmmark{display:none}.verdict.empty{min-height:0;padding-right:26px}
+  .verdict.empty .vtext{max-width:64ch}}
 .laurel{position:absolute;top:50%;transform:translateY(-50%)}
 .laurel.l{left:-6px}
 .laurel.r{right:-6px;transform:translateY(-50%) scaleX(-1)}
@@ -985,7 +1022,8 @@ def build_unsynced(fx) -> str:
       {panel('link', 'Connect to Sleeper', connect_body)}
     </div>
     <div class="rail-main">
-      <section class="verdict">
+      <section class="verdict empty">
+        {wyrm_mark()}
         {crest('0', '0')}
         <div class="vtext">
           <h1>No leagues yet.</h1>

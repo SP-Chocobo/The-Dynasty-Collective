@@ -128,6 +128,20 @@ a{color:inherit}
 .crest{position:relative;display:flex;align-items:center;justify-content:center;
   color:var(--line-2)}
 .crest .shield{display:block}
+/* The empty state's wyrm. `screen` over a near-black ground, so the image's own void
+   contributes nothing and no alpha channel is shipped. Sits behind the lede, which is capped
+   at 64ch and therefore never reaches it. */
+.wyrmmark{position:absolute;right:26px;top:50%;transform:translateY(-50%);
+  height:calc(100% - 34px);aspect-ratio:1/.98;background-size:contain;
+  background-repeat:no-repeat;background-position:center;mix-blend-mode:screen;
+  opacity:.95;pointer-events:none;z-index:0}
+/* The verdict card is sized by its text on every other page. The empty state has one short
+   lede, so the card collapses to a height that crops the coil in half -- and a coil cropped in
+   half stops reading as a dragon and becomes texture. The empty state gets its own floor. */
+.verdict.empty{min-height:290px;padding-right:330px}
+.verdict.empty .vtext{max-width:46ch}
+@media (max-width:980px){.wyrmmark{display:none}.verdict.empty{min-height:0;padding-right:26px}
+  .verdict.empty .vtext{max-width:64ch}}
 .laurel{position:absolute;top:50%;transform:translateY(-50%)}
 .laurel.l{left:-6px}
 .laurel.r{right:-6px;transform:translateY(-50%) scaleX(-1)}
