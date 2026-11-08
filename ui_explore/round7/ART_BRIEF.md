@@ -92,6 +92,29 @@ the expensive way.
 `assets/room_matchup.webp` is kept: it is a good crest on its own and may serve as a one-off
 somewhere, but there is no set and no plan to finish one.
 
+## The tribal crests DID cohere -- and the size limit is the format, not the style
+
+After the relief medallions failed to make a set, the owner generated the same idea in TRIBAL
+form. Measured, the difference is real: four returns sharing one language, gold on black, ink
+density clustered 71-83%. That is the set-consistency `--sref` could not buy. Tribal is flatter,
+so there is less for the model to vary.
+
+Three of four landed on a PURE BLACK ground -- (0,0,0), (0,0,0), (4,1,0) -- so they screen-blend
+with no alpha, per the rule above. Graded to hue 39.5-40.5 and saturation .57-.73, they are the
+closest colour match to the ramp of anything generated.
+
+**But none survives to 19px**, and neither did the reliefs. By 32px every one is a textured gold
+disc. THAT IS THE MEDALLION FORMAT, NOT THE STYLE: a circular mark carrying internal detail dies
+below about 48px however it is drawn. So the division is by SIZE, not by technique:
+
+| where | what | why |
+|---|---|---|
+| 19px nav tabs | drawn SVG glyphs (`tribal_glyphs.py`) | generated art is a dot here; measured |
+| 96px+ room headers | generated tribal crests | relief and detail are the entire point |
+
+Each crest appears alone at the top of its own room, never beside another, which is what made
+the earlier inconsistency glaring and what makes this set workable.
+
 ## Weight
 
 The current page embeds the banner as base64 and is **111 KB, of which 64 KB is the image**.
