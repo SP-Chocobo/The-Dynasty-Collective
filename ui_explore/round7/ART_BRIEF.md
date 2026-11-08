@@ -32,7 +32,7 @@ the mark in the top left. Nothing to generate here.
 | ~~1~~ | ~~landing header band~~ | **DONE** | `assets/header_wyrm.jpg`. See the note below on why the slot changed. |
 | 2 | empty-state illustration | **~900x900** | for "No leagues yet" — one coiled gold wyrm on near-black, generous margin, more linework than render. |
 | 3 | in-league dashboard band | **1680x260** | wants to read as a DIFFERENT room from the landing page while sharing the palette — the landing page is a hall, a league is a chamber. |
-| 4 | five room marks | **512x512 each** | Matchup / Roster / Draft Room / League / Import Audit. Only if you want them; see the caution below. |
+| ~~4~~ | ~~five room marks~~ | **ABANDONED** | tried and measured; see below. One good Matchup crest banked, no set. |
 
 ## Where art does NOT help, and why I did not ask for it
 
@@ -67,6 +67,30 @@ candidates separate, and only then was it worth picking one.
   sampled the brightest pixels in the region and got `rgb(176,162,138)` -- which is the INK
   colour, not the ground. It measured the text against itself. Hiding the text first is the
   only way to see what is behind it.)
+
+## The room marks were tried and abandoned -- do not re-attempt this way
+
+Three were generated with `--sref` locking style from the first. It failed in BOTH directions
+at once, which is why this is a dead end rather than a tuning problem:
+
+- **It locked the subject, which should have varied.** The Roster prompt asked for ranked scales
+  and returned two dragon heads -- the same subject as Matchup, pulled through by the style
+  reference.
+- **It let the container vary, which should have locked.** Matchup came back a thin-rimmed
+  circle, Roster a SHIELD, Draft Room a circle with a thick torus. Three silhouettes for one set.
+
+Cropping the container off and drawing one ring in CSS was tested and does unify them -- and
+destroys the thing that made the subjects worth choosing. Inside the frame they are all "gold
+texture in a circle" and stop being distinguishable at the 72px floor. Unified frame costs
+legibility; legible subjects cost the frame.
+
+**The SVG glyphs already in the nav are consistent by construction, take their colour from the
+theme tokens, stay sharp at 19px where a raster mark is a dot, and cost no bytes.** An
+illustration is worth an image; an icon is not -- the same rule this file opens with, confirmed
+the expensive way.
+
+`assets/room_matchup.webp` is kept: it is a good crest on its own and may serve as a one-off
+somewhere, but there is no set and no plan to finish one.
 
 ## Weight
 
