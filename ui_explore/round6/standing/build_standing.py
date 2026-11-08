@@ -210,11 +210,17 @@ def basis_note(basis: dict, key: str) -> str:
 # ---------------------------------------------------------------------------------------------
 # CLAIM TILES
 # ---------------------------------------------------------------------------------------------
-def claim_parts(c: dict, fx: dict) -> dict:
+def claim_parts(c: dict, fx: dict, resolved: dict | None = None) -> dict:
     """`{eyebrow, figure, unit, headline, body, who, rail, key}` for one claim.
 
     The FIGURE is the hero. Every figure is mono; Cinzel never carries a numeral. `who` is a
     FILTER on `roster[].bye` -- arranging the fixture's own rows, not computing anything.
+
+    `resolved` is `compose()`'s own bye profile, reduced to the weeks still ahead when a current
+    week is known. The scope clause COUNTS THAT, never the fixture's full profile: a synthetic
+    fixture with `current_week: 7` first rendered "the largest of the 6 weeks still ahead" over a
+    profile with five weeks ahead, because this function re-derived a count `compose` had already
+    settled. Re-deriving is how one quantity acquires two answers.
     """
     kind = c["kind"]
     if kind == "hole":
@@ -229,7 +235,7 @@ def claim_parts(c: dict, fx: dict) -> dict:
         loss = ds.figure(c.get("worst_week_loss"))
         floor = '<span class="floor" title="a floor: part of this roster could not be priced">&ge;</span>' if c.get("partial") else ""
         out = c.get("starters_out")
-        weeks = (fx.get("bye_profile") or {}).get("weeks") or {}
+        weeks = ((resolved if resolved is not None else fx.get("bye_profile")) or {}).get("weeks") or {}
         # MAGNITUDE AND SCOPE, NOT A SUPERLATIVE (VOICE.md rule 7, corrected). And the scope is
         # only "still ahead" when a current week established it; without one the same number is a
         # season-shape fact and the hero says so.
@@ -314,10 +320,10 @@ def bye_ledger(fx: dict) -> str:
     foot = (f'<div class="kvrow"><span>season <b>{esc(total) if total else absent("no season total was measured")}</b></span>'
             f'<span>worst week <b>{esc(f"{conc:.0%}") if conc is not None else absent("a roster with nothing to lose has no shape, so this is None rather than 0%")}</b> of it</span>'
             f'<span>unknown byes <b>{esc(unknown) if unknown is not None else absent("not counted")}</b></span></div>')
-    return (f'<p class="popnote top">Every week with a measured bye cost, in {currency_stamp("trade value")}. '
+    return (f'<p class="popnote first">Every week with a measured bye cost, in {currency_stamp("trade value")}. '
             f'Each week is its own solve of the lineup with that week&rsquo;s byes removed &mdash; '
             f'{len(weeks)} separate results, not one number spread out.</p>'
-            f'<table class="weeks"><thead><tr><th>Week</th><th class="n">Lost</th><th></th><th>Away</th></tr></thead>'
+            f'<table class="weeks"><thead><tr><th>Week</th><th class="n">Lost</th><th class="barcell"></th><th>Away</th></tr></thead>'
             f'<tbody>{"".join(rows)}</tbody></table>{foot}')
 
 
@@ -563,7 +569,7 @@ body{{font:400 .95rem/1.5 {sans};-webkit-text-size-adjust:100%;min-height:100vh;
 [popover]::backdrop{{background:rgba(4,3,2,.74)}}
 [popover] h4{{font:600 .82rem/1 {display};letter-spacing:.22em;text-transform:uppercase;margin:0 0 16px;color:var(--gold)}}
 .popnote{{color:var(--muted);font-size:.82rem;margin:14px 0 0;max-width:56ch}}
-.popnote.top{{margin:0 0 14px}}
+.popnote.first{{margin:0 0 14px}}  /* not `.top`: that class is the header's and it is a flex row */
 .popclose{{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}}
 table.weeks{{width:100%;border-collapse:collapse;font-size:.86rem}}
 .weeks thead th{{font:400 .75rem/1 {display};letter-spacing:.14em;text-transform:uppercase;text-align:left;
@@ -805,7 +811,7 @@ def build(fx: dict) -> str:
     tiles = []
     if shown:
         for i, c in enumerate(shown):
-            p, exp, pid = claim_parts(c, fx), expansion(c, fx), f"exp{i}"
+            p, exp, pid = claim_parts(c, fx, band["bye_profile"]), expansion(c, fx), f"exp{i}"
             route = f'<a class="btn route" href="#{slug(c["route"])}">{esc(c["route"])} &rsaquo;</a>'
             controls = []
             if exp:
@@ -848,7 +854,7 @@ def build(fx: dict) -> str:
         ("captured", cap["date"]), ("source", cap["source"]), ("season", cap["season"]),
         ("in capture", cap["captured"]), ("in pool", cap["pool"])))
     pops.append(popover("fresh", "Player database",
-                        f'<p class="popnote top">A capture DATE, deliberately not a grade. `recency_grade` grades an '
+                        f'<p class="popnote first">A capture DATE, deliberately not a grade. `recency_grade` grades an '
                         f'average age in days as Fresh, Recent, Aging or Stale, and an age needs today&rsquo;s '
                         f'clock, which a built page does not have. The date is what this fixture records; the '
                         f'subtraction is yours.</p><dl class="kvs">{kv}</dl>'))
