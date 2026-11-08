@@ -137,26 +137,28 @@ body{font-size:17px}
 .page{padding:0 20px;max-width:none}
 .coil{left:auto;right:-520px;top:-300px;width:800px;height:800px}
 .lamp{background:radial-gradient(90% 40% at 30% 14%,rgba(117,80,36,.30),rgba(117,80,36,0) 70%)}
-.hall{padding:12px 0 0;min-height:52px;align-items:center;gap:12px}
+.hall{padding:10px 0 0;min-height:48px;align-items:center;gap:12px}
 .mark{gap:10px}.crest-slot{width:32px;height:32px}
 .wm{font-size:15px}.wm-sub{font-size:12px;letter-spacing:.34em;margin-top:4px}
 .seat{font-size:13px;line-height:1.35}.seat .l2{font-size:12px;margin-top:3px}
-.threshold{padding:22px 0 14px}
+.threshold{padding:20px 0 12px}
 .eyebrow{font-size:16px;max-width:none}
 .verdict{font-size:46px;line-height:1.02;margin-top:8px}
 .rule{margin:18px 0 18px;max-width:none}
 .controls{flex-direction:column;align-items:stretch;gap:14px}
 .btn{width:100%;display:block}.btn>span{min-height:52px;padding:0 16px;white-space:normal;text-align:center;line-height:1.25}
 .aside{font-size:16px;max-width:none}
-.hero{display:flex;flex-direction:column;gap:0;margin-top:14px}
+.hero{display:flex;flex-direction:column;align-items:stretch;gap:0;margin-top:14px}
+.wait .ledger-head .note{display:none}
+.row.claim{padding:8px 0}
 .hero>div:first-child{display:contents}
 .dek{font-size:18px;line-height:1.42;max-width:none;order:1}
 .figure{order:2;margin-top:18px;padding-top:0}
 .hero .rule{order:3;margin:20px 0 18px}
 .hero .controls{order:4}
-.big{font-size:60px}
-.cap{margin:6px 0 10px;font-size:13.5px;letter-spacing:.16em}
-.strip-lg{width:100%;height:auto;aspect-ratio:360/108;max-width:280px}
+.big{font-size:54px}
+.cap{margin:4px 0 8px;font-size:13.5px;letter-spacing:.16em}
+.strip-lg{width:100%;height:auto;aspect-ratio:360/108;max-width:260px}
 .facts{gap:18px;margin-top:8px;font-size:16px}
 .qual{max-width:none;font-size:14.5px;margin-top:8px}
 .hero .rule{order:3;margin:10px 0 10px}
@@ -176,7 +178,7 @@ body{font-size:17px}
 .rooms{padding:0}
 .rooms .ledger-head .note{display:none}
 .fold{border-bottom:0}
-.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid var(--hair-strong);font-size:16px;color:var(--ink)}
+.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px;border-bottom:1px solid var(--hair-strong);font-size:16px;color:var(--ink)}
 .fold>summary::-webkit-details-marker{display:none}
 .fold>summary::after{content:"";width:8px;height:8px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(135deg);margin-right:4px;transition:transform .2s}
 .fold[open]>summary::after{transform:rotate(-45deg)}
@@ -186,7 +188,7 @@ body{font-size:17px}
 .room-row a{min-height:44px;font-size:16px;justify-content:space-between;border-bottom:1px solid var(--hair)}
 .rooms .ledger-head{padding-bottom:4px}
 .room-row a em{display:none}
-.basis{font-size:14px;line-height:1.45;padding:12px 0 18px}
+.basis{font-size:14px;line-height:1.45;padding:10px 0 14px}
 
 </style>
 </head>
@@ -217,7 +219,7 @@ body{font-size:17px}
   </section>
 
   <nav class="rooms" aria-label="Rooms"><div class="ledger-head"><h2>Rooms</h2><span class="note">five views, and the Prytaneum — a dock under every view, not a room. Trade Calculator and Free Agents sit inside Roster Maintenance; Standings inside League.</span></div><div class="room-row"><a href="#">Matchup</a><a href="#">Roster Maintenance</a><a href="#">Draft Room</a><a href="#">League</a><a href="#">Import Audit</a><a href="#">The Prytaneum <em>a dock beneath every view</em></a></div></nav>
-  <p class="basis">Byes, thin positions and holes <b>measured</b>; lineup <b>constructed</b>; three rows <b>absent</b> with reasons. 5,357 players in this league's universe.</p>
+  <p class="basis">Byes, thin positions and holes <b>measured</b>; lineup <b>constructed</b>; three rows <b>absent</b>, with reasons.</p>
 </div>
 <script>
 /* The control is real. A browser only lets a script close a window it opened, so the honest

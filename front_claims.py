@@ -144,6 +144,15 @@ def compose(fx):
         claims.append({
             "kind": "thin", "route": "League",
             "position": t.get("position"), "count": count, "valued_count": covered,
+            # THE LABEL IS THE QUANTITY (`#336b`). `depth_ratings.depth_label` returns exactly
+            # Strong / Average / Weak / None, a RATIO BAND against the league mean -- and nothing
+            # in the tree ranks teams within a position. Dropping it here is what left the
+            # renderer with nothing true to say, so it invented "bottom of this league at the
+            # position": a rank the engine never computes, and false on this very roster, where
+            # DEF is a five-way tie at count 1 AND the joint-highest PRICED DEF room in the
+            # league. A composition that discards the measured quantity invites the surface to
+            # fabricate a replacement.
+            "label": t.get("label"),
             # The comparison is a floor whenever some of the room could not be priced.
             "priced_floor": not (covered is None or covered >= count),
         })

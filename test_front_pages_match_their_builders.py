@@ -103,5 +103,54 @@ class TheCommittedPagesAreWhatTheirBuildersProduceTests(unittest.TestCase):
                     f"design_system no longer spells: {stale}")
 
 
+#: Phrases that assert a RANK AMONG PEERS. Nothing in this tree computes one: `depth_label` is a
+#: ratio band against the league mean, and `grep -rn "def .*rank"` finds no per-position ranking.
+#: "worst week" is deliberately NOT here -- `bye_collision` really does compute which week costs
+#: most, so that superlative is earned. These are the ones that are not.
+FORBIDDEN_RANK_PROSE = (
+    "bottom of this league", "bottom of the league", "last in the league",
+    "lowest in the league", "worst in the league", "best in the league",
+    "top of the league", "ranked ", "rank of ",
+)
+
+
+class ThePagesDoNotAssertARankTheEngineNeverComputesTests(unittest.TestCase):
+    """`#336b`. The guard this defect class did not have.
+
+    `build_front.py` shipped "bottom of this league at the position" for months, inside a page
+    held by a byte-identity guard, under 4,393 passing tests. Every one of those tests checks a
+    NUMBER. This was PROSE, and nothing in the repo read a sentence and asked whether a function
+    returns what it asserts.
+
+    The defect class: PROSE THAT OUTRUNS ITS FUNCTION -- a rank from a band, a cause from a cost,
+    a deadline from a season total. Every surface here stamps its FIGURES with a basis. This is
+    the first thing that reads a SENTENCE.
+    """
+
+    def test_no_built_page_claims_a_rank_among_peers(self):
+        for name, _module, _fixture, page in PAGES:
+            text = (ROOT / page).read_text().lower()
+            for phrase in FORBIDDEN_RANK_PROSE:
+                with self.subTest(page=name, phrase=phrase):
+                    self.assertNotIn(
+                        phrase, text,
+                        f"{page} asserts a rank. `depth_label` is a ratio band against the "
+                        f"league MEAN and nothing in this tree ranks teams within a position. "
+                        f"Say the label the engine returns, or say nothing.")
+
+    def test_the_builder_itself_does_not_spell_a_rank_outside_a_comment(self):
+        """The page is generated, so a rank could return the moment the emitter regains one.
+        Checked against code lines only -- the comments explaining `#336b` quote the old phrase
+        on purpose and must stay quotable."""
+        for module in ("ui_explore/round3/build_front.py", "front_claims.py"):
+            src = (ROOT / module).read_text()
+            code = [ln for ln in src.splitlines()
+                    if not ln.lstrip().startswith("#") and not ln.lstrip().startswith('"')]
+            body = "\n".join(code).lower()
+            for phrase in FORBIDDEN_RANK_PROSE:
+                with self.subTest(module=module, phrase=phrase):
+                    self.assertNotIn(phrase, body, f"{module} emits a rank in code")
+
+
 if __name__ == "__main__":
     unittest.main()

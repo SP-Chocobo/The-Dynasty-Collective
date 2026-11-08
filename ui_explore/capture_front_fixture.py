@@ -11,14 +11,28 @@ and real rosters fall out. From those:
 
     thin positions      depth_chart.positional_depth + depth_ratings.depth_label, the SAME
                         judgment the Trade Calculator and the League Depth Map use
-    structural holes    player_universe.league_usable_positions against what the roster holds
+    structural holes    lineup_optimizer.slots_from_roster_positions + slot_coverage.
+                        NOT league_usable_positions -- see the argument at the call site,
+                        which this line contradicted for months (`#336`)
     the bye signal      lineup_optimizer.bye_collision / bye_concentration -- value lost rather
                         than bodies lost, and the SHAPE of it (what share lands in one week)
 
 WHAT HAD TO BE CONSTRUCTED, AND WHY IT IS LABELLED RATHER THAN HIDDEN. `compute_readiness` counts
 `slot == "Starter"`, and `slot` is assigned in app.py from SLEEPER'S OWN `starters` array -- the
 lineup a human submitted. A drafted roster has players and no submitted lineup, so "7 of 9
-starters set" and the material-injury claim cannot be measured from a draft at all. This builds a
+starters set" cannot be measured from a draft at all.
+
+THE MATERIAL-INJURY CLAIM IS A DIFFERENT CASE, AND THIS FILE USED TO GET IT WRONG (`#336`). It
+said the claim "cannot be measured from a draft at all", which is false: the capture carries
+`injury_status` on 494 players (IR 126, Questionable 290, PUP 21 ...), and this fixture's own
+starter `12484` is Jayden Higgins, on IR, which `is_material_injury_status` grades material. So
+the data is here and the reason given for its absence was wrong -- and `front_page.split_reason`
+says exactly why that is the worse failure: "a wrong reason reads as reassurance, which is worse
+than a clumsy one."
+
+What is genuinely missing is the SUBMITTED-STARTERS gate, not the injury feed. Rendering it also
+needs a rung `front_claims.LADDER` does not have, so this is recorded rather than half-built: an
+injury claim with nowhere to rank is not a repair. This builds a
 starters list with `optimize_lineup` and then, for one scenario, leaves a slot deliberately open,
 because a front page whose only state is "everything is fine" cannot be judged. Every such field
 is stamped `constructed` and names what produced it. A reader who wants the real number has to
@@ -159,7 +173,7 @@ def main() -> int:
             "universe_rows": len(universe),
             "basis": {
                 "thin_positions": "measured -- positional_depth + depth_ratings.depth_label",
-                "structural_holes": "measured -- league_usable_positions vs the roster",
+                "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
                 "bye_profile": "measured -- lineup_optimizer.bye_collision / bye_concentration",
                 "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' "
                             "is assigned in app.py from Sleeper's own `starters` array, which is "

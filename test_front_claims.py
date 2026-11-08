@@ -112,6 +112,29 @@ class AbsenceAndFloorsSurviveTheLiftTests(unittest.TestCase):
         self.assertTrue(bye["partial"])
         self.assertEqual(2, bye["unknown_byes"])
 
+    def test_the_depth_LABEL_is_carried_because_dropping_it_invited_a_fabrication(self):
+        """`#336b`. `depth_label` returns a RATIO BAND -- Strong / Average / Weak / None -- and
+        nothing in this tree ranks teams within a position. `compose` used to drop the label, so
+        the renderer had no true thing to say about depth and invented "bottom of this league at
+        the position": a rank that does not exist, and false on the shipped fixture, where DEF is
+        a five-way tie at count 1 AND the joint-highest PRICED DEF room in the league.
+
+        Carrying the measured quantity is the repair. A composition that discards it invites the
+        surface to fabricate a replacement, and no test here could have caught that because every
+        test checked numbers and the fabrication was prose.
+        """
+        out = fc.compose(_fx(thin_positions=[
+            {"position": "TE", "count": 2, "label": "Weak"},
+            {"position": "DEF", "count": 1, "label": "None \u2014 no rostered players here"}]))
+        got = {c["position"]: c["label"] for c in out["shown"] + out["hidden"]}
+        self.assertEqual({"TE": "Weak", "DEF": "None \u2014 no rostered players here"}, got)
+
+    def test_a_thin_row_with_no_label_carries_None_rather_than_a_guess(self):
+        """The fixture is hand-maintainable. A missing label must arrive as None so the surface
+        can fall silent, not as a default the reader would read as measured."""
+        out = fc.compose(_fx(thin_positions=[{"position": "TE", "count": 2}]))
+        self.assertIsNone(out["shown"][0]["label"])
+
     def test_priced_floor_is_set_only_when_some_of_the_room_could_not_be_priced(self):
         out = fc.compose(_fx(thin_positions=[
             {"position": "TE", "count": 2, "valued_count": 1},

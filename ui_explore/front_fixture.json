@@ -6,7 +6,7 @@
    "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
    "record": "ABSENT -- team_standings reads Sleeper's settings.wins/losses, and no capture in data/league_captures/ holds a roster's contents or a result. Rendered per the absence contract, never as 0-0",
    "starters": "CONSTRUCTED -- optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were",
-   "structural_holes": "measured -- league_usable_positions vs the roster",
+   "structural_holes": "measured -- slots_from_roster_positions + slot_coverage",
    "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's team name. A live league has the real one",
    "thin_positions": "measured -- positional_depth + depth_ratings.depth_label"
   },

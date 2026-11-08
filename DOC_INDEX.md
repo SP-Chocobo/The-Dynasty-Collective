@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 262 markdown documents.
+`python3 doc_index.py` regenerates this. 276 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 44 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 48 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 47 | says what kind of document it is before making claims. |
-| UNDECLARED | 141 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 151 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -90,6 +90,10 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/roster_shape/shared_slot/mutations/GUARDS_221.md`
 - `evidence/take_model/FLOOR_DERIVATION.md`
 - `evidence/w1_07/SCALE_HAS_NO_CLEAN_DERIVATION.md`
+- `ui_explore/round4/HANDOFF.md`
+- `ui_explore/round4/keep/NOTES.md`
+- `ui_explore/round4/keep/REFINEMENT.md`
+- `ui_explore/round4/threshold/NOTES.md`
 
 ## DECLARED
 
@@ -284,3 +288,13 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ui_explore/round2/reviews/sonnet_A.md`
 - `ui_explore/round2/reviews/sonnet_B.md`
 - `ui_explore/round2/reviews/sonnet_mobile_r1.md`
+- `ui_explore/round4/ADVERSARY.md`
+- `ui_explore/round4/BRIEF.md`
+- `ui_explore/round4/VOICE.md`
+- `ui_explore/round4/deck/CRITIQUE_DESIGN.md`
+- `ui_explore/round4/deck/CRITIQUE_PRODUCT.md`
+- `ui_explore/round4/deck/NOTES.md`
+- `ui_explore/round4/keep/CRITIQUE_DESIGN.md`
+- `ui_explore/round4/keep/CRITIQUE_PRODUCT.md`
+- `ui_explore/round4/threshold/CRITIQUE_DESIGN.md`
+- `ui_explore/round4/threshold/CRITIQUE_PRODUCT.md`

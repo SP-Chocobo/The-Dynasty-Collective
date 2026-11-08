@@ -1,3 +1,12 @@
+> **Superseded in part by `REFINEMENT.md` (2026-11-08).** These are the round-1 notes, kept as the record of
+> what was decided and why. Three claims below were measured wrong by the adversaries and are corrected in
+> REFINEMENT.md: the "no lurch" assertion (it did not hold — the headline moved 108px; it is pinned now), the
+> headline-gradient contrast confession (rendered glyphs measure 4.42:1 / 5.21:1, not 2.9:1 — keep the bevel),
+> and the primary button's "6.8:1 at the darkest stop" (wrong reason, right outcome: 6.98:1 under the glyphs).
+> The copy has since been rewritten to `VOICE.md`; the headlines quoted below ("Nothing needs you.",
+> "Week 6 needs you.") no longer appear on any page. The component inventory at the end still holds, with the
+> additions listed in REFINEMENT.md.
+
 # The Threshold — notes
 
 Files: `desktop.html` (quiet, primary), `mobile.html` (quiet, primary), `desktop_loud.html` (the

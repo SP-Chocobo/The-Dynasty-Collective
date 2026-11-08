@@ -127,8 +127,16 @@ def claim_prose(c):
     covered, count = c["valued_count"], c["count"]
     scope = (f" Priced depth only: {esc(covered)} of {esc(count)} could be priced, so "
              f"that comparison is a floor." if c["priced_floor"] else "")
+    # SAY THE LABEL, NEVER A RANK (`#336b`). This read "bottom of this league at the position"
+    # for months. `depth_label` is a ratio band against the league MEAN; no function in this tree
+    # ranks teams within a position, and the sentence was false on the fixture it shipped with.
+    # With no label the sentence states the count and stops, rather than reaching for a
+    # comparison it cannot support.
+    band = c.get("label")
+    rated = (f" Depth here rates <b>{esc(band)}</b> against this league's own rosters."
+             if band else "")
     return (f"Thin at <b>{esc(c['position'])}</b>",
-            f"<b>{esc(count)}</b> rostered &mdash; bottom of this league at the position.{scope}")
+            f"<b>{esc(count)}</b> rostered.{rated}{scope}")
 
 
 def style_css():
