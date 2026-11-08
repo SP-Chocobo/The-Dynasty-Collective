@@ -161,7 +161,7 @@ def style_css():
    open by 2,112px at 390 wide, and `.facts{{overflow:hidden}}` threw text away with no
    scrollbar, no ellipsis and no horizontal scroll to detect it -- a silent failure that defeats
    the very check a gate would run. */
-.claim h3,.claim p,.fact .k,.fact .v,.wk,.prov,.more,.door{{overflow-wrap:anywhere}}
+.claim h3,.claim p,.fact .k,.fact .v,.wk,.prov,.more,.cleared,.door{{overflow-wrap:anywhere}}
 .fact>*{{min-width:0}}
 :root{{color-scheme:dark}}
 body{{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-s);line-height:1.5}}
@@ -188,7 +188,7 @@ h2{{font-family:var(--f-d);font-weight:700;letter-spacing:.06em;text-transform:u
 .route{{display:inline-flex;align-items:center;min-height:44px;margin-top:2px;font-size:.78rem;
        color:var(--gold-b);font-family:var(--f-m);letter-spacing:.03em;text-decoration:none}}
 .route:hover,.route:focus-visible{{text-decoration:underline}}
-.more{{color:var(--muted);font-size:.78rem;margin:8px 0 0}}
+.more,.cleared{{color:var(--muted);font-size:.78rem;margin:8px 0 0}}
 .facts{{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);
        border:1px solid var(--line);border-radius:4px;overflow:hidden}}
 .fact{{display:flex;justify-content:space-between;gap:12px;background:var(--surface);
@@ -239,14 +239,41 @@ def build(fx):
     # quantity acquires two answers.
     bp = band["bye_profile"]
 
+    # WHAT WAS EXAMINED, from the engine and never from this file (`#338`). The sentence this
+    # replaces was hardcoded -- "No unfillable slot, no concentrated bye week, no position thin
+    # against the league" -- and it was UNCONDITIONAL, so a check that never ran was still
+    # reported as examined. That is the same defect class as `#336b`: prose asserting more than
+    # the function behind it knows, in the one sentence whose whole job is to be auditable.
+    summary = fc.checks_summary(band["checks"])
+
+    def checks_sentence():
+        """Rule 5 of `VOICE.md`: name the checks, not the conclusion.
+
+        `ran` rather than `len(CHECKS)`, and an absent check rendered through the SAME absence
+        marker every figure on this page uses -- a check that did not run is an absence with a
+        reason, not a quiet omission from a list.
+        """
+        if summary["all_clean"]:
+            return (f'<b>{summary["ran"]}</b> checks, all clean &mdash; '
+                    f'{esc(", ".join(summary["clean"]))}.')
+        bits = []
+        if summary["clean"]:
+            bits.append(f'Clean: {esc(", ".join(summary["clean"]))}.')
+        for check in band["checks"]:
+            if check["state"] == fc.CHECK_ABSENT:
+                bits.append(f'{esc(check["name"]).title()} {absent(check["reason"])}.')
+        return " ".join(bits)
+
     rendered = [(c["kind"], *claim_prose(c), c["route"]) for c in shown]
     cards = "".join(
         f'<article class="claim {esc(k)}"><h3>{title}</h3><p>{body}</p>'
         f'<a class="route" href="#{esc(route.lower().replace(" ", "-"))}">{esc(route)} &rsaquo;</a></article>'
         for k, title, body, route in rendered) or (
-        '<article class="claim none"><h3>Nothing needs you</h3>'
-        '<p>No unfillable slot, no concentrated bye week, no position thin against the '
-        'league.</p></article>')
+        # "Nothing open this week", not "Nothing needs you": `VOICE.md` rule 2, the app is
+        # never the subject and makes no requests. The body is now DERIVED, so an unexamined
+        # check cannot be reported as clean here.
+        f'<article class="claim none"><h3>Nothing open this week</h3>'
+        f'<p>{checks_sentence()}</p></article>')
 
     # No design rationale in the product. The sentence explaining why the band is restrained was
     # 18 of its 23 words and 37px tall, and on the phone it was what pushed the first real fact
@@ -255,6 +282,13 @@ def build(fx):
             + ", ".join(esc(claim_prose(c)[0].replace("<b>", "").replace("</b>", ""))
                          for c in hidden)
             + ".</p>") if hidden else ""
+
+    # THE LOUD STATE SAYS WHAT WAS CLEAR TOO. A band showing two claims and nothing else leaves
+    # the reader unable to tell "the other checks passed" from "nothing else was looked at" --
+    # and those are different facts. Suppressed only when every check fired, where the sentence
+    # would carry nothing.
+    cleared = (f'<p class="cleared">{checks_sentence()}</p>'
+               if rendered and (summary["clean"] or summary["absent"]) else "")
 
     filled = len(fx.get("starters") or [])
     total = (fx.get("league") or {}).get("starting_slots")
@@ -336,6 +370,7 @@ def build(fx):
 <h2>Needs you</h2>
 <div class="claims">{cards}</div>
 {more}
+{cleared}
 
 <h2>This week</h2>
 <div class="facts">{week}</div>

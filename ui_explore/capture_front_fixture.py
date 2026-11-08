@@ -73,6 +73,17 @@ WANT = "12T_ppr_K_DEF"          # a full-shape league: named K and DEF slots, so
 STRATEGY = "sharp_auto"
 SEAT = 1                        # the roster the page is "mine"
 
+# PARAMETERS, not a second generator. The quiet-state page needs a different SEAT and a CLOCK,
+# and copying this file to get them would be a second home for every basis string in it (`#126`)
+# -- the defect `#312` found when one palette turned out to have three homes. Overridden from
+# argv by `_parse`; the defaults reproduce the fixture this file has always emitted, and a test
+# asserts that.
+#
+# A SUPPLIED WEEK IS NOT A MEASURED ONE. A live app reads season/week from Sleeper's NFL state; a
+# replayed draft has no point in a season, so a week passed here is a CHOSEN clock reading and
+# the basis below says so rather than inheriting the measured stamp of the roster around it.
+_seat, _clock, _out = SEAT, None, OUT
+
 
 def main() -> int:
     players_db, prov = rdb.build_players_db_from_capture()
@@ -107,7 +118,7 @@ def main() -> int:
 
     # ---- MEASURED -----------------------------------------------------------------------
     depth = depth_chart.positional_depth(universe, merger)
-    me = f"Team {SEAT}"
+    me = f"Team {_seat}"
     # NOT .get(me, {}): positional_depth keys on `owner_name or f"Roster {roster_id}"`, so a
     # missed users->owner_id join silently yields {} -- which reads downstream as "no thin
     # positions and every slot unfillable", the most alarming page this surface can draw, from
@@ -137,7 +148,7 @@ def main() -> int:
     # collapsed to one bucket in an assignment problem.
     byes = merger.bye_week_by_team()
     mine = []
-    for pid in held[SEAT]:
+    for pid in held[_seat]:
         info = players_db.get(pid) or {}
         team, name = info.get("team"), pu.player_name(info, pid)
         priced = merger.merge_player(name, position=pu.player_position(info), team=team)
@@ -168,7 +179,7 @@ def main() -> int:
 
     out = {
         "_provenance": {
-            "format": WANT, "strategy": STRATEGY, "seat": SEAT, "teams": teams, "rounds": rounds,
+            "format": WANT, "strategy": STRATEGY, "seat": _seat, "teams": teams, "rounds": rounds,
             "players_db": prov if isinstance(prov, (str, int)) else str(prov)[:200],
             "universe_rows": len(universe),
             "basis": {
@@ -188,9 +199,15 @@ def main() -> int:
                 # week it was, so the page could rank a dead week second-highest. A live app reads
                 # it from Sleeper's NFL state (season/week/season_type); a replayed draft has no
                 # point in a season at all, which is a genuine absence rather than an oversight.
-                "current_week": "ABSENT -- a replayed draft has no point in the season. A live "
-                                "league reads season/week from Sleeper's NFL state; without it "
-                                "the bye claim cannot assert that a week is still ahead",
+                "current_week": (
+                    "ABSENT -- a replayed draft has no point in the season. A live "
+                    "league reads season/week from Sleeper's NFL state; without it "
+                    "the bye claim cannot assert that a week is still ahead"
+                    if _clock is None else
+                    f"CONSTRUCTED -- week {_clock} is a CHOSEN clock reading, not a measured "
+                    f"one. A replayed draft has no point in a season; a live league reads "
+                    f"season/week from Sleeper's NFL state. The roster, byes, holes and depth "
+                    f"around it are measured -- only the clock is chosen"),
                 "team": "CONSTRUCTED -- the seat's label in a replayed battery, not an owner's "
                         "team name. A live league has the real one",
                 "league_name": "ABSENT -- a format label is a battery arm, not a league's name",
@@ -209,23 +226,48 @@ def main() -> int:
                         "unknown_byes": unknown_byes,
                         "worst_week_detail": weeks.get(shape.get("worst_week")) if shape.get("worst_week") else None},
         "starters": starters,
-        "current_week": None,
+        "current_week": _clock,
         "team": me,
         "league_name": None,
         "roster": mine,
         "record": None,
     }
-    OUT.write_text(json.dumps(out, indent=1, sort_keys=True, default=str) + "\n")
-    print(f"{WANT}/{STRATEGY} seat {SEAT}: {len(mine)} players, {len(universe)} universe rows")
+    _out.write_text(json.dumps(out, indent=1, sort_keys=True, default=str) + "\n")
+    print(f"{WANT}/{STRATEGY} seat {_seat}: {len(mine)} players, {len(universe)} universe rows")
     print(f"  thin: {[t['position'] + ' ' + t['label'] for t in thin] or 'none'}")
     print(f"  holes: {holes or 'none'}")
     print(f"  byes: worst week {shape.get('worst_week')} loses {shape.get('worst_week_loss')} "
           f"of {shape.get('total_loss')} total, concentration {shape.get('concentration')} "
           f"(basis {shape.get('basis')})")
     print(f"  starters CONSTRUCTED: {len(starters)} of {len(slots)} slots")
-    print(f"-> {OUT}")
+    print(f"  clock: {_clock if _clock is not None else 'absent (no season position)'}")
+    print(f"-> {_out}")
     return 0
 
 
+def _parse(argv):
+    """`--seat N --week N --out PATH`. FLAGS rather than positional arguments, deliberately.
+
+    `#332` cost a corrupted page when one builder's positional fixture path was handed to
+    another, and THIS SESSION REPEATED IT: `build_empty.py` defaults to `empty_fixture.json` and
+    was handed `front_fixture.json`, which silently rewrote its freshness grade from
+    "Aging, 76 days" into "nothing on disk carries a date" -- a 699-byte diff that would have
+    been committed had the diff not been read. A flag cannot be silently mistaken for a
+    different flag's value."""
+    global _seat, _clock, _out
+    args = list(argv)
+    while args:
+        flag = args.pop(0)
+        if flag == "--seat":
+            _seat = int(args.pop(0))
+        elif flag == "--week":
+            _clock = int(args.pop(0))
+        elif flag == "--out":
+            _out = pathlib.Path(args.pop(0))
+        else:
+            raise SystemExit(f"unknown argument {flag!r}; use --seat N --week N --out PATH")
+
+
 if __name__ == "__main__":
+    _parse(sys.argv[1:])
     sys.exit(main())

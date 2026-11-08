@@ -4646,6 +4646,91 @@
         "early_returns": 0
       }
     },
+    "test_checks_run.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 21,
+        "assertFalse": 2,
+        "assertIn": 1,
+        "assertIsNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 3,
+        "assertTrue": 3
+      },
+      "by_method": {
+        "TheCheckStateIsDerivedNotRecomputedTests.test_a_claim_pushed_to_hidden_by_the_cap_still_counts_as_fired": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "TheCheckStateIsDerivedNotRecomputedTests.test_no_check_reports_clean_while_its_own_rung_is_in_the_band": {
+          "assertEqual": 1
+        },
+        "TheDeclaredChecksMatchTheLadderTests.test_every_check_maps_to_a_rung_the_band_actually_produces": {
+          "assertEqual": 1
+        },
+        "TheDeclaredChecksMatchTheLadderTests.test_the_checks_are_in_ladder_order": {
+          "assertEqual": 1
+        },
+        "TheDeclaredChecksMatchTheLadderTests.test_the_names_are_unique": {
+          "assertEqual": 1
+        },
+        "TheDeclaredChecksMatchTheLadderTests.test_there_are_three_checks_not_the_five_the_voice_spec_claimed": {
+          "assertEqual": 2,
+          "assertNotIn": 2
+        },
+        "TheSummaryRefusesTheVacuousAllClearTests.test_a_fired_check_is_not_counted_clean": {
+          "assertEqual": 2,
+          "assertNotIn": 1
+        },
+        "TheSummaryRefusesTheVacuousAllClearTests.test_all_clean_is_FALSE_when_a_check_never_ran": {
+          "assertEqual": 1,
+          "assertFalse": 1
+        },
+        "TheSummaryRefusesTheVacuousAllClearTests.test_all_clean_is_FALSE_when_every_check_is_absent": {
+          "assertEqual": 1,
+          "assertFalse": 1
+        },
+        "TheSummaryRefusesTheVacuousAllClearTests.test_all_clean_is_true_only_when_every_check_ran_and_none_fired": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "TheSummaryRefusesTheVacuousAllClearTests.test_ran_is_not_the_number_of_checks_declared": {
+          "assertEqual": 1,
+          "assertNotEqual": 1
+        },
+        "TheThreeStatesAreDistinctTests.test_a_check_that_ran_carries_no_reason": {
+          "assertIsNone": 1
+        },
+        "TheThreeStatesAreDistinctTests.test_a_check_whose_rung_fired_is_FIRED_never_clean": {
+          "assertEqual": 2
+        },
+        "TheThreeStatesAreDistinctTests.test_a_measured_empty_result_is_CLEAN": {
+          "assertEqual": 1
+        },
+        "TheThreeStatesAreDistinctTests.test_a_missing_key_is_ABSENT_not_clean": {
+          "assertEqual": 1
+        },
+        "TheThreeStatesAreDistinctTests.test_an_EMPTY_LIST_is_clean_and_None_is_absent_and_they_differ": {
+          "assertEqual": 2
+        },
+        "TheThreeStatesAreDistinctTests.test_an_absent_check_carries_its_reason": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "TheThreeStatesAreDistinctTests.test_an_empty_bye_profile_is_ABSENT_not_a_measured_empty_profile": {
+          "assertEqual": 1
+        },
+        "TheThreeStatesAreDistinctTests.test_an_explicit_None_is_ABSENT_too": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_cliff_null_estimator.py": {
       "test_methods": 7,
       "asserts": {
@@ -8762,13 +8847,29 @@
       }
     },
     "test_front_pages_match_their_builders.py": {
-      "test_methods": 4,
+      "test_methods": 8,
       "asserts": {
-        "assertEqual": 2,
-        "assertNotIn": 2,
-        "assertTrue": 1
+        "assertEqual": 4,
+        "assertIn": 3,
+        "assertNotIn": 4,
+        "assertTrue": 2
       },
       "by_method": {
+        "TheChecksSentenceIsDerivedNotHardcodedTests.test_no_page_carries_the_hardcoded_checks_sentence": {
+          "assertNotIn": 1
+        },
+        "TheChecksSentenceIsDerivedNotHardcodedTests.test_the_quiet_page_does_not_flatter": {
+          "assertNotIn": 1
+        },
+        "TheChecksSentenceIsDerivedNotHardcodedTests.test_the_quiet_page_names_exactly_the_checks_the_engine_ran": {
+          "assertEqual": 1,
+          "assertIn": 2,
+          "assertTrue": 1
+        },
+        "TheChecksSentenceIsDerivedNotHardcodedTests.test_the_quiet_page_stamps_its_clock_as_constructed_not_measured": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
         "TheCommittedPagesAreWhatTheirBuildersProduceTests.test_every_generated_page_in_round3_matches_its_builder_byte_for_byte": {
           "assertEqual": 1
         },

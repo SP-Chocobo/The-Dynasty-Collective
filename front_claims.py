@@ -43,6 +43,82 @@ LADDER = [
 #: four-problem week hides one, and `more` names what was hidden rather than dropping it.
 CAP = 3
 
+#: THE CHECKS THIS MODULE ACTUALLY RUNS, each as (name, the fixture key it reads, the rung it
+#: can raise). In ladder order. ONE HOME (`#126`): the names, the count and the order all come
+#: from here, so no surface may number them itself.
+#:
+#: `VOICE.md` rule 5 -- "name the checks, not the conclusion" -- is the reason this exists, and
+#: writing it down immediately corrected the spec that asked for it. That file says "Five checks,
+#: all clean -- starters, holes, depth, byes, record"; two independent designers drew "Four
+#: checks"; and nothing computed either number (`#338`). THE HONEST NUMBER IS THREE, because
+#: three is what this function evaluates. `starters` and `record` are NOT checked here: readiness
+#: and standings never reach `compose`, and `#341`/the dashboard ruling puts record off the front
+#: page entirely as true-but-inert. A page claiming five checks would have been overclaiming by
+#: two, in the very sentence meant to make it auditable.
+CHECKS = (
+    ("holes", "structural_holes", "hole"),
+    ("byes",  "bye_profile",      "bye"),
+    ("depth", "thin_positions",   "thin"),
+)
+
+#: A check has THREE states and collapsing any two of them is the defect this guards against.
+#: `clean` ran and found nothing; `fired` ran and raised a claim; `absent` never ran, and carries
+#: why. "Ran and found nothing" and "was never measured" are the distinction `#187` exists to
+#: protect, applied to a CHECK rather than to a figure -- and a page that reports an unmeasured
+#: check as clean is telling the reader their roster was examined when it was not.
+CHECK_CLEAN, CHECK_FIRED, CHECK_ABSENT = "clean", "fired", "absent"
+
+
+def checks_run(fx, claims):
+    """`[{"name", "state", "reason"}]` -- what was examined, in ladder order.
+
+    DERIVED FROM WHAT `compose` ALREADY READ, never re-evaluated. The state comes from the same
+    `fx` key the rung reads plus the claims already built, so a check cannot report clean while
+    its rung fired, and nothing here computes a second opinion (`#126`, `#338`).
+
+    ABSENCE IS DECIDED BY THE REPO'S OWN GRAMMAR, not by a new convention. `#187`: a value that
+    was not measured is `None`, never an empty default. So `[]` is a measured empty result --
+    holes were counted, there were none -- while a missing key or `None` never ran. A caller that
+    hands `[]` for something it did not measure has broken the absence contract at the producer,
+    and that is its defect to fix, not this function's to guess around.
+
+    `bye_profile` is the one that is not a list: `{}` carries no weeks and no basis, so it is
+    treated as absent rather than as a measured empty profile. `bye_collision` stamps a real
+    profile with its `basis`, which is the evidence that it ran.
+    """
+    fired_kinds = {c.get("kind") for c in (claims or ())}
+    out = []
+    for name, key, rung in CHECKS:
+        value = (fx or {}).get(key)
+        if value is None or (key == "bye_profile" and not value):
+            out.append({"name": name, "state": CHECK_ABSENT,
+                        "reason": f"no {key} in the data this page was built from"})
+        elif rung in fired_kinds:
+            out.append({"name": name, "state": CHECK_FIRED, "reason": None})
+        else:
+            out.append({"name": name, "state": CHECK_CLEAN, "reason": None})
+    return out
+
+
+def checks_summary(checks):
+    """The counts and names a surface needs, so the SURFACE never derives them (`#338`).
+
+    `#336b` is the precedent that makes this a function rather than a note: when `compose`
+    dropped a quantity, the renderer invented a replacement. A page that had to count its own
+    checks would be one `len()` away from the same failure -- and the number it would most want
+    is `ran`, which is NOT `len(CHECKS)` whenever anything is absent.
+    """
+    checks = list(checks or ())
+    by = lambda st: [c["name"] for c in checks if c["state"] == st]
+    clean, fired, absent = by(CHECK_CLEAN), by(CHECK_FIRED), by(CHECK_ABSENT)
+    return {
+        "ran": len(clean) + len(fired), "clean": clean, "fired": fired, "absent": absent,
+        # TRUE ONLY IF SOMETHING RAN. With every check absent, `not fired` is vacuously true and
+        # "all clean" would be the most dishonest sentence this page could print.
+        "all_clean": bool(clean) and not fired and not absent,
+    }
+
+
 #: `clock` is DECLARED AND UNREACHABLE, and that is worth stating rather than discovering.
 #: No fixture key supplies it and no rung below produces it, so the band's top rung -- the only
 #: one carrying an actual deadline -- has never once fired, and the ordering has only ever been
@@ -160,4 +236,8 @@ def compose(fx):
     rank = {k: i for i, (k, _) in enumerate(LADDER)}
     # Stable sort, so the within-rung order `thin_sort_key` established survives the ranking.
     claims.sort(key=lambda c: rank[c["kind"]])
-    return {"shown": claims[:CAP], "hidden": claims[CAP:], "bye_profile": bp}
+    return {"shown": claims[:CAP], "hidden": claims[CAP:], "bye_profile": bp,
+            # WHAT WAS EXAMINED, not only what was found (`#338`). Most weeks the band
+            # is empty and this is the ENTIRE content of the page, so it is the quiet
+            # state's only claim to having looked at anything.
+            "checks": checks_run(fx, claims)}

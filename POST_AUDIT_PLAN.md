@@ -20184,3 +20184,144 @@ Still open, and deliberately not invented here:
 surface draws either figure — `#335` is unwired. It must be settled before `#335` wires the band
 and before the dashboard draws a bye or thin figure, and the two open questions above must be
 ruled before the conversion is built.
+---
+
+## `#342` — `CHECKS_RUN`, AND THE QUIET STATE FINALLY HAS A PAGE
+
+**THE IDENTIFIERS ARE `CHECKS`, `checks_run` and `checks_summary`.** "CHECKS_RUN" is what
+`#338` and the owner called the gap, and it is kept in this heading so the item stays
+findable under that name — but nothing in the code is spelled that way, and `prose_names`
+caught exactly that: two of my own docstrings backticked `CHECKS_RUN` as though it were an
+identifier. One ratchet run, one invented name, found before it was committed.
+
+Built at the owner's direction (*"build CHECKS_RUN, then keep going"*). `#338` recorded the gap:
+`compose` returned `{shown, hidden, bye_profile}` and never said what it EXAMINED, so the most
+frequent state of the app's most important screen had nothing true to display.
+
+### THE NUMBER WAS THREE, AND WRITING IT DOWN CORRECTED THE SPEC THAT ASKED FOR IT
+
+`VOICE.md` rule 5 said *"Five checks, all clean — starters, holes, depth, byes, record"*. Two
+independent designers drew *"Four checks"*. Nothing computed either.
+
+**Three is what `compose` evaluates** — `holes`, `byes`, `depth`. `starters` and `record` never
+reach it: readiness and standings are not among its inputs, and `#341`/the dashboard ruling puts
+record off the front page entirely as true-but-inert. A page claiming five would have overclaimed
+by two **in the sentence whose entire job is to make the page auditable.**
+
+### THREE STATES, BECAUSE TWO WOULD BE A LIE
+
+```
+clean   ran, found nothing
+fired   ran, raised a claim
+absent  never ran, and carries why
+```
+
+Collapsing `clean` and `absent` is `#187` inverted: not an absence drawn as a zero, **an absence
+drawn as a clean bill of health.** Absence is decided by the repo's own grammar rather than a new
+convention — `#187` says an unmeasured value is `None`, never an empty default, so `[]` is a
+measured empty result and a missing key never ran. `bye_profile` is the exception worth naming:
+`{}` carries no weeks and no basis, and `bye_collision` stamps a real profile with its `basis`,
+which is the evidence that it ran.
+
+`checks_summary` holds the counts so no surface derives them (`#338`), and `all_clean` is
+**false whenever anything is absent** — with every check absent, `not fired` is vacuously true
+and "all clean" would be the most dishonest sentence this page can print.
+
+`ran` is NOT `len(CHECKS)`. A surface using the declared count would overclaim the moment a check
+goes absent, and a test pins that.
+
+### THE SENTENCE WAS ALREADY THERE, HARDCODED AND UNCONDITIONAL
+
+The empty band rendered this, by hand:
+
+> No unfillable slot, no concentrated bye week, no position thin against the league.
+
+Three checks named **by the renderer**, every time, whether or not any of them ran. So this was
+not a missing feature; it was `#338`'s violation sitting in the exact place `CHECKS_RUN` is for.
+It is now derived, and the headline is `VOICE.md`'s ruling — *"Nothing open this week"*, not
+*"Nothing needs you"* (rule 2: the app is never the subject and makes no requests).
+
+The LOUD state gained the same line, because a band showing two claims and nothing else leaves a
+reader unable to tell "the other checks passed" from "nothing else was looked at", and those are
+different facts. On the real fixture it reads `Clean: holes.`
+
+### THE QUIET PAGE IS MEASURED, NOT CONSTRUCTED
+
+The brief demands a quiet-state design and **no committed page had ever shown it.** Rather than
+invent a quiet roster, all twelve seats of the replayed league were scanned:
+
+```
+seat  holes  thin            worst bye   conc
+   1      0  DEF,TE                  6  0.401
+  ...
+  10      0  -                       6  0.377   <-- quiet
+  11      0  -                       8  0.254   <-- quiet
+```
+
+**Seats 10 and 11 are genuinely quiet** — 0 holes, 0 thin positions, measured. Seat 11 is the
+better example at concentration 0.254, and its profile is fully measured: byes in weeks
+5, 6, 7, 8, 10, 11, 14, basis `measured`, **0 unknown byes of 16**, so nothing is a floor.
+
+An empty BAND needs one more thing, because a bye claim fires whenever any measured bye loss is
+still ahead. At `current_week = 15` every one of seat 11's byes is behind, and `byes_ahead`
+returns `worst_week: None` — which its docstring calls "a real answer and not a missing one". So
+the page is seat 11 at week 15, and it renders:
+
+```html
+<h3>Nothing open this week</h3>
+<p><b>3</b> checks, all clean &mdash; holes, byes, depth.</p>
+```
+
+**Only the clock is chosen.** The roster, byes, holes and depth are all measured, and the clock
+is stamped `CONSTRUCTED` with that reason rather than inheriting the measured stamp around it. A
+test asserts that stamp, because a chosen value wearing a measured basis is the defect this whole
+surface exists to prevent.
+
+### The generator was PARAMETERISED, not forked
+
+`capture_front_fixture.py` gained `--seat / --week / --out`. Copying it to get a second seat would
+have been a second home for every basis string in it (`#126`; `#312` found one palette with
+three homes). **The default run reproduces the committed fixture byte-for-byte**, verified with
+`cmp`, so the parameterisation is behaviour-neutral.
+
+Flags, not positional arguments, and the comment says why — see the incident below.
+
+### TWO PROCESS FAILURES THIS ITEM, BOTH CAUGHT
+
+1. **I repeated `#332` exactly.** `build_empty.py` defaults to `empty_fixture.json`; I handed it
+   `front_fixture.json`. It silently rewrote the unsynced page's freshness grade from
+   *"Aging, oldest input 76 days"* into *"nothing on disk carries a date"* — a **699-byte**
+   corruption that `git status` showed only as ` M`, indistinguishable from my intended CSS
+   change. Caught by READING THE DIFF rather than trusting the rebuild. This is why the new
+   generator takes flags: a flag cannot be silently mistaken for another flag's value.
+2. **A patch asserted `raise SystemExit(main())` and the file says `sys.exit(main())`.** The
+   assertion fired, nothing was written, and the subsequent "default output is identical" check
+   passed **for the wrong reason** — the file was untouched. Confirmed with `git diff --stat`
+   before re-patching. An identity check on an unmodified file proves nothing, and that is the
+   same shape as the mutation panel whose verdict I had piped away in `#339`.
+
+### Tests and mutation record
+
+`test_checks_run.py`, **19 tests**: the three states distinguishable; `[]` clean vs `None` absent;
+an absent check carries its reason; `all_clean` false on any absence and on total absence; `ran`
+not the declared count; a fired check never clean; a claim capped out of view still counts as
+fired; and a STRUCTURAL guard that `CHECKS`' rungs equal `RUNGS_PRODUCED_HERE`, so adding a rung
+the band can raise without adding a check fails loudly.
+
+Plus 4 tests on the rendered pages: the retired hardcoded sentence appears on no page, the quiet
+page names exactly the checks the engine ran, it does not flatter (`VOICE.md` rule 3), and its
+clock is stamped constructed.
+
+Mutation arms, pristine-copy restores `cmp`-verified, `__pycache__` cleared between:
+
+| arm | mutation | fired |
+|---|---|---|
+| A | an absent check reports clean | 8 failures |
+| B | a measured empty result reports absent | 8 failures |
+| C | `all_clean` ignores absent checks | 2 failures |
+| D | `ran` counts declared checks | 2 failures |
+| E | a produced rung loses its check | 6 failures, 4 errors |
+| F | a fired check reports clean | 4 failures |
+
+**8 / 8 / 2 / 2 / 10 / 4**, baseline green after every restore.
+

@@ -1,7 +1,7 @@
 """The committed front pages must be what their builders produce RIGHT NOW.
 
-WHY THIS FILE EXISTS. `ui_explore/round3/` carries two generated pages -- `front.html` and
-`front_empty.html` -- committed to the tree as artifacts a reader opens. Thirty-four tests
+WHY THIS FILE EXISTS. `ui_explore/round3/` carries three generated pages -- `front.html`,
+`front_empty.html` and `front_quiet.html` -- committed to the tree as artifacts a reader opens. Thirty-four tests
 already cover them, and every one of those tests calls `build()` IN MEMORY and compares the
 string it returns. Not one reads the file on disk. So the builders were tested and the artifacts
 were not, and the two drifted apart without a single failure.
@@ -46,6 +46,14 @@ PAGES = [
      "ui_explore/front_fixture.json", "ui_explore/round3/front.html"),
     ("empty", "ui_explore.round3.build_empty",
      "ui_explore/empty_fixture.json", "ui_explore/round3/front_empty.html"),
+    # THE QUIET STATE, which had no committed page until `checks_run` gave it something true to
+    # say. The brief calls this the most frequent state and the feature; it is also the state
+    # whose ENTIRE content is the checks line, so a page that goes stale here goes stale in the
+    # one place a reader has nothing else to read. Same builder as `front`, a different seat and
+    # a clock: seat 11 of the replayed league is measurably quiet (0 holes, 0 thin) and week 15
+    # puts every one of its byes behind us.
+    ("quiet", "ui_explore.round3.build_front",
+     "ui_explore/quiet_fixture.json", "ui_explore/round3/front_quiet.html"),
 ]
 
 
@@ -150,6 +158,56 @@ class ThePagesDoNotAssertARankTheEngineNeverComputesTests(unittest.TestCase):
             for phrase in FORBIDDEN_RANK_PROSE:
                 with self.subTest(module=module, phrase=phrase):
                     self.assertNotIn(phrase, body, f"{module} emits a rank in code")
+
+
+class TheChecksSentenceIsDerivedNotHardcodedTests(unittest.TestCase):
+    """`#338` on the one sentence whose job is to be auditable.
+
+    The empty band used to render a HARDCODED list -- "No unfillable slot, no concentrated bye
+    week, no position thin against the league" -- unconditionally. Three checks named by the
+    renderer, regardless of whether any of them ran. A check that was never measured was
+    reported as examined, which is `#187` inverted: not an absence drawn as a zero, an absence
+    drawn as a clean bill of health.
+    """
+
+    RETIRED = "No unfillable slot, no concentrated bye week, no position thin against the league"
+
+    def test_no_page_carries_the_hardcoded_checks_sentence(self):
+        for name, _m, _f, page in PAGES:
+            with self.subTest(page=name):
+                self.assertNotIn(self.RETIRED, (ROOT / page).read_text())
+
+    def test_the_quiet_page_names_exactly_the_checks_the_engine_ran(self):
+        """The count and the names both come from `front_claims.CHECKS`, so this fails if the
+        page ever states a number the engine did not produce -- the `VOICE.md` five / designers'
+        four / engine's nothing disagreement that `#338` recorded."""
+        import front_claims as fc
+        text = (ROOT / "ui_explore/round3/front_quiet.html").read_text()
+        fx = json.loads((ROOT / "ui_explore/quiet_fixture.json").read_text())
+        summary = fc.checks_summary(fc.compose(fx)["checks"])
+        self.assertEqual(3, summary["ran"])
+        self.assertTrue(summary["all_clean"])
+        self.assertIn(f"<b>{summary['ran']}</b> checks, all clean", text)
+        for check_name in summary["clean"]:
+            self.assertIn(check_name, text)
+
+    def test_the_quiet_page_does_not_flatter(self):
+        """`VOICE.md` rule 3. A clean week is a fact, not a compliment, and `#338`'s own argument
+        is that "all systems green" invites inventing systems to be green about."""
+        text = (ROOT / "ui_explore/round3/front_quiet.html").read_text().lower()
+        for flattery in ("all systems", "you're good", "youre good", "crushing it",
+                         "looking great", "well done", "congratulations", "nothing needs you"):
+            self.assertNotIn(flattery, text)
+
+    def test_the_quiet_page_stamps_its_clock_as_constructed_not_measured(self):
+        """The one chosen value on an otherwise measured page. Week 15 is a clock reading, and a
+        replayed draft has no point in a season -- so it must not inherit the measured stamp of
+        the roster around it."""
+        fx = json.loads((ROOT / "ui_explore/quiet_fixture.json").read_text())
+        basis = (fx.get("_provenance") or {}).get("basis") or {}
+        self.assertIn("CONSTRUCTED", basis.get("current_week", ""),
+                      "a chosen clock must not be stamped measured")
+        self.assertEqual(15, fx["current_week"])
 
 
 if __name__ == "__main__":
