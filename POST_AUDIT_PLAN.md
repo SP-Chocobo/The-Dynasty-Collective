@@ -20502,3 +20502,34 @@ standing constraint already forbids.
 imports its escaper, absence grammar, currency stamp, position pill, brand mark and both
 build-time assertions from `build_dashboard.py` rather than copying them (`#126`).
 
+---
+
+### `#344b` — A FORBIDDEN-PHRASE SCAN CANNOT TELL AN ASSERTION FROM ITS DENIAL
+
+The landing page's tests ban the aggregates it must never draw -- portfolio score, worst-league
+ranking, cross-league total. The first version ran that ban over the whole document and **failed
+twice, both times on honest text**:
+
+```
+the closing refusal   "no portfolio grade, no worst-league ranking and no cross-league
+                       total exists to show"            -> trips "portfolio", "league rank"
+the stand-in stamp    "narrower than a real portfolio's" -> trips "portfolio"
+```
+
+**The word is not the defect; the CLAIM is.** A page that NAMES what it refuses, and NAMES what
+it constructed, fails the same substring check as a page that asserts those things -- so the
+instrument punishes exactly the honesty this repo is built on. Left unfixed, the pressure is to
+delete the refusal to make the test green, which would trade a true sentence for a passing
+check.
+
+The ban now runs over a CLAIMS REGION with two excisions. The refusal is excised by name.
+`stamp` and `absent` -- this system's provenance grammar, whose entire job is naming what is
+missing or constructed -- are excluded by construction rather than case by case.
+
+**Both excisions assert their own target exists before cutting**, so a rename makes the test
+LOUD rather than silently widening the hole it opened. And the ban is proven non-vacuous: a
+planted `Portfolio health 86` inside the leagues block is still caught.
+
+This is the fifth hollow-instrument finding of the session, and the first where the instrument
+was not merely stale but **structurally unable to distinguish the defect from its opposite**.
+

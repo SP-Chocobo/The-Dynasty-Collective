@@ -5196,6 +5196,107 @@
         "early_returns": 0
       }
     },
+    "test_dashboard_draws_only_what_the_engine_returns.py": {
+      "test_methods": 24,
+      "asserts": {
+        "assertEqual": 6,
+        "assertGreaterEqual": 2,
+        "assertIn": 13,
+        "assertLess": 1,
+        "assertLessEqual": 1,
+        "assertNotIn": 7,
+        "assertRaises": 3,
+        "assertTrue": 5
+      },
+      "by_method": {
+        "ExpansionsOnlyWhereTheEngineComputesASecondLayerTests.test_an_injury_flag_does_not_expand_because_the_engine_has_no_second_layer": {
+          "assertEqual": 1
+        },
+        "ExpansionsOnlyWhereTheEngineComputesASecondLayerTests.test_the_four_expandable_kinds_get_a_popover": {
+          "assertTrue": 1
+        },
+        "ExpansionsOnlyWhereTheEngineComputesASecondLayerTests.test_the_popover_is_an_overlay_not_inline_disclosure": {
+          "assertIn": 2,
+          "assertNotIn": 1
+        },
+        "FiveRoomsAndOneDockTests.test_rooms_that_do_not_exist_are_not_advertised": {
+          "assertNotIn": 1
+        },
+        "FiveRoomsAndOneDockTests.test_the_dock_is_marked_as_a_dock_and_not_a_sixth_room": {
+          "assertIn": 3,
+          "assertNotIn": 1
+        },
+        "FiveRoomsAndOneDockTests.test_the_five_real_views_are_the_only_rooms": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "ForbiddenQuantitiesAppearNowhereTests.test_no_page_asserts_a_rank_the_engine_never_computes": {
+          "assertNotIn": 1
+        },
+        "ForbiddenQuantitiesAppearNowhereTests.test_no_page_state_names_a_withheld_or_fabricated_quantity": {
+          "assertNotIn": 1
+        },
+        "ForbiddenQuantitiesAppearNowhereTests.test_the_page_does_not_flatter": {
+          "assertNotIn": 1
+        },
+        "TheCurrencyIsStampedOnTheFigureTests.test_a_quiet_page_with_no_bye_claim_needs_no_stamp_on_a_claim": {
+          "assertEqual": 1
+        },
+        "TheCurrencyIsStampedOnTheFigureTests.test_the_bye_figure_carries_a_currency_stamp": {
+          "assertIn": 2
+        },
+        "TheCurrencyIsStampedOnTheFigureTests.test_the_stamp_says_it_is_not_the_leagues_points": {
+          "assertIn": 1
+        },
+        "ThePageDrawsTheEnginesClaimsAndNoOthersTests.test_a_capped_claim_is_named_rather_than_dropped": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "ThePageDrawsTheEnginesClaimsAndNoOthersTests.test_every_claim_on_the_page_came_from_compose": {
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "ThePageDrawsTheEnginesClaimsAndNoOthersTests.test_the_band_never_exceeds_the_cap": {
+          "assertLessEqual": 1
+        },
+        "ThePageDrawsTheEnginesClaimsAndNoOthersTests.test_the_check_count_is_not_repeated_once_it_is_the_hero": {
+          "assertEqual": 1
+        },
+        "ThePageDrawsTheEnginesClaimsAndNoOthersTests.test_the_quiet_state_carries_the_engines_check_count_as_its_HERO_figure": {
+          "assertIn": 2,
+          "assertNotIn": 1,
+          "assertTrue": 1
+        },
+        "TheSeverityRampIsVISIBLETests.test_every_step_of_the_ramp_clears_the_non_text_floor": {
+          "assertGreaterEqual": 1
+        },
+        "TheSeverityRampIsVISIBLETests.test_the_build_refuses_a_ramp_below_the_floor": {
+          "assertRaises": 1
+        },
+        "TheSeverityRampIsVISIBLETests.test_the_dark_golds_that_failed_round_4_would_still_fail": {
+          "assertLess": 1
+        },
+        "TheSeverityRampIsVISIBLETests.test_the_ramp_rises_in_brightness_because_that_is_the_only_direction_that_works": {
+          "assertEqual": 1
+        },
+        "TheTypeFloorIsEnforcedAtBuildTimeTests.test_no_declared_size_is_below_twelve_px": {
+          "assertGreaterEqual": 1,
+          "assertTrue": 1
+        },
+        "TheTypeFloorIsEnforcedAtBuildTimeTests.test_small_type_is_declared_in_rem_so_the_floor_needs_no_browser": {
+          "assertEqual": 1
+        },
+        "TheTypeFloorIsEnforcedAtBuildTimeTests.test_the_build_refuses_a_size_below_the_floor": {
+          "assertRaises": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_data_merger.py": {
       "test_methods": 79,
       "asserts": {
