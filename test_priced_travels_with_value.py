@@ -113,10 +113,17 @@ class PricedTravelsWithValue(unittest.TestCase):
         # `TypeError: unsupported operand type(s) for &: 'str' and 'set'`.
         #
         # So this test rebuilds the sets rather than trusting the file -- and the fact that it
-        # HAS to is a separate finding, recorded as `#351`: the same `default=str` also
-        # stringified `_provenance.players_db`, which is why the dashboard renders its capture
-        # date as an absence. Not fixed here; fixing the serializer changes every fixture's
-        # bytes and belongs in its own pass with its own suite run.
+        # HAS to is a separate finding, recorded at `#351`.
+        #
+        # CORRECTION. An earlier version of this comment said the same `default=str` also
+        # stringified `_provenance.players_db`. IT DOES NOT. That field is cut by an EXPLICIT
+        # str(prov)[:200] at capture_front_fixture.py:201 -- a deliberate 200-character
+        # truncation that lands mid-value. Two mechanisms, not one, and only the first is
+        # accidental: a serializer side effect here, a chosen truncation there. The truncation is
+        # why the dashboard renders its capture date as an absence, which is correct behaviour on
+        # damaged input rather than a defect in the page. Neither is fixed here; repairing the
+        # serializer changes every fixture's bytes and belongs in its own pass with its own
+        # suite run.
         roster = [dict(r, eligible={r.get("position")}) for r in fx["roster"]]
         slots = (fx.get("league") or {}).get("roster_positions") or []
         out = lo.bye_collision(roster, slots)

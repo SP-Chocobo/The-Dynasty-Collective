@@ -20714,3 +20714,338 @@ So registering Kimi K2 or Grok today takes one `providers.register(...)` call **
 three tables that the registry does not reach** — and missing the first two fails silently: the
 paste-a-`.env` flow simply would not recognise the new key. NOT FIXED; this is a repair to
 `app.py`, not to a mockup, and it wants its own pass.
+
+---
+
+### `#345` — WHAT IT IS, RECORDED LATE, AND IT IS NOT A FINDING
+
+**This item never had a register entry.** Verified by pickaxe over the full history of
+`POST_AUDIT_PLAN.md` (`git log -S'#345' -- POST_AUDIT_PLAN.md` returns nothing), so the entry was
+not lost — it was never written. Four commits exist:
+
+| commit | what |
+|---|---|
+| `2a34d16` | `#345` round 6 brief: re-communicate the same facts, three questions, three subagents |
+| `6419564` | `#345b` ledger and dispatch landed, both builders reproducible |
+| `b2d6194` | `#345c` standing: a PARTIAL snapshot, committed to preserve it, and labelled as partial |
+| `bc1ab18` | `#345d` standing completes: the third round-6 design, and the defect its own fixture found |
+
+It is tracked at `HANDOFF.md:20` as *"round 6 | brief + 2 of 3 explorations committed"*.
+
+**`#345` IS A DESIGN EXPLORATION, NOT A FINDING, AND IT IS RECORDED HERE AS THAT.** Writing it up
+as a finding to fill a gap I noticed would be inventing a record — the precise defect `#351`
+documents below. Two of its rulings are still live and cited in code: `#345d`'s restraint (a built
+file has no clock, so it must not imply one) is kept at `ui_explore/round7/build_dashboard.py:183`
+and pinned by `test_round7_pages_say_only_what_they_can.py:144`.
+
+**The real finding is the SPLIT, not the gap.** See `#353`.
+
+---
+
+### `#349` — THE LANDING PAGE GETS ITS ORNAMENT, AND THE ART PIPELINE THAT PRODUCED IT
+
+Ten commits (`a68c6f5` `52431c5` `d2eaad8` `b05170c` `e055a01` `3e41ae2` `1a01872` `f058c51`
+`f517009`), recorded here late. Full detail lives in `ui_explore/round7/ART_BRIEF.md`; this entry
+exists so the number resolves and the rulings are findable.
+
+**What the pass established, each measured rather than argued:**
+
+- **The pure-black-void rule.** A generated image must carry `(0,0,0)` corners or it cannot sit on
+  the page's ground without a visible seam.
+- **The slot was the problem, not the images.** Four band candidates all read as wrong until the
+  slot widened; the fifth prompt was not better art, it was art given room. The first league-band
+  prompt was **self-contradictory** — "extreme close detail" and "empty left third" cannot both
+  hold — and no amount of regeneration would have fixed it.
+- **The room-mark set is ABANDONED (`1a01872`), and the reason outlived the marks.** Generated
+  marks would not cohere at 19px. The limit turned out to be the FORMAT, not the style
+  (`f517009`): raster at that size loses the stroke, so the owner's own suggestion — five simple
+  tribal glyphs, drawn as filled SVG — made generation unnecessary. `tribal_glyphs.py`'s
+  `assert_legible_sizes()` refuses any stroke, which is the lesson enforced rather than noted.
+
+**CORRECTION, already published at `e055a01` and restated here in full.** I reported the shipped
+band's nav contrast as clean at **4.80:1**. That measured ONE tab. All tabs measured **3.34:1** —
+below AA. Root cause: `--dim` is 4.82:1 on the flat background, i.e. **zero headroom** for a
+clickable label the moment it sits on anything but flat ground. Moved to `--muted` (7.89:1). The
+defect in the instrument was sampling one member of a row and reporting the row.
+
+---
+
+### `#350` — THE IN-LEAGUE DASHBOARD IS WIRED, AND IT COMPOSES NOTHING
+
+Recorded late; shipped at `0869d52`. The page is **assembly only** — every claim on it was composed
+by round 5's `front_claims.compose`, which is `#338`'s rule (the render layer computes nothing)
+held rather than restated.
+
+**Four defects found by LOOKING at a render, none catchable by a test on the composition:**
+
+1. **A raw Python dict shipped onto a page, twice.** `checks_summary` returns a dict BY DESIGN
+   (`#338`: the surface derives no counts) and a draft interpolated it whole. Then `fx["league"]` —
+   the league CONFIG, not a name — printed `{'roster_positions': [...], 'starting_slots': 10}` into
+   the header. The falsy-guard failed because **a non-empty dict is truthy**. Guard now keys on
+   TYPE, never truthiness, and `test_no_python_repr_reaches_the_page` reads the rendered string for
+   the fingerprints of an escaped Python value.
+2. **`var(--sans)` was never defined.** An unresolvable `var()` inside a `font:` shorthand **drops
+   the whole rule silently** — no error, no fallback. The type scale read 12→22px and the tally
+   14.24px. Fixed with `font_vars()`; `assert_vars_resolve` now fails the build on it.
+3. **A cascade collision, fixed twice.** `.verdict p` beat `.tally`. The first repair
+   (`.verdict div p`) was position-dependent and broke the moment the crest was nested inside.
+   Re-done as `.verdict .vtext p` — matching, not specificity, so nesting cannot recapture it.
+4. **A module importing itself.** Round 7's `build_dashboard.py` resolved `import build_dashboard`
+   to itself. Fixed by path-loading — and the mirror image in `build_landing.py` was left in place,
+   which cost ten suite errors one commit later. See the certification commit for that.
+
+**The crest rendered as a black square** despite `(0,0,0)` corners and `mix-blend-mode:screen`:
+`.roomhead{z-index:2}` creates a stacking context, which **isolates the blend**. Replaced with a
+radial mask, which does not depend on compositing order.
+
+---
+
+### `#351` — TWO SERIALIZATION DEFECTS WEARING ONE NAME, AND A DOCSTRING THAT CONFLATED THEM
+
+**NEW FINDING, and it carries a correction to a pushed artifact.**
+
+`test_priced_travels_with_value.py:116` tells the reader this is *"recorded as `#351`"*. **It was
+not.** No entry existed until this one. A committed test file asserting that a finding is recorded
+is manufacturing provenance: the next reader goes looking, finds nothing, and cannot tell whether
+the record was lost or the claim was false.
+
+**There are TWO mechanisms here, and only one is accidental.** The same docstring attributes both
+to `default=str`, which is wrong about the second:
+
+| field | what the file holds | mechanism | deliberate? |
+|---|---|---|---|
+| `roster[].eligible` | `"{'RB'}"` — a set's repr | `json.dumps(..., default=str)`, `capture_front_fixture.py:253` | **no — side effect** |
+| `_provenance.players_db` | a 200-char fragment ending `"s_present': ['"` | `str(prov)[:200]`, `capture_front_fixture.py:201` | **yes — explicit** |
+
+Measured consequence, run rather than reasoned:
+
+    capture_date(<the truncated 200 chars>)  ->  None        # the absence the dashboard renders
+    capture_date(<a whole record>)           ->  '2026-09-07'
+
+So the dashboard's absent capture date is **correct behaviour on damaged input** — `ast.literal_eval`
+refuses a truncated repr and the page says so rather than regexing a date out of it (`#222`). The
+damage is upstream, in the capture.
+
+**What this rules OUT.** The page is not at fault and needs no change. `eligible` is rebuilt by any
+consumer that needs it — `test_the_solvers_still_accept_the_row_shape` has to reconstruct the sets
+because `bye_collision` does `player["eligible"] & slot["eligible"]` and raises
+`TypeError: unsupported operand type(s) for &: 'str' and 'set'` on the stored string.
+
+**NOT FIXED, deliberately.** Repairing the serializer changes every fixture's bytes, which means
+re-deriving twelve seats and two fixtures and re-certifying every page that reads them. That is its
+own pass with its own suite run. The truncation at line 201 is the cheaper half and may be the
+better first move: 200 characters was chosen to keep the provenance short, and nobody measured that
+it cuts mid-value.
+
+**A CORRECTION I ALMOST PUBLISHED, recorded because the near-miss is the lesson.** While gathering
+this evidence I ran `git grep -n 'default=str' -- '*.py' | head` and concluded the capture does not
+use `default=str` at all — which would have been a FALSE CORRECTION OF A TRUE CLAIM, worse than the
+original error. There are **47** matches; git orders by path; `ui_explore/` sorts after
+`measurement.py`; `head` cut the only row that mattered. Third instance this session of a truncated
+or sampled result producing a confident answer about something else (the others: nav contrast read
+off one tab of eight, `#349`; a halo metric that counted filigree inside the subject as halo).
+**Rule: never read a yes/no answer off a truncated result set — count it first.**
+---
+
+### `#352` — A VERIFICATION THAT CANNOT FAIL IS NOT A VERIFICATION, AND A FAILED ONE MUST BE DISCLOSED
+
+**STANDING RULE. Proposed by ChatGPT acting as an architectural reviewer; ADOPTED by the owner on
+2026-11-08 because he agrees with it, not because it was proposed.** The provenance is recorded
+because a governance rule with no recorded author has the same defect as a finding with no entry.
+
+Two parts, and the second is the one that was earned the hard way:
+
+> **(a)** Verification failures — **including failures of the verification process itself** — must be
+> disclosed to whoever is relying on the result.
+>
+> **(b)** The hardest case is not a check that fails. It is a check that **exits 0 without checking
+> anything**, which at the call site is indistinguishable from a pass. So every verification must be
+> demonstrated capable of failing before its success is reported.
+
+**THE MEASURED INCIDENT THIS COMES FROM.** In the pre-flight for the second full-suite run I ran
+all eight ratchets and published *"all 8 ratchets PASS."* I had run `skip_gates.py` **bare**. With
+no arguments it prints its help text and returns 0. It had checked nothing, and the suite then
+failed on an unregistered gate the ratchet exists to catch. The claim was already published when
+the failure surfaced.
+
+Part (b) is why part (a) is not sufficient alone: a rule that only covers *disclosed failures*
+misses this entire class, because nothing failed. Nothing was even examined.
+
+**WHAT THIS BINDS, CONCRETELY.** Every instrument in this repo gets run against a state it should
+REJECT before its pass is trusted. Worked examples already in the tree:
+
+- the eight ratchets are run with their real `--check` flags, never bare;
+- `test_the_build_gates_can_actually_fail` asserts `SystemExit` from each build gate on sub-floor
+  type, an `em` unit, and an undefined `var()`;
+- the per-identity accounting script written for this certification was run against the FAILING log
+  first and reported `0 of 13`, proving it can fail, before being trusted on a passing one;
+- a mutation arm that does not fire is a BUG IN THE ARM, not evidence of a robust test — one in
+  this round silently never applied its edit because of quote escaping.
+
+**THE RULE GENERALISES PAST TESTS.** Three findings in this project were withdrawn because the
+FIXTURE was wrong while the instrument ran perfectly (`#201`, `#222` twice). Those were not failed
+verifications either. They were verifications of something else.
+---
+
+### `#353` — `HANDOFF.md` IS THE ONLY HOME SOME ITEMS HAVE, WHICH MAKES IT A REGISTER BY DEFAULT
+
+**STANDING RULE, same provenance as `#352`: proposed in review, adopted by the owner 2026-11-08.**
+
+> - `POST_AUDIT_PLAN.md` is authoritative for numbered findings.
+> - `HANDOFF.md` tracks project state, milestones and outstanding work.
+> - `HANDOFF.md` MAY reference register IDs. It may NOT become a second findings register.
+> - Historical references stay traceable when records are reconciled. Nothing is silently rewritten.
+
+**A CORRECTION TO MY OWN FRAMING OF THIS, MADE BEFORE IT WAS WRITTEN DOWN.** I first described
+this as "`HANDOFF.md` became a second findings register." **It did not, and the overstatement
+matters because the real defect is narrower and harder to see.** Its rows carry STATE, which is
+exactly what the rule above assigns to it:
+
+| `#339` thin_positions cross-interface | **CERTIFIED** 4444 / 1465.001s OK |
+| `#343` dashboard | built, 24 tests, 8 ratchets green — **full suite owed** |
+| `#345` / `#345b` round 6 | brief + 2 of 3 explorations committed |
+
+Those are states, not findings. The defect is that for `#345` **this is the only record anywhere
+that the item exists at all** — so a status table became the sole home for an item's existence,
+which makes it a register for that item whether or not it holds the finding. Nothing drifted on
+purpose; a gap in one document silently promoted the other.
+
+**THE MEASUREMENT.** Mapping `#340`–`#355` against the register, the commit log and every code
+citation:
+
+| item | register entry | commits | cited in code/docs |
+|---|---|---|---|
+| `#340`–`#344`, `#346`–`#348` | HEADING | — | yes |
+| `#345` | **none, ever** | 4 | 2 docstrings + `HANDOFF.md` |
+| `#349` | **none** | 10 | `ART_BRIEF.md`, 2 builders |
+| `#350` | **none** | 1 | 2 test modules |
+| `#351` | **none** | 0 | 1 test module, which claims it IS recorded |
+
+**FOUR STATES OF RECORD INTEGRITY, not three.** The taxonomy this mapping forced:
+
+1. the behaviour exists in the code;
+2. something references the item number;
+3. the item is formally recorded where the project says authoritative records live;
+4. **the item is formally tracked SOMEWHERE ELSE.**
+
+State 4 is more dangerous than a plain gap, because it looks like bookkeeping is happening. `#345`
+is in state 4. `#351` is in states 1 and 2 only while *claiming* state 3, which is worse again —
+a reader who goes looking cannot tell whether the record was lost or the claim was false.
+
+**THIS IS `#126` TURNED ON THE PROJECT'S OWN RECORD.** The repo already ruled that important
+information gets ONE home, and the bookkeeping grew a second one for `#345`. Same family as
+`#312`'s three palettes and `#348`'s three provider tables; the novel part is that the duplicated
+thing is the record itself.
+
+**NOT DONE BY BULK COPY.** `HANDOFF.md`'s rows are not transplanted. Each gap is established on its
+own evidence and recorded as what it actually is — which is why `#345` is written up as a design
+exploration rather than promoted to a finding it never was.
+
+### `#353b` — THE RULE HAS NO INSTRUMENT, AND MY FIRST THREE ATTEMPTS TO SIZE THE GAP WERE WRONG
+
+`HANDOFF.md`'s own header already states this rule: *"The register holds the reasoning; this holds
+the STATE and the NEXT ACTIONS."* **The rule was written down and the drift happened anyway, because
+nothing checked it** — which is `#352` applied to the record. A rule enforced only by prose is the
+weak form.
+
+Sizing the gap for a future ratchet took **three instruments, two of which produced confident wrong
+answers**, and the sequence is the finding:
+
+| attempt | measured | why it was wrong |
+|---|---|---|
+| 1. headings only, `head`-truncated grep | — | `\| head` cut the one row that mattered off a 47-row result |
+| 2. heading present / absent | **80 unrecorded** | the heading convention is RECENT; early items are recorded in prose and tables, so this measured the convention, not the record. `#187` is cited in 97 files and appears **30 times in the register** — with no heading |
+| 3. mentioned anywhere, 1-3 digits | **9 unrecorded** | 6-digit values like `#755024` are HEX COLOURS, not item numbers; the digit bound excludes them |
+
+**The honest figure is 9**, of 221 distinct items cited across tracked `.py` and `.md`:
+
+    #3  #7  #19  #31  #34  #77  #218  #235  #260
+
+Even that is an upper bound — `#3` and `#7` are cited only in `ui_explore/round2/fableA/REVISION.md`
+and are probably revision numbers, not items. `#218` is cited only in a skill file.
+
+**SO THE RATCHET IS BUILDABLE AND IS THE NEXT ACTION, NOT THIS ENTRY'S WORK.** The design that
+follows from the measurement: count items CITED but never MENTIONED, bound the match to 1-3 digits,
+baseline the current population in a tracked JSON and forbid GROWTH — the shape `SKIP_GATES.json`
+already uses, because reaching zero would mean inventing entries for items that may not exist.
+Shrinkage free, growth fails the build.
+
+**AND THE RULE THIS COST:** *never read a yes/no answer off a truncated result set, and never let a
+CONVENTION stand in for the THING.* Both failures here were the same shape as `#222`'s withdrawn
+findings — the instrument ran perfectly and measured something else.
+---
+
+### `#354` — SERVER-RENDERED, ONE PROCESS, LOCALHOST FIRST: THE STACK DECISION, RECORDED
+
+**No framework decision existed anywhere in this repo.** `GOLD_WYRM_WEBFRONT.md` argues the
+McMaster-Carr case for server-rendered HTML but **explicitly disclaims being a mandate**, and `D7`
+concerns the visual reference, not the stack. So every statement about "the rewrite" was resting on
+an unrecorded assumption. This entry is that decision, with the measurements it rests on.
+
+**MEASURED, on this container, warm:**
+
+| operation | cost |
+|---|---|
+| engine warm-up | 0.9 s, **once** |
+| `front_claims.compose()` | 0.00 ms median, 0.04 ms worst |
+| full dashboard HTML assembly | 0.5 ms median |
+| dashboard page size | 221.0 KB raw / 148.4 KB gzip-9 |
+
+**RULING 1 — SERVER-RENDERED HTML, NOT A JSON API.** A JSON API forces a SECOND implementation of
+claim composition in JavaScript, which is `#126` (one home) and `#336b` (a renderer inventing a
+quantity) by construction. There is no performance argument on the other side: composition is
+already free.
+
+**RULING 2 — ONE PROCESS (option A), NOT A WEB SERVER PLUS A WORKER.** The decisive argument is
+**not** performance. `app.py` persists state to local files with **no locking and no notion of who
+is asking** — the same property that makes one passphrase mean one user. A second process does not
+add a worker to that design; it adds a **second writer to unsynchronized files**. One process is an
+architectural constraint that currently protects data integrity.
+
+Three things make a single *threaded* process actually safe, since one process alone does not
+serialize writes:
+
+1. **atomic writes** — temp file in the same directory, then `os.replace()`, so a reader sees the
+   whole old file or the whole new one, never a partial. This is the one that matters most: it
+   protects readers **without** requiring them to take a lock.
+2. **one lock on the mutate path** — writers serialize; readers never wait.
+3. **single-flight** — a sync already running refuses a second rather than queueing it.
+
+**WHAT FORCES A WORKER LATER, already measured:** one 12-team draft is **216–956 s**. Nothing serves
+that inside an HTTP request under any framework. When drafting goes behind the URL it becomes a
+submitted job with a status endpoint, and *then* the worker is a separate process. Not before —
+building it early only doubles the writers before any locking exists.
+
+**RULING 3 — MILESTONE 1 LISTENS ON `127.0.0.1` ONLY.** Owner's ruling, 2026-11-08. The passphrase
+gate is **decorative without HTTPS**; authentication is its own milestone. Localhost makes the
+patience structural rather than disciplinary: there is no exposed endpoint to get impatient about.
+The gate is installed in `app.py` only — the round-7 mockups are fixture-built static HTML and leak
+no league data, so a login on them is friction without protection.
+
+**AN ASSET DEFECT THE DECISION EXPOSES.** 83% of the dashboard page is three inlined base64 images:
+
+| | raw | gzip-9 |
+|---|---|---|
+| 3 data URIs | 183.1 KB | **137.4 KB (75%)** |
+| HTML + CSS | 37.9 KB | **9.9 KB (26%)** |
+
+JPEG/PNG/WebP are already compressed, so gzip recovers base64's inflation and stops — 137.4 KB is
+essentially the original binary. **Inlining was CORRECT for a file you double-click and wrong the
+moment a server exists**, because a data URI cannot be cached. Repair: content-addressed filenames
+served `Cache-Control: public, max-age=31536000, immutable`.
+
+| | first visit | each navigation after |
+|---|---|---|
+| today | 148.4 KB | **148.4 KB** |
+| content-addressed + cached | 147 KB | **9.9 KB** |
+
+The first visit is a wash. **The entire win is repeat navigation, and it exists only if the cache
+headers are right** — so the headers are not a nicety on that task, they ARE the task. Brotli is
+NOT measured: neither `brotli` nor `brotlicffi` is installed here, and the expected result is not
+a measurement.
+
+**MILESTONE 1 ACCEPTANCE CRITERIA** (adopted from review, with the latency item added): real league
+data and no demo fixtures; cold start; warm request; consecutive requests; direct URL navigation and
+browser refresh; empty vs populated account; missing or stale source data; no mutation of league
+state; **and end-to-end request latency plus real transfer size measured — not composition time,
+which is the 0.5 ms figure and was never the request.**
