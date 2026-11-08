@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm Dynasty &mdash; the dispatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+:root {
+  --bg: #0c0a07;
+  --surface: #17130d;
+  --surface-2: #120f0a;
+  --line: #2a2318;
+  --line-2: #443823;
+  --ink: #f2ead9;
+  --muted: #b0a28a;
+  --dim: #897c61;
+  --emerald: #0b8f57;
+  --emerald-b: #2fd08b;
+  --gold: #c9961a;
+  --gold-b: #f5c93f;
+  --violet: #6d3fd6;
+  --violet-b: #b593f5;
+  --crimson: #a60f3a;
+  --crimson-b: #f2546e;
+  --sky: #1356c9;
+  --sky-b: #56a0fa;
+  --amber: #d4700a;
+  --amber-b: #f8a52a;
+  --cliff: #07837a;
+  --cliff-b: #2fcfc0;
+  --block: #b53a09;
+  --block-b: #f79a53;
+  --pure: #efe5cd;
+  --tie: #6f6550;
+  --tie-b: #a1947b;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+:root {
+  --qb: #2a81fc;
+  --rb: #0ca89c;
+  --wr: #4aa8ef;
+  --te: #ff6042;
+  --k: #fab87e;
+  --def: #ef7fc0;
+  --dl: #4cec4c;
+  --lb: #ff45ed;
+  --db: #6ad8f0;
+  --idp: #99a851;
+  --absent: #b0a28a;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:400 1.1rem/1.5 "Source Serif 4", Georgia, "Times New Roman", serif;-webkit-text-size-adjust:100%;
+  background:var(--bg) radial-gradient(70rem 26rem at 50% -8rem,rgba(117,80,36,.20),transparent 70%)}
+.wrap{max-width:78rem;margin:0 auto;padding:0 24px 56px}
+b.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600;font-size:inherit;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.n .ge,.pull .ge{font-weight:400;color:var(--gold-b);margin-right:.05em}
+b.lbl{font-weight:600;color:var(--gold-b)}
+.eyebrow{font:600 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin:0}
+.prov{font:400 .75rem/1.5 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--dim);margin:.5rem 0 0}
+.absent{color:var(--muted);cursor:help;border-bottom:1px dotted var(--muted)}
+.currency{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}
+.stamp{display:inline-block;font:600 .75rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--muted);padding:3px 5px 2px;border-radius:3px;
+  vertical-align:middle;cursor:help;
+  background:repeating-linear-gradient(135deg,transparent 0 3px,rgba(176,162,138,.14) 3px 4px)}
+code{font:400 .95rem "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--muted)}
+.pos{font:600 .75rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.04em;white-space:nowrap}
+.pos i{display:inline-block;width:.5rem;height:.5rem;border-radius:2px;margin:0 .3rem 0 0;vertical-align:1px}
+.pill{display:inline-flex;align-items:center;height:1.35rem;padding:0 .5rem;border-radius:3px;
+  font:600 .75rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.04em;margin-bottom:.5rem}
+.st{text-decoration:underline dotted var(--gold);text-underline-offset:.2em}
+.nw{white-space:nowrap}
+
+/* ---- MASTHEAD: a broadsheet's, centred, ruled above and below, with the dateline on the
+   rule and the five sections set as a nav line beneath. ---- */
+.mast{padding-top:12px}
+.dateline{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:8px 0;border-top:1px solid var(--line-2);border-bottom:1px solid var(--line);
+  font:400 .8rem/1.5 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--muted)}
+.dateline b{color:var(--ink);font-weight:600}
+.dateline span{white-space:nowrap}
+.word{text-align:center;margin:16px 0 14px}
+.crest{display:flex;justify-content:center;margin-bottom:6px}
+.word h1{font:600 2.4rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;margin:0;
+  background:linear-gradient(180deg,#fff4ce 0%,#f9de99 30%,#ba9561 64%,#755024 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
+.word small{display:block;font:400 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.5em;text-transform:uppercase;
+  color:var(--gold);margin-top:8px;padding-left:.5em}
+.sections{display:flex;justify-content:center;gap:2px;flex-wrap:wrap;
+  border-top:3px double var(--line-2);border-bottom:1px solid var(--line);padding:2px 0}
+.door{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;color:var(--muted);
+  font:400 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;
+  white-space:nowrap;border-bottom:2px solid transparent}
+.door:hover,.door:focus-visible{color:var(--gold-b);border-bottom-color:var(--gold)}
+
+/* ---- THE LEDE: headline, then the situation in sentences at reading scale, with the
+   figure pulled out beside it at display scale. ---- */
+.lede{display:grid;grid-template-columns:1fr 19rem;gap:40px;align-items:start;
+  padding:34px 0 30px;border-bottom:1px solid var(--line)}
+.lede h2{font:400 2.75rem/1.1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;color:var(--gold-b);margin:10px 0 18px;letter-spacing:.01em}
+.lede .text{font-size:1.35rem;line-height:1.5;color:var(--ink);margin:0;max-width:34em}
+.lede .text b.n{font-size:1.2rem}
+.pull{position:relative;padding:22px 0 0;border-top:3px double var(--line-2)}
+.pull .big{display:block;font:600 4.5rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--gold-b);letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums}
+.pull .unit{display:block;margin-top:10px;font:400 .8rem/1.5 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.pull .unit .currency{text-transform:none;letter-spacing:0;font:400 .95rem/1 "Source Serif 4", Georgia, "Times New Roman", serif;color:var(--muted)}
+.pull .pill{position:absolute;top:22px;right:0}
+.pull .close{margin-top:18px}
+
+/* ---- THE COLUMNS: the supporting detail set in columns under a rule, as a broadsheet
+   sets its stories. The bye account is the wide one. ---- */
+.cols{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:0;padding-top:4px}
+.cols.two{grid-template-columns:1.6fr 1fr}
+.cols.one{grid-template-columns:1fr}
+.col{padding:26px 28px 24px 0;border-right:1px solid var(--line);min-width:0}
+.col+.col{padding-left:28px}
+.col:last-child{border-right:0;padding-right:0}
+.intro{font-size:1rem;line-height:1.5;color:var(--muted);margin:12px 0 0;font-style:italic}
+.intro b.n,.foot b.n{font-style:normal}
+.weeks{margin-top:18px;border-top:1px solid var(--line)}
+.wk{padding:12px 0 12px;border-bottom:1px solid var(--line);position:relative}
+.wk.peak{background:linear-gradient(90deg,rgba(117,80,36,.22),rgba(117,80,36,.04));
+  margin:0 -12px;padding:14px 12px;border-bottom-color:var(--line-2)}
+.wk.peak::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold-b)}
+.wkhead{display:flex;align-items:baseline;gap:14px}
+.wklabel{font:600 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);min-width:5.5rem}
+.peak .wklabel{color:var(--gold-b)}
+.wkfig b.n{font-size:1.6rem;color:var(--ink)}
+.peak .wkfig b.n{font-size:2.4rem;color:var(--gold-b)}
+.wkfig .absent{font:400 1.2rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace}
+.wkwho{margin:6px 0 0;font-size:1rem;line-height:1.55;color:var(--ink)}
+.wkwho b.n{font-size:.9rem;color:var(--muted)}
+.wkwho .absent{font-size:.95rem}
+.detail{color:var(--muted)}
+.behind .wkfig b.n,.behind .wkwho,.behind .wkwho .detail{color:var(--muted)}
+.behind .wklabel{color:var(--dim)}
+.foot{margin:16px 0 0;font-size:1.05rem;line-height:1.55;color:var(--ink)}
+.legend{margin:10px 0 0;font-size:.85rem;line-height:1.6;color:var(--dim)}
+.legend .st{color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+.entry{padding:18px 0 20px;border-bottom:1px solid var(--line)}
+.entry:last-of-type{border-bottom:0}
+.entry .line,.check .line{margin:0;font:400 1.3rem/1.2 "Source Serif 4", Georgia, "Times New Roman", serif;color:var(--ink)}
+.entry .line b.n{font-size:1.5rem}
+.entry .text,.check .text{margin:8px 0 0;font-size:1rem;line-height:1.55;color:var(--ink)}
+.entry.hole .line b.n{color:var(--gold-b)}
+
+.check{padding:16px 0 18px;border-bottom:1px solid var(--line)}
+.check:last-of-type{border-bottom:0}
+.check .line{display:flex;align-items:baseline;gap:10px}
+.cname{font:600 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
+.tick{font:600 1rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--status-ok);min-width:1rem}
+.tick.raised{color:var(--gold-b)}
+.tick.absent{color:var(--muted);border:0}
+.also{margin:18px 0 0;font-size:1rem;line-height:1.55;color:var(--muted)}
+
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 15px;
+  border:1px solid var(--line-2);border-radius:4px;
+  background:linear-gradient(180deg,rgba(117,80,36,.26),rgba(117,80,36,.05));
+  color:var(--gold-b);font:400 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover,.btn:focus-visible{border-color:var(--gold);color:var(--pure)}
+.btn.route{background:none;border-style:dashed;color:var(--muted)}
+.btn.close{border-color:var(--gold);min-height:48px}
+
+[popover]{border:1px solid var(--line-2);border-radius:6px;padding:26px;
+  background:linear-gradient(180deg,var(--surface),var(--bg));color:var(--ink);
+  max-width:min(34rem,92vw);box-shadow:0 24px 64px rgba(0,0,0,.8);font:400 1rem/1.5 "Source Serif 4", Georgia, "Times New Roman", serif}
+[popover]::backdrop{background:rgba(4,3,2,.74)}
+[popover] h4{font:600 .82rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.2em;text-transform:uppercase;margin:0 0 16px;color:var(--gold)}
+.popnote{color:var(--muted);font-size:.9rem;margin:14px 0 0;max-width:48ch}
+.popclose{margin-top:18px}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0}
+dl.kv dt{font:400 .78rem/1.5 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+dl.kv dd{margin:0}
+dl.kv dd b.n{font-size:1.1rem}
+
+.dock{margin-top:28px;padding-top:18px;border-top:1px dashed var(--line-2);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.dock .note{font:400 .9rem/1.5 "Source Serif 4", Georgia, "Times New Roman", serif;color:var(--dim);font-style:italic}
+.colophon{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font:400 .75rem/1.6 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--dim)}
+
+@media (max-width:1000px){
+  .cols,.cols.two{grid-template-columns:1fr}
+  .col,.col+.col{padding:22px 0;border-right:0;border-bottom:1px solid var(--line)}
+  .col:last-child{border-bottom:0}
+  .lede{grid-template-columns:1fr;gap:26px}
+  .pull{display:grid;grid-template-columns:auto 1fr;gap:4px 22px;align-items:end}
+  .pull .unit{margin-top:0;padding-bottom:10px}
+  .pull .prov{grid-column:1/-1}
+  .pull .pill{position:static;grid-column:1/-1;width:max-content}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px 44px}
+  .word h1{font-size:1.6rem;letter-spacing:.12em}
+  .lede{padding:26px 0 24px}
+  .lede h2{font-size:1.9rem}
+  .lede .text{font-size:1.15rem}
+  .lede .text b.n{font-size:1.05rem}
+  .pull .big{font-size:3.4rem}
+  .wk.peak{margin:0 -8px;padding:12px 8px}
+  .door{padding:0 10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+</style>
+</head><body>
+<div class="wrap">
+  <header class="mast">
+    <div class="dateline"><span><b>Team 1</b> <span class="stamp" tabindex="0" title="the seat's label in a replayed battery, not an owner's team name. A live league has the real one">constructed</span></span><span>12T_ppr_K_DEF</span><span>no league name <span class="absent" tabindex="0" title="a format label is a battery arm, not a league's name">&mdash;</span></span><span>no week on file <span class="absent" tabindex="0" title="a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead">&mdash;</span></span></div>
+    <div class="word"><div class="crest"><svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true">
+<defs><linearGradient id="g" x1="0" y1="0" x2=".3" y2="1">
+<stop offset="0" stop-color="#755024"/><stop offset=".4" stop-color="#ba9561"/>
+<stop offset=".72" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
+</linearGradient></defs>
+<path d="M17 2a15 15 0 1 0 10.6 25.6" fill="none" stroke="url(#g)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M17 8a9 9 0 1 1-6.4 15.3" fill="none" stroke="url(#g)" stroke-width="1.9" stroke-linecap="round" opacity=".82"/>
+<circle cx="21.4" cy="10.6" r="1.9" fill="url(#g)"/></svg></div><h1>Gold Wyrm</h1><small>Dynasty</small></div>
+    <nav class="sections" aria-label="Rooms"><a class="door" href="#matchup">Matchup</a><a class="door" href="#roster-maintenance">Roster Maintenance</a><a class="door" href="#draft-room">Draft Room</a><a class="door" href="#league">League</a><a class="door" href="#import-audit">Import Audit</a></nav>
+  </header>
+
+  <section class="lede">
+    <div>
+      <p class="eyebrow">The three-second answer</p>
+      <h2>Three things are open.</h2>
+      <p class="text">Week <b class="n">6</b> costs <b class="n">95</b> in <span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint, so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built">trade value</span>, the largest of six weeks measured, with <b class="n">1</b> starter out. DEF and TE rate <b class="lbl">Weak</b> against this league&rsquo;s own rosters; TE on a priced floor, <b class="n">1</b> of <b class="n">2</b> priced. No current week is on file, so none of this carries a deadline.</p>
+    </div>
+    <div class="pull"><span class="big">95</span><span class="unit"><span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint, so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built">trade value</span> &middot; week 6</span><p class="prov" title="lineup_optimizer.bye_collision / bye_concentration">measured &middot; lineup_optimizer.bye_collision / bye_concentration</p></div>
+  </section>
+
+  <div class="cols "><section class="col byes"><h2 class="eyebrow">The bye weeks</h2><p class="intro">Each week below is the lineup solved again with that week&rsquo;s byes removed. The figure is value lost in <span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint, so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built">trade value</span>, not bodies away.</p><p class="prov" title="lineup_optimizer.bye_collision / bye_concentration">measured &middot; lineup_optimizer.bye_collision / bye_concentration</p><div class="weeks"><div class="wk peak"><div class="wkhead"><span class="wklabel">Week 6</span><span class="wkfig"><b class="n">95</b></span></div><p class="wkwho"><span class="st">Jahmyr Gibbs</span> <span class="nw">(<span class="pos" style="color:#0ca89c"><i style="background:#0ca89c"></i>RB</span>&thinsp;&middot;&thinsp;<b class="n">95</b>)</span> is away. <span class="detail">One starter out; the lineup that week is worth <b class="n">220</b>.</span></p></div><div class="wk"><div class="wkhead"><span class="wklabel">Week 7</span><span class="wkfig"><b class="n">8</b></span></div><p class="wkwho"><span class="st">Terry McLaurin</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">24</b>)</span>, <span>Quentin Johnston</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">14</b>)</span>, <span class="st">Tyler Bass</span> <span class="nw">(<span class="pos" style="color:#fab87e"><i style="background:#fab87e"></i>K</span>&thinsp;&middot;&thinsp;<span class="absent" tabindex="0" title="unpriced: the capture writes 0.0 where the merger returned no price (`trade_value or 0.0`), so a zero here cannot be told from an absence">&mdash;</span>)</span> and <span>Dawson Knox</span> <span class="nw">(<span class="pos" style="color:#ff6042"><i style="background:#ff6042"></i>TE</span>&thinsp;&middot;&thinsp;<span class="absent" tabindex="0" title="unpriced: the capture writes 0.0 where the merger returned no price (`trade_value or 0.0`), so a zero here cannot be told from an absence">&mdash;</span>)</span> are away.</p></div><div class="wk"><div class="wkhead"><span class="wklabel">Week 8</span><span class="wkfig"><b class="n">51</b></span></div><p class="wkwho"><span class="st">Chris Olave</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">52</b>)</span>, <span class="st">Houston Texans</span> <span class="nw">(<span class="pos" style="color:#ef7fc0"><i style="background:#ef7fc0"></i>DEF</span>&thinsp;&middot;&thinsp;<b class="n">9</b>)</span> and <span class="st">Jayden Higgins</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">21</b>)</span> are away.</p></div><div class="wk"><div class="wkhead"><span class="wklabel">Week 9</span><span class="wkfig"><b class="n">4</b></span></div><p class="wkwho"><span class="st">Wan'Dale Robinson</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">20</b>)</span> is away.</p></div><div class="wk"><div class="wkhead"><span class="wklabel">Week 10</span><span class="wkfig"><b class="n">56</b></span></div><p class="wkwho"><span class="st">Saquon Barkley</span> <span class="nw">(<span class="pos" style="color:#0ca89c"><i style="background:#0ca89c"></i>RB</span>&thinsp;&middot;&thinsp;<b class="n">42</b>)</span>, <span class="st">Caleb Williams</span> <span class="nw">(<span class="pos" style="color:#2a81fc"><i style="background:#2a81fc"></i>QB</span>&thinsp;&middot;&thinsp;<b class="n">29</b>)</span> and <span>Chris Godwin</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">15</b>)</span> are away.</p></div><div class="wk"><div class="wkhead"><span class="wklabel">Week 11</span><span class="wkfig"><b class="n">23</b></span></div><p class="wkwho"><span class="st">Kyle Pitts</span> <span class="nw">(<span class="pos" style="color:#ff6042"><i style="background:#ff6042"></i>TE</span>&thinsp;&middot;&thinsp;<b class="n">23</b>)</span>, <span>Romeo Doubs</span> <span class="nw">(<span class="pos" style="color:#4aa8ef"><i style="background:#4aa8ef"></i>WR</span>&thinsp;&middot;&thinsp;<b class="n">16</b>)</span>, <span>Andy Borregales</span> <span class="nw">(<span class="pos" style="color:#fab87e"><i style="background:#fab87e"></i>K</span>&thinsp;&middot;&thinsp;<span class="absent" tabindex="0" title="unpriced: the capture writes 0.0 where the merger returned no price (`trade_value or 0.0`), so a zero here cannot be told from an absence">&mdash;</span>)</span> and <span>Sam Darnold</span> <span class="nw">(<span class="pos" style="color:#2a81fc"><i style="background:#2a81fc"></i>QB</span>&thinsp;&middot;&thinsp;<b class="n">15</b>)</span> are away.</p></div></div><p class="foot">Across the season the byes cost <b class="n">237</b>; week <b class="n">6</b> carries <b class="n">40%</b> of it. Unknown byes: <b class="n">0</b>.</p><p class="legend"><span class="st">Underlined</span> names are in the lineup <span class="stamp" tabindex="0" title="optimize_lineup's best legal lineup. slot='Starter' is assigned in app.py from Sleeper's own `starters` array, which is a lineup a human submitted; a drafted roster has none, so this cannot be measured from a draft and is not presented as if it were">constructed</span> by <code>optimize_lineup</code>, not one a human submitted.</p><div class="row"><button class="btn" popovertarget="pop-bye">What week 6 is made of</button><div id="pop-bye" popover><h4>Week 6, as measured</h4><dl class="kv"><dt>lineup value that week</dt><dd><b class="n">220</b></dd><dt>value lost</dt><dd><b class="n">95</b></dd><dt>players away</dt><dd><b class="n">1</b></dd><dt>of them starters</dt><dd><b class="n">1</b></dd><dt>bench bodies promoted</dt><dd><b class="n">0</b></dd><dt>their value</dt><dd><b class="n">0</b></dd></dl><p class="popnote">Six fields <code>bye_collision</code> returns for this week, in <span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint, so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built">trade value</span>. Basis: measured.</p><div class="popclose"><button class="btn" popovertarget="pop-bye" popovertargetaction="hide">Close</button></div></div><a class="btn route" href="#matchup">Matchup &rsaquo;</a></div></section><section class="col open"><h2 class="eyebrow">Open</h2><p class="intro">Ranked by kind, not by size; the units do not compare.</p><article class="entry thin"><span class="pill" style="background:rgba(239,127,192,0.18);color:#ef7fc0">DEF</span><p class="line"><b class="n">1</b> rostered &middot; <b class="n">1</b> priced</p><p class="text">Depth here rates <b class="lbl">Weak</b> against this league&rsquo;s own rosters.</p><p class="prov" title="positional_depth + depth_ratings.depth_label">measured &middot; positional_depth + depth_ratings.depth_label</p><div class="row"><button class="btn" popovertarget="pop-thin-0">What it is made of</button><a class="btn route" href="#league">League &rsaquo;</a></div></article><article class="entry thin"><span class="pill" style="background:rgba(255,96,66,0.18);color:#ff6042">TE</span><p class="line"><b class="n">2</b> rostered &middot; <b class="n">1</b> priced</p><p class="text">Depth here rates <b class="lbl">Weak</b> against this league&rsquo;s own rosters. Only <b class="n">1</b> of <b class="n">2</b> could be priced, so the comparison is a floor.</p><p class="prov" title="positional_depth + depth_ratings.depth_label">measured &middot; positional_depth + depth_ratings.depth_label</p><div class="row"><button class="btn" popovertarget="pop-thin-1">What it is made of</button><a class="btn route" href="#league">League &rsaquo;</a></div></article></section><div id="pop-thin-0" popover><h4>DEF &middot; depth</h4><dl class="kv"><dt>rostered</dt><dd><b class="n">1</b></dd><dt>priced</dt><dd><b class="n">1</b></dd><dt>band</dt><dd>Weak</dd></dl><p class="popnote">The band is a RATIO against this league&rsquo;s own mean, one of four steps. Nothing here orders teams within a position, so there is no &ldquo;worst in the league&rdquo; to report.</p><div class="popclose"><button class="btn" popovertarget="pop-thin-0" popovertargetaction="hide">Close</button></div></div><div id="pop-thin-1" popover><h4>TE &middot; depth</h4><dl class="kv"><dt>rostered</dt><dd><b class="n">2</b></dd><dt>priced</dt><dd><b class="n">1</b></dd><dt>band</dt><dd>Weak</dd></dl><p class="popnote">The band is a RATIO against this league&rsquo;s own mean, one of four steps. Nothing here orders teams within a position, so there is no &ldquo;worst in the league&rdquo; to report.</p><div class="popclose"><button class="btn" popovertarget="pop-thin-1" popovertargetaction="hide">Close</button></div></div><section class="col checked"><h2 class="eyebrow">Checked</h2><p class="intro">What was examined to write this page, in the order it is ranked.</p><div class="check"><p class="line"><span class="tick" aria-hidden="true">&check;</span><span class="cname">Holes</span></p><p class="text">Nothing found. No slot the league defines is left empty by the solver.</p><p class="prov" title="slots_from_roster_positions + slot_coverage">measured &middot; slots_from_roster_positions + slot_coverage</p></div><div class="check"><p class="line"><span class="tick raised" aria-hidden="true">&bull;</span><span class="cname">Byes</span></p><p class="text">Raised. Week <b class="n">6</b>, above.</p><p class="prov" title="lineup_optimizer.bye_collision / bye_concentration">measured &middot; lineup_optimizer.bye_collision / bye_concentration</p></div><div class="check"><p class="line"><span class="tick raised" aria-hidden="true">&bull;</span><span class="cname">Depth</span></p><p class="text">Raised. DEF and TE, above.</p><p class="prov" title="positional_depth + depth_ratings.depth_label">measured &middot; positional_depth + depth_ratings.depth_label</p></div></section></div>
+
+  <div class="dock">
+    <a class="btn route" href="#prytaneum">The Prytaneum</a>
+    <span class="note">A dock rendered under every room, not a sixth room.</span>
+  </div>
+  <footer class="colophon"><span>12T_ppr_K_DEF &middot; sharp_auto &middot; seat 1 &middot; 16 rounds</span><span><b class="n">5357</b> players in the pool</span></footer>
+</div>
+</body></html>
