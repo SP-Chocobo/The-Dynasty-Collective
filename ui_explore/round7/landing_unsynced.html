@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connect Sleeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>:root {
+  --bg: #0c0a07;
+  --surface: #17130d;
+  --surface-2: #120f0a;
+  --line: #2a2318;
+  --line-2: #443823;
+  --ink: #f2ead9;
+  --muted: #b0a28a;
+  --dim: #897c61;
+  --emerald: #0b8f57;
+  --emerald-b: #2fd08b;
+  --gold: #c9961a;
+  --gold-b: #f5c93f;
+  --violet: #6d3fd6;
+  --violet-b: #b593f5;
+  --crimson: #a60f3a;
+  --crimson-b: #f2546e;
+  --sky: #1356c9;
+  --sky-b: #56a0fa;
+  --amber: #d4700a;
+  --amber-b: #f8a52a;
+  --cliff: #07837a;
+  --cliff-b: #2fcfc0;
+  --block: #b53a09;
+  --block-b: #f79a53;
+  --pure: #efe5cd;
+  --tie: #6f6550;
+  --tie-b: #a1947b;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}:root{--sans:"Segoe UI", system-ui, sans-serif;--mono:"JetBrains Mono", "DejaVu Sans Mono", monospace;--display:"Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif}:root {
+  --qb: #2a81fc;
+  --rb: #0ca89c;
+  --wr: #4aa8ef;
+  --te: #ff6042;
+  --k: #fab87e;
+  --def: #ef7fc0;
+  --dl: #4cec4c;
+  --lb: #ff45ed;
+  --db: #6ad8f0;
+  --idp: #99a851;
+  --absent: #b0a28a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:400 .95rem/1.55 var(--sans);-webkit-text-size-adjust:100%}
+.wrap{max-width:68rem;margin:0 auto;padding:0 20px 72px}
+a{color:inherit}
+
+/* ---- top: identity on the left, the CONNECTION and its one verb on the right ---- */
+.top{display:flex;align-items:center;gap:20px;padding:18px 0;flex-wrap:wrap;
+  border-bottom:1px solid var(--line)}
+.crest{display:flex;align-items:center;gap:12px}
+.word{font:600 1.3rem/1 var(--display);letter-spacing:.11em;text-transform:uppercase;margin:0;
+  background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.word b{display:block;font-size:.75rem;letter-spacing:.42em;font-weight:400;margin-top:5px}
+.conn{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.who{font:400 .82rem/1.4 var(--mono);color:var(--muted);text-align:right}
+.who b{color:var(--ink)}
+.btn{font:600 .78rem/1 var(--display);letter-spacing:.17em;text-transform:uppercase;
+  padding:13px 17px;min-height:44px;border-radius:5px;cursor:pointer;
+  border:1px solid var(--gold);color:var(--gold-b);
+  background:linear-gradient(180deg,rgba(117,80,36,.3),rgba(117,80,36,.12))}
+.btn.ghost{border-style:dashed;border-color:var(--line-2);color:var(--muted);background:none}
+.btn:hover{border-color:var(--gold-b)}
+
+/* ---- the count. A COUNT, never a grade. ---- */
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;
+  margin:26px 0 8px;padding:22px 26px;border:1px solid var(--line-2);border-radius:6px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));overflow:hidden;position:relative}
+.verdict::before{content:"";position:absolute;inset:0 auto 0 0;width:160px;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(176,162,138,.06) 4px 5px);
+  mask-image:linear-gradient(90deg,#000,transparent)}
+.tally{font:600 3.4rem/1 var(--mono);color:var(--gold-b);letter-spacing:-.03em;position:relative;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.tally s{font-size:1.4rem;color:var(--dim);text-decoration:none;margin-left:3px}
+.verdict h1{font:400 1.6rem/1.2 var(--display);color:var(--gold-b);margin:0 0 7px;position:relative}
+.verdict div p{margin:0;color:var(--muted);font-size:.89rem;position:relative;max-width:60ch}
+
+.eyebrow{font:600 .78rem/1 var(--display);letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin:30px 0 9px}
+.bnote{margin:0 0 12px;color:var(--dim);font-size:.84rem;max-width:68ch}
+
+/* ---- THE LIST. One line per league: that is what makes twenty scannable. ---- */
+.leagues{border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+.lrow{display:grid;grid-template-columns:4px 13rem 1fr auto;gap:0 18px;align-items:center;
+  border-bottom:1px solid var(--line)}
+.lrow:last-child{border-bottom:0}
+.lrow:hover{background:rgba(117,80,36,.09)}
+.rail{align-self:stretch}
+.lrow.hole .rail{background:var(--gold-b)}
+.lrow.bye .rail{background:var(--gold)}
+.lrow.thin .rail{background:var(--tie-b)}
+.lrow.quiet .rail{background:var(--status-ok);opacity:.45}
+.lid{padding:15px 0 15px 17px;text-decoration:none;display:block;min-height:44px}
+.lname{font:400 1rem/1.25 var(--sans);color:var(--ink);margin:0}
+.lmeta{font:400 .76rem/1.4 var(--mono);color:var(--dim);margin:3px 0 0}
+.lclaim{padding:15px 0;display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
+.lclaim .txt{font-size:.9rem;color:var(--muted)}
+.lclaim .txt b{color:var(--ink);font-family:var(--mono);font-weight:600;font-size:.85rem}
+.more{font:400 .75rem/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
+.dot.bye{background:var(--gold)}
+.dot.hole{background:var(--gold-b)}
+.ok{color:var(--status-ok)}
+.off{color:var(--dim)}
+.lacts{display:flex;align-items:center;gap:4px;padding-right:12px}
+.act,.go{min-width:44px;min-height:44px;display:grid;place-items:center;border:0;background:none;
+  color:var(--dim);cursor:pointer;font-size:1.1rem;text-decoration:none;border-radius:4px}
+.act:hover,.go:hover{color:var(--gold-b);background:rgba(117,80,36,.16)}
+.go{font-size:1.4rem}
+
+/* ---- popovers, per the owner's ruling: a popout, never inline disclosure ---- */
+/* ---- the set-up half, collapsed to commands. The owner's question, and the answer:
+   the triage list is why you opened the page; add/manage/connect are monthly. Four
+   always-open cards spent half the page height on the least-used half. ---- */
+.commands{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.cmd{text-align:left;min-height:44px;padding:15px 17px;cursor:pointer;border-radius:6px;
+  border:1px solid var(--line-2);color:var(--gold-b);
+  font:600 .8rem/1.2 var(--display);letter-spacing:.14em;text-transform:uppercase;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+.cmd:hover{border-color:var(--gold)}
+.cmd s{display:block;margin-top:7px;text-decoration:none;color:var(--dim);
+  font:400 .78rem/1.3 var(--mono);letter-spacing:0;text-transform:none}
+.pop.wide{max-width:34rem;padding:0;border:0;background:none}
+.pop.wide .card{margin:0}
+.pop{border:1px solid var(--line-2);border-radius:7px;padding:18px 20px;max-width:27rem;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));color:var(--ink)}
+.pop::backdrop{background:rgba(0,0,0,.62)}
+.popttl{font:400 1.1rem/1.2 var(--sans);margin:0 0 3px}
+.popmeta{font:400 .76rem/1.4 var(--mono);color:var(--dim);margin:0 0 15px}
+.pact{display:block;width:100%;text-align:left;min-height:44px;margin:0 0 2px;cursor:pointer;
+  font:600 .76rem/1 var(--display);letter-spacing:.15em;text-transform:uppercase;
+  padding:14px 15px;border-radius:5px;border:1px solid var(--line-2);color:var(--gold-b);
+  background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.08))}
+.pact.danger{color:var(--tie-b);border-color:rgba(176,80,70,.4)}
+.pcost{margin:0 0 14px;font-size:.8rem;color:var(--dim);line-height:1.5}
+
+/* ---- the operating bands: add, manage, connect ---- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{border:1px solid var(--line);border-radius:6px;padding:20px 22px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+.card h2{font:400 1.05rem/1.25 var(--sans);color:var(--ink);margin:0 0 4px}
+.card p.sub{margin:0 0 16px;color:var(--dim);font-size:.82rem;line-height:1.5}
+.field{display:flex;gap:8px;margin:0 0 7px;flex-wrap:wrap}
+.field input{flex:1 1 11rem;min-height:44px;padding:11px 13px;border-radius:5px;
+  border:1px solid var(--line-2);background:rgba(0,0,0,.3);color:var(--ink);
+  font:400 .88rem/1 var(--mono)}
+.field input::placeholder{color:var(--dim)}
+.hint{margin:0 0 18px;font-size:.79rem;color:var(--dim);line-height:1.5}
+.hint:last-child{margin-bottom:0}
+
+.crow{display:grid;grid-template-columns:7rem 1fr auto;gap:12px;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--line)}
+.crow:last-of-type{border-bottom:0}
+.cname{font-size:.9rem}
+.ckey{font:400 .76rem/1 var(--mono);color:var(--dim)}
+.cstate{font:400 .8rem/1 var(--mono);white-space:nowrap}
+.cstate.on{color:var(--status-ok)}
+.cstate.no{color:var(--dim)}
+
+.srow{display:flex;justify-content:space-between;gap:14px;padding:9px 0;
+  border-bottom:1px solid var(--line);font-size:.84rem;color:var(--muted)}
+.srow:last-of-type{border-bottom:0}
+.sage{font:400 .8rem/1 var(--mono);color:var(--dim);white-space:nowrap}
+.sage b{color:var(--ink)}
+
+.absent{color:var(--dim);border-bottom:1px dotted var(--line-2);cursor:help}
+.stamp{display:inline-block;font:400 .75rem/1 var(--mono);letter-spacing:.08em;
+  text-transform:uppercase;color:var(--gold);border:1px dashed var(--line-2);
+  border-radius:3px;padding:4px 7px}
+.foot{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
+  color:var(--dim);font-size:.8rem;line-height:1.6}
+
+@media (max-width:860px){
+  .cols{grid-template-columns:1fr}
+  .commands{grid-template-columns:1fr 1fr}
+  .lrow{grid-template-columns:4px 1fr auto;row-gap:0}
+  .lclaim{grid-column:2/4;padding:0 0 15px}
+  .verdict{grid-template-columns:1fr;gap:12px}
+  .tally{font-size:2.6rem}
+}
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <div class="crest"><svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+<defs><linearGradient id="g" x1="0" y1="0" x2=".3" y2="1">
+<stop offset="0" stop-color="#755024"/><stop offset=".4" stop-color="#ba9561"/>
+<stop offset=".72" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
+</linearGradient></defs>
+<path d="M17 2a15 15 0 1 0 10.6 25.6" fill="none" stroke="url(#g)" stroke-width="2.4"
+ stroke-linecap="round"/>
+<path d="M17 8a9 9 0 1 1-6.4 15.3" fill="none" stroke="url(#g)" stroke-width="1.9"
+ stroke-linecap="round" opacity=".82"/>
+<circle cx="21.4" cy="10.6" r="1.9" fill="url(#g)"/>
+</svg><p class="word">Gold Wyrm<b>Dynasty</b></p></div>
+  </header>
+
+  <section class="verdict">
+    <p class="tally">0<s>/0</s></p>
+    <div>
+      <h1>No leagues yet.</h1>
+      <p>Sleeper needs a username and no password. Syncing an account pulls every league it
+         returns; a single league can be added by its ID instead.</p>
+    </div>
+  </section>
+
+  <div class="cols">
+    <div class="card">
+      <h2>Connect</h2>
+      <p class="sub">Either route works, and both can be used together later.</p>
+      <div class="field">
+        <input type="text" placeholder="Sleeper username" aria-label="Sleeper username">
+        <button class="btn">Sync account</button>
+      </div>
+      <p class="hint">Pulls every league on the account.</p>
+      <div class="field">
+        <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
+        <button class="btn ghost">Add one</button>
+      </div>
+      <p class="hint">For a league the account lookup does not return.</p>
+    </div>
+    <div class="card">
+      <h2>What is already on disk</h2>
+      <p class="sub">Loaded now, before any sync. These price the board; the sync adds your
+         league&rsquo;s own rules.</p>
+      <div class="srow"><span>Draft Sharks Dynasty Rankings</span><span class="sage"><code>2026-11-05</code> &middot; <b>3</b>d</span></div><div class="srow"><span>Draft Sharks Trade Value Chart</span><span class="sage"><code>2026-11-05</code> &middot; <b>3</b>d</span></div><div class="srow"><span>Sleeper player database</span><span class="sage"><code>2026-09-07</code> &middot; <b>62</b>d</span></div><div class="srow"><span>Draft Sharks Free Agent Finder</span><span class="sage"><span class="absent" tabindex="0" title="not loaded, so it has no date and no age to report">&mdash;</span></span></div>
+      <p class="hint" style="margin-top:16px"><b>Until you sync,</b> the board cannot price to a
+         league&rsquo;s scoring: the player universe and the league-scored projections both
+         arrive with the sync.</p>
+    </div>
+  </div>
+
+  <p class="foot">This is the state the app is in before a username is entered &mdash; composed
+    from the same freshness rows the synced page reports, so the two cannot disagree.</p>
+</div>
+</body></html>

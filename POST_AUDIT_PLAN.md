@@ -20611,3 +20611,106 @@ every page built from them — including the round-6 agents' pages. **One agent 
 against these fixtures**, so the fix waits for it rather than pulling the ground out from under
 work in flight. Then: both fixes, regenerate every fixture and page, one full suite.
 
+
+---
+
+## `#347` — THE LANDING PAGE IS NOT AN ANALYSIS SURFACE, AND I DREW IT AS ONE TWICE
+
+Third attempt at this page. The first two failed the same way, and the owner named it:
+
+> This again just feels like a rebuild of the dashboard. The landing page just needs to say
+> "these leagues need attention." "resync" "add league" and the connections options, no?
+> ... league management and connections/setups too, maybe
+> ... as in setting up new league, deleting leagues, and the like
+
+`#343` rebuilt the in-league dashboard. `#344` rebuilt the CLAIM BAND at twelve-league arity and
+congratulated itself in its own docstring for not being a dashboard — it was still analysis,
+only wider. Four of the five things the owner listed are VERBS. A page whose job is mostly verbs
+is not a dashboard, and that is the distinction both earlier attempts missed.
+
+Built at `ui_explore/round7/`: `build_landing.py`, `landing.html`, `landing_unsynced.html`,
+`landing_fixture.json`, `NOTES.md`. Both pages rebuild byte-identically.
+
+**EVERY AFFORDANCE WAS READ OUT OF `app.py` BEFORE IT WAS DRAWN.** The hard law forbids
+inventing a quantity; an invented ACTION is the same defect wearing a different hat. Reading
+changed the drawing in two places:
+
+| affordance | what the code actually does |
+|---|---|
+| Add a league | **TWO paths.** `app.py:2498` takes a raw league ID (one league, appended). `app.py:2328 sync_leagues(username)` takes an account and REPLACES the list. |
+| Delete | `app.py:1438`, real, local, confirmed. **Never touches Sleeper** — a league you are still in reappears unsynced on the next account sync. |
+| Leagues you left | already computed by `sync_leagues`' diff; had no surface anywhere |
+| Archive / reorder | `league_prefs`, local only; Sleeper has no concept of either |
+
+An earlier draft had only the account path and would have drawn "Add league" as a lie about what
+the button does. The delete panel states the purge list and the never-touches-Sleeper line,
+because a delete button that reads as *leaving the league* is the most expensive
+misunderstanding available on this surface.
+
+**COLLAPSING THE SET-UP HALF, AND WHAT IT COSTS.** Asked whether these would be cleaner as
+collapsible commands: yes, for the bottom half. Four always-open cards spent ~700px on the
+least-used controls. Folded into four commands the page went **2311px -> 1606px (-30%)**. But
+collapsing hides STATE, not just controls — a bare row of verbs would have concealed that
+nothing is archived, or that no key is set. Each command therefore carries the one number its
+panel reports (`2 archived - 1 left`, `Sleeper - 1 of 3 providers`, `oldest source 62d`).
+
+**THREE DEFECTS, ALL FOUND BY RENDERING IT.** None would have been caught by reading the code.
+
+1. `var(--sans)`/`--mono`/`--display` were **never defined** — `design_system` defines colour
+   tokens; the faces are Python constants `round5` substitutes with `.format()`. An
+   unresolvable `var()` inside a `font:` SHORTHAND invalidates the whole declaration, so every
+   rule setting size and face together was silently dropped. Measured: type scale **12->22px**,
+   the 3.4rem tally rendering at **14.24px**. No console error, no warning — a complete,
+   plausible page at the wrong size, which is this repo's signature failure mode.
+2. A raw Python dict shipped onto the page: `checks_summary` returns a dict BY DESIGN (`#338`)
+   and a draft interpolated it directly, printing
+   `{'ran': 3, 'clean': ['holes', 'byes', 'depth'], ...}` in a league row.
+3. A cascade collision: `.verdict p` (0,1,1) beat `.tally` (0,1,0), crushing the hero figure to
+   14.24px. **This survived defect 1's fix** — two independent causes of one symptom, and
+   repairing the first made the second look repaired.
+
+**A SIXTH HOLLOW INSTRUMENT, CAUGHT BEFORE IT SHIPPED.** `build_dashboard._assert_type_floor()`
+closes over its own module-global `CSS` and takes no argument. Imported and called from a
+different builder it checks the DASHBOARD's stylesheet, passes unconditionally, and reports
+nothing about the file it appears to guard. Both gates were rewritten here to take their subject
+as a parameter. Mutation-checked 4 arms: real call passes; dropping `font_vars()` FIRES;
+`.6rem` FIRES; `0.9em` FIRES. The type floor fired on its first real run (`.7rem`, `.74rem`).
+
+Final: scale 12->54px (4.53:1), 18 sizes, min font 12.0px, 0 overflow at 390px, 0 console errors.
+
+**NOT FIXED, AND WHY.** The twelve rows are twelve SEATS of one replayed league, so five read
+nearly identically — a fixture artifact, stamped CONSTRUCTED on the page. **This page has never
+been seen against leagues that actually differ**, which is the one test that matters for a list
+whose entire job is telling leagues apart. Connection state is constructed throughout (no
+`data/` on a fresh clone). No test file yet, so `#347` is RECORDED, NOT CLOSED.
+
+### `#348` — THE PROVIDER REGISTRY IS AGNOSTIC; THREE TABLES IN `app.py` ARE NOT
+
+> api keys need to be agnostic, not tied to specific models, companies, etc. if i wanted to
+> integrate kimi k2 or grok, that should not fight the language used
+
+`providers.py` already is what the owner is asking for: a frozen `Provider` dataclass with `id`,
+`label`, `key_field` and an `is_configured` callable, plus `register()`. The round-7 page
+therefore names no provider at all — it reads the registry, so a provider registered tomorrow
+appears with no edit. Two facts that reading produced and memory would not have: the registry is
+EMPTY at `providers`' own import and populated at `llm_engine`'s (a page that read it too early
+renders an empty card and looks correct), and openai's real label is **"ChatGPT"**.
+
+**The page's language was the easy half.** `app.py` holds two tables DERIVED from the registry
+(`PROVIDER_KEY_FIELD`, `IS_PROVIDER_CONFIGURED`, lines 1046-1047) and **three hardcoded to the
+same three providers**:
+
+| site | what it hardcodes |
+|---|---|
+| `app.py:770 ENV_VAR_FOR_OVERRIDE` | override field -> env var name |
+| `app.py:1050 CREDENTIAL_FIELD_ALIASES` | override field -> accepted `.env` spellings |
+| `app.py:3540-3542` | a literal tuple calling `is_claude_configured` / `is_gemini_configured` / `is_openai_configured` **by name** |
+
+The third is the worst: it calls three named functions instead of the `is_configured` callable
+the `Provider` already carries, so a registered Grok is invisible to that check even though the
+registry knows how to test it. This is `#312`'s "one palette, three homes" in the provider layer.
+
+So registering Kimi K2 or Grok today takes one `providers.register(...)` call **plus edits to
+three tables that the registry does not reach** — and missing the first two fails silently: the
+paste-a-`.env` flow simply would not recognise the new key. NOT FIXED; this is a repair to
+`app.py`, not to a mockup, and it wants its own pass.

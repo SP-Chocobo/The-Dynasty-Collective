@@ -1,0 +1,21 @@
+{
+  "_stamp": "CONSTRUCTED -- there is no data/ directory on a fresh clone, so every value in this file stands in for state the running app holds. The LEAGUE ROWS are not from here: they come from ui_explore/seats/seat*.json, which are real composed claim bands.",
+  "_providers_note": "This file names NO provider (#348). Identities, labels and credential names are read from the providers registry at build time. All this carries is which credentials happen to be set, which is a property of the environment rather than of the registry -- so registering kimi-k2 or grok adds a row here with no edit to the fixture or the builder.",
+  "sleeper": {
+    "username": "cincandella",
+    "user_id": "CONSTRUCTED",
+    "synced_at_human": "4 hours ago",
+    "synced_at_basis": "CONSTRUCTED -- the app reads this from snapshot['synced_at'] via league_config.describe_config_age, which needs a clock a built file does not have"
+  },
+  "configured_credentials": ["anthropic"],
+  "archived_seats": ["seat09", "seat12"],
+  "left_leagues": [
+    {"name": "Sunday Scaries", "basis": "measured -- sync_leagues diffs Sleeper's league list against league_prefs order+archived; anything previously tracked and now missing means you left, were removed, or it was deleted"}
+  ],
+  "sources": [
+    {"label": "Draft Sharks Dynasty Rankings", "as_of": "2026-11-05", "days": 3},
+    {"label": "Draft Sharks Trade Value Chart", "as_of": "2026-11-05", "days": 3},
+    {"label": "Sleeper player database", "as_of": "2026-09-07", "days": 62},
+    {"label": "Draft Sharks Free Agent Finder", "as_of": null, "days": null}
+  ]
+}
