@@ -8607,12 +8607,12 @@
       }
     },
     "test_front_claims.py": {
-      "test_methods": 18,
+      "test_methods": 20,
       "asserts": {
-        "assertEqual": 20,
+        "assertEqual": 21,
         "assertFalse": 1,
         "assertIn": 3,
-        "assertIsNone": 2,
+        "assertIsNone": 3,
         "assertNotIn": 1,
         "assertTrue": 2
       },
@@ -8624,7 +8624,13 @@
           "assertEqual": 1,
           "assertTrue": 1
         },
+        "AbsenceAndFloorsSurviveTheLiftTests.test_a_thin_row_with_no_label_carries_None_rather_than_a_guess": {
+          "assertIsNone": 1
+        },
         "AbsenceAndFloorsSurviveTheLiftTests.test_priced_floor_is_set_only_when_some_of_the_room_could_not_be_priced": {
+          "assertEqual": 1
+        },
+        "AbsenceAndFloorsSurviveTheLiftTests.test_the_depth_LABEL_is_carried_because_dropping_it_invited_a_fabrication": {
           "assertEqual": 1
         },
         "FuturityIsTheByeRungsWholeReasonTests.test_a_known_week_re_picks_the_worst_week_STILL_AHEAD": {
@@ -8756,9 +8762,10 @@
       }
     },
     "test_front_pages_match_their_builders.py": {
-      "test_methods": 2,
+      "test_methods": 4,
       "asserts": {
         "assertEqual": 2,
+        "assertNotIn": 2,
         "assertTrue": 1
       },
       "by_method": {
@@ -8768,6 +8775,12 @@
         "TheCommittedPagesAreWhatTheirBuildersProduceTests.test_the_palette_on_every_page_is_the_system_of_records_OWN_values": {
           "assertEqual": 1,
           "assertTrue": 1
+        },
+        "ThePagesDoNotAssertARankTheEngineNeverComputesTests.test_no_built_page_claims_a_rank_among_peers": {
+          "assertNotIn": 1
+        },
+        "ThePagesDoNotAssertARankTheEngineNeverComputesTests.test_the_builder_itself_does_not_spell_a_rank_outside_a_comment": {
+          "assertNotIn": 1
         }
       },
       "disabled": {
@@ -16010,6 +16023,79 @@
         },
         "TheFixtureCarriesThePriorSeasonUnderItsOwnYear.test_production_is_stored_beside_the_projections_not_mixed_into_them": {
           "assertEqual": 2
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_shared_season_projections.py": {
+      "test_methods": 16,
+      "asserts": {
+        "assertEqual": 13,
+        "assertFalse": 1,
+        "assertIn": 1,
+        "assertIsNone": 2,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "AFailedFetchIsNeverSharedTests.test_a_torn_cache_file_falls_through_to_a_fetch_rather_than_serving_junk": {
+          "assertEqual": 2
+        },
+        "AFailedFetchIsNeverSharedTests.test_an_empty_result_is_not_written_either": {
+          "assertEqual": 1
+        },
+        "AFailedFetchIsNeverSharedTests.test_an_errored_fetch_is_not_written_for_the_next_league_to_inherit": {
+          "assertEqual": 1,
+          "assertIsNone": 1
+        },
+        "OneFetchAnswersForEveryLeagueTests.test_a_reader_can_tell_a_reused_file_from_a_fresh_fetch": {
+          "assertFalse": 1,
+          "assertIsNotNone": 1,
+          "assertTrue": 1
+        },
+        "OneFetchAnswersForEveryLeagueTests.test_nine_leagues_cost_one_season_fetch_not_nine": {
+          "assertEqual": 1
+        },
+        "OneFetchAnswersForEveryLeagueTests.test_the_sums_are_identical_on_the_reused_path": {
+          "assertEqual": 1
+        },
+        "OneFetchAnswersForEveryLeagueTests.test_the_weekly_lines_survive_the_reused_path": {
+          "assertEqual": 1
+        },
+        "TheCacheIsKeyedAndBoundedTests.test_a_file_past_the_window_is_refetched": {
+          "assertEqual": 1
+        },
+        "TheCacheIsKeyedAndBoundedTests.test_age_is_None_when_nothing_was_ever_written": {
+          "assertIsNone": 1
+        },
+        "TheCacheIsKeyedAndBoundedTests.test_two_season_types_do_not_answer_for_each_other": {
+          "assertEqual": 1
+        },
+        "TheCacheIsKeyedAndBoundedTests.test_two_seasons_do_not_answer_for_each_other": {
+          "assertEqual": 1
+        },
+        "TheKeyCarriesTheWeekCountTests.test_a_cache_written_for_another_week_count_is_not_reused": {
+          "assertEqual": 2
+        },
+        "TheKeyCarriesTheWeekCountTests.test_the_shared_fetch_writes_where_the_clients_own_week_count_points": {
+          "assertTrue": 1
+        },
+        "TheKeyCarriesTheWeekCountTests.test_the_written_payload_records_its_own_week_count": {
+          "assertEqual": 1
+        },
+        "TheKeyCarriesTheWeekCountTests.test_two_week_counts_do_not_share_a_file": {
+          "assertNotEqual": 1
+        },
+        "TheSyncPathUsesItTests.test_sync_league_calls_the_shared_path_not_the_per_league_one": {
+          "assertIn": 1,
+          "assertNotIn": 1
         }
       },
       "disabled": {

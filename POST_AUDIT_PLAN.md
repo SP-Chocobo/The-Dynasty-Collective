@@ -19369,3 +19369,280 @@ from a season total. Every surface in this repo renders figures with a basis sta
 stamps its sentences**, and no ratchet reads them.
 
 Recorded with `#336`'s two fixture defects; repair follows once the last critique lands.
+
+---
+
+## `#337` — NINE LEAGUES PAID 162 REQUESTS FOR A QUANTITY THAT DOES NOT VARY BY LEAGUE
+
+`sync_league` called `get_season_projections` once per league. That function is not one request:
+`_sum_weeks` loops `range(1, REGULAR_SEASON_WEEKS + 1)`, so it is **eighteen** weekly fetches,
+and the capture confirms `weeks_answered: [1..18]`. The cost is therefore per-league × 18 for a
+number that is the same in every league.
+
+```
+leagues   weekly projection fetches, before   after
+   1                    18                     18
+   9                   162                     18        <- the owner's own count
+  20                   360                     18
+```
+
+### The invariant, stated by the owner before I had argued it
+
+> the players all have projected 'what i do' on a given week. each individual league just does
+> varying math/bonuses based on those projections
+
+and, when I started to restate it:
+
+> the "what i do" does not vary league to league, just the math
+
+That is the whole licence for sharing the fetch, so it is recorded here as the premise rather
+than as a remark. **It is also checkable, and I checked it three ways rather than taking it on
+authority** — not because the statement was in doubt, but because it is the one assumption the
+entire item rests on:
+
+| check | result |
+|---|---|
+| does `_sum_weeks` take a league argument? | no — `(fetch, season, season_type, weeks, weekly_out)` |
+| does it read league state off `self`? | no — it reads only `self.REGULAR_SEASON_WEEKS` |
+| does it SELECT among stat categories? | no — it sums every numeric category indiscriminately |
+| any other production caller passing a league? | no — `sleeper_import_report.py:691` passes none |
+
+### THE WRINKLE WORTH NAMING: the payload does contain points
+
+The projections rows are not purely raw stat lines. Measured across 400 rows of the capture:
+**59 distinct categories, and three of them are pre-scored** — `pts_ppr`, `pts_std`,
+`pts_half_ppr`. `get_weekly_stats`' docstring says of its own endpoint "RETURNS RAW STATS,
+NEVER POINTS … a capture that stored points would bake in one league's rules"; the PROJECTIONS
+endpoint is not so clean.
+
+This does not break the invariant, and the reason is worth writing down so the next reader does
+not have to re-derive it: those three fields are the three **canonical conventions**, not any
+league's own settings. They are league-independent in exactly the way the raw categories are.
+A league's real scoring never arrives through this payload at all — it arrives by FILE
+SELECTION, `set_league_format` picking a different rankings export, which is the mechanism
+`#180`/`#192`/`#204` were opened for and the one thing a battery that skips it gets wrong.
+
+So: the cached object is league-independent, and the summed `pts_*` fields are a trap for a
+future reader rather than a defect. Anyone tempted to read them as "this league's points" is
+making the mistake `set_league_format` exists to prevent.
+
+### The fix
+
+`get_season_projections_shared(season, season_type, weekly_out=None, now=None)` — a disk cache
+keyed on the quantity, 6-hour TTL (shorter than the players' daily window, argued in-code),
+carrying its own `fetched_at` because a copied or restored file keeps its contents and loses its
+mtime. It never caches an errored or empty result, because writing one hands the next eight
+leagues the outage instead of a retry, and it falls through to a fetch on a torn file rather
+than serving junk nine leagues would trust. `sync_league` rewired; the snapshot shape is
+unchanged, so no consumer moved and `season_projection_freshness_entry` still reads what it was
+written against. Coverage gains `reused_from_shared_cache` and `fetched_at` so a reader can tell
+a fresh fetch from a reused file.
+
+### A SECOND DEFECT, FOUND IN MY OWN UNCOMMITTED WORK: the key did not cover its inputs
+
+The first version keyed on `(season, season_type)`. The function's output depends on
+`(season, season_type, weeks)`. That was safe *today* only because the shared path takes no
+`weeks` and so can only ever produce an 18-week sum — the key was complete by the absence of a
+caller, not by construction.
+
+It mattered because of what the two halves know. `get_season_projections`' own docstring says a
+total summed from 11 of 18 weeks "will read as a weak player". The payload's coverage record
+carries `weeks_requested`, so a reader holding the FILE can tell — but **a cache HIT never reads
+it**. A future `weeks` parameter threaded through without touching the key would therefore serve
+an 18-week sum to a caller who asked for 11, silently, and the file would look right.
+
+So the week count is now in the key. `#79` is the precedent — a canonical record that did not
+carry its own basis — and this is that argument one level out, applied to the record's key
+rather than its body. The file must be **unfindable** by a caller wanting a different week
+count, not merely mislabelled for one.
+
+`weeks` is a required parameter rather than a defaulted one because the only definition of 18
+lives on `SleeperClient.REGULAR_SEASON_WEEKS`, and a default in the path function would be a
+second home for it (`#126`). That function formats a key; it does not decide how long a season
+is.
+
+### What this rules OUT
+
+- **Not a scoring change.** The sums that land in each snapshot are byte-identical on the reused
+  path; a test asserts it. What is shared is the WORK, not the answer.
+- **Not a freshness regression.** The 6-hour window is shorter than the players cache's daily
+  one, so the shared file can never be the stalest thing in a sync.
+- **Not reachable by the vendor's season total.** That number is a pre-computed POINT total and
+  cannot be re-scored, which is why `#180` built the sum in the first place. Sharing the sum is
+  the only way to pay for it once.
+
+### Tests and mutation record
+
+`test_shared_season_projections.py` — **16 tests**. Four panels: one fetch answers for every
+league (9 leagues → 1 fetch, 162 week-fetches → 18); the cache is keyed and bounded; a failed
+fetch is never shared; the key carries the week count. Plus the wiring test, without which the
+module would be correct and reach nobody — the state `front_claims` was in before `#333`.
+
+Mutation-checked, restores from a pristine copy taken immediately before each arm and verified
+with `cmp` every time, `__pycache__` cleared between arms (`#240`):
+
+| arm | mutation | tests that fired |
+|---|---|---|
+| A | drop `_{weeks}w` from the key | 2 failures |
+| B | stop recording `weeks` in the payload | 1 error |
+| C | shared path keys on `11` instead of the client's constant | 2 failures, 2 errors |
+
+Baseline re-run green after all three restores.
+
+---
+
+## `#338` — THE RENDER LAYER COMPUTES NOTHING: the owner's rule, and the ratchet gap it names
+
+Stated by the owner, mid-`#337`:
+
+> also, we dont need the ui re-doing math the engine should have, no?
+
+Correct, and it generalises two rules this repo already has while pointing them somewhere they
+have never been pointed.
+
+`#126` says one home for a quantity. `#222` says observe the production quantity, never
+reconstruct it from downstream artifacts — the rule earned by WITHDRAWING two published
+findings. **Both were written about the engine and about measurement instruments.** Neither was
+ever aimed at the render layer, and that is precisely the hole `#336b` fell through: a
+RENDERER derived a quantity, got it wrong, and shipped for months under a byte-identity guard
+and 4,393 passing tests.
+
+### Where it is actually broken — audited, not recalled
+
+I listed three instances from memory and **two of the three did not survive the check.** The
+audit is the entry, so here is what each one turned out to be.
+
+| candidate | verdict |
+|---|---|
+| `build_front.py:131` — "bottom of this league at the position" | **REAL, and shipped.** `front_claims.compose` dropped the `label` the fixture carried, so the renderer invented a replacement: a RANK, from a function (`depth_label`) that returns a ratio BAND. False on the fixture's own data. Recorded as `#336b`; label carry-through repaired, page repair pending. |
+| `front_claims.compose` not returning the checks it ran | **REAL, but prospective** — see below. Nothing ships it yet. |
+| `capture_front_fixture.py` reconstructing readiness instead of calling `compute_readiness` | **NOT a violation. I was wrong.** Lines 20 and 178 argue the reconstruction at length and stamp the emitted value `CONSTRUCTED -- optimize_lineup's best legal lineup`. That is the absence grammar working exactly as designed: a value that is not the production measurement says so, on the page. Constructed-and-stamped is a different thing from derived-and-asserted, and conflating them would make the rule unusable. |
+
+So **one shipped instance, not three.** The rule is right; my recollection of its blast radius
+was inflated, and an entry that had taken it on memory would have condemned a working contract.
+
+### The prospective one, and the symptom that proves the rule
+
+`front_claims.compose` returns exactly `{"shown", "hidden", "bye_profile"}` (`front_claims.py:163`).
+It does not return what it CHECKED. `VOICE.md` rule 5 — "Name the checks, not the conclusion" —
+is the most on-voice idea the design round produced, and it needs that list.
+
+Measured across the round-4 designs, and this is the find worth keeping:
+
+```
+VOICE.md rule 5          "Five checks, all clean — starters, holes, depth, byes, record"
+keep/desktop.html        "Four checks ran, all clean — "
+threshold/desktop.html   "Four checks, nothing found"
+front_claims.compose     returns no count at all
+```
+
+**The spec says five, two independent designers drew four, and nothing computes either.** That
+disagreement is not a copy slip; it is the signature of a quantity with no home. Neither number
+can be checked, because there is nothing to check it against — which is the same condition that
+let "bottom of this league at the position" live for months.
+
+So `CHECKS_RUN` is an engine return value, not a renderer loop. A surface that counts its own
+checks owns a quantity the engine should own, and the first time a check is added or removed
+the sentence goes quietly stale in every design that hardcoded it.
+
+### The ratchet gap
+
+All eight ratchets read code structure or figures. `assertion_floors` counts assertions;
+`boundary_census` counts boundaries; `prose_names` and `doc_index` enumerate via `git ls-files`.
+**None of them asks whether a rendered SENTENCE corresponds to an engine return value.**
+`#336b` named the defect class — *prose that outruns its function*. The owner's rule is the
+general principle behind it. A ninth ratchet is what would enforce either, and it is not yet
+written.
+
+### Status
+
+**Recorded, not built.** `#336b`'s label carry-through is in; the false sentence's page repair
+and `CHECKS_RUN` are both open. This entry exists BEFORE the main-menu and dashboard
+contemplation rather than after it, because it is the governing constraint on both: every
+crystallisation the landing page shows must be something the engine already returns, and
+"what expands must be something the engine computes separately" is the same rule read forward.
+---
+
+## `#339` — `compute_readiness` DISCARDS THE COUNT, SO THE CLAIM BAND WOULD SAY "0 ROSTERED" FOR A TWO-MAN ROOM
+
+Found while contemplating the landing page under `#338`'s rule, by asking what the engine
+returns rather than what the fixture carries. **It is a blocker for `#335`** — the synced front
+page — and it is invisible to the current suite.
+
+### The mismatch, executed rather than reasoned
+
+`lineup_readiness.compute_readiness` returns `thin_positions` as entries of **`{"position",
+"label"}`**. `front_claims.compose` reads `count`, `valued_count` AND `label`. Feeding the
+production shape through the production composer:
+
+```
+>>> fc.compose({'thin_positions': [{'position':'TE','label':'Weak'},
+...                                 {'position':'DEF','label':'Weak'}]})['shown']
+{'kind':'thin', 'position':'DEF', 'count': 0, 'valued_count': None, 'label':'Weak', ...}
+{'kind':'thin', 'position':'TE',  'count': 0, 'valued_count': None, 'label':'Weak', ...}
+```
+
+`build_front.py:139` renders that as **`<b>0</b> rostered.`** For the fixture's own seat that
+sentence would read "0 rostered" about a room holding **two tight ends**. It is a false figure
+and an absence rendered as a zero — the precise thing `#187` exists to forbid.
+
+### A SECOND, QUIETER CONSEQUENCE: the ordering silently reverts to the alphabet
+
+`thin_sort_key` returns `(n, position)` with `n = int(entry.get("count") or 0)`. With `count`
+absent from **every** entry, `n` is 0 for all of them and the sort collapses entirely to
+`str(position)`. That is the defect the function was written to prevent, and its own docstring
+says what it cost:
+
+> The capture emits positions in sorted() order, so without this the order was Q-before-T,
+> which in one real league hid a ONE-quarterback room (an injury away from the rung above)
+> below the cap while a two-man TE room held a card.
+
+With `CAP = 3`, that is not cosmetic: a one-QB room can fall off the band again, for exactly
+the reason already investigated and fixed once.
+
+### The count was never missing — it was thrown away
+
+`positional_depth`'s cell is `{"count", "value", "valued_count"}`. `#190` added `valued_count`
+deliberately, measuring **33 of 96 cells with `0 < valued_count < count`**, the worst a
+seven-man WR room whose entire value came from one priced player.
+`capture_front_fixture.py:128` reads `cell.get("valued_count")` straight off that cell.
+
+`compute_readiness` reads **the same cell** (`lineup_readiness.py:53`), computes the label from
+it, and returns only the label. Both numbers are in its hand at the moment it drops them. So the
+repair is to carry them, not to compute anything new — and under `#338` that is the only
+admissible direction: the engine owns the quantity, the surface renders it.
+
+### THIS IS `#336b`'s MECHANISM, ONE LAYER EARLIER — and the lesson was already written down
+
+| | the layer that discarded | what it dropped | what the surface then did |
+|---|---|---|---|
+| `#336b` | `front_claims.compose` | the `label` the fixture carried | invented a RANK the engine never computes |
+| `#339` | `lineup_readiness.compute_readiness` | the `count` and `valued_count` the cell carried | substitutes `0`, prints "0 rostered", sorts by alphabet |
+
+`front_claims.py`'s own comment, written during `#336b`'s repair, states the rule:
+
+> A composition that discards the measured quantity invites the surface to fabricate a
+> replacement.
+
+**That sentence sits in the function that was fixed, and was never applied to the function that
+feeds it.** A lesson recorded as a comment in one place is not a lesson the codebase holds;
+this is `#313` (a pointer is only as good as its target's maintenance) in the form of a
+principle rather than a reference.
+
+### Why nothing caught it
+
+Three test modules exercise `compute_readiness`; **none of them imports `front_claims`**, and
+every claim-band test feeds the FIXTURE shape, which carries `count`. So both sides are tested,
+agree with their own tests, and disagree with each other. Same family as the interface hazards
+`engine-measurement` already records — `optimize_lineup` taking `id` and returning `player_id`,
+a pick record missing `round` selecting a different scoring mode. A key-name or key-absence
+mismatch across an interface produces no crash and no warning; it produces a plausible number
+about something else.
+
+### Status
+
+**Recorded, NOT repaired.** `#337` is mid-certification and this is a separate change to a
+different module with its own tests to write, so it does not ride along. The repair is: carry
+`count` and `valued_count` through `compute_readiness`, add the cross-interface test that was
+missing (production shape → `compose` → rendered sentence), and mutation-check that the "0
+rostered" sentence and the alphabetical ordering both fire. `#335` must not be wired until then.

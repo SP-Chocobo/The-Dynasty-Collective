@@ -11,6 +11,7 @@ offline or rate-limited.
 from __future__ import annotations
 
 import csv
+import re
 import json
 import time
 from datetime import datetime
@@ -113,6 +114,58 @@ def players_freshness_entry(
         # same mtime, so the label describes the consequence both share instead of guessing.
         label += " — past its daily refresh; a failed refresh silently keeps using this copy"
     return (label, as_of.isoformat(), (datetime.fromtimestamp(now).date() - as_of).days)
+
+
+#: How long a shared season-projection file may be reused across leagues (`#337`).
+#:
+#: SHORTER THAN THE PLAYERS WINDOW ON PURPOSE. The players database is a roster of who exists
+#: and changes slowly; these are PROJECTIONS, which Sleeper revises as a week develops. Six hours
+#: keeps the win that matters -- syncing nine leagues back to back fetches eighteen weeks ONCE
+#: instead of nine times -- without letting Tuesday's sums answer for Thursday.
+SEASON_PROJECTIONS_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
+
+
+def season_projections_cache_path(
+    season: str, season_type: str, weeks: int, cache_dir: str = DEFAULT_CACHE_DIR,
+) -> Path:
+    """Where the shared season sums for one (season, season_type, weeks) live.
+
+    KEYED, NOT GLOBAL. Two seasons or two season types are different quantities and a single
+    file would let one answer for the other -- the same defect class as one figure with two
+    homes, inverted: two figures with one home.
+
+    THE WEEK COUNT IS PART OF THE KEY, and it is the half that is easy to leave out. An
+    eleven-week sum and an eighteen-week sum are different claims about the same player --
+    `get_season_projections`' own docstring says a total summed from 11 of 18 weeks will read as
+    a weak player -- so a key that cannot tell them apart would serve the first to a caller who
+    asked for the second. Nothing asks for a partial season through the shared path today, which
+    is exactly why this belongs in the NAME rather than in a comment: the payload's coverage
+    record carries `weeks_requested`, but a cache HIT never reads it, so the file must be
+    unfindable by a caller wanting a different number rather than merely mislabelled for one.
+    `#79` is the entry recording what it cost when a canonical record did not carry its own
+    basis; this is that argument one level out, applied to the record's key instead of its body.
+
+    `weeks` is required rather than defaulted because the only definition of 18 lives on
+    `SleeperClient.REGULAR_SEASON_WEEKS` and a default here would be a second home for it
+    (`#126`). This function formats a key; it does not decide how long a season is.
+    """
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", f"{season}_{season_type}_{int(weeks)}w")
+    return Path(cache_dir) / f"season_projections_{safe}.json"
+
+
+def season_projections_cache_age_seconds(
+    season: str, season_type: str, weeks: int, cache_dir: str = DEFAULT_CACHE_DIR,
+    now: Optional[float] = None,
+) -> Optional[float]:
+    """How old the shared sums are, or None when there are none.
+
+    None is ABSENCE, never 0.0, for the reason `players_cache_age_seconds` says so: a file never
+    written and one written this instant are different facts and only the second is a duration.
+    """
+    path = season_projections_cache_path(season, season_type, weeks, cache_dir)
+    if not path.exists():
+        return None
+    return max(0.0, (time.time() if now is None else now) - path.stat().st_mtime)
 
 
 def _coverage_regression(previous: Optional[dict], incoming: dict) -> Optional[dict]:
@@ -655,6 +708,70 @@ class SleeperClient:
         # and the difference from its projections sibling.
         return self._weekly_stat_lines("stats", season, week, season_type)
 
+    def get_season_projections_shared(
+        self, season: str, season_type: str = "regular",
+        weekly_out: Optional[dict] = None, now: Optional[float] = None,
+    ) -> tuple[dict, dict]:
+        """Season sums for (season, season_type), fetched ONCE and shared across every league.
+
+        WHY THIS EXISTS (`#337`). `get_season_projections` sums eighteen weekly fetches, and
+        `sync_league` called it per league -- so a manager in nine leagues paid 9 x 18 = 162
+        requests for a quantity that does not vary by league, and a manager in twenty paid 360.
+        Sleeper's projections are per player per week; the league's own scoring is applied
+        downstream, not baked in here. One fetch answers for all of them.
+
+        IT IS A SHARED FETCH, NOT A SHARED TRUTH. The sums still land in each snapshot exactly as
+        before, so no consumer changes and `season_projection_freshness_entry` keeps reading the
+        snapshot it was written against. What is shared is the WORK, and the snapshot records
+        which of the two paths produced its numbers so a reader can tell a fresh fetch from a
+        reused file.
+
+        The cache carries its own `fetched_at` rather than leaning on mtime alone, because a file
+        copied or restored keeps its contents and loses its mtime, and the age is the half that
+        decides whether it may be reused.
+        """
+        now = time.time() if now is None else now
+        weeks = self.REGULAR_SEASON_WEEKS
+        path = season_projections_cache_path(season, season_type, weeks, self.cache_dir)
+        age = season_projections_cache_age_seconds(
+            season, season_type, weeks, self.cache_dir, now)
+        if age is not None and age < SEASON_PROJECTIONS_CACHE_MAX_AGE_SECONDS:
+            try:
+                held = json.loads(path.read_text())
+                if weekly_out is not None:
+                    weekly_out.update(held.get("weekly") or {})
+                coverage = dict(held.get("coverage") or {})
+                coverage["reused_from_shared_cache"] = True
+                coverage["fetched_at"] = held.get("fetched_at")
+                return held.get("projections") or {}, coverage
+            except (OSError, ValueError, TypeError):
+                # A torn or hand-edited file is not a reason to serve wrong sums. Fall through
+                # and fetch, exactly as an absent file would.
+                pass
+
+        weekly: dict = {}
+        projections, coverage = self.get_season_projections(
+            season, season_type, weekly_out=weekly)
+        if weekly_out is not None:
+            weekly_out.update(weekly)
+        coverage = dict(coverage or {})
+        coverage["reused_from_shared_cache"] = False
+        coverage["fetched_at"] = now
+        # Only a fetch that actually answered is worth sharing. Writing an empty or errored
+        # result would hand the next eight leagues the failure instead of a retry.
+        if projections and not coverage.get("error"):
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(
+                    {"fetched_at": now, "season": season, "season_type": season_type,
+                     "weeks": weeks,
+                     "projections": projections, "weekly": weekly,
+                     "coverage": {k: v for k, v in coverage.items()
+                                  if k not in ("reused_from_shared_cache",)}}))
+            except OSError:
+                pass        # a cache that cannot be written is a slow sync, not a failed one
+        return projections, coverage
+
     # -- aggregate sync -------------------------------------------------------
 
     def sync_league(self, league_id: str, players_db: Optional[dict[str, dict]] = None) -> dict:
@@ -730,7 +847,9 @@ class SleeperClient:
                                             "players": 0, "error": None}
         if season:
             try:
-                season_projections, season_projection_coverage = self.get_season_projections(
+                # `#337`: shared across leagues. Eighteen weekly fetches used to run once
+                # PER LEAGUE for a quantity that does not vary by league.
+                season_projections, season_projection_coverage = self.get_season_projections_shared(
                     str(season), str(projection_request.get("season_type") or season_type),
                     weekly_out=weekly_projections)
             except Exception as exc:                    # noqa: BLE001 -- degrade, never abort

@@ -1,15 +1,15 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 276 markdown documents.
+`python3 doc_index.py` regenerates this. 279 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 
 | class | count | meaning |
 |---|---:|---|
 | WITHDRAWN | 30 | a published claim taken back. Kept, unedited, beneath its banner. |
-| SUPERSEDED | 48 | still valid or partly valid, but something later changed what it means. |
+| SUPERSEDED | 50 | still valid or partly valid, but something later changed what it means. |
 | DECLARED | 47 | says what kind of document it is before making claims. |
-| UNDECLARED | 151 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
+| UNDECLARED | 152 | no status banner in its opening. Not necessarily wrong — most are simply current — but a reader cannot tell without reading it all. |
 
 ## WITHDRAWN
 
@@ -91,9 +91,11 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `evidence/take_model/FLOOR_DERIVATION.md`
 - `evidence/w1_07/SCALE_HAS_NO_CLEAN_DERIVATION.md`
 - `ui_explore/round4/HANDOFF.md`
+- `ui_explore/round4/deck/REFINEMENT.md`
 - `ui_explore/round4/keep/NOTES.md`
 - `ui_explore/round4/keep/REFINEMENT.md`
 - `ui_explore/round4/threshold/NOTES.md`
+- `ui_explore/round4/threshold/REFINEMENT.md`
 
 ## DECLARED
 
@@ -298,3 +300,4 @@ Classified by what each file says about ITSELF in its first 12 lines. Nothing he
 - `ui_explore/round4/keep/CRITIQUE_PRODUCT.md`
 - `ui_explore/round4/threshold/CRITIQUE_DESIGN.md`
 - `ui_explore/round4/threshold/CRITIQUE_PRODUCT.md`
+- `ui_explore/round5/STRUCTURE.md`
