@@ -19917,3 +19917,92 @@ where they would get conflated.
 constraint that loop must satisfy when `#335` and the landing page are built. The instruments are
 in the session scratchpad and are reconstructable from this entry.
 
+---
+
+### `#339` CLOSED — the count and the coverage now travel with the label
+
+Repaired at the owner's direction: *"fix #339 before anything wires #335"*.
+
+#### The fix
+
+`lineup_readiness.compute_readiness` emitted `thin_positions` entries of
+`{"position", "label"}`. It now emits `{"position", "label", "count", "valued_count"}`, read
+straight off the `positional_depth` cell it was already holding at that moment. **Nothing new is
+computed** — which is the only admissible direction under `#338`: the engine owns the quantity,
+the surface renders it.
+
+The entry shape is now stated in the function's own docstring rather than left as an
+implementation detail, because the shape IS the contract that broke.
+
+#### A SECOND DEFECT IN THE SAME FOUR LINES: a dead default that lied about the cell
+
+```python
+cell = depth[my_team_label].get(position, {"count": 0, "value": None})
+```
+
+The loop is `for position in sorted(depth[my_team_label])`, so the default **could never fire** —
+and it declared a cell WITHOUT `valued_count`, which is not the shape `positional_depth` builds
+(`{"count", "value", "valued_count"}`, the last starting at 0 and incrementing only for priced
+players). Had it ever fired it would have emitted exactly the malformed entry this item is about.
+A dead default that disagrees with the real shape is this defect in miniature, so it is gone, and
+a test asserts it stays gone.
+
+Removing it cost none of the tolerance that mattered: an unresolved team label, a team absent
+from the depth chart, and an empty depth chart all still return `[]` rather than raising, and
+three tests pin that.
+
+#### Tests — and they live at the TOP LEVEL on purpose
+
+`test_thin_positions_cross_interface.py`, **13 tests**. Not beside either module, because the
+defect was in neither: three modules exercise `compute_readiness` and none imports
+`front_claims`, while every claim-band test feeds the FIXTURE shape, which carries `count`. Both
+sides passed their own tests, agreed with themselves, and disagreed with each other. These cross
+the interface in one assertion chain — production producer, production composer, production
+renderer.
+
+**THE HOLLOW-TEST TRAP, AVOIDED DELIBERATELY AND WITH ITS OWN GUARD.** `#333`'s record names it
+twice: a `TE(2)/QB(1)` fixture cannot distinguish count order from alphabetical order, because Q
+precedes T either way. The ordering fixture here is `DEF(3)` and `WR(1)`, where the two orders
+DISAGREE — alphabetically DEF then WR, by emptiness WR then DEF. And a vacuity guard asserts the
+fixture can still tell them apart, so a future edit cannot make the ordering test pass for free.
+
+Mutation arms, each restored from a pristine copy verified with `cmp` and with `__pycache__`
+cleared between them:
+
+| arm | mutation | fired |
+|---|---|---|
+| A | revert to emitting only `position` and `label` | 6 failures, 3 errors |
+| B | carry `count` but drop `valued_count` | 3 failures, 2 errors |
+| C | restore the dead default with its wrong shape | 1 failure |
+| D | `thin_sort_key` returns `(0, position)` — alphabet only | 1 failure |
+
+**9 / 5 / 1 / 1**, baseline green after every restore.
+
+A process correction on this panel: my first run of these arms piped the output through
+`tail -3 | head -2`, which **cut off the `OK`/`FAILED` line**. The arms looked checked and
+nothing had been verified at all. Re-run grepping the verdict explicitly. A mutation panel whose
+verdict you cannot see is a hollow test one level up — the instrument, not the subject.
+
+#### Two things verified and deliberately NOT changed
+
+1. **`NO_PLAYERS_LABEL` is unreachable through this path, and that is coherent.**
+   `depth_label` returns it only when `cell["count"] == 0`, while `compute_readiness` iterates
+   only positions the team HAS a cell for, and `positional_depth` creates a cell solely on
+   encountering a rostered player. So `_THIN_LABELS = (WEAK, NO_PLAYERS_LABEL)` has a dead half
+   here. **No claim is lost:** a position with zero players matters only if a slot needs one, and
+   that case is the `hole` rung via `slot_coverage`, which OUTRANKS `thin` on the ladder. The
+   fixture path has the identical limitation, so both producers agree. Recorded so the next
+   reader does not take it for a bug.
+2. **There is a THIRD shape for this judgment.** `roster_diagnostics.thin_positions` is a
+   `tuple` of position STRINGS, from the same `depth_ratings.depth_label` (its own docstring says
+   so). So "which positions are thin" has three shapes: a tuple of names, this
+   function's dicts, and the fixture's dicts-plus-`value_label`. That is a `#126` observation
+   worth an item of its own and **out of scope here** — the owner asked for `#339`, and a
+   `roster_diagnostics` refactor is not that.
+
+#### Status
+
+**`#335` is unblocked.** The synced front page can now be wired without printing "0 rostered"
+about a two-man room or ordering the band by the alphabet. `#338`'s `CHECKS_RUN` gap remains
+open and is independent of this.
+

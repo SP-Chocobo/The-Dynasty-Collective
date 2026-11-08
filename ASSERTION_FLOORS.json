@@ -18097,6 +18097,67 @@
         "early_returns": 0
       }
     },
+    "test_thin_positions_cross_interface.py": {
+      "test_methods": 13,
+      "asserts": {
+        "assertEqual": 13,
+        "assertIn": 4,
+        "assertNotEqual": 2,
+        "assertNotIn": 3,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "TheComposerReceivesATrueCountTests.test_a_partly_unpriced_room_reaches_the_band_as_a_FLOOR": {
+          "assertTrue": 1
+        },
+        "TheComposerReceivesATrueCountTests.test_a_two_man_room_does_not_reach_the_band_as_zero": {
+          "assertEqual": 2
+        },
+        "TheComposerReceivesATrueCountTests.test_the_label_survives_the_whole_trip": {
+          "assertEqual": 1
+        },
+        "TheDeadDefaultIsGoneTests.test_a_team_absent_from_depth_is_still_not_a_crash": {
+          "assertEqual": 3
+        },
+        "TheDeadDefaultIsGoneTests.test_every_position_the_loop_visits_has_a_real_cell": {
+          "assertNotIn": 1
+        },
+        "TheOrderingDoesNotFallBackToTheAlphabetTests.test_the_emptier_room_is_ranked_first_not_the_alphabetically_earlier_one": {
+          "assertEqual": 1
+        },
+        "TheOrderingDoesNotFallBackToTheAlphabetTests.test_the_fixture_can_actually_tell_the_two_orders_apart": {
+          "assertEqual": 1,
+          "assertNotEqual": 1
+        },
+        "TheProducerCarriesWhatTheCellMeasuredTests.test_a_fully_priced_room_reports_valued_count_equal_to_count": {
+          "assertEqual": 2
+        },
+        "TheProducerCarriesWhatTheCellMeasuredTests.test_count_and_valued_count_travel_with_the_label": {
+          "assertEqual": 1
+        },
+        "TheProducerCarriesWhatTheCellMeasuredTests.test_valued_count_is_not_count_when_the_room_is_partly_unpriced": {
+          "assertEqual": 2,
+          "assertNotEqual": 1
+        },
+        "TheRenderedSentenceStatesTheRealCountTests.test_a_partly_unpriced_room_says_so_in_the_sentence": {
+          "assertIn": 1
+        },
+        "TheRenderedSentenceStatesTheRealCountTests.test_the_page_does_not_say_zero_rostered_about_a_two_man_room": {
+          "assertIn": 2,
+          "assertNotIn": 1
+        },
+        "TheRenderedSentenceStatesTheRealCountTests.test_the_sentence_says_the_label_and_never_a_rank": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_three_derivations_of_one_number.py": {
       "test_methods": 21,
       "asserts": {
