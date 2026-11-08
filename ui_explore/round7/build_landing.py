@@ -393,6 +393,118 @@ def source_rows(sources):
     return "".join(out)
 
 
+
+
+# ---------------------------------------------------------------------------
+# ORNAMENT (`#349`). Drawn, not fetched.
+#
+# The owner's reference mockup carries a gold mountain-and-castle hero band. THAT ART DOES NOT
+# EXIST. `assets/header_banner.jpg` is the repo's only banner and it is a BLUE football in
+# space -- 1680x260, already embedded by `app.py:3682` as a base64 data URI. Blue beside this
+# palette's gold is a clash, so it is used here the way `app.py` uses it: as texture under a
+# gradient, at low opacity, never as a photograph.
+#
+# Everything else in the reference -- the crest, the laurels, the section glyphs, the glowing
+# rules -- is INLINE SVG rather than an image. That is not a compromise: a glyph drawn in SVG
+# is crisp at any size, takes its colour from the theme tokens, costs no network, and cannot
+# ship a hardcoded hex that `#312` would have to find later. An illustration is worth an image;
+# an icon is not.
+
+#: Every glyph on the page, in one place. Stroked, not filled, so one `currentColor` drives
+#: them all and a theme change cannot leave an icon behind (`#126`).
+ICONS = {
+    "crown":   "M3 17h18M4 17 3 7l5 4 4-6 4 6 5-4-1 10",
+    "check":   "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M8 12l3 3 5-6",
+    "archive": "M3 7h18v4H3zM5 11v9h14v-9M10 15h4",
+    "gear":    "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M12 2v3M12 19v3M2 12h3M19 12h3"
+               "M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2",
+    "plus":    "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 8v8M8 12h8",
+    "layers":  "M12 3 2 8l10 5 10-5zM2 14l10 5 10-5M2 11l10 5 10-5",
+    "link":    "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2",
+    "disk":    "M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6M3 12c0 1.7 4 3 9 3s9-1.3 9-3",
+    "refresh": "M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6",
+    "user":    "M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21a8 8 0 0 1 16 0",
+    "chart":   "M4 20V10M10 20V4M16 20v-7M22 20H2",
+    "search":  "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14M16 16l5 5",
+    "swap":    "M4 8h14l-4-4M20 16H6l4 4",
+}
+
+
+def icon(name: str, size: int = 18, cls: str = "ic") -> str:
+    d = ICONS[name]
+    return (f'<svg class="{cls}" width="{size}" height="{size}" viewBox="0 0 24 24" '
+            f'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+            f'stroke-linejoin="round" aria-hidden="true"><path d="{d}"/></svg>')
+
+
+def crest(figure: str, of: str) -> str:
+    """The tally, set in a shield between two laurel sprigs.
+
+    THE ORNAMENT MAY NOT OUTRANK THE NUMBER. The shield is a container; the figure inside it is
+    still the largest type on the page, and the laurels are `--line-2` so they read as a frame
+    rather than as a second mark competing with it. `#336b`'s lesson applied to decoration:
+    ornament that implies an award -- a medal, a ribbon, a rosette -- would be asserting a
+    JUDGEMENT about the number, and this number is a count of open things, not a score.
+    """
+    laurel = ('M11 4c-4 2-6 6-6 11 0 4 2 7 5 9M11 7c-3 0-5 1-6 3M10 12c-3 0-5 1-6 3'
+              'M10 17c-2 0-4 1-5 2')
+    return f"""
+<div class="crest">
+  <svg class="laurel l" width="26" height="62" viewBox="0 0 22 26" fill="none"
+       stroke="currentColor" stroke-width="1.1" stroke-linecap="round" aria-hidden="true">
+    <path d="{laurel}"/></svg>
+  <svg class="shield" width="132" height="146" viewBox="0 0 66 73" aria-hidden="true">
+    <defs><linearGradient id="sg" x1="0" y1="0" x2=".35" y2="1">
+      <stop offset="0" stop-color="#755024"/><stop offset=".45" stop-color="#ba9561"/>
+      <stop offset=".8" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
+    </linearGradient></defs>
+    <path d="M33 2 62 10v27c0 18-14 29-29 34C19 66 4 55 4 37V10z"
+          fill="rgba(117,80,36,.13)" stroke="url(#sg)" stroke-width="2"/>
+    <path d="M33 7 57 13v24c0 15-12 25-24 29C21 62 9 52 9 37V13z"
+          fill="none" stroke="rgba(186,149,97,.35)" stroke-width="1"/>
+  </svg>
+  <svg class="laurel r" width="26" height="62" viewBox="0 0 22 26" fill="none"
+       stroke="currentColor" stroke-width="1.1" stroke-linecap="round" aria-hidden="true">
+    <path d="{laurel}"/></svg>
+  <p class="tally">{figure}<s>/{of}</s></p>
+</div>"""
+
+
+def banner_data_uri():
+    """The repo's real header art, embedded exactly as `app.py:127` embeds it.
+
+    ONE HOME for the "banner or nothing" rule: a missing asset means no banner, never a broken
+    header. Returns None on any read failure and every caller treats that as "draw the gradient
+    alone", which is also what happens in a checkout without `assets/`.
+    """
+    import base64
+    path = ROOT / "assets" / "header_banner.jpg"
+    try:
+        return "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    except (FileNotFoundError, OSError):
+        return None
+
+
+def hero_band(uri):
+    """The art layer. A SLOT, so replacing the image is a one-line change.
+
+    The reference mockup's gold hero does not exist yet; when it does it drops in here and
+    nothing else moves. Until then the real blue banner runs at 0.22 under a gold gradient --
+    enough to read as atmosphere, not enough to fight the palette.
+    """
+    if not uri:
+        return '<div class="band" aria-hidden="true"></div>'
+    return (f'<div class="band" aria-hidden="true">'
+            f'<div class="bandart" style="background-image:url({uri})"></div></div>')
+
+
+def sechead(name, label, note=None):
+    rule = '<span class="rule"></span>'
+    body = f'<p class="snote">{note}</p>' if note else ""
+    return (f'<div class="sechead">{icon(name, 19)}'
+            f'<p class="eyebrow">{esc(label)}</p>{rule}</div>{body}')
+
+
 # ---------------------------------------------------------------------------
 # CSS
 
@@ -402,143 +514,195 @@ def css():
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink)}
 body{font:400 .95rem/1.55 var(--sans);-webkit-text-size-adjust:100%}
-.wrap{max-width:68rem;margin:0 auto;padding:0 20px 72px}
+.wrap{max-width:94rem;margin:0 auto;padding:0 22px 60px}
 a{color:inherit}
+.ic{flex:0 0 auto;vertical-align:-3px}
 
-/* ---- top: identity on the left, the CONNECTION and its one verb on the right ---- */
-.top{display:flex;align-items:center;gap:20px;padding:18px 0;flex-wrap:wrap;
-  border-bottom:1px solid var(--line)}
-.crest{display:flex;align-items:center;gap:12px}
+/* ---- top bar: wordmark, rooms, connection ---- */
+.top{display:flex;align-items:center;gap:26px;padding:12px 0;flex-wrap:wrap;position:relative}
+.crestmark{display:flex;align-items:center;gap:12px}
 .word{font:600 1.3rem/1 var(--display);letter-spacing:.11em;text-transform:uppercase;margin:0;
   background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .word b{display:block;font-size:.75rem;letter-spacing:.42em;font-weight:400;margin-top:5px}
-.conn{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.who{font:400 .82rem/1.4 var(--mono);color:var(--muted);text-align:right}
+.rooms{display:flex;gap:4px;flex-wrap:wrap}
+.room{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:72px;
+  min-height:44px;padding:9px 13px;border-radius:7px;text-decoration:none;color:var(--dim);
+  font:400 .78rem/1 var(--sans);border:1px solid transparent}
+.room:hover{color:var(--gold-b);background:rgba(117,80,36,.12)}
+.room.on{color:var(--gold-b);border-color:var(--line-2);
+  background:linear-gradient(180deg,rgba(117,80,36,.3),rgba(117,80,36,.08))}
+.conn{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:1}
+.who{font:400 .82rem/1.45 var(--mono);color:var(--muted);text-align:right}
 .who b{color:var(--ink)}
-.btn{font:600 .78rem/1 var(--display);letter-spacing:.17em;text-transform:uppercase;
-  padding:13px 17px;min-height:44px;border-radius:5px;cursor:pointer;
+.btn{display:inline-flex;align-items:center;gap:9px;
+  font:600 .78rem/1 var(--display);letter-spacing:.17em;text-transform:uppercase;
+  padding:13px 17px;min-height:44px;border-radius:6px;cursor:pointer;
   border:1px solid var(--gold);color:var(--gold-b);
-  background:linear-gradient(180deg,rgba(117,80,36,.3),rgba(117,80,36,.12))}
-.btn.ghost{border-style:dashed;border-color:var(--line-2);color:var(--muted);background:none}
-.btn:hover{border-color:var(--gold-b)}
+  background:linear-gradient(180deg,rgba(117,80,36,.34),rgba(117,80,36,.12));
+  box-shadow:0 0 0 1px rgba(0,0,0,.4),0 2px 14px rgba(117,80,36,.3)}
+.btn.ghost{border-style:dashed;border-color:var(--line-2);color:var(--muted);
+  background:none;box-shadow:none}
+.btn:hover{border-color:var(--gold-b);box-shadow:0 0 0 1px rgba(0,0,0,.4),
+  0 2px 20px rgba(249,222,153,.26)}
 
-/* ---- the count. A COUNT, never a grade. ---- */
-.verdict{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;
-  margin:26px 0 8px;padding:22px 26px;border:1px solid var(--line-2);border-radius:6px;
-  background:linear-gradient(180deg,var(--surface),var(--surface-2));overflow:hidden;position:relative}
-.verdict::before{content:"";position:absolute;inset:0 auto 0 0;width:160px;pointer-events:none;
-  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(176,162,138,.06) 4px 5px);
-  mask-image:linear-gradient(90deg,#000,transparent)}
-.tally{font:600 3.4rem/1 var(--mono);color:var(--gold-b);letter-spacing:-.03em;position:relative;
-  font-variant-numeric:tabular-nums;white-space:nowrap}
-.tally s{font-size:1.4rem;color:var(--dim);text-decoration:none;margin-left:3px}
-.verdict h1{font:400 1.6rem/1.2 var(--display);color:var(--gold-b);margin:0 0 7px;position:relative}
-.verdict div p{margin:0;color:var(--muted);font-size:.89rem;position:relative;max-width:60ch}
+/* ---- the art band: a SLOT. Real asset at low opacity under a gold wash. ---- */
+.band{position:absolute;inset:-10px 0 auto auto;width:min(46%,42rem);height:104px;
+  border-radius:10px;overflow:hidden;pointer-events:none;
+  mask-image:linear-gradient(90deg,transparent,#000 42%,#000)}
+.bandart{position:absolute;inset:0;background-size:cover;background-position:center;
+  opacity:.22;filter:saturate(.45) hue-rotate(-18deg)}
+.band::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,var(--bg) 8%,rgba(117,80,36,.3) 58%,rgba(249,222,153,.14))}
 
-.eyebrow{font:600 .78rem/1 var(--display);letter-spacing:.22em;text-transform:uppercase;
-  color:var(--gold);margin:30px 0 9px}
-.bnote{margin:0 0 12px;color:var(--dim);font-size:.84rem;max-width:68ch}
+/* ---- a fading gold hairline, the brief's own rule ---- */
+.hr{height:1px;border:0;margin:10px 0 20px;
+  background:linear-gradient(90deg,rgba(117,80,36,.42),rgba(117,80,36,.05))}
 
-/* ---- THE LIST. One line per league: that is what makes twenty scannable. ---- */
-.leagues{border:1px solid var(--line);border-radius:6px;overflow:hidden;
+/* ---- two rails: standing state on the left, the leagues on the right ---- */
+.shell{display:grid;grid-template-columns:21.5rem 1fr;gap:22px;align-items:start}
+.panel{border:1px solid var(--line);border-radius:9px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));overflow:hidden}
+.panel+.panel{margin-top:18px}
+.phead{display:flex;align-items:center;gap:11px;padding:16px 19px 0;color:var(--gold)}
+.phead h2{font:400 1.02rem/1.25 var(--display);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--gold-b);margin:0}
+.pbody{padding:13px 19px 19px}
+.pbody p.sub{margin:0 0 15px;color:var(--dim);font-size:.83rem;line-height:1.55}
+
+/* ---- the verdict: a COUNT in a shield, never a grade ---- */
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;
+  padding:20px 26px 20px 20px;border:1px solid var(--line-2);border-radius:9px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  overflow:hidden;position:relative}
+.verdict::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(176,162,138,.05) 5px 6px);
+  mask-image:linear-gradient(105deg,#000,transparent 62%)}
+.crest{position:relative;display:flex;align-items:center;justify-content:center;
+  color:var(--line-2)}
+.crest .shield{display:block}
+.laurel{position:absolute;top:50%;transform:translateY(-50%)}
+.laurel.l{left:-6px}
+.laurel.r{right:-6px;transform:translateY(-50%) scaleX(-1)}
+.tally{position:absolute;margin:0;font:600 3.4rem/1 var(--mono);color:var(--gold-b);
+  letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;
+  text-shadow:0 0 26px rgba(249,222,153,.3)}
+.tally s{font-size:1.25rem;color:var(--dim);text-decoration:none;margin-left:2px}
+.verdict h1{font:400 1.56rem/1.22 var(--display);color:var(--gold-b);margin:0 0 8px;
+  position:relative}
+.verdict .vtext p{margin:0;color:var(--muted);font-size:.89rem;position:relative;max-width:64ch}
+
+/* ---- section heads: glyph, label, glowing rule ---- */
+.sechead{display:flex;align-items:center;gap:11px;margin:26px 0 7px;color:var(--gold)}
+.eyebrow{font:600 .8rem/1 var(--display);letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin:0;white-space:nowrap}
+.rule{flex:1;height:1px;background:linear-gradient(90deg,rgba(117,80,36,.5),
+  rgba(249,222,153,.14) 30%,rgba(117,80,36,.03))}
+.snote{margin:0 0 11px;color:var(--dim);font-size:.84rem;max-width:72ch;line-height:1.55}
+
+/* ---- THE LIST ---- */
+.leagues{border:1px solid var(--line);border-radius:9px;overflow:hidden;
   background:linear-gradient(180deg,var(--surface),var(--surface-2))}
-.lrow{display:grid;grid-template-columns:4px 13rem 1fr auto;gap:0 18px;align-items:center;
+.lrow{display:grid;grid-template-columns:4px 12rem 1fr auto;gap:0 16px;align-items:center;
   border-bottom:1px solid var(--line)}
 .lrow:last-child{border-bottom:0}
-.lrow:hover{background:rgba(117,80,36,.09)}
+.lrow:hover{background:rgba(117,80,36,.1)}
 .rail{align-self:stretch}
-.lrow.hole .rail{background:var(--gold-b)}
+.lrow.hole .rail{background:linear-gradient(180deg,var(--gold-b),var(--gold))}
 .lrow.bye .rail{background:var(--gold)}
 .lrow.thin .rail{background:var(--tie-b)}
-.lrow.quiet .rail{background:var(--status-ok);opacity:.45}
-.lid{padding:15px 0 15px 17px;text-decoration:none;display:block;min-height:44px}
+.lrow.quiet .rail{background:var(--status-ok);opacity:.5}
+.lid{padding:13px 0 13px 16px;text-decoration:none;display:block;min-height:44px}
 .lname{font:400 1rem/1.25 var(--sans);color:var(--ink);margin:0}
 .lmeta{font:400 .76rem/1.4 var(--mono);color:var(--dim);margin:3px 0 0}
-.lclaim{padding:15px 0;display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
+.lclaim{padding:13px 0;display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
 .lclaim .txt{font-size:.9rem;color:var(--muted)}
 .lclaim .txt b{color:var(--ink);font-family:var(--mono);font-weight:600;font-size:.85rem}
-.more{font:400 .75rem/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.more{font:400 .75rem/1 var(--display);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim)}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
 .dot.bye{background:var(--gold)}
 .dot.hole{background:var(--gold-b)}
-.ok{color:var(--status-ok)}
+.ok{color:var(--status-ok);display:inline-flex;vertical-align:-3px}
 .off{color:var(--dim)}
-.lacts{display:flex;align-items:center;gap:4px;padding-right:12px}
+.lacts{display:flex;align-items:center;gap:3px;padding-right:11px}
 .act,.go{min-width:44px;min-height:44px;display:grid;place-items:center;border:0;background:none;
-  color:var(--dim);cursor:pointer;font-size:1.1rem;text-decoration:none;border-radius:4px}
-.act:hover,.go:hover{color:var(--gold-b);background:rgba(117,80,36,.16)}
-.go{font-size:1.4rem}
+  color:var(--dim);cursor:pointer;font-size:1.05rem;text-decoration:none;border-radius:5px}
+.act:hover,.go:hover{color:var(--gold-b);background:rgba(117,80,36,.18)}
+.go{font-size:1.35rem}
 
-/* ---- popovers, per the owner's ruling: a popout, never inline disclosure ---- */
-/* ---- the set-up half, collapsed to commands. The owner's question, and the answer:
-   the triage list is why you opened the page; add/manage/connect are monthly. Four
-   always-open cards spent half the page height on the least-used half. ---- */
+/* ---- popovers: a popout, never inline disclosure ---- */
+.pop{border:1px solid var(--line-2);border-radius:9px;padding:19px 21px;max-width:28rem;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));color:var(--ink);
+  box-shadow:0 18px 60px rgba(0,0,0,.66)}
+.pop::backdrop{background:rgba(0,0,0,.64)}
+.popttl{font:400 1.1rem/1.2 var(--sans);margin:0 0 3px}
+.popmeta{font:400 .76rem/1.45 var(--mono);color:var(--dim);margin:0 0 15px}
+.pact{display:flex;align-items:center;gap:10px;width:100%;text-align:left;min-height:44px;
+  margin:0 0 2px;cursor:pointer;font:600 .76rem/1 var(--display);letter-spacing:.15em;
+  text-transform:uppercase;padding:14px 15px;border-radius:6px;border:1px solid var(--line-2);
+  color:var(--gold-b);background:linear-gradient(180deg,rgba(117,80,36,.24),rgba(117,80,36,.08))}
+.pact.danger{color:var(--tie-b);border-color:rgba(176,80,70,.42)}
+.pcost{margin:0 0 14px;font-size:.8rem;color:var(--dim);line-height:1.55}
+
+/* ---- the set-up commands ---- */
 .commands{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.cmd{text-align:left;min-height:44px;padding:15px 17px;cursor:pointer;border-radius:6px;
+.cmd{display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;
+  min-height:44px;padding:16px 17px;cursor:pointer;border-radius:8px;
   border:1px solid var(--line-2);color:var(--gold-b);
   font:600 .8rem/1.2 var(--display);letter-spacing:.14em;text-transform:uppercase;
   background:linear-gradient(180deg,var(--surface),var(--surface-2))}
-.cmd:hover{border-color:var(--gold)}
-.cmd s{display:block;margin-top:7px;text-decoration:none;color:var(--dim);
-  font:400 .78rem/1.3 var(--mono);letter-spacing:0;text-transform:none}
-.pop.wide{max-width:34rem;padding:0;border:0;background:none}
-.pop.wide .card{margin:0}
-.pop{border:1px solid var(--line-2);border-radius:7px;padding:18px 20px;max-width:27rem;
-  background:linear-gradient(180deg,var(--surface),var(--surface-2));color:var(--ink)}
-.pop::backdrop{background:rgba(0,0,0,.62)}
-.popttl{font:400 1.1rem/1.2 var(--sans);margin:0 0 3px}
-.popmeta{font:400 .76rem/1.4 var(--mono);color:var(--dim);margin:0 0 15px}
-.pact{display:block;width:100%;text-align:left;min-height:44px;margin:0 0 2px;cursor:pointer;
-  font:600 .76rem/1 var(--display);letter-spacing:.15em;text-transform:uppercase;
-  padding:14px 15px;border-radius:5px;border:1px solid var(--line-2);color:var(--gold-b);
-  background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.08))}
-.pact.danger{color:var(--tie-b);border-color:rgba(176,80,70,.4)}
-.pcost{margin:0 0 14px;font-size:.8rem;color:var(--dim);line-height:1.5}
+.cmd:hover{border-color:var(--gold);box-shadow:0 0 22px rgba(117,80,36,.3)}
+.cmd s{display:block;text-decoration:none;color:var(--dim);
+  font:400 .78rem/1.35 var(--mono);letter-spacing:0;text-transform:none}
 
-/* ---- the operating bands: add, manage, connect ---- */
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.card{border:1px solid var(--line);border-radius:6px;padding:20px 22px;
-  background:linear-gradient(180deg,var(--surface),var(--surface-2))}
-.card h2{font:400 1.05rem/1.25 var(--sans);color:var(--ink);margin:0 0 4px}
-.card p.sub{margin:0 0 16px;color:var(--dim);font-size:.82rem;line-height:1.5}
+/* ---- field rows ---- */
 .field{display:flex;gap:8px;margin:0 0 7px;flex-wrap:wrap}
-.field input{flex:1 1 11rem;min-height:44px;padding:11px 13px;border-radius:5px;
-  border:1px solid var(--line-2);background:rgba(0,0,0,.3);color:var(--ink);
+.field input{flex:1 1 9rem;min-width:0;min-height:44px;padding:11px 13px;border-radius:6px;
+  border:1px solid var(--line-2);background:rgba(0,0,0,.34);color:var(--ink);
   font:400 .88rem/1 var(--mono)}
 .field input::placeholder{color:var(--dim)}
-.hint{margin:0 0 18px;font-size:.79rem;color:var(--dim);line-height:1.5}
+.hint{margin:0 0 16px;font-size:.79rem;color:var(--dim);line-height:1.55}
 .hint:last-child{margin-bottom:0}
+.or{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--dim);
+  font:400 .78rem/1 var(--display);letter-spacing:.2em;text-transform:uppercase}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 
-.crow{display:grid;grid-template-columns:7rem 1fr auto;gap:12px;align-items:center;
-  padding:11px 0;border-bottom:1px solid var(--line)}
+.crow{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--line);font-size:.88rem}
 .crow:last-of-type{border-bottom:0}
-.cname{font-size:.9rem}
-.ckey{font:400 .76rem/1 var(--mono);color:var(--dim)}
+.ckey{font:400 .76rem/1 var(--mono);color:var(--dim);overflow:hidden;text-overflow:ellipsis}
 .cstate{font:400 .8rem/1 var(--mono);white-space:nowrap}
 .cstate.on{color:var(--status-ok)}
 .cstate.no{color:var(--dim)}
-
-.srow{display:flex;justify-content:space-between;gap:14px;padding:9px 0;
-  border-bottom:1px solid var(--line);font-size:.84rem;color:var(--muted)}
+.srow{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--line);font-size:.85rem;color:var(--muted)}
 .srow:last-of-type{border-bottom:0}
 .sage{font:400 .8rem/1 var(--mono);color:var(--dim);white-space:nowrap}
 .sage b{color:var(--ink)}
 
 .absent{color:var(--dim);border-bottom:1px dotted var(--line-2);cursor:help}
-.stamp{display:inline-block;font:400 .75rem/1 var(--mono);letter-spacing:.08em;
-  text-transform:uppercase;color:var(--gold);border:1px dashed var(--line-2);
-  border-radius:3px;padding:4px 7px}
-.foot{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
-  color:var(--dim);font-size:.8rem;line-height:1.6}
+.stamp{display:inline-flex;align-items:center;gap:7px;font:400 .75rem/1 var(--mono);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--gold);
+  border:1px dashed var(--line-2);border-radius:4px;padding:6px 9px}
+.standin{display:flex;gap:13px;align-items:flex-start;margin:11px 0 0;color:var(--dim);
+  font-size:.82rem;line-height:1.55}
+.foot{margin-top:30px;padding-top:17px;border-top:1px solid var(--line);
+  color:var(--dim);font-size:.8rem;line-height:1.65}
 
-@media (max-width:860px){
-  .cols{grid-template-columns:1fr}
+@media (max-width:1080px){
+  .shell{grid-template-columns:1fr}
+  .band{width:40%}
   .commands{grid-template-columns:1fr 1fr}
+}
+@media (max-width:720px){
+  .band{display:none}
+  .commands{grid-template-columns:1fr}
   .lrow{grid-template-columns:4px 1fr auto;row-gap:0}
-  .lclaim{grid-column:2/4;padding:0 0 15px}
-  .verdict{grid-template-columns:1fr;gap:12px}
-  .tally{font-size:2.6rem}
+  .lclaim{grid-column:2/4;padding:0 0 13px}
+  .verdict{grid-template-columns:1fr;gap:14px;justify-items:center;text-align:center}
+  .rooms{order:3;width:100%;justify-content:space-between}
+  .conn{margin-left:0}
 }
 """
 
@@ -546,157 +710,177 @@ a{color:inherit}
 # ---------------------------------------------------------------------------
 # the page
 
+#: THE FIVE ROOMS AND THE DOCK, from the owner's settled ruling -- NOT the reference mockup's
+#: `Home / Leagues / Keep / Tools / Settings`, which is a different information architecture
+#: nobody has ruled on. Using the settled names keeps this page honest; whether a landing page
+#: should carry room tabs AT ALL is a real open question, because no league is selected here and
+#: every room is per-league. Recorded in NOTES rather than decided by a mockup.
+ROOMS = (("layers", "Matchup"), ("swap", "Roster"), ("chart", "Draft Room"),
+         ("crown", "League"), ("search", "Import Audit"))
+
+
+def topbar(sl=None, uri=None, home=True):
+    rooms = "".join(
+        f'<a class="room" href="#{esc(label.lower().replace(" ", "-"))}">{icon(name, 19)}{esc(label)}</a>'
+        for name, label in ROOMS)
+    conn = ""
+    if sl:
+        conn = (f'<div class="conn"><p class="who">Sleeper <b>{esc(sl["username"])}</b><br>'
+                f'synced {esc(sl["synced_at_human"])}</p>'
+                f'<button class="btn">{icon("refresh", 17)}Resync all</button></div>')
+    return f"""
+  <header class="top">
+    {hero_band(uri)}
+    <div class="crestmark">{WYRM}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
+    <nav class="rooms">
+      <a class="room{' on' if home else ''}" href="#home">{icon("disk", 19)}Home</a>
+      {rooms}
+    </nav>
+    {conn}
+  </header>
+  <hr class="hr">"""
+
+
+def head(title):
+    return f"""<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>{ds.root_css_block()}{font_vars()}{ds.position_pill_css_block()}{css()}</style>
+</head><body>
+<div class="wrap">"""
+
+
+def panel(ic, title, body):
+    return (f'<section class="panel"><div class="phead">{icon(ic, 19)}<h2>{esc(title)}</h2></div>'
+            f'<div class="pbody">{body}</div></section>')
+
 
 def build(fx, seat_paths) -> str:
     arch = set(fx.get("archived_seats") or [])
     attention, quiet, archived = league_rows(seat_paths, arch)
     total = len(attention) + len(quiet)
-    sl = fx["sleeper"]
-    left = fx.get("left_leagues") or []
+    sl, left = fx["sleeper"], (fx.get("left_leagues") or [])
+    uri = banner_data_uri()
 
-    add_card = f"""
-<div class="card">
-  <h2>Add a league</h2>
-  <p class="sub">Two different things, so they are two different fields.</p>
-  <div class="field">
-    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
-    <button class="btn">Add</button>
-  </div>
-  <p class="hint">Adds <b>one</b> league by its Sleeper ID and leaves the rest of the list
-     alone. Use this for a league the account lookup does not return.</p>
-  <div class="field">
-    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username"
-           value="{esc(sl['username'])}">
-    <button class="btn ghost">Sync account</button>
-  </div>
-  <p class="hint">Looks up the account and <b>replaces</b> the whole list with the leagues it
-     returns &mdash; that is how a league you have left stops appearing. No password: Sleeper
-     does not use one.</p>
-</div>"""
-
-    manage_card = f"""
-<div class="card">
-  <h2>Manage</h2>
-  <p class="sub">Archiving and ordering are local conveniences. Sleeper has no concept of
-     either, so nothing here changes anything on Sleeper.</p>
-  <div class="crow">
-    <span class="cname">Archived</span>
-    <span class="ckey">hidden from the list</span>
-    <span class="cstate {'on' if archived else 'no'}">{len(archived)}</span>
-  </div>
-  <div class="crow">
-    <span class="cname">You left</span>
-    <span class="ckey">{esc(left[0]['name']) if left else 'none detected'}</span>
-    <span class="cstate {'on' if left else 'no'}">{len(left)}</span>
-  </div>
-  <p class="hint" style="margin-top:16px">Detected by diffing Sleeper&rsquo;s league list
-     against the leagues this app was tracking &mdash; left, removed, or the league was deleted.</p>
-  <button class="btn ghost" popovertarget="pop-delete">What deleting removes</button>
-  <div popover id="pop-delete" class="pop">
-    <p class="popttl">Deleting a league</p>
-    <p class="popmeta">local purge &middot; asks first</p>
-    <p class="pcost">It removes, for that league only:</p>
-    <ul class="pcost" style="padding-left:18px;margin-bottom:14px">
-      {''.join(f'<li>{c}</li>' for c in DELETE_COSTS)}
-    </ul>
-    <p class="pcost"><b>{DELETE_NOT}</b></p>
-  </div>
-</div>"""
-
-    conn_card = f"""
-<div class="card">
-  <h2>Connections</h2>
-  <p class="sub">Sleeper is where the leagues come from. Everything on this page is computed
-     without a model provider &mdash; they are optional, and only the assistant uses them.</p>
-  <div class="crow">
-    <span class="cname">Sleeper</span>
-    <code class="ckey">{esc(sl['username'])}</code>
-    <span class="cstate on"><span class="ok">&#10003;</span> connected</span>
-  </div>
-
-  <p class="eyebrow" style="margin:20px 0 2px">Model providers</p>
-  <p class="sub">Listed from the registry, not written into this page. A provider registered
-     in the app appears here on its own.</p>
-  {provider_rows(set(fx.get('configured_credentials') or []))}
-  <p class="hint" style="margin-top:16px">Keys are read from the environment or pasted as a
-     <code>.env</code> block. This page never shows a key&rsquo;s value, only whether one is
-     set, and the name beside each is the credential it travels under.</p>
-</div>"""
-
-    sources_card = f"""
-<div class="card">
-  <h2>Data behind these rows</h2>
-  <p class="sub">What a resync refreshes, and how old each source is now.</p>
-  {source_rows(fx['sources'])}
-  <p class="hint" style="margin-top:16px">A source with no date is not loaded. It renders as an
-     em dash carrying its reason, never as a zero.</p>
-</div>"""
-
-    quiet_note = ("These were checked and nothing came back. They are listed, not hidden &mdash; "
-                  "a league missing from the page would read as an error, not as calm.")
-
-    # COLLAPSING MUST NOT SWALLOW STATE. The four set-up panels were always-open cards; folding
-    # them into commands is cleaner only if the FACTS they showed at a glance survive the fold.
-    # Each button therefore carries the one number its panel exists to report, so the page still
-    # answers "is anything unconfigured?" without a click. A bare row of verbs would have hidden
-    # that nothing is archived, or that no key is set, behind an interaction.
     configured = set(fx.get("configured_credentials") or [])
     n_prov = len(providers.ids())
     n_on = sum(1 for pid in providers.ids() if providers.get(pid).key_field in configured)
     dated = [s["days"] for s in fx["sources"] if s["days"] is not None]
     oldest = f"{max(dated)}d" if dated else "&mdash;"
 
-    return f"""<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Your Leagues</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
-<style>{ds.root_css_block()}{font_vars()}{ds.position_pill_css_block()}{css()}</style>
-</head><body>
-<div class="wrap">
-
-  <header class="top">
-    <div class="crest">{WYRM}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
-    <div class="conn">
-      <p class="who">Sleeper <b>{esc(sl['username'])}</b><br>synced {esc(sl['synced_at_human'])}</p>
-      <button class="btn">Resync all</button>
-    </div>
-  </header>
-
-  <section class="verdict">
-    <p class="tally">{len(attention)}<s>/{total}</s></p>
-    <div>
-      <h1>{len(attention)} of your {total} leagues want something.</h1>
-      <p>Ordered by what KIND of thing is open, never by its size &mdash; a hole is a hole in
-         any league, but two leagues&rsquo; figures are different units wearing one label.
-         Open a league for the detail; this page only says which.</p>
-    </div>
-  </section>
-  <p class="bnote"><span class="stamp">Constructed</span> {STANDIN}.</p>
-
-  {section("Needs you", None, attention)}
-  {section("Nothing open", quiet_note, quiet,
-           empty="Every league came back clean.")}
-  {section("Archived", "Hidden from the list above. Still synced.", archived,
-           empty="Nothing archived.") if archived else ""}
-
-  <p class="eyebrow">Set up</p>
-  <div class="commands">
-    <button class="cmd" popovertarget="pop-add">Add a league
-      <s>one by ID, or a whole account</s></button>
-    <button class="cmd" popovertarget="pop-manage">Manage
-      <s>{len(archived)} archived &middot; {len(left)} left</s></button>
-    <button class="cmd" popovertarget="pop-conn">Connections
-      <s>Sleeper &middot; {n_on} of {n_prov} providers</s></button>
-    <button class="cmd" popovertarget="pop-data">Data
-      <s>oldest source {oldest}</s></button>
+    add_body = f"""
+  <p class="sub">Two different things, so they are two different fields.</p>
+  <div class="field">
+    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
+    <button class="btn">{icon('plus', 17)}Add</button>
   </div>
-  <div popover id="pop-add" class="pop wide">{add_card}</div>
-  <div popover id="pop-manage" class="pop wide">{manage_card}</div>
-  <div popover id="pop-conn" class="pop wide">{conn_card}</div>
-  <div popover id="pop-data" class="pop wide">{sources_card}</div>
+  <p class="hint">Adds <b>one</b> league by its Sleeper ID and leaves the rest of the list
+     alone. For a league the account lookup does not return.</p>
+  <div class="or">or</div>
+  <div class="field">
+    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username"
+           value="{esc(sl['username'])}">
+    <button class="btn ghost">{icon('user', 17)}Sync account</button>
+  </div>
+  <p class="hint">Looks up the account and <b>replaces</b> the whole list with the leagues it
+     returns &mdash; that is how a league you have left stops appearing. No password: Sleeper
+     does not use one.</p>"""
+
+    manage_body = f"""
+  <p class="sub">Archiving and ordering are local conveniences. Sleeper has no concept of
+     either, so nothing here changes anything on Sleeper.</p>
+  <div class="crow">{icon('archive', 17)}<span>Archived <span class="ckey">hidden from the
+     list</span></span><span class="cstate {'on' if archived else 'no'}">{len(archived)}</span></div>
+  <div class="crow">{icon('swap', 17)}<span>You left <span class="ckey">{esc(left[0]['name'])
+     if left else 'none detected'}</span></span>
+     <span class="cstate {'on' if left else 'no'}">{len(left)}</span></div>
+  <p class="hint" style="margin-top:15px">Detected by diffing Sleeper&rsquo;s league list
+     against the leagues this app was tracking &mdash; left, removed, or deleted.</p>
+  <button class="btn ghost" popovertarget="pop-delete">What deleting removes</button>
+  <div popover id="pop-delete" class="pop">
+    <p class="popttl">Deleting a league</p>
+    <p class="popmeta">local purge &middot; asks first</p>
+    <p class="pcost">It removes, for that league only:</p>
+    <ul class="pcost" style="padding-left:18px;margin-bottom:14px">
+      {''.join(f'<li>{c}</li>' for c in DELETE_COSTS)}</ul>
+    <p class="pcost"><b>{DELETE_NOT}</b></p>
+  </div>"""
+
+    conn_body = f"""
+  <p class="sub">Sleeper is where the leagues come from. Everything on this page is computed
+     without a model provider &mdash; they are optional, and only the assistant uses them.</p>
+  <div class="crow">{icon('user', 17)}<span>Sleeper <span class="ckey">{esc(sl['username'])}
+     </span></span><span class="cstate on">{icon('check', 15, 'ok')} connected</span></div>
+  <div class="sechead" style="margin:17px 0 2px">{icon('link', 17)}
+    <p class="eyebrow">Model providers</p><span class="rule"></span></div>
+  <p class="sub" style="margin-bottom:6px">Listed from the registry, not written into this
+     page. A provider registered in the app appears here on its own.</p>
+  {provider_rows(configured)}
+  <p class="hint" style="margin-top:15px">Keys are read from the environment or pasted as a
+     <code>.env</code> block. This page never shows a key&rsquo;s value, only whether one is
+     set, and the name beside each is the credential it travels under.</p>"""
+
+    data_body = f"""
+  <p class="sub">What a resync refreshes, and how old each source is now.</p>
+  {source_rows(fx['sources'])}
+  <p class="hint" style="margin-top:15px">A source with no date is not loaded. It renders as an
+     em dash carrying its reason, never as a zero.</p>"""
+
+    quiet_note = ("These were checked and nothing came back. They are listed, not hidden &mdash; "
+                  "a league missing from the page would read as an error, not as calm.")
+
+    return f"""{head('Your Leagues')}
+{topbar(sl, uri)}
+
+  <div class="shell">
+    <div class="rail-left">
+      {panel('link', 'Connections', conn_body)}
+      {panel('disk', 'On disk', data_body)}
+    </div>
+
+    <div class="rail-main">
+      <section class="verdict">
+        {crest(str(len(attention)), str(total))}
+        <div class="vtext">
+          <h1>{len(attention)} of your {total} leagues want something.</h1>
+          <p>Ordered by what KIND of thing is open, never by its size &mdash; a hole is a hole
+             in any league, but two leagues&rsquo; figures are different units wearing one
+             label. Open a league for the detail; this page only says which.</p>
+        </div>
+      </section>
+      <p class="standin"><span class="stamp">{icon('layers', 14)}Constructed</span>
+         <span>{STANDIN}.</span></p>
+
+      {sechead('crown', 'Needs you')}
+      <div class="leagues">{''.join(row_html(r, i) for i, r in enumerate(attention))}</div>
+
+      {sechead('check', 'Nothing open', quiet_note)}
+      <div class="leagues">{''.join(row_html(r, i) for i, r in enumerate(quiet))}</div>
+
+      {sechead('archive', 'Archived', 'Hidden from the list above. Still synced.') if archived else ''}
+      {'<div class="leagues">' + ''.join(row_html(r, i) for i, r in enumerate(archived)) + '</div>' if archived else ''}
+
+      {sechead('gear', 'Set up')}
+      <div class="commands">
+        <button class="cmd" popovertarget="pop-add">{icon('plus', 21)}Add a league
+          <s>one by ID, or a whole account</s></button>
+        <button class="cmd" popovertarget="pop-manage">{icon('layers', 21)}Manage
+          <s>{len(archived)} archived &middot; {len(left)} left</s></button>
+        <button class="cmd" popovertarget="pop-conn">{icon('link', 21)}Connections
+          <s>Sleeper &middot; {n_on} of {n_prov} providers</s></button>
+        <button class="cmd" popovertarget="pop-data">{icon('disk', 21)}Data
+          <s>oldest source {oldest}</s></button>
+      </div>
+      <div popover id="pop-add" class="pop">{add_body}</div>
+      <div popover id="pop-manage" class="pop">{manage_body}</div>
+      <div popover id="pop-conn" class="pop">{conn_body}</div>
+      <div popover id="pop-data" class="pop">{data_body}</div>
+    </div>
+  </div>
 
   <p class="foot">
     Claim detail lives inside a league, not here. This page answers one question &mdash; which
@@ -713,53 +897,56 @@ def build_unsynced(fx) -> str:
 
     `front_page.compose_unsynced` already composes this state with an `action` and an
     `action_cost`; this draws that shape rather than inventing a second empty state.
+
+    NOTE THE LAYOUT DIFFERS FROM THE SYNCED PAGE ON PURPOSE. The reference mockup put the
+    "No leagues yet / Connect to Sleeper" column BESIDE a list of ten synced leagues. As a way
+    of showing both pages at once that is fine; as a UI it is a contradiction -- those two
+    states are mutually exclusive, and a user who has synced can never see the connect panel.
+    So the connect rail exists only here, and the synced page gives that column to standing
+    state instead.
     """
-    return f"""<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Connect Sleeper</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
-<style>{ds.root_css_block()}{font_vars()}{ds.position_pill_css_block()}{css()}</style>
-</head><body>
-<div class="wrap">
-  <header class="top">
-    <div class="crest">{WYRM}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
-  </header>
+    uri = banner_data_uri()
+    connect_body = f"""
+  <p class="sub">Either route works, and both can be used together later.</p>
+  <div class="field">
+    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username">
+    <button class="btn">{icon('user', 17)}Sync account</button>
+  </div>
+  <p class="hint">Pulls every league on the account. No password: Sleeper does not use one.</p>
+  <div class="or">or</div>
+  <div class="field">
+    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
+    <button class="btn ghost">{icon('plus', 17)}Add one</button>
+  </div>
+  <p class="hint">For a league the account lookup does not return.</p>"""
 
-  <section class="verdict">
-    <p class="tally">0<s>/0</s></p>
-    <div>
-      <h1>No leagues yet.</h1>
-      <p>Sleeper needs a username and no password. Syncing an account pulls every league it
-         returns; a single league can be added by its ID instead.</p>
-    </div>
-  </section>
+    disk_body = f"""
+  <p class="sub">Loaded now, before any sync. These price the board; the sync adds your
+     league&rsquo;s own rules.</p>
+  {source_rows(fx['sources'])}
+  <p class="hint" style="margin-top:15px"><b>Until you sync,</b> the board cannot price to a
+     league&rsquo;s scoring: the player universe and the league-scored projections both arrive
+     with the sync.</p>"""
 
-  <div class="cols">
-    <div class="card">
-      <h2>Connect</h2>
-      <p class="sub">Either route works, and both can be used together later.</p>
-      <div class="field">
-        <input type="text" placeholder="Sleeper username" aria-label="Sleeper username">
-        <button class="btn">Sync account</button>
-      </div>
-      <p class="hint">Pulls every league on the account.</p>
-      <div class="field">
-        <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
-        <button class="btn ghost">Add one</button>
-      </div>
-      <p class="hint">For a league the account lookup does not return.</p>
+    return f"""{head('Connect Sleeper')}
+{topbar(None, uri)}
+
+  <div class="shell">
+    <div class="rail-left">
+      {panel('link', 'Connect to Sleeper', connect_body)}
     </div>
-    <div class="card">
-      <h2>What is already on disk</h2>
-      <p class="sub">Loaded now, before any sync. These price the board; the sync adds your
-         league&rsquo;s own rules.</p>
-      {source_rows(fx['sources'])}
-      <p class="hint" style="margin-top:16px"><b>Until you sync,</b> the board cannot price to a
-         league&rsquo;s scoring: the player universe and the league-scored projections both
-         arrive with the sync.</p>
+    <div class="rail-main">
+      <section class="verdict">
+        {crest('0', '0')}
+        <div class="vtext">
+          <h1>No leagues yet.</h1>
+          <p>Sleeper needs a username and no password. Syncing an account pulls every league it
+             returns; a single league can be added by its ID instead. Nothing on this page is
+             computed until one of those happens.</p>
+        </div>
+      </section>
+      {sechead('disk', 'What is already on disk')}
+      {panel('chart', 'Sources', disk_body)}
     </div>
   </div>
 
@@ -770,23 +957,20 @@ def build_unsynced(fx) -> str:
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
     fx = json.loads(FIXTURE.read_text())
     seats = glob.glob(SEATS)
     if not seats:
         raise SystemExit(f"no seat fixtures matched {SEATS}")
 
     # BUILD-TIME GATES. A measured floor that fails the build is worth more than a measured
-    # floor in a report nobody re-runs -- but only if it reads THIS page. Both of these take
-    # their subject as an argument for exactly that reason; see their docstrings.
+    # floor in a report nobody re-runs -- but only if it reads THIS page. Each takes its
+    # subject as an argument for exactly that reason; see their docstrings.
     assert_marks_are_visible()
     assert_type_floor(css())
     assert_vars_resolve(ds.root_css_block(), font_vars(), ds.position_pill_css_block(), css())
-    page = build(fx, seats)
-    empty = build_unsynced(fx)
 
-    OUT.write_text(page)
-    OUT_EMPTY.write_text(empty)
+    OUT.write_text(build(fx, seats))
+    OUT_EMPTY.write_text(build_unsynced(fx))
     for p in (OUT, OUT_EMPTY):
         print(f"{p}  {len(p.read_text()):,} bytes")
     return 0
