@@ -470,19 +470,47 @@ def crest(figure: str, of: str) -> str:
 </div>"""
 
 
-def banner_data_uri():
-    """The repo's real header art, embedded exactly as `app.py:127` embeds it.
+def asset_data_uri(name: str, mime: str):
+    """Embed an asset, exactly as `app.py:127` embeds the banner.
 
-    ONE HOME for the "banner or nothing" rule: a missing asset means no banner, never a broken
-    header. Returns None on any read failure and every caller treats that as "draw the gradient
-    alone", which is also what happens in a checkout without `assets/`.
+    ONE HOME for the "asset or nothing" rule (`#126`): a missing file means that element is not
+    drawn, never a broken header. Returns None on any read failure, and every caller treats that
+    as "draw without it" -- which is also what happens in a checkout without `assets/`.
     """
     import base64
-    path = ROOT / "assets" / "header_banner.jpg"
     try:
-        return "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+        return f"data:{mime};base64," + base64.b64encode(
+            (ROOT / "assets" / name).read_bytes()).decode("ascii")
     except (FileNotFoundError, OSError):
         return None
+
+
+def banner_data_uri():
+    return asset_data_uri("header_banner.jpg", "image/jpeg")
+
+
+def emblem(size: int = 44) -> str:
+    """THE REAL EMBLEM, not the stand-in arc.
+
+    `WYRM` is a hand-drawn SVG crescent that stood in while no brand asset was reachable. The
+    actual logo was in the tree the whole time at `ui_explore/round4/_ref/wyrm_crop.png` -- a
+    510x420 RGB crop of goldwyrm.com's gold dragon. `assets/wyrm_emblem.png` is derived from it:
+    alpha keyed from LUMINANCE (the mark is gold, its ground near-black, so the two separate
+    without a hand-drawn mask), trimmed to content, and resized to 128px wide.
+
+    WHY THE KEYING MATTERED. The crop has no alpha and its ground is a textured dark grey
+    slightly LIGHTER than this page's `--bg`. Dropped in as-is it renders as a visible grey
+    plaque behind the dragon, and neither `lighten` nor `screen` fixes that -- both leave the
+    ground showing, because it is brighter than what it sits on. Keying is the only treatment
+    that lets the mark antialias against the page instead of carrying its own rectangle.
+
+    Falls back to `WYRM` when the asset is unreadable, per `asset_data_uri`'s rule.
+    """
+    uri = asset_data_uri("wyrm_emblem.png", "image/png")
+    if not uri:
+        return WYRM
+    return (f'<img class="emblem" src="{uri}" width="{size}" height="{round(size * 108 / 128)}" '
+            f'alt="" aria-hidden="true">')
 
 
 def hero_band(uri):
@@ -521,6 +549,7 @@ a{color:inherit}
 /* ---- top bar: wordmark, rooms, connection ---- */
 .top{display:flex;align-items:center;gap:26px;padding:12px 0;flex-wrap:wrap;position:relative}
 .crestmark{display:flex;align-items:center;gap:12px}
+.emblem{display:block;flex:0 0 auto}
 .word{font:600 1.3rem/1 var(--display);letter-spacing:.11em;text-transform:uppercase;margin:0;
   background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
@@ -731,7 +760,7 @@ def topbar(sl=None, uri=None, home=True):
     return f"""
   <header class="top">
     {hero_band(uri)}
-    <div class="crestmark">{WYRM}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
+    <div class="crestmark">{emblem()}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
     <nav class="rooms">
       <a class="room{' on' if home else ''}" href="#home">{icon("disk", 19)}Home</a>
       {rooms}

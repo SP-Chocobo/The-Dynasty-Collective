@@ -18,6 +18,13 @@ Get these wrong and a beautiful image is unusable:
 - **Nothing important near an edge.** Everything here is `background-size:cover`, so edges crop
   at some viewport.
 
+## Already done — do NOT generate these
+
+**The emblem is sourced.** The real gold dragon was in the tree the whole time at
+`ui_explore/round4/_ref/wyrm_crop.png` (a crop of goldwyrm.com). `assets/wyrm_emblem.png` is
+derived from it with alpha keyed from luminance, trimmed and sized to 128px wide, and it is now
+the mark in the top left. Nothing to generate here.
+
 ## The pieces, in the order they would earn their place
 
 | # | slot | size | what it is |
