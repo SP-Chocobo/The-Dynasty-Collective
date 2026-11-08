@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Wyrm Dynasty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #0c0a07;
+  --surface: #17130d;
+  --surface-2: #120f0a;
+  --line: #2a2318;
+  --line-2: #443823;
+  --ink: #f2ead9;
+  --muted: #b0a28a;
+  --dim: #897c61;
+  --emerald: #0b8f57;
+  --emerald-b: #2fd08b;
+  --gold: #c9961a;
+  --gold-b: #f5c93f;
+  --violet: #6d3fd6;
+  --violet-b: #b593f5;
+  --crimson: #a60f3a;
+  --crimson-b: #f2546e;
+  --sky: #1356c9;
+  --sky-b: #56a0fa;
+  --amber: #d4700a;
+  --amber-b: #f8a52a;
+  --cliff: #07837a;
+  --cliff-b: #2fcfc0;
+  --block: #b53a09;
+  --block-b: #f79a53;
+  --pure: #efe5cd;
+  --tie: #6f6550;
+  --tie-b: #a1947b;
+  --status-ok: #4ee08c;
+  --status-bad: #7b7059;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:400 1rem/1.55 "Segoe UI", system-ui, sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:46rem;margin:0 auto;padding:24px 16px 56px}
+
+/* ---- brand. Cinzel for the wordmark and top-level headings ONLY, never for data: its
+   numerals are letterspaced and "11" reads as Roman "II". ---- */
+.crest{display:flex;align-items:center;gap:12px;margin:0 0 4px}
+.wyrm{flex:0 0 auto}
+.word{font:600 1.5rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.11em;text-transform:uppercase;
+  background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+/* IN REM, NOT EM. At .5em of the wordmark this computed to 10.56px desktop and 9.12px on
+   the phone -- under the 12px floor, and invisible to any check that reads declared sizes
+   without resolving the em chain. Small type is declared in rem throughout this file so
+   `_assert_type_floor` can verify the floor WITHOUT a browser. */
+.word b{display:block;font-size:.78rem;letter-spacing:.44em;font-weight:400;margin-top:6px}
+.seat{color:var(--muted);font-size:.84rem;margin:0 0 22px;padding-left:46px}
+.seat .st{color:var(--dim)}
+
+/* ---- the band. Severity by FRAME SHAPE, grafted from `keep`: the hole rung gets a solid left
+   rule, the bye rung a thinner one, the thin rung none. It survives greyscale and forced
+   colours, which a colour-only encoding does not. ---- */
+.claims{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.claim{background:var(--surface);border:1px solid var(--line);border-radius:3px;
+  padding:14px 16px;position:relative}
+.claim.hole{border-left:4px solid var(--gold-b)}
+.claim.bye{border-left:3px solid var(--gold)}
+.claim.thin{border-left:1px solid var(--line-2)}
+.claim.none{border-left:1px solid var(--line);text-align:left}
+.claim h3{font:400 1.06rem/1.35 "Segoe UI", system-ui, sans-serif;margin:0 0 5px;color:var(--ink)}
+.claim p{margin:0;color:var(--muted);font-size:.9rem}
+/* SPLIT, because the two parents differ (1.06rem and .9rem) and one em value cannot be
+   resolved statically for both. .95em was SAFE here at 13.68px -- the rule rejects it
+   anyway, so that the floor stays checkable without a browser rather than case by case. */
+.claim h3 b,.claim p b{color:var(--ink);font-weight:600;font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace}
+.claim h3 b{font-size:1rem}
+.claim p b{font-size:.86rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:11px}
+
+/* ---- controls. 44px minimum, which is why these are padded rather than text-sized. ---- */
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;
+  border:1px solid var(--line-2);border-radius:3px;background:var(--surface-2);
+  color:var(--ink);font:400 .82rem/1 "Segoe UI", system-ui, sans-serif;cursor:pointer;text-decoration:none}
+.btn:hover,.btn:focus-visible{border-color:var(--gold);color:var(--gold-b)}
+.btn.route{border-style:dashed;color:var(--muted)}
+
+/* ---- popovers, not inline disclosure. The owner's ruling: "a popout or pop-over, not in-line
+   in the dashboard". Native `popover`, so it is an overlay with keyboard and escape handling
+   and no script. ---- */
+[popover]{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);
+  border-radius:4px;padding:18px;max-width:min(32rem,92vw);
+  box-shadow:0 18px 50px rgba(0,0,0,.72)}
+[popover]::backdrop{background:rgba(4,3,2,.66)}
+[popover] h4{font:400 1rem/1.3 "Segoe UI", system-ui, sans-serif;margin:0 0 10px;color:var(--gold-b)}
+.popnote{color:var(--dim);font-size:.78rem;margin:12px 0 0}
+.popclose{margin-top:14px}
+
+/* ---- the week table. A table, because it is tabular, and the bar is a second encoding beside
+   a readable number rather than the only encoding. ---- */
+table.weeks{width:100%;border-collapse:collapse;font-size:.84rem}
+.weeks th{text-align:left;font-weight:400;color:var(--muted);padding:5px 10px 5px 0;
+  white-space:nowrap}
+.weeks td{padding:5px 0}
+.weeks td.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;text-align:right;padding-right:12px;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.barcell{width:52%}
+.bar{display:block;height:9px;border-radius:2px}
+.bar.recede{background:var(--dim)}
+.bar.mid{background:var(--gold)}
+.bar.hot{background:var(--gold-b)}
+
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:.86rem}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;color:var(--ink)}
+dl.kv dd.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-variant-numeric:tabular-nums}
+ul.slots{margin:0;padding-left:20px;font-size:.88rem}
+
+/* ---- the checks line. Most weeks this is the whole page. ---- */
+.checks{margin:0 0 20px;padding:12px 14px;border:1px dashed var(--line-2);border-radius:3px;
+  color:var(--muted);font-size:.84rem}
+.checks b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink)}
+
+.absent{color:var(--dim);cursor:help;border-bottom:1px dotted var(--dim)}
+.currency{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}
+.stamp{font-size:.76rem;color:var(--dim)}
+
+/* ---- five rooms and one dock. Not six doors. ---- */
+nav{border-top:1px solid var(--line);margin-top:26px;padding-top:18px}
+nav h2{font:400 .78rem/1 "Segoe UI", system-ui, sans-serif;letter-spacing:.17em;text-transform:uppercase;
+  color:var(--dim);margin:0 0 10px}
+.rooms{display:flex;flex-wrap:wrap;gap:8px}
+.dock{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.dock .stamp{display:block;margin-top:7px}
+
+.close{margin-top:20px}
+.close .btn{border-color:var(--gold);color:var(--gold-b)}
+
+@media (max-width:460px){
+  .wrap{padding:18px 16px 44px}
+  .seat{padding-left:0}
+  .word{font-size:1.2rem}
+  .barcell{width:44%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+</style>
+</head><body>
+<main class="wrap">
+  <div class="crest"><svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+<defs><linearGradient id="g" x1="0" y1="0" x2=".3" y2="1">
+<stop offset="0" stop-color="#755024"/><stop offset=".4" stop-color="#ba9561"/>
+<stop offset=".72" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
+</linearGradient></defs>
+<path d="M17 2a15 15 0 1 0 10.6 25.6" fill="none" stroke="url(#g)" stroke-width="2.4"
+ stroke-linecap="round"/>
+<path d="M17 8a9 9 0 1 1-6.4 15.3" fill="none" stroke="url(#g)" stroke-width="1.9"
+ stroke-linecap="round" opacity=".82"/>
+<circle cx="21.4" cy="10.6" r="1.9" fill="url(#g)"/>
+</svg><h1 class="word">Gold Wyrm<b>Dynasty</b></h1></div>
+  <p class="seat"><span class="absent" tabindex="0" title="a format label is a battery arm, not a league's name">&mdash;</span> <span class="st">&middot;</span> Team 1 <span class="st">&middot;</span> <span class="absent" tabindex="0" title="a replayed draft has no point in the season. A live league reads season/week from Sleeper's NFL state; without it the bye claim cannot assert that a week is still ahead">&mdash;</span></p>
+  <div class="claims"><article class="claim bye"><h3>Week <b>6</b> costs <b>95</b></h3><p>the largest of the weeks still ahead, in <span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint -- so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built yet">trade value</span>. <b>1</b> starter out that week.</p><div class="row"><button class="btn" popovertarget="exp0">What it is made of</button><a class="btn route" href="#matchup">Matchup &rsaquo;</a></div></article><div id="exp0" popover><h4>Week <b>6</b> costs <b>95</b></h4><p class="popnote">Every week with a measured bye cost, in <span class="currency" tabindex="0" title="dynasty trade value, not this league's points. `bye_collision` prices whatever its caller supplies and this page supplies Draft Sharks Dynasty Rankings value, selected by a three-field format hint -- so a league's own bonuses never reach it. The ruling is that grading belongs in league points; that conversion is not built yet">trade value</span>. Each week is its own solve of the lineup with that week's byes removed &mdash; eighteen separate results, not one number spread out.</p><table class="weeks"><tbody><tr><th>Week 6</th><td class="n">95</td><td class="barcell"><span class="bar hot" style="width:100%"></span></td></tr><tr><th>Week 7</th><td class="n">8</td><td class="barcell"><span class="bar recede" style="width:8%"></span></td></tr><tr><th>Week 8</th><td class="n">51</td><td class="barcell"><span class="bar mid" style="width:54%"></span></td></tr><tr><th>Week 9</th><td class="n">4</td><td class="barcell"><span class="bar recede" style="width:4%"></span></td></tr><tr><th>Week 10</th><td class="n">56</td><td class="barcell"><span class="bar mid" style="width:59%"></span></td></tr><tr><th>Week 11</th><td class="n">23</td><td class="barcell"><span class="bar recede" style="width:24%"></span></td></tr></tbody></table><div class="popclose"><button class="btn" popovertarget="exp0" popovertargetaction="hide">Close</button></div></div><article class="claim thin"><h3>Thin at <b>DEF</b></h3><p><b>1</b> rostered. Depth here rates <b>Weak</b> against this league's own rosters.</p><div class="row"><button class="btn" popovertarget="exp1">What it is made of</button><a class="btn route" href="#league">League &rsaquo;</a></div></article><div id="exp1" popover><h4>Thin at <b>DEF</b></h4><dl class="kv"><dt>rostered</dt><dd class="n">1</dd><dt>priced</dt><dd class="n">1</dd><dt>band</dt><dd>Weak</dd></dl><p class="popnote">The band is a RATIO against this league's own mean, not a rank. Nothing here orders teams within a position, so there is no "worst in the league" to report.</p><div class="popclose"><button class="btn" popovertarget="exp1" popovertargetaction="hide">Close</button></div></div><article class="claim thin"><h3>Thin at <b>TE</b></h3><p><b>2</b> rostered. Depth here rates <b>Weak</b> against this league's own rosters. Only <b>1</b> of 2 could be priced, so that comparison is a floor.</p><div class="row"><button class="btn" popovertarget="exp2">What it is made of</button><a class="btn route" href="#league">League &rsaquo;</a></div></article><div id="exp2" popover><h4>Thin at <b>TE</b></h4><dl class="kv"><dt>rostered</dt><dd class="n">2</dd><dt>priced</dt><dd class="n">1</dd><dt>band</dt><dd>Weak</dd></dl><p class="popnote">The band is a RATIO against this league's own mean, not a rank. Nothing here orders teams within a position, so there is no "worst in the league" to report.</p><div class="popclose"><button class="btn" popovertarget="exp2" popovertargetaction="hide">Close</button></div></div></div>
+  
+  <p class="checks">Clean: holes.</p>
+  
+  <nav>
+    <h2>Rooms</h2>
+    <div class="rooms"><a class="btn" href="#matchup">Matchup</a><a class="btn" href="#roster-maintenance">Roster Maintenance</a><a class="btn" href="#draft-room">Draft Room</a><a class="btn" href="#league">League</a><a class="btn" href="#import-audit">Import Audit</a></div>
+    <div class="dock">
+      <a class="btn" href="#prytaneum">The Prytaneum</a>
+      <span class="stamp">A dock rendered under every room, not a sixth room.</span>
+    </div>
+  </nav>
+</main>
+</body></html>
