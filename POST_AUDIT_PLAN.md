@@ -20006,3 +20006,181 @@ verdict you cannot see is a hollow test one level up — the instrument, not the
 about a two-man room or ordering the band by the alphabet. `#338`'s `CHECKS_RUN` gap remains
 open and is independent of this.
 
+---
+
+### CERTIFICATION — `#339`
+
+```
+4444 tests in 1465.001s    OK (skipped=2, expected failures=1)    0 failures, 0 errors
+```
+
++13 tests over `#337`'s 4431, exactly the new cross-interface module. Eight ratchets green on the
+staged tree. Mutation record **9 / 5 / 1 / 1**, each arm restored from a pristine copy verified
+with `cmp`, `__pycache__` cleared between arms (`#240`).
+
+One run, green first time — the tree was frozen from launch to verdict, which is the rule
+`#337`'s three runs earned. 1465.0s sits inside the 5% noise band the `#337` pair established
+(1462.0 / 1538.5 on the same tree), so this is not a change in the suite.
+
+**`#335` is unblocked.**
+
+---
+
+## `#341` — TRADE VALUE IS THE GRADING CURRENCY BY ACCIDENT. THE OWNER RULES: POINTS UNDER THE LEAGUE'S OWN RULES
+
+Surfaced by the owner describing their leagues, and recorded at their direction:
+
+> every league is unique in its exact scoring ... There is no cookie-cutter league setting to
+> anticipate, since each is their own entity with differing scoring, bonuses, receptions
+> bonuses, positional usage, etc.
+
+That is true, and it is **not** true of the number the front page is about to draw. Three facts,
+each checked rather than inferred.
+
+### 1. `trade_value` CANNOT vary with a league's exact scoring. Proven by signature.
+
+```python
+def merge_player(self, player_full_name: str, position: Optional[str] = None,
+                 team: Optional[str] = None, df: Optional[pd.DataFrame] = None) -> dict:
+```
+
+**No `scoring_settings` parameter exists.** So `trade_value` is a function of
+`(name, position, team, whichever export is loaded)`, and the loaded export is chosen by
+`set_league_format` from `league_format_hint` — a THREE-FIELD projection:
+`{scoring, superflex, te_premium}`, derived from `rec`, whether `roster_positions` holds
+`SUPER_FLEX` or 2+ `QB`, and whether `bonus_rec_te > 0`.
+
+Every other difference the owner names — pass-TD values, rush bonuses, positional usage, IDP
+weighting — **collapses**. Two of their leagues can price identically while scoring nothing
+alike. That is not a defect in `merge_player`; it is the documented mechanism (`#180`/`#192`/
+`#204`: Draft Sharks publishes a static pre-computed season number, and format reaches valuation
+by FILE SELECTION, not by arithmetic). The defect would be rendering it as though it were the
+league's own number.
+
+### 2. TWO existing paths use TWO different currencies for the same quantity
+
+| path | prices on | operates on |
+|---|---|---|
+| `roster_diagnostics.py:237-244` | `p["uv"]` — the draft board's universal value, raw-points denominated | a DRAFT TRAJECTORY (`trajectory.picks`) |
+| `ui_explore/capture_front_fixture.py:146-150` | `priced.get("trade_value")` — Draft Sharks dynasty value | a replayed roster |
+
+`bye_collision` is the same function in both. **The number it returns is in whatever currency its
+caller put in `value`**, and the two callers disagree. `#336`'s fourth defect already caught the
+consequence of conflating exactly these two: `round3/front.html` denominated a Draft Sharks
+trade-value figure as "UV pts". That was recorded as a labelling error. It is better understood
+as this item's symptom — the quantity genuinely has two currencies and the label picked the
+wrong one.
+
+**There is no live production bye claim yet.** `#335` is unwired, so nothing ships either
+currency to a user today. That is why this is recordable now rather than a correction.
+
+### 3. The league's own scoring IS reachable, and `#337` just made it cheap
+
+`compute_points_from_stats(stats, scoring_settings)` applies a league's real settings — every
+bonus the owner listed — to raw per-category stat lines. It is used by `outcome_record.py` and
+`sleeper_import_report.py`. **It has never been used for a bye figure.**
+
+Its input is the per-week projection lines, which until `#337` cost eighteen fetches per league.
+`get_season_projections_shared`'s `weekly_out` now carries them from one fetch per season, so the
+exact path costs arithmetic rather than requests. The capability became affordable as a side
+effect of an unrelated item.
+
+### The two questions this separates, which are not the same question
+
+```
+"How much roster VALUE sits idle in week 6?"    <- what bye_collision answers today.
+                                                   Dynasty asset value, bucketed by format.
+"How many POINTS do I lose in week 6 under MY rules?"
+                                                <- what the owner's model expects.
+                                                   Exact, per league, now reachable.
+```
+
+Both are legitimate and they are different claims. A dynasty app has a real reason to care about
+the first: a bye costs you the use of assets whose value is league-independent. But a reader who
+plays nine leagues with nine scoring systems will read the number as the second.
+
+### THE OWNER'S RULING, and a correction to this entry's first draft
+
+> points under my rules, not trade value. Unless you're actively contemplating trades, I dont
+> think trade values are the correct valuation currency upon which to grade a player/roster. But
+> that value in trades also needs to account for dynastic valuation.
+
+**Two currencies, two jobs, and the separation is the ruling:**
+
+| job | currency |
+|---|---|
+| GRADING a player or roster | points under this league's own scoring (`compute_points_from_stats`) |
+| TRADING | Draft Sharks Dynasty Rankings `trade_value`, which is dynasty-valued by source |
+
+**CORRECTION TO THIS ENTRY AS FIRST WRITTEN.** Its original heading was "the bye figure has no
+settled currency", which reads as though trade valuation were an open question. It is not, and
+the owner said so:
+
+> as an aside, i thought the engine already had the trade valuations it wanted to use sorted?
+
+They are sorted. `trade_value` comes from the Draft Sharks **Dynasty Rankings** export
+(`data_merger.py:13`, `parse_draftsharks_pdf`), format-selected, so the dynastic dimension is in
+the SOURCE rather than owed. The only withheld quantity on that side is FUTURE PICK value
+(`estimate_future_pick_value`, 1.89 slots mean error on 12). Player trade values are settled;
+pick prices are not.
+
+The open question was never "is trade value sorted". It was **"which currency grades a roster"**,
+and conflating the two is what the heading did. Trade value was settled for TRADING and then
+reused for GRADING without that reuse ever being argued. **The accidental reuse is the defect**,
+not the valuation.
+
+### SCOPE: the ruling changes two of the three rungs that fire, not just the bye claim
+
+| rung | currency today | changes under the ruling? |
+|---|---|---|
+| `hole` | none — `slot_coverage` takes no `value` by design, a pure count | **no** |
+| `bye` | `trade_value` (fixture path) / `uv` (roster_diagnostics path) | **yes** |
+| `thin` | `trade_value` — `positional_depth` sums it into `cell["value"]`, and `depth_label` ranks on that value whenever every peer is priced | **yes** |
+
+The `thin` half was not in this entry's first draft and is the larger half: `depth_label` is the
+judgment behind every thin claim, and it has been a trade-value ratio all along.
+
+### A CONSEQUENCE THE OWNER SHOULD HOLD, flagged rather than relitigated
+
+Points under a league's rules are **season-shaped**. Dynasty value is **multi-year**. A 22-year-old
+and a 31-year-old receiver with identical projections grade identically on points and very
+differently as dynasty assets.
+
+So a depth label on league-exact points answers "how thin am I THIS SEASON", not "how thin is
+this roster going forward" — and this is a dynasty app. The ruling is the owner's and stands;
+this is recorded so that a young thin room reading the same as an old one is a known consequence
+rather than a surprise. If it later matters, the fix is a second labelled judgment, never a blend
+of the two scales.
+
+### What the ruling decides, and what it still leaves open
+
+Decided:
+
+1. **Grading surfaces price on league-exact points.** `bye_collision` and `positional_depth` both
+   take their `value` from `compute_points_from_stats(stats, this league's scoring_settings)`.
+2. **The trade calculator keeps `trade_value`**, dynasty-valued by source.
+3. **The figure states its currency on the page.** Every surface here stamps a basis
+   (`measured` / `>= floor` / `constructed` / absent); a CURRENCY is part of a basis and no stamp
+   carries one today.
+4. **`bye_collision`'s caller must declare the currency**, because the function is
+   currency-agnostic by construction and its two existing callers already disagree — the `#126`
+   shape: one quantity, two homes for what it is denominated in.
+5. **No conversion between scales.** `uv` is raw points, `trade_value` is dynasty value, and
+   league-exact points are a third. Nothing may add or compare across them.
+
+Still open, and deliberately not invented here:
+
+- **Which weeks a "season points" grade sums.** A season total, the weeks remaining, or a
+  rest-of-season average are three different claims and `#305` forbids sizing a bound to a
+  decaying sample. This needs its own ruling.
+- **What a thin label means when coverage is partial.** `valued_count < count` already makes the
+  comparison a floor; on points the gap will have a different shape, because a player can be
+  unpriced in the rankings yet fully projected by Sleeper. The two coverage sets are not the
+  same set, and `#190`'s argument has to be re-made for the new currency rather than assumed.
+
+### Status
+
+**Recorded with the ruling; no code changed.** It blocks nothing today because no production
+surface draws either figure — `#335` is unwired. It must be settled before `#335` wires the band
+and before the dashboard draws a bye or thin figure, and the two open questions above must be
+ruled before the conversion is built.

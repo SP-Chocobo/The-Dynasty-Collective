@@ -88,11 +88,11 @@ $PY -m unittest $mods          # 54 modules, 1082 tests, 104 seconds
 That is the whole risk class for any `#137` extraction at one seventeenth of a full suite's cost.
 Grepping for the symbol you moved is NOT this check and is not a substitute for it.
 
-**Budget it from a measurement that carries its own date.** The last one: **4431 tests in
-1538.5s** at `b3313a9` (2026-11-08), measured with `__pycache__` cleared first per `#240`.
+**Budget it from a measurement that carries its own date.** The last one: **4444 tests in
+1465.0s** at `a8c80e8` (2026-11-08), measured with `__pycache__` cleared first per `#240`.
 **Size a timeout from 1976.7s**, the worst total in the table, NOT from the latest.
 
-Eleven measurements, which is far more useful than any one of them:
+Twelve measurements, which is far more useful than any one of them:
 
 | tests | seconds | per test | commit |
 |---|---|---|---|
@@ -106,7 +106,8 @@ Eleven measurements, which is far more useful than any one of them:
 | 4393 | 1377.5 | 314ms | `98b372f` (`#333`) |
 | 4410 | 1379.6 | 313ms | `375c47c` (`#334`) |
 | 4430 | 1462.0 | 330ms | *discarded run*, 2026-11-08 -- see note |
-| **4431** | **1538.5** | **347ms** | **`b3313a9`** (2026-11-08, `#337`) |
+| 4431 | 1538.5 | 347ms | `b3313a9` (2026-11-08, `#337`) |
+| **4444** | **1465.0** | **330ms** | **`a8c80e8`** (2026-11-08, `#339`) |
 
 **THE LAST TWO ROWS ARE THE SAME TREE AND THEY DISAGREE BY 5%.** 4430 tests in 1462.0s and 4431
 in 1538.5s, one test apart, on the same machine within the hour. The 1462.0s run was DISCARDED as
