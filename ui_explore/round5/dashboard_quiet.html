@@ -37,136 +37,193 @@
   --status-ok: #4ee08c;
   --status-bad: #7b7059;
 }
+:root {
+  --qb: #2a81fc;
+  --rb: #0ca89c;
+  --wr: #4aa8ef;
+  --te: #ff6042;
+  --k: #fab87e;
+  --def: #ef7fc0;
+  --dl: #4cec4c;
+  --lb: #ff45ed;
+  --db: #6ad8f0;
+  --idp: #99a851;
+  --absent: #b0a28a;
+}
 
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink)}
-body{font:400 1rem/1.6 "Segoe UI", system-ui, sans-serif;-webkit-text-size-adjust:100%}
-.wrap{max-width:50rem;margin:0 auto;padding:40px 20px 72px}
+body{font:400 .95rem/1.55 "Segoe UI", system-ui, sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:84rem;margin:0 auto;padding:0 20px 56px}
 
-/* ---- THE TYPE SCALE, with real jumps. A measured correction: the first pass of this page put
-   ELEVEN sizes between 12.16px and 24px -- a 1.97:1 range -- which reads as "everything is the
-   same size" no matter how correct the content is. `deck`, the design the owner chose for feel,
-   spans 12px to 44px with deliberate jumps at 22, 30 and 44. The brief's own rule is RESTRAINT
-   IN INFORMATION, GENEROSITY IN CRAFT, and the first pass cut the craft along with the
-   information -- the exact failure the brief was written to prevent. ---- */
-.eyebrow{font:600 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--gold);margin:0 0 10px}
-.big{font:600 2.75rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:-.02em;color:var(--gold-b);
-  font-variant-numeric:tabular-nums;display:block}
-.big .u{font-size:.95rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
-  font-family:"Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;margin-left:10px;vertical-align:.42em}
-.n{font:600 1.375rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);font-variant-numeric:tabular-nums}
-
-/* ---- brand. Cinzel carries the wordmark and every LABEL; figures are always mono, because
-   Cinzel's numerals are letterspaced and "11" reads as Roman "II". ---- */
-.crest{display:flex;align-items:center;gap:14px;margin:0 0 6px}
-.word{font:600 1.75rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.12em;text-transform:uppercase;margin:0;
+/* ---- TOP BAR. Horizontal, full width, with the rooms inline. The first two passes put a
+   centred crest over a 760px column on a 1280px screen and left 60% of it empty, which is most
+   of why the page read as "too plain": not the type, the COMPOSITION. ---- */
+.top{display:flex;align-items:center;gap:26px;padding:18px 0;border-bottom:1px solid var(--line);
+  flex-wrap:wrap}
+.crest{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.word{font:600 1.32rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.11em;text-transform:uppercase;margin:0;
   background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
-.word b{display:block;font-size:.78rem;letter-spacing:.44em;font-weight:400;margin-top:8px}
-/* the logo's own device: a hairline with a diamond, fading out rather than stopping dead */
-.orn{display:flex;align-items:center;gap:10px;margin:0 0 26px}
-.orn i{height:1px;flex:1;background:linear-gradient(90deg,rgba(117,80,36,.55),
-  rgba(117,80,36,.04))}
-.orn i:last-child{background:linear-gradient(270deg,rgba(117,80,36,.55),rgba(117,80,36,.04))}
-.orn s{width:5px;height:5px;background:var(--gold);transform:rotate(45deg);flex:0 0 auto}
-.seat{font:400 .82rem/1.5 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);margin:0;text-align:center}
-.seat .st{color:var(--line-2)}
+.word b{display:block;font-size:.76rem;letter-spacing:.42em;font-weight:400;margin-top:5px}
+.doors{display:flex;gap:4px;flex:1 1 auto;flex-wrap:wrap}
+.door{display:inline-flex;align-items:center;min-height:44px;padding:0 13px;border-radius:4px;
+  color:var(--muted);font:400 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.1em;text-decoration:none;
+  border:1px solid transparent;white-space:nowrap}
+.door:hover,.door:focus-visible{color:var(--gold-b);border-color:var(--line-2);
+  background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.04))}
+.whoami{display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid var(--line);
+  border-radius:4px;background:var(--surface);font-size:.8rem;color:var(--muted);
+  flex:0 0 auto}
+.whoami b{color:var(--ink);font-weight:600;font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace}
 
-/* ---- the band. Surfaces are vertical GRADIENTS, not flat fills, and severity is carried by
-   FRAME WEIGHT as well as colour so it survives greyscale and forced-colours. ---- */
-.claims{display:flex;flex-direction:column;gap:14px;margin:0 0 18px}
-.claim{background:linear-gradient(180deg,var(--surface),var(--surface-2));
-  border:1px solid var(--line);border-left-width:1px;border-radius:5px;padding:22px 24px;
-  position:relative;overflow:hidden}
-/* a 45-degree hatch at low opacity, bled from the left edge -- texture, not decoration: it is
-   what keeps a near-black panel from reading as an empty div */
-.claim::before{content:"";position:absolute;inset:0 auto 0 0;width:92px;pointer-events:none;
-  background:repeating-linear-gradient(135deg,transparent 0 3px,rgba(176,162,138,.07) 3px 4px);
+/* ---- THE VERDICT. deck's hero: the three-second answer as a STATEMENT, with the headline
+   figure boxed beside it. This is the element both earlier passes lacked entirely. ---- */
+.verdict{display:grid;grid-template-columns:1fr 20rem;gap:28px;align-items:start;
+  margin:26px 0 22px;padding:26px 28px;border:1px solid var(--line-2);border-radius:6px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));position:relative;
+  overflow:hidden}
+.verdict::before{content:"";position:absolute;inset:0 auto 0 0;width:180px;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(176,162,138,.06) 4px 5px);
   mask-image:linear-gradient(90deg,#000,transparent)}
-.claim.hole{border-left:4px solid var(--gold-b)}
-.claim.bye{border-left:3px solid var(--gold)}
-.claim.thin{border-left:2px solid var(--line-2)}
-.claim.none{border-left:2px solid var(--gold)}
-.claim h3{font:400 1.375rem/1.25 "Segoe UI", system-ui, sans-serif;margin:0 0 8px;color:var(--ink);
-  letter-spacing:-.01em}
-.claim h3 b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600}
-.claim p{margin:0;color:var(--muted);font-size:.9rem;max-width:44ch}
-.claim p b{color:var(--ink);font-weight:600;font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-size:.86rem}
-.figline{display:flex;align-items:baseline;gap:14px;margin:0 0 4px}
-.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+.verdict h1{font:400 2.35rem/1.08 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;color:var(--gold-b);margin:4px 0 14px;
+  letter-spacing:.005em;position:relative}
+.verdict p{margin:0;color:var(--muted);max-width:56ch;position:relative}
+.verdict p b{color:var(--ink);font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600;font-size:.9rem}
+.statbox{border:1px solid var(--line-2);border-radius:5px;padding:18px 20px;
+  background:linear-gradient(180deg,rgba(117,80,36,.16),rgba(117,80,36,.03));position:relative}
+.statbox .big{font:600 3rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--gold-b);letter-spacing:-.02em;display:block;
+  font-variant-numeric:tabular-nums}
+.statbox .u{font:400 .8rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);display:block;margin-top:8px}
+.statbox .sub{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);
+  font-size:.8rem;color:var(--muted)}
 
-/* ---- controls. Cinzel, letterspaced, 48px tall, on a gold wash rather than a grey box. ---- */
-.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 20px;
+/* ---- the two-column body ---- */
+.cols{display:grid;grid-template-columns:1.45fr 1fr;gap:20px;align-items:start}
+.panel{border:1px solid var(--line);border-radius:6px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));overflow:hidden}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  padding:15px 20px;border-bottom:1px solid var(--line)}
+.eyebrow{font:600 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin:0}
+.ph .basis{font:400 .76rem/1.4 "Segoe UI", system-ui, sans-serif;color:var(--dim);font-style:italic;text-align:right}
+.pbody{padding:16px 20px 20px}
+
+/* ---- THE LEDGER. A real table: this is the density the owner liked, and it is organised
+   rather than piled -- every column labelled, every figure in mono, every player chipped in
+   his own position colour. ---- */
+table.led{width:100%;border-collapse:collapse}
+.led thead th{font:400 .76rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);text-align:left;padding:0 10px 9px 0;border-bottom:1px solid var(--line);
+  white-space:nowrap}
+.led tbody td{padding:9px 10px 9px 0;border-bottom:1px solid var(--surface-2);
+  vertical-align:top}
+.led tbody tr:last-child td{border-bottom:0}
+.led tbody tr.peak td{background:rgba(117,80,36,.14)}
+.led .wk{font:400 .82rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap}
+.led .peak .wk{color:var(--gold-b)}
+.led .n{font:600 1.05rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);text-align:right;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.led .peak .n{color:var(--gold-b);font-size:1.25rem}
+.led .barcell{width:34%}
+.bar{display:block;height:9px;border-radius:2px;min-width:3px}
+.bar.recede{background:var(--dim)}
+.bar.mid{background:var(--gold)}
+.bar.hot{background:linear-gradient(90deg,var(--gold),var(--gold-b))}
+.who{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--ink);
+  white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+.chip s{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--muted);text-decoration:none;font-size:.78rem}
+.ledfoot{display:flex;flex-wrap:wrap;gap:22px;margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.ledfoot b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);font-weight:600}
+
+/* ---- claim cards in the right column, each with a position pill and a visible basis ---- */
+.claim{border:1px solid var(--line);border-radius:5px;padding:15px 17px;margin:0 0 12px;
+  background:var(--surface-2);border-left-width:3px}
+.claim:last-child{margin-bottom:0}
+.claim.hole{border-left-color:var(--gold-b)}
+.claim.bye{border-left-color:var(--gold)}
+.claim.thin{border-left-color:var(--line-2)}
+.claim.none{border-left-color:var(--gold)}
+.chead{display:flex;align-items:center;gap:10px;margin:0 0 7px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;height:21px;padding:0 8px;border-radius:3px;
+  font:600 .76rem/1 "JetBrains Mono", "DejaVu Sans Mono", monospace;letter-spacing:.04em}
+.claim h3{font:400 1.02rem/1.3 "Segoe UI", system-ui, sans-serif;margin:0;color:var(--ink)}
+.claim h3 b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600}
+.claim p{margin:0;color:var(--muted);font-size:.86rem}
+.claim p b{color:var(--ink);font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-weight:600;font-size:.82rem}
+.basis{display:block;margin-top:9px;font:400 .76rem/1.45 "JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--dim)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+/* ---- CLEARED. deck's six-column row: what was checked and passed, each with its basis. ---- */
+.cleared{margin-top:20px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:0;
+  border-top:1px solid var(--line)}
+.cg{padding:15px 18px;border-right:1px solid var(--line)}
+.cg:last-child{border-right:0}
+.cg .t{display:flex;gap:8px;align-items:baseline;color:var(--ink);font-size:.86rem}
+.cg .tick{color:var(--status-ok);flex:0 0 auto}
+
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 15px;
   border:1px solid var(--line-2);border-radius:4px;
-  background:linear-gradient(180deg,rgba(117,80,36,.28),rgba(117,80,36,.05));
-  color:var(--gold-b);font:400 .82rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.16em;
-  text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap}
+  background:linear-gradient(180deg,rgba(117,80,36,.26),rgba(117,80,36,.05));
+  color:var(--gold-b);font:400 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;text-decoration:none;white-space:nowrap}
 .btn:hover,.btn:focus-visible{border-color:var(--gold);color:var(--pure)}
 .btn.route{background:none;border-style:dashed;color:var(--muted)}
 
 [popover]{border:1px solid var(--line-2);border-radius:6px;padding:26px;
   background:linear-gradient(180deg,var(--surface),var(--bg));color:var(--ink);
-  max-width:min(34rem,92vw);box-shadow:0 24px 64px rgba(0,0,0,.8)}
+  max-width:min(36rem,92vw);box-shadow:0 24px 64px rgba(0,0,0,.8)}
 [popover]::backdrop{background:rgba(4,3,2,.74)}
 [popover] h4{font:600 .82rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.2em;text-transform:uppercase;
-  margin:0 0 18px;color:var(--gold)}
-.popnote{color:var(--dim);font-size:.78rem;margin:16px 0 0;max-width:46ch}
-.popclose{margin-top:20px}
-
+  margin:0 0 16px;color:var(--gold)}
+.popnote{color:var(--dim);font-size:.78rem;margin:14px 0 0;max-width:48ch}
+.popclose{margin-top:18px}
 table.weeks{width:100%;border-collapse:collapse;font-size:.84rem}
-.weeks th{font:400 .78rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
-  text-align:left;color:var(--muted);padding:7px 12px 7px 0;white-space:nowrap}
-.weeks td{padding:7px 0}
-.weeks td.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-size:.95rem;text-align:right;padding-right:14px;
-  color:var(--ink);font-variant-numeric:tabular-nums}
-.barcell{width:50%}
-.bar{display:block;height:10px;border-radius:2px}
-.bar.recede{background:var(--dim)}
-.bar.mid{background:var(--gold)}
-.bar.hot{background:linear-gradient(90deg,var(--gold),var(--gold-b))}
-
-dl.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0}
+.weeks th{font:400 .76rem/1 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
+  text-align:left;color:var(--muted);padding:6px 12px 6px 0}
+.weeks td{padding:6px 0}
+.weeks td.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;text-align:right;padding-right:14px;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.weeks .barcell{width:46%}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0}
 dl.kv dt{font:400 .78rem/1.4 "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;letter-spacing:.14em;text-transform:uppercase;
   color:var(--muted)}
 dl.kv dd{margin:0;color:var(--ink);font-size:.9rem}
 dl.kv dd.n{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;font-variant-numeric:tabular-nums;font-size:1.05rem}
-ul.slots{margin:0;padding-left:20px;font-size:.95rem}
-
-/* ---- the checks line. Most weeks this is the whole page, so it gets a rule and a label
-   rather than being a sentence in the margin. ---- */
-.checks{margin:0;padding:18px 0 0;border-top:1px solid var(--line);color:var(--muted);
-  font-size:.86rem}
-.checks .eyebrow{margin-bottom:8px}
-.checks b{font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace;color:var(--ink);font-size:1.05rem;font-weight:600}
+ul.slots{margin:0;padding-left:20px;font-size:.92rem}
 
 .absent{color:var(--dim);cursor:help;border-bottom:1px dotted var(--dim)}
 .currency{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}
-.stamp{font:400 .76rem/1.5 "Segoe UI", system-ui, sans-serif;color:var(--dim)}
+.dock{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.stamp{font:400 .78rem/1.5 "Segoe UI", system-ui, sans-serif;color:var(--dim)}
+.close{margin-top:18px}
 
-nav{margin-top:36px}
-nav .orn{margin:0 0 18px}
-.rooms{display:flex;flex-wrap:wrap;gap:10px}
-.dock{margin-top:18px;padding-top:18px;border-top:1px dashed var(--line)}
-.dock .stamp{display:block;margin-top:9px}
-.close{margin-top:26px}
-.close .btn{border-color:var(--gold)}
-
-@media (max-width:460px){
-  .wrap{padding:26px 16px 52px}
-  .word{font-size:1.32rem}
-  .big{font-size:2.25rem}
-  .claim{padding:18px 18px}
-  .claim h3{font-size:1.2rem}
-  .barcell{width:42%}
+@media (max-width:1040px){
+  .verdict{grid-template-columns:1fr}
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px 44px}
+  .verdict{padding:20px;margin:18px 0 16px}
+  .verdict h1{font-size:1.72rem}
+  .statbox .big{font-size:2.5rem}
+  .led .barcell{display:none}
+  .cg{border-right:0;border-bottom:1px solid var(--line)}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 </style>
 </head><body>
-<main class="wrap">
-  <div class="crest"><svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+<div class="wrap">
+  <header class="top">
+    <span class="crest"><svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
 <defs><linearGradient id="g" x1="0" y1="0" x2=".3" y2="1">
 <stop offset="0" stop-color="#755024"/><stop offset=".4" stop-color="#ba9561"/>
 <stop offset=".72" stop-color="#f9de99"/><stop offset="1" stop-color="#fff4ce"/>
@@ -176,21 +233,41 @@ nav .orn{margin:0 0 18px}
 <path d="M17 8a9 9 0 1 1-6.4 15.3" fill="none" stroke="url(#g)" stroke-width="1.9"
  stroke-linecap="round" opacity=".82"/>
 <circle cx="21.4" cy="10.6" r="1.9" fill="url(#g)"/>
-</svg><h1 class="word">Gold Wyrm<b>Dynasty</b></h1></div>
-  <p class="orn"><i></i><s></s><i></i></p>
-  <p class="seat"><span class="absent" tabindex="0" title="a format label is a battery arm, not a league's name">&mdash;</span> <span class="st">&middot;</span> Team 11 <span class="st">&middot;</span> week <b>15</b></p>
-  <div class="claims"><article class="claim none"><p class="eyebrow">Nothing open this week</p><p class="figline"><span class="big">3<span class="u">checks, all clean</span></span></p><h3>holes, byes, depth</h3><p>No unfillable slot, no bye week still ahead with a measured cost, no position thin against this league.</p></article></div>
-  
-  
-  <div class="close"><button class="btn" popovertarget="bye-note">Close the app</button></div><div id="bye-note" popover><h4>Nothing is waiting</h4><p class="popnote">Every check this page runs came back clean. It will keep the ledger while you are gone.</p><div class="popclose"><button class="btn" popovertarget="bye-note" popovertargetaction="hide">Close</button></div></div>
-  <nav>
-    <p class="orn"><i></i><s></s><i></i></p>
-    <h2 class="eyebrow">Rooms</h2>
-    <div class="rooms"><a class="btn" href="#matchup">Matchup</a><a class="btn" href="#roster-maintenance">Roster Maintenance</a><a class="btn" href="#draft-room">Draft Room</a><a class="btn" href="#league">League</a><a class="btn" href="#import-audit">Import Audit</a></div>
-    <div class="dock">
-      <a class="btn" href="#prytaneum">The Prytaneum</a>
-      <span class="stamp">A dock rendered under every room, not a sixth room.</span>
+</svg><h1 class="word">Gold Wyrm<b>Dynasty</b></h1></span>
+    <nav class="doors"><a class="door" href="#matchup">Matchup</a><a class="door" href="#roster-maintenance">Roster Maintenance</a><a class="door" href="#draft-room">Draft Room</a><a class="door" href="#league">League</a><a class="door" href="#import-audit">Import Audit</a></nav>
+    <div class="whoami"><b>Team 11</b><span>no league name <span class="absent" tabindex="0" title="a format label is a battery arm, not a league's name">&mdash;</span></span><span>wk <b>15</b></span></div>
+  </header>
+
+  <section class="verdict">
+    <div>
+      <p class="eyebrow">The three-second answer</p>
+      <h1>Nothing open this week.</h1>
+      <p>Every check this page runs came back clean. It keeps the ledger while you are gone.</p>
     </div>
-  </nav>
-</main>
+    <div class="statbox"><span class="big">3</span><span class="u">checks, all clean</span><p class="sub">holes, byes, depth</p></div>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="ph"><p class="eyebrow">Bye ledger</p>
+        <span class="basis">each week re-solved with that week's byes removed &middot;
+        value lost, not bodies</span></div>
+      <div class="pbody"><table class="led"><thead><tr><th>Week</th><th style="text-align:right">Lost</th><th></th><th>Away</th></tr></thead><tbody><tr class=""><td class="wk">Wk 5</td><td class="n">10</td><td class="barcell"><span class="bar recede" style="width:15%"></span></td><td><div class="who"><span class="chip"><i style="background:#2a81fc"></i>Patrick Mahomes<s>28</s></span></div></td></tr><tr class=""><td class="wk">Wk 6</td><td class="n">0</td><td class="barcell"><span class="bar recede" style="width:3%"></span></td><td><div class="who"><span class="chip"><i style="background:#fab87e"></i>Evan McPherson<s>6</s></span></div></td></tr><tr class=""><td class="wk">Wk 7</td><td class="n">35</td><td class="barcell"><span class="bar mid" style="width:51%"></span></td><td><div class="who"><span class="chip"><i style="background:#0ca89c"></i>James Cook<s>54</s></span><span class="chip"><i style="background:#ff6042"></i>Brenton Strange<s>10</s></span></div></td></tr><tr class=""><td class="wk">Wk 8</td><td class="n">68</td><td class="barcell"><span class="bar hot" style="width:100%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>Malik Nabers<s>81</s></span><span class="chip"><i style="background:#fab87e"></i>Ka'imi Fairbairn<s>12</s></span><span class="chip"><i style="background:#ef7fc0"></i>San Francisco 49ers<s>0</s></span></div></td></tr><tr class=""><td class="wk">Wk 10</td><td class="n">63</td><td class="barcell"><span class="bar hot" style="width:93%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>DeVonta Smith<s>37</s></span><span class="chip"><i style="background:#0ca89c"></i>D'Andre Swift<s>19</s></span><span class="chip"><i style="background:#4aa8ef"></i>Emeka Egbuka<s>51</s></span><span class="chip"><i style="background:#ef7fc0"></i>Chicago Bears<s>0</s></span></div></td></tr><tr class=""><td class="wk">Wk 11</td><td class="n">29</td><td class="barcell"><span class="bar mid" style="width:43%"></span></td><td><div class="who"><span class="chip"><i style="background:#ff6042"></i>Tucker Kraft<s>28</s></span><span class="chip"><i style="background:#2a81fc"></i>Jordan Love<s>18</s></span><span class="chip"><i style="background:#0ca89c"></i>Jadarian Price<s>30</s></span><span class="chip"><i style="background:#0ca89c"></i>Blake Corum<s>15</s></span></div></td></tr><tr class=""><td class="wk">Wk 14</td><td class="n">63</td><td class="barcell"><span class="bar hot" style="width:93%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>CeeDee Lamb<s>82</s></span></div></td></tr></tbody></table><div class="ledfoot"><span>season <b>268</b></span><span>worst week <b>25%</b> of it</span><span>unknown byes <b>0</b></span></div></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><p class="eyebrow">Open</p>
+        <span class="basis">ranked by kind, not by size &mdash; the units do not compare</span>
+      </div>
+      <div class="pbody"><p class="stamp">Nothing is standing. The ledger below is what was examined to say so.</p></div>
+    </section>
+  </div>
+
+  <section class="panel cleared"><div class="ph"><p class="eyebrow">Cleared &mdash; can wait</p><span class="basis">what was checked and passed, each with its basis</span></div><div class="cgrid"><div class="cg"><div class="t"><span class="tick">&check;</span><span>Holes: nothing found</span></div><span class="basis" title="slots_from_roster_positions + slot_coverage">measured &middot; slots_from_roster_positions + slot_coverage</span></div><div class="cg"><div class="t"><span class="tick">&check;</span><span>Byes: nothing found</span></div><span class="basis" title="lineup_optimizer.bye_collision / bye_concentration">measured &middot; lineup_optimizer.bye_collision / bye_concentration</span></div><div class="cg"><div class="t"><span class="tick">&check;</span><span>Depth: nothing found</span></div><span class="basis" title="positional_depth + depth_ratings.depth_label">measured &middot; positional_depth + depth_ratings.depth_label</span></div></div></section>
+
+  <div class="dock">
+    <a class="btn route" href="#prytaneum">The Prytaneum</a>
+    <span class="stamp">A dock rendered under every room, not a sixth room.</span>
+  </div>
+</div>
+
 </body></html>

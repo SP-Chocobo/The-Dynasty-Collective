@@ -80,13 +80,24 @@ class TheTypeFloorIsEnforcedAtBuildTimeTests(unittest.TestCase):
         self.assertEqual([], re.findall(r"font-size:\s*[\d.]+em", css))
 
     def test_the_build_refuses_a_size_below_the_floor(self):
+        """THE MUTATION IS INJECTED, NOT ANCHORED ON A SELECTOR THAT EXISTS TODAY.
+
+        This guard has now gone stale twice, both times because a redesign deleted the rule its
+        mutation string named -- and a mutation that no longer applies leaves the guard VACUOUS:
+        green because nothing was broken, not because the floor held. Appending a rule cannot go
+        stale, so the assertion is tested rather than a particular line of CSS.
+        """
         real = bd.CSS
         try:
-            bd.CSS = real.replace(".stamp{{font:400 .76rem", ".stamp{{font:400 .72rem")
+            bd.CSS = real + "\n.probe{{font-size:.5rem}}"
+            with self.assertRaises(SystemExit):
+                bd._assert_type_floor()
+            bd.CSS = real + "\n.probe{{font-size:.9em}}"
             with self.assertRaises(SystemExit):
                 bd._assert_type_floor()
         finally:
             bd.CSS = real
+        bd._assert_type_floor()          # and it passes again once restored
 
 
 class ThePageDrawsTheEnginesClaimsAndNoOthersTests(unittest.TestCase):
@@ -182,10 +193,15 @@ class FiveRoomsAndOneDockTests(unittest.TestCase):
                 self.assertNotIn(absent_room, page)
 
     def test_the_dock_is_marked_as_a_dock_and_not_a_sixth_room(self):
+        """Asserted on the nav REGION rather than a class name, so a rename cannot make this
+        throw an IndexError and look like a broken test instead of a broken page."""
         page = bd.build(LOUD)
         self.assertIn("not a sixth room", page)
-        rooms_block = page.split('class="rooms"')[1].split("</div>")[0]
-        self.assertNotIn(bd.DOCK, rooms_block)
+        self.assertIn("<nav", page)
+        nav = page.split("<nav", 1)[1].split("</nav>", 1)[0]
+        self.assertNotIn(bd.DOCK, nav, "the dock must not sit inside the rooms nav")
+        for room in bd.ROOMS:
+            self.assertIn(room, nav)
 
 
 class TheCurrencyIsStampedOnTheFigureTests(unittest.TestCase):

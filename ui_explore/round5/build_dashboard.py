@@ -263,126 +263,169 @@ def expansion(c: dict, fx: dict) -> str:
 CSS = """
 *{{box-sizing:border-box}}
 html,body{{margin:0;background:var(--bg);color:var(--ink)}}
-body{{font:400 1rem/1.6 {sans};-webkit-text-size-adjust:100%}}
-.wrap{{max-width:50rem;margin:0 auto;padding:40px 20px 72px}}
+body{{font:400 .95rem/1.55 {sans};-webkit-text-size-adjust:100%}}
+.wrap{{max-width:84rem;margin:0 auto;padding:0 20px 56px}}
 
-/* ---- THE TYPE SCALE, with real jumps. A measured correction: the first pass of this page put
-   ELEVEN sizes between 12.16px and 24px -- a 1.97:1 range -- which reads as "everything is the
-   same size" no matter how correct the content is. `deck`, the design the owner chose for feel,
-   spans 12px to 44px with deliberate jumps at 22, 30 and 44. The brief's own rule is RESTRAINT
-   IN INFORMATION, GENEROSITY IN CRAFT, and the first pass cut the craft along with the
-   information -- the exact failure the brief was written to prevent. ---- */
-.eyebrow{{font:600 .78rem/1 {display};letter-spacing:.22em;text-transform:uppercase;
-  color:var(--gold);margin:0 0 10px}}
-.big{{font:600 2.75rem/1 {mono};letter-spacing:-.02em;color:var(--gold-b);
-  font-variant-numeric:tabular-nums;display:block}}
-.big .u{{font-size:.95rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
-  font-family:{display};margin-left:10px;vertical-align:.42em}}
-.n{{font:600 1.375rem/1 {mono};color:var(--ink);font-variant-numeric:tabular-nums}}
-
-/* ---- brand. Cinzel carries the wordmark and every LABEL; figures are always mono, because
-   Cinzel's numerals are letterspaced and "11" reads as Roman "II". ---- */
-.crest{{display:flex;align-items:center;gap:14px;margin:0 0 6px}}
-.word{{font:600 1.75rem/1 {display};letter-spacing:.12em;text-transform:uppercase;margin:0;
+/* ---- TOP BAR. Horizontal, full width, with the rooms inline. The first two passes put a
+   centred crest over a 760px column on a 1280px screen and left 60% of it empty, which is most
+   of why the page read as "too plain": not the type, the COMPOSITION. ---- */
+.top{{display:flex;align-items:center;gap:26px;padding:18px 0;border-bottom:1px solid var(--line);
+  flex-wrap:wrap}}
+.crest{{display:flex;align-items:center;gap:12px;flex:0 0 auto}}
+.word{{font:600 1.32rem/1 {display};letter-spacing:.11em;text-transform:uppercase;margin:0;
   background:linear-gradient(176deg,#755024 0%,#ba9561 38%,#f9de99 68%,#fff4ce 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}}
-.word b{{display:block;font-size:.78rem;letter-spacing:.44em;font-weight:400;margin-top:8px}}
-/* the logo's own device: a hairline with a diamond, fading out rather than stopping dead */
-.orn{{display:flex;align-items:center;gap:10px;margin:0 0 26px}}
-.orn i{{height:1px;flex:1;background:linear-gradient(90deg,rgba(117,80,36,.55),
-  rgba(117,80,36,.04))}}
-.orn i:last-child{{background:linear-gradient(270deg,rgba(117,80,36,.55),rgba(117,80,36,.04))}}
-.orn s{{width:5px;height:5px;background:var(--gold);transform:rotate(45deg);flex:0 0 auto}}
-.seat{{font:400 .82rem/1.5 {display};letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);margin:0;text-align:center}}
-.seat .st{{color:var(--line-2)}}
+.word b{{display:block;font-size:.76rem;letter-spacing:.42em;font-weight:400;margin-top:5px}}
+.doors{{display:flex;gap:4px;flex:1 1 auto;flex-wrap:wrap}}
+.door{{display:inline-flex;align-items:center;min-height:44px;padding:0 13px;border-radius:4px;
+  color:var(--muted);font:400 .8rem/1 {display};letter-spacing:.1em;text-decoration:none;
+  border:1px solid transparent;white-space:nowrap}}
+.door:hover,.door:focus-visible{{color:var(--gold-b);border-color:var(--line-2);
+  background:linear-gradient(180deg,rgba(117,80,36,.22),rgba(117,80,36,.04))}}
+.whoami{{display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid var(--line);
+  border-radius:4px;background:var(--surface);font-size:.8rem;color:var(--muted);
+  flex:0 0 auto}}
+.whoami b{{color:var(--ink);font-weight:600;font-family:{mono}}}
 
-/* ---- the band. Surfaces are vertical GRADIENTS, not flat fills, and severity is carried by
-   FRAME WEIGHT as well as colour so it survives greyscale and forced-colours. ---- */
-.claims{{display:flex;flex-direction:column;gap:14px;margin:0 0 18px}}
-.claim{{background:linear-gradient(180deg,var(--surface),var(--surface-2));
-  border:1px solid var(--line);border-left-width:1px;border-radius:5px;padding:22px 24px;
-  position:relative;overflow:hidden}}
-/* a 45-degree hatch at low opacity, bled from the left edge -- texture, not decoration: it is
-   what keeps a near-black panel from reading as an empty div */
-.claim::before{{content:"";position:absolute;inset:0 auto 0 0;width:92px;pointer-events:none;
-  background:repeating-linear-gradient(135deg,transparent 0 3px,rgba(176,162,138,.07) 3px 4px);
+/* ---- THE VERDICT. deck's hero: the three-second answer as a STATEMENT, with the headline
+   figure boxed beside it. This is the element both earlier passes lacked entirely. ---- */
+.verdict{{display:grid;grid-template-columns:1fr 20rem;gap:28px;align-items:start;
+  margin:26px 0 22px;padding:26px 28px;border:1px solid var(--line-2);border-radius:6px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));position:relative;
+  overflow:hidden}}
+.verdict::before{{content:"";position:absolute;inset:0 auto 0 0;width:180px;pointer-events:none;
+  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(176,162,138,.06) 4px 5px);
   mask-image:linear-gradient(90deg,#000,transparent)}}
-.claim.hole{{border-left:4px solid var(--gold-b)}}
-.claim.bye{{border-left:3px solid var(--gold)}}
-.claim.thin{{border-left:2px solid var(--line-2)}}
-.claim.none{{border-left:2px solid var(--gold)}}
-.claim h3{{font:400 1.375rem/1.25 {sans};margin:0 0 8px;color:var(--ink);
-  letter-spacing:-.01em}}
-.claim h3 b{{font-family:{mono};font-weight:600}}
-.claim p{{margin:0;color:var(--muted);font-size:.9rem;max-width:44ch}}
-.claim p b{{color:var(--ink);font-weight:600;font-family:{mono};font-size:.86rem}}
-.figline{{display:flex;align-items:baseline;gap:14px;margin:0 0 4px}}
-.row{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}}
+.verdict h1{{font:400 2.35rem/1.08 {display};color:var(--gold-b);margin:4px 0 14px;
+  letter-spacing:.005em;position:relative}}
+.verdict p{{margin:0;color:var(--muted);max-width:56ch;position:relative}}
+.verdict p b{{color:var(--ink);font-family:{mono};font-weight:600;font-size:.9rem}}
+.statbox{{border:1px solid var(--line-2);border-radius:5px;padding:18px 20px;
+  background:linear-gradient(180deg,rgba(117,80,36,.16),rgba(117,80,36,.03));position:relative}}
+.statbox .big{{font:600 3rem/1 {mono};color:var(--gold-b);letter-spacing:-.02em;display:block;
+  font-variant-numeric:tabular-nums}}
+.statbox .u{{font:400 .8rem/1 {display};letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);display:block;margin-top:8px}}
+.statbox .sub{{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);
+  font-size:.8rem;color:var(--muted)}}
 
-/* ---- controls. Cinzel, letterspaced, 48px tall, on a gold wash rather than a grey box. ---- */
-.btn{{display:inline-flex;align-items:center;min-height:48px;padding:0 20px;
+/* ---- the two-column body ---- */
+.cols{{display:grid;grid-template-columns:1.45fr 1fr;gap:20px;align-items:start}}
+.panel{{border:1px solid var(--line);border-radius:6px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));overflow:hidden}}
+.ph{{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  padding:15px 20px;border-bottom:1px solid var(--line)}}
+.eyebrow{{font:600 .78rem/1 {display};letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin:0}}
+.ph .basis{{font:400 .76rem/1.4 {sans};color:var(--dim);font-style:italic;text-align:right}}
+.pbody{{padding:16px 20px 20px}}
+
+/* ---- THE LEDGER. A real table: this is the density the owner liked, and it is organised
+   rather than piled -- every column labelled, every figure in mono, every player chipped in
+   his own position colour. ---- */
+table.led{{width:100%;border-collapse:collapse}}
+.led thead th{{font:400 .76rem/1 {display};letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);text-align:left;padding:0 10px 9px 0;border-bottom:1px solid var(--line);
+  white-space:nowrap}}
+.led tbody td{{padding:9px 10px 9px 0;border-bottom:1px solid var(--surface-2);
+  vertical-align:top}}
+.led tbody tr:last-child td{{border-bottom:0}}
+.led tbody tr.peak td{{background:rgba(117,80,36,.14)}}
+.led .wk{{font:400 .82rem/1 {display};letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap}}
+.led .peak .wk{{color:var(--gold-b)}}
+.led .n{{font:600 1.05rem/1 {mono};color:var(--ink);text-align:right;white-space:nowrap;
+  font-variant-numeric:tabular-nums}}
+.led .peak .n{{color:var(--gold-b);font-size:1.25rem}}
+.led .barcell{{width:34%}}
+.bar{{display:block;height:9px;border-radius:2px;min-width:3px}}
+.bar.recede{{background:var(--dim)}}
+.bar.mid{{background:var(--gold)}}
+.bar.hot{{background:linear-gradient(90deg,var(--gold),var(--gold-b))}}
+.who{{display:flex;flex-wrap:wrap;gap:6px}}
+.chip{{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--ink);
+  white-space:nowrap}}
+.chip i{{width:8px;height:8px;border-radius:2px;flex:0 0 auto}}
+.chip s{{font-family:{mono};color:var(--muted);text-decoration:none;font-size:.78rem}}
+.ledfoot{{display:flex;flex-wrap:wrap;gap:22px;margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}}
+.ledfoot b{{font-family:{mono};color:var(--ink);font-weight:600}}
+
+/* ---- claim cards in the right column, each with a position pill and a visible basis ---- */
+.claim{{border:1px solid var(--line);border-radius:5px;padding:15px 17px;margin:0 0 12px;
+  background:var(--surface-2);border-left-width:3px}}
+.claim:last-child{{margin-bottom:0}}
+.claim.hole{{border-left-color:var(--gold-b)}}
+.claim.bye{{border-left-color:var(--gold)}}
+.claim.thin{{border-left-color:var(--line-2)}}
+.claim.none{{border-left-color:var(--gold)}}
+.chead{{display:flex;align-items:center;gap:10px;margin:0 0 7px;flex-wrap:wrap}}
+.pill{{display:inline-flex;align-items:center;height:21px;padding:0 8px;border-radius:3px;
+  font:600 .76rem/1 {mono};letter-spacing:.04em}}
+.claim h3{{font:400 1.02rem/1.3 {sans};margin:0;color:var(--ink)}}
+.claim h3 b{{font-family:{mono};font-weight:600}}
+.claim p{{margin:0;color:var(--muted);font-size:.86rem}}
+.claim p b{{color:var(--ink);font-family:{mono};font-weight:600;font-size:.82rem}}
+.basis{{display:block;margin-top:9px;font:400 .76rem/1.45 {mono};color:var(--dim)}}
+.row{{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}}
+
+/* ---- CLEARED. deck's six-column row: what was checked and passed, each with its basis. ---- */
+.cleared{{margin-top:20px}}
+.cgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:0;
+  border-top:1px solid var(--line)}}
+.cg{{padding:15px 18px;border-right:1px solid var(--line)}}
+.cg:last-child{{border-right:0}}
+.cg .t{{display:flex;gap:8px;align-items:baseline;color:var(--ink);font-size:.86rem}}
+.cg .tick{{color:var(--status-ok);flex:0 0 auto}}
+
+.btn{{display:inline-flex;align-items:center;min-height:44px;padding:0 15px;
   border:1px solid var(--line-2);border-radius:4px;
-  background:linear-gradient(180deg,rgba(117,80,36,.28),rgba(117,80,36,.05));
-  color:var(--gold-b);font:400 .82rem/1 {display};letter-spacing:.16em;
-  text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap}}
+  background:linear-gradient(180deg,rgba(117,80,36,.26),rgba(117,80,36,.05));
+  color:var(--gold-b);font:400 .78rem/1 {display};letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;text-decoration:none;white-space:nowrap}}
 .btn:hover,.btn:focus-visible{{border-color:var(--gold);color:var(--pure)}}
 .btn.route{{background:none;border-style:dashed;color:var(--muted)}}
 
 [popover]{{border:1px solid var(--line-2);border-radius:6px;padding:26px;
   background:linear-gradient(180deg,var(--surface),var(--bg));color:var(--ink);
-  max-width:min(34rem,92vw);box-shadow:0 24px 64px rgba(0,0,0,.8)}}
+  max-width:min(36rem,92vw);box-shadow:0 24px 64px rgba(0,0,0,.8)}}
 [popover]::backdrop{{background:rgba(4,3,2,.74)}}
 [popover] h4{{font:600 .82rem/1 {display};letter-spacing:.2em;text-transform:uppercase;
-  margin:0 0 18px;color:var(--gold)}}
-.popnote{{color:var(--dim);font-size:.78rem;margin:16px 0 0;max-width:46ch}}
-.popclose{{margin-top:20px}}
-
+  margin:0 0 16px;color:var(--gold)}}
+.popnote{{color:var(--dim);font-size:.78rem;margin:14px 0 0;max-width:48ch}}
+.popclose{{margin-top:18px}}
 table.weeks{{width:100%;border-collapse:collapse;font-size:.84rem}}
-.weeks th{{font:400 .78rem/1 {display};letter-spacing:.14em;text-transform:uppercase;
-  text-align:left;color:var(--muted);padding:7px 12px 7px 0;white-space:nowrap}}
-.weeks td{{padding:7px 0}}
-.weeks td.n{{font-family:{mono};font-size:.95rem;text-align:right;padding-right:14px;
-  color:var(--ink);font-variant-numeric:tabular-nums}}
-.barcell{{width:50%}}
-.bar{{display:block;height:10px;border-radius:2px}}
-.bar.recede{{background:var(--dim)}}
-.bar.mid{{background:var(--gold)}}
-.bar.hot{{background:linear-gradient(90deg,var(--gold),var(--gold-b))}}
-
-dl.kv{{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0}}
+.weeks th{{font:400 .76rem/1 {display};letter-spacing:.14em;text-transform:uppercase;
+  text-align:left;color:var(--muted);padding:6px 12px 6px 0}}
+.weeks td{{padding:6px 0}}
+.weeks td.n{{font-family:{mono};text-align:right;padding-right:14px;color:var(--ink);
+  font-variant-numeric:tabular-nums}}
+.weeks .barcell{{width:46%}}
+dl.kv{{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0}}
 dl.kv dt{{font:400 .78rem/1.4 {display};letter-spacing:.14em;text-transform:uppercase;
   color:var(--muted)}}
 dl.kv dd{{margin:0;color:var(--ink);font-size:.9rem}}
 dl.kv dd.n{{font-family:{mono};font-variant-numeric:tabular-nums;font-size:1.05rem}}
-ul.slots{{margin:0;padding-left:20px;font-size:.95rem}}
-
-/* ---- the checks line. Most weeks this is the whole page, so it gets a rule and a label
-   rather than being a sentence in the margin. ---- */
-.checks{{margin:0;padding:18px 0 0;border-top:1px solid var(--line);color:var(--muted);
-  font-size:.86rem}}
-.checks .eyebrow{{margin-bottom:8px}}
-.checks b{{font-family:{mono};color:var(--ink);font-size:1.05rem;font-weight:600}}
+ul.slots{{margin:0;padding-left:20px;font-size:.92rem}}
 
 .absent{{color:var(--dim);cursor:help;border-bottom:1px dotted var(--dim)}}
 .currency{{color:var(--muted);cursor:help;border-bottom:1px dotted var(--gold)}}
-.stamp{{font:400 .76rem/1.5 {sans};color:var(--dim)}}
+.dock{{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}}
+.stamp{{font:400 .78rem/1.5 {sans};color:var(--dim)}}
+.close{{margin-top:18px}}
 
-nav{{margin-top:36px}}
-nav .orn{{margin:0 0 18px}}
-.rooms{{display:flex;flex-wrap:wrap;gap:10px}}
-.dock{{margin-top:18px;padding-top:18px;border-top:1px dashed var(--line)}}
-.dock .stamp{{display:block;margin-top:9px}}
-.close{{margin-top:26px}}
-.close .btn{{border-color:var(--gold)}}
-
-@media (max-width:460px){{
-  .wrap{{padding:26px 16px 52px}}
-  .word{{font-size:1.32rem}}
-  .big{{font-size:2.25rem}}
-  .claim{{padding:18px 18px}}
-  .claim h3{{font-size:1.2rem}}
-  .barcell{{width:42%}}
+@media (max-width:1040px){{
+  .verdict{{grid-template-columns:1fr}}
+  .cols{{grid-template-columns:1fr}}
+}}
+@media (max-width:560px){{
+  .wrap{{padding:0 16px 44px}}
+  .verdict{{padding:20px;margin:18px 0 16px}}
+  .verdict h1{{font-size:1.72rem}}
+  .statbox .big{{font-size:2.5rem}}
+  .led .barcell{{display:none}}
+  .cg{{border-right:0;border-bottom:1px solid var(--line)}}
 }}
 @media (prefers-reduced-motion:reduce){{*{{transition:none!important}}}}
 """
@@ -400,6 +443,122 @@ WYRM = """<svg class="wyrm" width="34" height="34" viewBox="0 0 34 34" aria-hidd
 </svg>"""
 
 
+def pill(position: str) -> str:
+    """A position chip in its OWN colour, from `design_system.POSITION_PILL_TOKENS` -- one home
+    for the palette (`#312` found three). Both earlier passes of this page used no position
+    colour at all, which is a large part of why it read as flat: the roster's own vocabulary was
+    rendered as plain text."""
+    bg, fg = ds.position_pill_color(position)
+    return f'<span class="pill" style="background:{bg};color:{fg}">{esc(position)}</span>'
+
+
+def basis_note(basis: dict, key: str) -> str:
+    """The provenance line deck prints under every figure, in mono.
+
+    It is honesty made VISIBLE rather than merely true, and it doubles as texture -- a panel
+    whose numbers each carry `measured - bye_collision` beneath them cannot read as an empty
+    box. Absent and constructed stamps are rendered through the same grammar as any figure.
+    """
+    raw = (basis or {}).get(key) or ""
+    kind = fp.stamp_kind(raw) if hasattr(fp, "stamp_kind") else (
+        "absent" if raw.startswith("ABSENT") else
+        "constructed" if raw.startswith("CONSTRUCTED") else "measured")
+    body = raw.split("--", 1)[-1].strip() if "--" in raw else raw
+    if kind == "absent":
+        return f'<span class="basis">{absent(body or "not measured")}</span>'
+    short = body if len(body) <= 72 else body[:69].rstrip() + "..."
+    return f'<span class="basis" title="{esc(body)}">{esc(kind)} &middot; {esc(short)}</span>'
+
+
+def bye_ledger(fx: dict) -> str:
+    """deck's densest panel, and the one the owner singled out: the weeks, what each costs, and
+    WHO is away.
+
+    The names are a FILTER on `roster[].bye`, not a computation -- every field shown is one the
+    engine already put in the fixture (`#338`). The ledger adds no quantity; it arranges them.
+    """
+    weeks = (fx.get("bye_profile") or {}).get("weeks") or {}
+    roster = fx.get("roster") or []
+    cw = fx.get("current_week")
+    if not weeks:
+        return ('<p class="stamp">' + absent("no bye profile was measured for this roster")
+                + "</p>")
+    losses = {w: (v.get("value_lost") if isinstance(v, dict) else v) for w, v in weeks.items()}
+    numeric = [v for v in losses.values() if isinstance(v, (int, float))]
+    peak = max(numeric) if numeric else 0
+    worst = max(losses, key=lambda w: losses[w] if isinstance(losses[w], (int, float)) else -1)
+    rows = []
+    for wk in sorted(weeks, key=lambda w: int(w)):
+        lost = losses[wk]
+        away = [r for r in roster if str(r.get("bye")) == str(wk)]
+        who = "".join(
+            f'<span class="chip"><i style="background:'
+            f'{ds.position_pill_color(r.get("position") or "")[1]}"></i>{esc(r.get("name"))}'
+            f'<s>{esc(ds.figure(r.get("value")) or "--")}</s></span>' for r in away) or (
+            f'<span class="stamp">{absent("no rostered player is away this week")}</span>')
+        if not isinstance(lost, (int, float)):
+            cell = f'<td class="n">{absent("this week carries no measured loss")}</td><td></td>'
+        else:
+            share = (lost / peak) if peak else 0
+            tone = (SEVERITY[2][0] if share >= .75 else
+                    SEVERITY[1][0] if share >= .35 else SEVERITY[0][0])
+            cell = (f'<td class="n">{esc(ds.figure(lost))}</td>'
+                    f'<td class="barcell"><span class="bar {tone}" '
+                    f'style="width:{max(3, round(share * 100))}%"></span></td>')
+        behind = cw is not None and int(wk) < int(cw)
+        rows.append(f'<tr class="{"peak" if wk == worst and not behind else ""}">'
+                    f'<td class="wk">Wk {esc(wk)}</td>{cell}'
+                    f'<td><div class="who">{who}</div></td></tr>')
+    total = ds.figure((fx.get("bye_profile") or {}).get("total_loss"))
+    conc = (fx.get("bye_profile") or {}).get("concentration")
+    unknown = (fx.get("bye_profile") or {}).get("unknown_byes")
+    foot = (f'<div class="ledfoot"><span>season <b>{esc(total or "--")}</b></span>'
+            f'<span>worst week <b>{esc(f"{conc:.0%}") if conc is not None else absent("a roster with nothing to lose has no shape, so this is None rather than 0%")}</b> of it</span>'
+            f'<span>unknown byes <b>{esc(unknown)}</b></span></div>')
+    return (f'<table class="led"><thead><tr><th>Week</th><th style="text-align:right">Lost</th>'
+            f'<th></th><th>Away</th></tr></thead><tbody>{"".join(rows)}</tbody></table>{foot}')
+
+
+def verdict_prose(claims: list, fx: dict) -> str:
+    """The hero paragraph, composed as SENTENCES rather than enumerated as labels.
+
+    The first build of this hero printed "Bye damage: Week 6. Thin room: DEF. Thin room: TE." --
+    a mechanical list of the same cards that sit below it, which says nothing the band does not
+    and reads as placeholder. `deck`, the design chosen for feel, wrote real prose here: the bye
+    cost AGAINST the season total, then the thin rooms named together.
+
+    Every figure is still the engine's. What changes is the grammar, not the source: thin rooms
+    are COLLECTED into one clause instead of repeating a card each, which is the standing
+    constraint applied to the sentence -- clean dissemination, not one line per variable.
+    """
+    bp = fx.get("bye_profile") or {}
+    bits = []
+    bye = next((c for c in claims if c["kind"] == "bye"), None)
+    if bye is not None:
+        total = ds.figure(bp.get("total_loss"))
+        loss = ds.figure(bye.get("worst_week_loss"))
+        against = (f" of the season's <b>{esc(total)}</b>" if total else "")
+        bits.append(f'Week <b>{esc(bye["worst_week"])}</b> costs <b>{esc(loss)}</b>{against} '
+                    f'in {currency_stamp("bye trade value")}.')
+    holes = next((c for c in claims if c["kind"] == "hole"), None)
+    if holes is not None:
+        ps = holes.get("positions") or []
+        bits.append(f'No rostered player can fill {esc(", ".join(ps))}.')
+    thin = [c for c in claims if c["kind"] == "thin"]
+    if thin:
+        names = ", ".join(esc(c["position"]) for c in thin[:-1])
+        last = esc(thin[-1]["position"])
+        joined = f"{names} and {last}" if names else last
+        label = thin[0].get("label") or "thin"
+        verb = "rates" if len(thin) == 1 else "rate"
+        floor = any(c.get("priced_floor") for c in thin)
+        bits.append(f'{joined} {verb} <b>{esc(label)}</b> against this league\'s own rosters'
+                    + (", one of them on a priced floor." if floor else "."))
+    if fx.get("current_week") is None:
+        bits.append("No current week is on file, so none of this carries a deadline.")
+    return " ".join(bits)
+
+
 def build(fx: dict) -> str:
     """One responsive page, rendered from `front_claims.compose`'s judgment."""
     _assert_ramp_is_visible()
@@ -409,85 +568,84 @@ def build(fx: dict) -> str:
     summary = fc.checks_summary(band["checks"])
     basis = (fx.get("_provenance") or {}).get("basis") or {}
 
-    # ---- the band, each claim with its popout where the engine computes one ------------------
-    cards = []
+    # ---- THE VERDICT: the three-second answer as a statement ---------------------------------
+    n = len(shown) + len(hidden)
+    words = {0: "Nothing", 1: "One thing", 2: "Two things", 3: "Three things", 4: "Four things"}
+    headline = ("Nothing open this week." if not n
+                else f'{words.get(n, str(n) + " things")} {"is" if n == 1 else "are"} open.')
+    if shown:
+        lead = claim_parts(shown[0])
+        stat = (f'<span class="big">{lead["figure"]}</span>'
+                f'<span class="u">{lead["unit"]}</span>'
+                f'<p class="sub">{lead["eyebrow"]} &middot; {lead["headline"]}</p>')
+        summary_prose = verdict_prose(shown + hidden, fx)
+    else:
+        stat = (f'<span class="big">{summary["ran"]}</span>'
+                f'<span class="u">checks, all clean</span>'
+                f'<p class="sub">{esc(", ".join(summary["clean"]))}</p>')
+        summary_prose = ("Every check this page runs came back clean. It keeps the ledger "
+                         "while you are gone.")
+
+    # ---- the claims column -------------------------------------------------------------------
+    cards, pops = [], []
     for i, c in enumerate(shown):
-        parts = claim_parts(c)
-        exp, pid = expansion(c, fx), f"exp{i}"
+        parts, exp, pid = claim_parts(c), expansion(c, fx), f"exp{i}"
+        pos = c.get("position") or (c.get("positions") or [None])[0]
         controls = [f'<a class="btn route" href="#{esc(c["route"].lower().replace(" ", "-"))}">'
                     f'{esc(c["route"])} &rsaquo;</a>']
         if exp:
-            controls.insert(0, f'<button class="btn" popovertarget="{pid}">What it is made of'
-                               f'</button>')
-        pop = (f'<div id="{pid}" popover><h4>{parts["eyebrow"]}</h4>{exp}'
-               f'<div class="popclose"><button class="btn" popovertarget="{pid}" '
-               f'popovertargetaction="hide">Close</button></div></div>') if exp else ""
-        fig = (f'<p class="figline"><span class="big">{parts["figure"]}'
-               f'<span class="u">{parts["unit"]}</span></span></p>') if parts["figure"] else ""
-        cards.append(f'<article class="claim {esc(c["kind"])}">'
-                     f'<p class="eyebrow">{parts["eyebrow"]}</p>'
-                     f'{fig}<h3>{parts["headline"]}</h3><p>{parts["body"]}</p>'
-                     f'<div class="row">{"".join(controls)}</div></article>{pop}')
-
+            controls.insert(0, f'<button class="btn" popovertarget="{pid}">What it is '
+                               f'made of</button>')
+            pops.append(f'<div id="{pid}" popover><h4>{parts["eyebrow"]}</h4>{exp}'
+                        f'<div class="popclose"><button class="btn" popovertarget="{pid}" '
+                        f'popovertargetaction="hide">Close</button></div></div>')
+        key = {"bye": "bye_profile", "thin": "thin_positions", "hole": "structural_holes"}.get(
+            c["kind"], "")
+        cards.append(
+            f'<article class="claim {esc(c["kind"])}">'
+            f'<div class="chead">{pill(pos) if pos else ""}'
+            f'<h3>{parts["headline"]} &middot; {parts["figure"]} {parts["unit"]}</h3></div>'
+            f'<p>{parts["body"]}</p>{basis_note(basis, key)}'
+            f'<div class="row">{"".join(controls)}</div></article>')
     if not cards:
-        # THE QUIET STATE IS THE PRIMARY DESIGN, not an empty state to apologise for. `VOICE.md`
-        # rule 8: leaving is a success state. The brief's test is whether a person can tell in
-        # three seconds that they may close the app, and `threshold`'s CLOSE THE APP control --
-        # the best single idea in the whole prior round -- turns that test into an affordance.
-        # THE QUIET STATE GETS A HERO FIGURE TOO, and it is the one number this page can
-        # always defend: how many checks ran. A quiet page with no figure at all is what read as
-        # "too spartan" -- correct, and indistinguishable from unfinished.
-        cards.append(f'<article class="claim none">'
-                     f'<p class="eyebrow">Nothing open this week</p>'
-                     f'<p class="figline"><span class="big">{summary["ran"]}'
-                     f'<span class="u">checks, all clean</span></span></p>'
-                     f'<h3>{esc(", ".join(summary["clean"]))}</h3>'
-                     f'<p>No unfillable slot, no bye week still ahead with a measured cost, no '
-                     f'position thin against this league.</p></article>')
+        cards.append('<p class="stamp">Nothing is standing. The ledger below is what was '
+                     'examined to say so.</p>')
+    if hidden:
+        cards.append('<p class="stamp">Also standing: '
+                     + "; ".join(claim_headline(c) for c in hidden) + ".</p>")
 
-    more = (f'<p class="stamp">Also standing: '
-            + "; ".join(claim_headline(c) for c in hidden) + ".</p>") if hidden else ""
+    # ---- CLEARED: what was checked and passed, each with its basis ---------------------------
+    cgs = []
+    for check in band["checks"]:
+        key = {"byes": "bye_profile", "depth": "thin_positions",
+               "holes": "structural_holes"}.get(check["name"], "")
+        if check["state"] == fc.CHECK_CLEAN:
+            cgs.append(f'<div class="cg"><div class="t"><span class="tick">&check;</span>'
+                       f'<span>{esc(check["name"]).title()}: nothing found</span></div>'
+                       f'{basis_note(basis, key)}</div>')
+        elif check["state"] == fc.CHECK_ABSENT:
+            cgs.append(f'<div class="cg"><div class="t"><span>{esc(check["name"]).title()}: '
+                       f'{absent(check["reason"])}</span></div></div>')
+    cleared = (f'<section class="panel cleared"><div class="ph">'
+               f'<p class="eyebrow">Cleared &mdash; can wait</p>'
+               f'<span class="basis">what was checked and passed, each with its basis</span>'
+               f'</div><div class="cgrid">{"".join(cgs)}</div></section>') if cgs else ""
 
-    # ---- the checks line. DERIVED, never a hardcoded list (`#338`) ---------------------------
-    if summary["all_clean"]:
-        # The quiet card already carries this as its hero figure; repeating it below would be
-        # the same fact twice, which the standing constraint names as the failure.
-        checks = ""
-    else:
-        bits = []
-        if summary["clean"]:
-            bits.append(f'Clean: {esc(", ".join(summary["clean"]))}.')
-        for check in band["checks"]:
-            if check["state"] == fc.CHECK_ABSENT:
-                bits.append(f'{esc(check["name"]).title()} {absent(check["reason"])}.')
-        checks = " ".join(bits) or "Nothing was examined."
-
-    # ---- the seat line. Absences carry their reason, never a reassuring default --------------
-    team = fx.get("team")
-    league_name = fx.get("league_name")
-    name_html = (esc(league_name) if league_name
-                 else absent(fp.reason_of(basis.get("league_name", "")) or
-                             "this capture carries no league name"))
-    week = fx.get("current_week")
-    week_html = (f'week <b>{esc(week)}</b>' if week is not None
-                 else absent(fp.reason_of(basis.get("current_week", "")) or
-                             "no season position was read"))
-    seat = (f'<p class="seat">{name_html} <span class="st">&middot;</span> {esc(team or "")} '
-            f'<span class="st">&middot;</span> {week_html}</p>')
-
-    rooms = "".join(f'<a class="btn" href="#{esc(r.lower().replace(" ", "-"))}">{esc(r)}</a>'
+    doors = "".join(f'<a class="door" href="#{esc(r.lower().replace(" ", "-"))}">{esc(r)}</a>'
                     for r in ROOMS)
-    close = ('<div class="close"><button class="btn" popovertarget="bye-note">Close the app'
-             '</button></div>'
-             '<div id="bye-note" popover><h4>Nothing is waiting</h4>'
-             '<p class="popnote">Every check this page runs came back clean. It will keep the '
-             'ledger while you are gone.</p>'
-             '<div class="popclose"><button class="btn" popovertarget="bye-note" '
-             'popovertargetaction="hide">Close</button></div></div>') if summary["all_clean"] else ""
+    team, lname = fx.get("team"), fx.get("league_name")
+    week = fx.get("current_week")
+    # AN ABSENCE MUST READ AS INFORMATION, NOT AS DAMAGE. The first build of this bar rendered
+    # `Team 1 -- --`, two bare em dashes that look like a broken template rather than two
+    # measured absences. The dash still carries its reason on hover, but it is now LABELLED, so
+    # the reader can tell which quantity is missing without hovering anything.
+    lname_html = (esc(lname) if lname else
+                  f'no league name {absent(fp.reason_of(basis.get("league_name", "")) or "this capture carries no league name")}')
+    week_html = (f'wk <b>{esc(week)}</b>' if week is not None else
+                 f'no week {absent(fp.reason_of(basis.get("current_week", "")) or "no season position was read")}')
+    whoami = (f'<div class="whoami"><b>{esc(team or "")}</b>'
+              f'<span>{lname_html}</span><span>{week_html}</span></div>')
 
-    checks_block = (f'<div class="checks"><p class="eyebrow">What was examined</p>{checks}</div>'
-                    if checks else "")
-    orn = '<p class="orn"><i></i><s></s><i></i></p>'
     css = CSS.format(sans=ds.FONT_SANS, mono=ds.FONT_MONO, display=ds.FONT_DISPLAY)
     return f"""<!doctype html>
 <html lang="en"><head>
@@ -498,27 +656,49 @@ def build(fx: dict) -> str:
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 {ds.root_css_block()}
+{ds.position_pill_css_block()}
 {css}
 </style>
 </head><body>
-<main class="wrap">
-  <div class="crest">{WYRM}<h1 class="word">Gold Wyrm<b>Dynasty</b></h1></div>
-  {orn}
-  {seat}
-  <div class="claims">{"".join(cards)}</div>
-  {more}
-  {checks_block}
-  {close}
-  <nav>
-    {orn}
-    <h2 class="eyebrow">Rooms</h2>
-    <div class="rooms">{rooms}</div>
-    <div class="dock">
-      <a class="btn" href="#prytaneum">{esc(DOCK)}</a>
-      <span class="stamp">A dock rendered under every room, not a sixth room.</span>
+<div class="wrap">
+  <header class="top">
+    <span class="crest">{WYRM}<h1 class="word">Gold Wyrm<b>Dynasty</b></h1></span>
+    <nav class="doors">{doors}</nav>
+    {whoami}
+  </header>
+
+  <section class="verdict">
+    <div>
+      <p class="eyebrow">The three-second answer</p>
+      <h1>{headline}</h1>
+      <p>{summary_prose}</p>
     </div>
-  </nav>
-</main>
+    <div class="statbox">{stat}</div>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="ph"><p class="eyebrow">Bye ledger</p>
+        <span class="basis">each week re-solved with that week's byes removed &middot;
+        value lost, not bodies</span></div>
+      <div class="pbody">{bye_ledger(fx)}</div>
+    </section>
+    <section class="panel">
+      <div class="ph"><p class="eyebrow">Open</p>
+        <span class="basis">ranked by kind, not by size &mdash; the units do not compare</span>
+      </div>
+      <div class="pbody">{"".join(cards)}</div>
+    </section>
+  </div>
+
+  {cleared}
+
+  <div class="dock">
+    <a class="btn route" href="#prytaneum">{esc(DOCK)}</a>
+    <span class="stamp">A dock rendered under every room, not a sixth room.</span>
+  </div>
+</div>
+{"".join(pops)}
 </body></html>
 """
 

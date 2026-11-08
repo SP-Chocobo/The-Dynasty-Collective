@@ -20325,3 +20325,103 @@ Mutation arms, pristine-copy restores `cmp`-verified, `__pycache__` cleared betw
 
 **8 / 8 / 2 / 2 / 10 / 4**, baseline green after every restore.
 
+---
+
+### CERTIFICATION — `#342`
+
+```
+4467 tests in 1549.379s    OK (skipped=2, expected failures=1)    0 failures, 0 errors
+```
+
++23 over `#339`'s 4444: the 19 `checks_run` tests and the 4 page tests. Eight ratchets green on
+the staged tree, mutation record **8 / 8 / 2 / 2 / 10 / 4**. Green on the first run; the tree was
+frozen from launch to verdict.
+
+---
+
+## `#343` — THE DASHBOARD WAS TOO PLAIN, AND IT WAS NEVER THE FONTS
+
+Two passes were rejected by the owner. The second rejection is the one that mattered:
+
+> these dashboards you're sending just feel wrong in contrast to the ones that were considered
+> before. They have no flair, no presence, and feel too simple. just tweaking the font choice
+> isn't the solution
+
+Correct. I had been reading CSS property lists and adjusting the type scale, which is exactly how
+a composition problem gets misdiagnosed as a typographic one. **The fix was to SCREENSHOT the
+designs and look at them**, at the owner's instruction, which took one render to settle what two
+rounds of grepping had not.
+
+### What the screenshots showed, which the greps never could
+
+| | `deck` | mine, pass 2 |
+|---|---|---|
+| layout | full-width top bar, hero verdict, TWO-COLUMN body, cleared row | one centred 760px column on a 1280px screen |
+| grids | 12 `display:grid`, templates `repeat(6,1fr) 2.3fr`, `repeat(5,1fr)` | **zero grids** |
+| shapes | a ledger TABLE, claim cards, a six-column check row | three identical text cards |
+| position colour | every player chipped in his own position colour | **none** |
+| provenance | `measured - depth_label on value` in mono under each claim | none |
+
+**I mistook "three things on the front" for "three boxes in a column."** The dashboard ruling was
+about which FACTS appear, not about structural flatness. `deck` shows the same facts as composed
+panels with internal grids, and that is where presence comes from.
+
+### The rebuild
+
+Top bar with the five rooms inline. A VERDICT hero: the three-second answer as a statement
+(`Three things are open.`) in 2.35rem Cinzel, with the headline figure boxed beside it at 3rem
+mono. A two-column body: the BYE LEDGER as a real table -- week, loss, severity bar, and WHO is
+away, each player chipped in his own position colour -- beside the open claims. A CLEARED row of
+what was checked and passed, each with its basis.
+
+**The ledger's player names are a FILTER on `roster[].bye`, not a computation.** Every field it
+shows is one the engine already put in the fixture; the panel arranges quantities, it does not
+derive any (`#338`).
+
+The type scale now spans 12.16px to 48px (3.95:1) across 17 steps, against `deck`'s 3.67:1. Pass
+2 had eleven sizes inside a 1.97:1 range, which reads as one size no matter how correct the
+content is.
+
+### Two copy defects the render exposed
+
+1. **`Team 1 -- --`**, two bare em dashes in the identity chip, read as a broken template rather
+   than two measured absences. Now labelled: `no league name --`, `no week --`, each dash still
+   carrying its reason on hover. **An absence must read as information, not as damage** -- which
+   is a rule `#187` implies and no surface had stated.
+2. **The hero prose was a mechanical list**: "Bye damage: Week 6. Thin room: DEF. Thin room: TE."
+   -- the same cards that sit below it, enumerated. Now composed as sentences, with the thin
+   rooms COLLECTED into one clause: *"Week 6 costs 95 of the season's 237 in bye trade value.
+   DEF and TE rate Weak against this league's own rosters, one of them on a priced floor."*
+   Same figures, same source; the standing constraint applied to the sentence rather than to
+   the card count.
+
+### A GUARD THAT WENT HOLLOW TWICE, AND IS NOW RENAME-PROOF
+
+`test_the_build_refuses_a_size_below_the_floor` anchored its mutation on a literal CSS rule.
+**Both rebuilds deleted that rule**, and a mutation that no longer applies leaves the guard green
+because nothing was broken rather than because the floor held. It now APPENDS `.probe{font-size:
+.5rem}` and a `.9em` probe instead, which cannot go stale, and asserts the floor passes again
+once restored. The dock test had the same shape -- it split on a class name, so a rename made it
+raise `IndexError` and look like a broken test rather than a broken page; it now asserts on the
+`<nav>` region.
+
+That is the fourth hollow-instrument catch of this session, after `#339`'s piped-away mutation
+verdict, `#342`'s identity check on an unmodified file, and this guard twice. **The instrument
+needs the same scepticism as the subject**, and anchoring a mutation on text that redesigns
+delete is a reliable way to lose it.
+
+### Render gate
+
+Measured in a real browser at three widths, 0 console errors:
+
+```
+1280px   height 1283 / 1164px   no horizontal overflow   min computed font 12.16px
+ 390px   height 2746px          no horizontal overflow   min computed font 12.16px
+```
+
+**The phone height exceeds the brief's two-screen budget of 1328px and is recorded rather than
+chased.** That budget was written for a triage CARD; this is a dashboard with a ledger, and the
+owner has since ruled for `deck`'s density. Whether the phone layout should drop the ledger to a
+popout is a design question for the owner, not a number to quietly meet by cutting the panel
+that earned the rebuild.
+
