@@ -486,7 +486,18 @@ def asset_data_uri(name: str, mime: str):
 
 
 def banner_data_uri():
-    return asset_data_uri("header_banner.jpg", "image/jpeg")
+    """The landing page's header art.
+
+    NOT `header_banner.jpg`. That one is the blue football `app.py:3682` still uses for the
+    Streamlit header, and it is left alone deliberately -- swapping the app's own banner is a
+    change to the running product, not to this mockup, and it is the owner's call.
+    `header_wyrm.jpg` is the gold wyrm generated for this page: the FULL 1600x538 frame rather
+    than a pre-cropped strip, because the band is now full-bleed and on a wide monitor runs
+    past 11:1, where a 6.46:1 strip would have nothing left to crop. `cover` plus
+    `background-position` does the framing at render time and survives a layout change without
+    a re-export.
+    """
+    return asset_data_uri("header_wyrm.jpg", "image/jpeg")
 
 
 def emblem(size: int = 44) -> str:
@@ -547,7 +558,7 @@ a{color:inherit}
 .ic{flex:0 0 auto;vertical-align:-3px}
 
 /* ---- top bar: wordmark, rooms, connection ---- */
-.top{display:flex;align-items:center;gap:26px;padding:12px 0;flex-wrap:wrap;position:relative}
+.top{display:flex;align-items:center;gap:26px;padding:24px 0 16px;flex-wrap:wrap;position:relative;z-index:1}
 .crestmark{display:flex;align-items:center;gap:12px}
 .emblem{display:block;flex:0 0 auto}
 .word{font:600 1.3rem/1 var(--display);letter-spacing:.11em;text-transform:uppercase;margin:0;
@@ -576,13 +587,22 @@ a{color:inherit}
   0 2px 20px rgba(249,222,153,.26)}
 
 /* ---- the art band: a SLOT. Real asset at low opacity under a gold wash. ---- */
-.band{position:absolute;inset:-10px 0 auto auto;width:min(46%,42rem);height:104px;
-  border-radius:10px;overflow:hidden;pointer-events:none;
-  mask-image:linear-gradient(90deg,transparent,#000 42%,#000)}
-.bandart{position:absolute;inset:0;background-size:cover;background-position:center;
-  opacity:.22;filter:saturate(.45) hue-rotate(-18deg)}
+/* FULL-BLEED, AND BEHIND EVERYTHING. The first cut ran this at 104px, 46% wide and .22
+   opacity, and four completely different candidate images rendered INDISTINGUISHABLY in it --
+   which is the tell that the slot, not the art, was the constraint. A band that reduces any
+   image to warm noise cannot justify the 90KB it costs; CSS would do the same for nothing.
+   Widened to the viewport, 215px, .64.
+   The z-index is load-bearing: at full height the band covered the room tabs and the first
+   panel's heading and washed them out. It sits at 0 and every content block is lifted to 2. */
+.band{position:absolute;width:100vw;left:50%;transform:translateX(-50%);
+  inset-block:-18px auto;height:215px;overflow:hidden;pointer-events:none;z-index:0}
+.bandart{position:absolute;inset:0;background-size:cover;background-position:right center;
+  opacity:.64;filter:saturate(.62);
+  mask-image:linear-gradient(90deg,transparent 0%,#000 36%,#000)}
 .band::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(100deg,var(--bg) 8%,rgba(117,80,36,.3) 58%,rgba(249,222,153,.14))}
+  background:linear-gradient(180deg,rgba(11,11,13,.28),rgba(11,11,13,.8) 58%,var(--bg) 97%)}
+.wrap{position:relative}
+.crestmark,.rooms,.conn,.shell,.hr,.foot,.verdict{position:relative;z-index:2}
 
 /* ---- a fading gold hairline, the brief's own rule ---- */
 .hr{height:1px;border:0;margin:10px 0 20px;
