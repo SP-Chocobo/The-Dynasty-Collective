@@ -1,5 +1,14 @@
 # The Deck — notes
 
+> **Round-1 record.** These notes describe the first pass as it was reviewed in
+> `CRITIQUE_DESIGN.md` and `CRITIQUE_PRODUCT.md`. The refined files differ in several places
+> (bar column deleted, `×LG` deleted, tally replaced, IR flag added, voice rewritten); see
+> `REFINEMENT.md` for what was taken, what was rejected, the `×LG` ruling and the re-measured
+> numbers. The component inventory below still describes the pieces, with these changes:
+> component 3 (depth ladder) now encodes its four states in the label word, not in four cells;
+> component 2 (bye ledger) has no bars and carries `out · starting` / `promoted · value` from
+> `bye_collision`.
+
 Angle: information-forward. A manager with six leagues and four minutes. The problem this angle
 carries is that the two densest prior mocks (`mock_62`, `mock_65`) got their density from
 quantities that do not exist. Strip the Team Index, the letter grades, the odds and the 0–100
