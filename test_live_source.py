@@ -38,6 +38,12 @@ PLAYERS = {
           "team": "SF"},
     "3": {"full_name": "A Receiver", "position": "WR", "fantasy_positions": ["WR"],
           "team": "BUF"},
+    # NO `full_name`. This row is what makes the name test non-vacuous: `player_name` falls back
+    # to first+last BEFORE the id, and an inline `full_name or id` spelling yields the raw
+    # Sleeper id here -- a string `merge_player` can never match, so the player silently prices
+    # as unpriced. Measured: four such rows in a 15-player roster.
+    "4": {"first_name": "No", "last_name": "Fullname", "position": "TE",
+          "fantasy_positions": ["TE"], "team": "KC"},
 }
 BYES = {"KC": 10, "SF": 9, "BUF": 7}
 POSITIONS = ["QB", "RB", "WR", "TE", "K"]
@@ -251,6 +257,211 @@ class TheServerWritesNothing(unittest.TestCase):
         fx, report = ls.from_snapshot(snapshot(), PLAYERS, BYES, owner_id="u1")
         page = server._render(fx, report).body.decode()
         self.assertNotIn("WIRED WRONG", page)
+
+
+class FakeMerger:
+    """A merger that prices by name, so pricing's CONTRACT is tested without the real pool.
+
+    The real `DataMerger` reads baseline rankings off disk and its correctness is `#201`'s
+    subject with its own tests. What is under test here is the COMPANION-FIELD RULE and the
+    join, which a dict exercises exactly as well and in microseconds.
+    """
+
+    #: `positional_depth` reads this before it sums any value -- with no rankings loaded it
+    #: leaves `value` None for every cell and callers fall back to count alone. True here so the
+    #: valued path is the one under test.
+    is_loaded = True
+
+    def __init__(self, prices):
+        self.prices = prices
+        self.format_set_before_pricing = None
+        self._priced_any = False
+
+    def set_league_format(self, hint):
+        self.format_set_before_pricing = (hint, self._priced_any)
+
+    def merge_player(self, name, position=None, team=None):
+        self._priced_any = True
+        return {"trade_value": self.prices.get(name)}
+
+    def bye_week_by_team(self):
+        return BYES
+
+
+class PricingKeepsTheCompanionFieldRule(unittest.TestCase):
+    """`#346` / `#190`, applied to live rows."""
+
+    def test_a_player_measured_at_zero_IS_priced(self):
+        """THE INVERSE ERROR, and the one `or 0.0` would reintroduce.
+
+        `is not None`, never truthiness: a player genuinely valued at 0.0 is priced, and
+        collapsing that back into "unpriced" is the same defect mirrored.
+        """
+        rows = ls.roster_rows(["1"], PLAYERS, BYES)
+        priced = ls.price_rows(rows, FakeMerger({rows[0]["name"]: 0.0}))
+        self.assertEqual(priced[0]["value"], 0.0)
+        self.assertIs(priced[0]["priced"], True, "a measured zero was read as unpriced")
+
+    def test_an_unmatched_player_keeps_a_number_and_says_it_is_unpriced(self):
+        rows = ls.roster_rows(["1"], PLAYERS, BYES)
+        priced = ls.price_rows(rows, FakeMerger({}))
+        self.assertEqual(priced[0]["value"], 0.0, "the solvers negate value; it must be a number")
+        self.assertIs(priced[0]["priced"], False)
+
+    def test_pricing_does_not_disturb_the_rest_of_the_row(self):
+        rows = ls.roster_rows(["2"], PLAYERS, BYES)
+        priced = ls.price_rows(rows, FakeMerger({rows[0]["name"]: 7.5}))
+        self.assertEqual(priced[0]["eligible"], {"RB", "WR"})
+        self.assertEqual(priced[0]["bye"], BYES["SF"])
+
+    def test_the_name_comes_from_its_one_home(self):
+        """`#126`, and the fixture has to DISCRIMINATE or this proves nothing.
+
+        The first draft spelled the derivation inline and the two disagreed: 11 of 15 rows
+        priced where `player_name` priced 15. But asserting on a player WITH a `full_name` is
+        vacuous -- both spellings agree there, and a mutation reintroducing the inline version
+        survived exactly that test. `player_name` falls back to first+last BEFORE the id, so
+        player "4" (no full_name) is where they part company.
+        """
+        import player_universe as pu
+        rows = ls.roster_rows(["1", "4"], PLAYERS, BYES)
+        self.assertEqual(rows[0]["name"], pu.player_name(PLAYERS["1"], "1"))
+        self.assertEqual(rows[1]["name"], "No Fullname",
+                         "a player with no full_name fell back to its id, which merge_player "
+                         "can never match -- that row would price as unpriced forever")
+        self.assertNotEqual(rows[1]["name"], "4")
+
+
+class TheLeagueFormatIsSetBeforeAnythingIsPriced(unittest.TestCase):
+    """The single most expensive lesson in the engine-measurement skill.
+
+    `rec` and `bonus_rec_te` do NOT propagate through `scoring_settings` into valuation -- they
+    propagate by FILE SELECTION, and `set_league_format` is what selects. A battery that never
+    called it drafted 32 formats from one export and returned standard / half_ppr / ppr
+    BYTE-IDENTICAL; nine of thirteen findings were artifacts.
+    """
+
+    def test_set_league_format_runs_and_runs_FIRST(self):
+        merger = FakeMerger({})
+        ls.priced_claims(snapshot(), PLAYERS, merger, owner_id="u1")
+        self.assertIsNotNone(merger.format_set_before_pricing,
+                             "set_league_format was never called -- every league would be "
+                             "priced off one rankings export")
+        _hint, priced_already = merger.format_set_before_pricing
+        self.assertFalse(priced_already,
+                         "a player was priced BEFORE the format was set, so that price came "
+                         "from whichever export happened to be loaded")
+
+    def test_the_hint_is_derived_from_the_leagues_own_settings(self):
+        """Never carried alongside: a hint that can disagree with its league is a second source
+        of truth for the same fact."""
+        merger = FakeMerger({})
+        snap = snapshot()
+        snap["league"]["scoring_settings"] = {"rec": 1.0}
+        ls.priced_claims(snap, PLAYERS, merger, owner_id="u1")
+        hint, _ = merger.format_set_before_pricing
+        self.assertEqual(hint["scoring"], "ppr")
+
+    def test_half_ppr_and_standard_are_distinguished(self):
+        for rec, expected in ((0.5, "half_ppr"), (0, "standard"), (1.0, "ppr")):
+            merger = FakeMerger({})
+            snap = snapshot()
+            snap["league"]["scoring_settings"] = {"rec": rec}
+            ls.priced_claims(snap, PLAYERS, merger, owner_id="u1")
+            self.assertEqual(merger.format_set_before_pricing[0]["scoring"], expected)
+
+
+class AMissedJoinIsAWiringErrorNotAnAbsence(unittest.TestCase):
+    """`positional_depth` keys on `owner_name or f"Roster {roster_id}"`.
+
+    A missed users->owner_id join yields `{}` for that key, which reads downstream as "no thin
+    positions and every slot unfillable" -- the most alarming page this surface can draw,
+    produced by a lookup miss rather than by anything about the roster.
+    """
+
+    def test_the_depth_key_prefers_the_display_name(self):
+        self.assertEqual(ls.depth_key({"roster_id": 3}, {"display_name": "SP-Chocobo"}),
+                         "SP-Chocobo")
+
+    def test_the_depth_key_falls_back_to_the_roster_id_spelling(self):
+        self.assertEqual(ls.depth_key({"roster_id": 3}, {}), "Roster 3")
+
+    def test_a_snapshot_with_no_rosters_states_that_rather_than_returning_empty(self):
+        snap = snapshot()
+        snap["rosters"] = []
+        thin, key, failure = ls.priced_claims(snap, PLAYERS, FakeMerger({}), owner_id="u1")
+        self.assertEqual(thin, [])
+        self.assertTrue(failure, "an empty result was returned with no reason attached")
+        self.assertIn("no rosters", failure)
+
+
+class AContestedIdentityIsRefusedOnTheRosterPath(unittest.TestCase):
+    """`#360` — the defect the invariant registry caught, pinned so it cannot return.
+
+    Two real men resolving onto ONE vendor record is a contested identity; at least one is a
+    misidentification and nothing can say which, so neither may keep that record's numbers.
+    The board refuses it in `_drop_contested_identities`. A DIRECT `merge_player` call does not,
+    and `price_rows` was a direct call -- the exact shape the registry's population note
+    describes: "the roster path went back to the merger and got the price anyway."
+
+    MEASURED on the committed rankings before the repair: `Bijan Robinson` and `Brian Robinson`
+    both returned `trade_value=99.0` from the single `B Robinson RB ATL` row, and both were
+    priced at 99.0 -- a number belonging to exactly one of them, which `bye_collision` would
+    then have counted twice.
+    """
+
+    @staticmethod
+    def _rows():
+        mk = lambda i, n: {"id": i, "name": n, "position": "RB", "team": "ATL", "bye": 9,
+                           "value": 0.0, "priced": False, "eligible": {"RB"}}
+        return [mk("a", "One Robinson"), mk("b", "Other Robinson"),
+                {"id": "c", "name": "Nobody Else", "position": "QB", "team": "KC", "bye": 10,
+                 "value": 0.0, "priced": False, "eligible": {"QB"}}]
+
+    class _SharedRecordMerger(FakeMerger):
+        """Both running backs resolve onto one canonical key, as the vendor row does."""
+
+        def merge_player(self, name, position=None, team=None):
+            self._priced_any = True
+            if position == "RB":
+                return {"trade_value": 99.0, "match_canonical_key": ("b robinson", "RB", "ATL")}
+            return {"trade_value": 28.0, "match_canonical_key": (name.lower(), position, team)}
+
+    def test_the_contest_is_detected_over_the_league_not_one_roster(self):
+        merger = self._SharedRecordMerger({})
+        self.assertEqual(len(ls.contested_keys(self._rows(), merger)), 1)
+
+    def test_two_players_on_one_vendor_record_are_both_refused(self):
+        """FAILS ON THE OLD CODE, which handed 99.0 to both."""
+        merger = self._SharedRecordMerger({})
+        priced = ls.price_rows(self._rows(), merger, ls.contested_keys(self._rows(), merger))
+        for row in priced[:2]:
+            self.assertIs(row["priced"], False,
+                          f"{row['name']} kept a borrowed price the board refuses")
+            self.assertEqual(row["value"], 0.0,
+                             "the numeric field must stay a number -- the solvers negate it")
+
+    def test_an_uncontested_player_keeps_his_price(self):
+        """The guard must decline the PRICE, not the whole population (`#196`)."""
+        merger = self._SharedRecordMerger({})
+        priced = ls.price_rows(self._rows(), merger, ls.contested_keys(self._rows(), merger))
+        self.assertIs(priced[2]["priced"], True, "an uncontested player lost his price")
+        self.assertEqual(priced[2]["value"], 28.0)
+
+    def test_the_player_survives_the_refusal(self):
+        """What is declined is the borrowed number. The row keeps its identity and eligibility,
+        because a phantom-free board that deletes real men is the older, worse defect."""
+        merger = self._SharedRecordMerger({})
+        priced = ls.price_rows(self._rows(), merger, ls.contested_keys(self._rows(), merger))
+        self.assertEqual(len(priced), 3)
+        self.assertEqual(priced[0]["eligible"], {"RB"})
+        self.assertEqual(priced[0]["bye"], 9)
+
+    def test_an_unmatched_row_is_not_treated_as_contested(self):
+        """A `None` canonical key is NOT a shared record -- two unpriceable players must not
+        contest each other into a false refusal."""
+        merger = FakeMerger({})   # returns no canonical key at all
+        self.assertEqual(ls.contested_keys(self._rows(), merger), set())
 
 
 if __name__ == "__main__":

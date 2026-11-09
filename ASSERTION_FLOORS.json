@@ -10748,19 +10748,37 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 19,
+      "test_methods": 34,
       "asserts": {
-        "assertEqual": 13,
-        "assertFalse": 2,
-        "assertIn": 8,
-        "assertIs": 1,
+        "assertEqual": 31,
+        "assertFalse": 3,
+        "assertIn": 9,
+        "assertIs": 5,
         "assertIsInstance": 3,
         "assertIsNone": 3,
-        "assertIsNotNone": 3,
+        "assertIsNotNone": 4,
+        "assertNotEqual": 1,
         "assertNotIn": 3,
-        "assertTrue": 3
+        "assertTrue": 4
       },
       "by_method": {
+        "AContestedIdentityIsRefusedOnTheRosterPath.test_an_uncontested_player_keeps_his_price": {
+          "assertEqual": 1,
+          "assertIs": 1
+        },
+        "AContestedIdentityIsRefusedOnTheRosterPath.test_an_unmatched_row_is_not_treated_as_contested": {
+          "assertEqual": 1
+        },
+        "AContestedIdentityIsRefusedOnTheRosterPath.test_the_contest_is_detected_over_the_league_not_one_roster": {
+          "assertEqual": 1
+        },
+        "AContestedIdentityIsRefusedOnTheRosterPath.test_the_player_survives_the_refusal": {
+          "assertEqual": 3
+        },
+        "AContestedIdentityIsRefusedOnTheRosterPath.test_two_players_on_one_vendor_record_are_both_refused": {
+          "assertEqual": 1,
+          "assertIs": 1
+        },
         "AFailedReadIsNotAnAbsence.test_a_snapshot_missing_its_league_name_is_a_READ_FAILURE": {
           "assertEqual": 1,
           "assertIn": 1,
@@ -10780,6 +10798,17 @@
           "assertEqual": 1,
           "assertIn": 1
         },
+        "AMissedJoinIsAWiringErrorNotAnAbsence.test_a_snapshot_with_no_rosters_states_that_rather_than_returning_empty": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "AMissedJoinIsAWiringErrorNotAnAbsence.test_the_depth_key_falls_back_to_the_roster_id_spelling": {
+          "assertEqual": 1
+        },
+        "AMissedJoinIsAWiringErrorNotAnAbsence.test_the_depth_key_prefers_the_display_name": {
+          "assertEqual": 1
+        },
         "ByeProfileRefusesAnUnpricedRoster.test_a_priced_roster_does_get_a_profile": {
           "assertEqual": 1,
           "assertIsNotNone": 3
@@ -10787,6 +10816,31 @@
         "ByeProfileRefusesAnUnpricedRoster.test_an_unpriced_roster_gets_no_profile_and_a_reason": {
           "assertIn": 2,
           "assertIsNone": 1
+        },
+        "PricingKeepsTheCompanionFieldRule.test_a_player_measured_at_zero_IS_priced": {
+          "assertEqual": 1,
+          "assertIs": 1
+        },
+        "PricingKeepsTheCompanionFieldRule.test_an_unmatched_player_keeps_a_number_and_says_it_is_unpriced": {
+          "assertEqual": 1,
+          "assertIs": 1
+        },
+        "PricingKeepsTheCompanionFieldRule.test_pricing_does_not_disturb_the_rest_of_the_row": {
+          "assertEqual": 2
+        },
+        "PricingKeepsTheCompanionFieldRule.test_the_name_comes_from_its_one_home": {
+          "assertEqual": 2,
+          "assertNotEqual": 1
+        },
+        "TheLeagueFormatIsSetBeforeAnythingIsPriced.test_half_ppr_and_standard_are_distinguished": {
+          "assertEqual": 1
+        },
+        "TheLeagueFormatIsSetBeforeAnythingIsPriced.test_set_league_format_runs_and_runs_FIRST": {
+          "assertFalse": 1,
+          "assertIsNotNone": 1
+        },
+        "TheLeagueFormatIsSetBeforeAnythingIsPriced.test_the_hint_is_derived_from_the_leagues_own_settings": {
+          "assertEqual": 1
         },
         "TheProducerKeepsTheAbsenceContract.test_a_measured_empty_hole_list_IS_a_list": {
           "assertIn": 1,
@@ -12307,6 +12361,74 @@
         },
         "UserSuppliedContextIsLabelledTests.test_the_label_precedes_the_strategic_guidance_it_qualifies": {
           "assertLess": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
+    "test_page_assets.py": {
+      "test_methods": 15,
+      "asserts": {
+        "assertEqual": 10,
+        "assertGreater": 2,
+        "assertIn": 6,
+        "assertIsNotNone": 1,
+        "assertNotEqual": 1,
+        "assertNotIn": 1,
+        "assertTrue": 2
+      },
+      "by_method": {
+        "DamagedInputIsLeftAlone.test_a_non_image_data_uri_is_left_alone": {
+          "assertEqual": 2
+        },
+        "DamagedInputIsLeftAlone.test_a_page_with_no_images_round_trips_unchanged": {
+          "assertEqual": 1
+        },
+        "DamagedInputIsLeftAlone.test_an_empty_payload_is_not_rewritten": {
+          "assertEqual": 2
+        },
+        "DamagedInputIsLeftAlone.test_undecodable_base64_is_not_rewritten": {
+          "assertEqual": 2,
+          "assertIsNotNone": 1
+        },
+        "ImmutableIsOnlyHonestWithAHash.test_the_header_carries_both_halves": {
+          "assertIn": 3
+        },
+        "ImmutableIsOnlyHonestWithAHash.test_the_lifetime_is_a_year": {
+          "assertIn": 1
+        },
+        "NamesAreContentHashes.test_different_bytes_get_different_names": {
+          "assertNotEqual": 1
+        },
+        "NamesAreContentHashes.test_the_digest_is_over_the_DECODED_bytes": {
+          "assertEqual": 1
+        },
+        "NamesAreContentHashes.test_the_extension_comes_from_the_mime_type": {
+          "assertTrue": 1
+        },
+        "NamesAreContentHashes.test_the_same_bytes_always_get_the_same_name": {
+          "assertEqual": 1
+        },
+        "TheRealPageIsTheControl.test_all_three_of_the_dashboards_images_are_found": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "TheRealPageIsTheControl.test_the_committed_pages_are_not_touched": {
+          "assertIn": 1
+        },
+        "TheRealPageIsTheControl.test_the_extraction_is_most_of_the_page": {
+          "assertGreater": 1
+        },
+        "TheServerServesThemImmutably.test_rendering_populates_the_asset_cache": {
+          "assertGreater": 1,
+          "assertTrue": 1
+        },
+        "TheServerServesThemImmutably.test_the_asset_route_is_registered": {
+          "assertIn": 1
         }
       },
       "disabled": {

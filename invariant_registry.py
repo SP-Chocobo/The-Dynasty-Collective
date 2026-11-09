@@ -334,6 +334,31 @@ def _vendor_record_resolutions() -> list[str]:
         eligible set to widen across and the one home could not be used even in principle.
       * `app.py` x2, the free-agent table -- Sleeper rows carrying a single `position`.
       * `app.py` x1, `positional_depth` -- the roster depth chart.
+      * `live_source.py` x2 -- the web server's roster path (`#359`). `contested_keys` resolves
+        every player identified in the league in order to FIND the contests; `price_rows`
+        resolves to take the price and refuses any record the first one flagged. The guard and
+        the consumer are two sites because they are two resolutions, and the registry counting
+        both is correct: the guard would itself be a place to decide if it ever read a number
+        rather than a key. It reads only `match_canonical_key`.
+
+    THE ELEVENTH WAS A LIVE BREACH, AND THE FIRST ONE THIS REGISTRY HAS CAUGHT (2026-11-09).
+    Every member before it was judged and found conforming. `live_source.price_rows` re-resolved
+    each rostered player straight through the merger -- the EXACT shape this invariant was
+    written for: "`_team_roster_players` re-resolves each rostered player through the MERGER,
+    where the contested price still sits, so a player drafted out of a contested pair kept the
+    very number the pool refused him."
+
+    MEASURED on the committed rankings, before the repair: `merge_player` returns
+    `trade_value=99.0` for BOTH `Bijan Robinson` and `Brian Robinson` -- the one `B Robinson RB
+    ATL` row the board refuses to either -- and `price_rows` handed 99.0 to both, where it would
+    then have been double-counted by `bye_collision`. After: both unpriced, `Patrick Mahomes`
+    still 28.0. The price is declined, the player is not (`#196`).
+
+    The refusal is counted over EVERY PLAYER IDENTIFIED IN THE LEAGUE, not over the one roster
+    being rendered -- counting over the rendered roster would reproduce the original defect,
+    where the contest evaporates whenever the other claimant sits on somebody else's roster.
+    RESIDUE, STATED: that is still narrower than the pool's identified universe, so a contest
+    with a player on no roster in this league is invisible to it. Recorded at `#360`.
 
     THE DEPTH CHART IS A RECORDED DECISION, NOT AN OVERSIGHT (2026-10-01). It resolves on the
     row's primary bucket, so a two-way player is priced only at his first-listed position, where
@@ -605,7 +630,12 @@ REGISTRY: tuple[Invariant, ...] = (
                    "home plus 7 direct resolutions, each judged in the enumerator's own "
                    "docstring; none is a live breach and one is a recorded decision.",
         members=_vendor_record_resolutions,
-        census=10,
+        # 10 -> 12: `live_source.price_rows` AND `live_source.contested_keys` (`#359`/`#360`).
+        # RE-VERIFIED BEFORE THIS NUMBER MOVED, twice, and the first move was a LIVE BREACH --
+        # the only one this registry has caught. The repair then added the second site, and the
+        # census moved again and made me judge that one too, which is the mechanism working
+        # rather than a nuisance: a guard is also a place that resolves a player.
+        census=12,
         pinned_by=(
             "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
             ".test_the_contest_survives_one_of_the_pair_being_DRAFTED",
@@ -613,6 +643,10 @@ REGISTRY: tuple[Invariant, ...] = (
             ".test_a_player_drafted_out_of_a_contested_pair_is_not_priced_on_his_own_roster",
             "test_identity_partition_boundary.TheGuardDeclinesThePriceNotThePlayerTests"
             ".test_an_UNcontested_drafted_player_keeps_his_price",
+            "test_live_source.AContestedIdentityIsRefusedOnTheRosterPath"
+            ".test_two_players_on_one_vendor_record_are_both_refused",
+            "test_live_source.AContestedIdentityIsRefusedOnTheRosterPath"
+            ".test_an_uncontested_player_keeps_his_price",
         ),
     ),
 )

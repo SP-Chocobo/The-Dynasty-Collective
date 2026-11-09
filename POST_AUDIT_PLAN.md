@@ -21279,3 +21279,150 @@ base64's inflation and nothing more. **Content-address those three first** — t
 - **Brotli.** Neither `brotli` nor `brotlicffi` is installed. Unmeasured, and an expected result
   is not a measurement.
 - **`app.py` is untouched.** It remains the only writer, and the gate is not installed yet.
+---
+
+## `#358` / `#359` — THE ASSET REPAIR, PRICING, AND TWO VACUOUS TESTS I SHIPPED AND REPAIRED
+
+### `#358` — inlined images become content-addressed URLs AT RENDER TIME
+
+| | before | after |
+|---|---|---|
+| dashboard HTML | 221.0 KB | **38.0 KB** |
+| gzipped | 148.4 KB | **9.9 KB** |
+| first visit | 148.4 KB | 147.2 KB |
+| **every navigation after** | **148.4 KB** | **9.9 KB** |
+
+**15x on repeat navigation**, confirmed over HTTP: the real server went from 151,936 bytes to
+**10,165**. Three assets served with `Cache-Control: public, max-age=31536000, immutable`.
+
+`immutable` is honest ONLY because the name is the content hash — change the image and the URL
+changes, so a stale entry is unreachable rather than wrong. The two halves are one decision.
+
+**IT RUNS AT RENDER TIME, NOT IN THE BUILDERS**, and that was the second design. A mode switch
+inside `asset_data_uri` would risk `PagesRebuildIdentically` (which exists because `#332` shipped
+27 of 29 stale pages) for a benefit the committed files never receive — they are STANDALONE
+artifacts and should inline. It would also put global state inside a builder called from a
+threaded server, and give `#126`'s one home for "asset or nothing" a second behaviour.
+Externalising afterwards makes the whole repair a pure function of the rendered string.
+
+**A VACUOUS TEST I SHIPPED, caught by its own mutation arm.**
+`test_undecodable_base64_is_not_rewritten` used `!!!!notbase64!!!!` — characters OUTSIDE base64's
+alphabet, so `DATA_URI` never matched, `swap` was never called, and the decode guard it claims to
+exercise was **unreachable**. It passed, and a mutation breaking that guard survived it. `AAAAA`
+is five characters of legal alphabet that matches and then fails on length. The repaired test
+asserts the payload matches the pattern FIRST, so it can never go vacuous the same way again.
+
+### `#359` — pricing, assembled in PRODUCTION'S shape
+
+`set_league_format` **before anything is priced**, with the hint DERIVED from the league's own
+settings. `rec` and `bonus_rec_te` do not propagate through `scoring_settings` into valuation —
+they propagate by FILE SELECTION, and a battery that skipped this returned standard / half_ppr /
+ppr byte-identical with nine of thirteen findings artifacts. A live league supplies its own
+`scoring_settings`, which is `#341`'s currency ruling finally reaching a price.
+
+**MEASURED END TO END on a synthetic snapshot of real players:** 15/15 priced, bye_profile
+present, **all three checks ran** (`absent=[]`), one claim fired.
+
+And the detail that proves `#346` defect 2 on live data: the raw profile's worst week is **5 with
+a loss of 33.0**, while the CLAIM reports **week 14, loss 32.0** — because week 5 is behind
+`current_week=10`, so `byes_ahead` re-picks from the weeks still ahead. Futurity works.
+
+**A `#126` DEFECT IN MY OWN BRIDGE, found by measurement.** `roster_rows` spelled the player name
+inline as `full_name or last_name or id`. `pu.player_name` is the one home and falls back to
+**first+last BEFORE the id**, so every player without a `full_name` — a team defense, anyone
+stored as first/last — got the raw Sleeper id as its name, a string `merge_player` can never
+match. Measured on a roster chosen so every member IS in the rankings: **11 of 15 priced where
+`player_name` prices 15.** Four rows silently unpriced, each then a measured-looking 0.0 the bye
+guard has to refuse. Routed to its one home.
+
+**THE SECOND VACUOUS TEST, and it is the same shape.** The test pinning that fix asserted on a
+player WITH a `full_name` — where both spellings agree — so a mutation reintroducing the inline
+version SURVIVED it. The fixture now carries a player with no `full_name`, which is the only row
+where the two derivations part company. Both vacuous tests were caught by mutation arms that
+should have fired and did not; neither would have been caught by running the suite.
+
+**THE MERGER IS MUTATED, SO PRICING TAKES A LOCK.** `set_league_format` selects a different
+rankings export — it is a WRITE to shared state, from a threaded server. `#354` chose one process
+to protect unsynchronised files, and this is the reminder that **one process does not mean
+serialised writes once threads are involved**. Every priced read takes `Engine._price_lock`;
+readers of already-rendered pages never touch it.
+
+### WHAT IS STILL NOT BUILT
+
+The live landing page (`build_landing` wants the twelve-seat shape). Brotli — still not installed,
+still unmeasured. The gate. `app.py` is untouched and remains the only writer. And nothing here
+has been run against a real Sleeper snapshot, because none exists in this container: the owner
+has a tunnel at `draft.goldwyrm.com` pointing at `127.0.0.1:8765` on their laptop, which is where
+that verification will happen. **A tunnel route publishes a hostname; it is not an Access policy**
+— without one under Zero Trust, the hostname is reachable by anyone who knows it.
+---
+
+## `#360` — THE TENTH RATCHET CAUGHT A LIVE BREACH: A BORROWED PRICE ON THE ROSTER PATH
+
+**The first live breach `invariant_registry.py` has ever caught.** Every member of this
+population before it was judged and found conforming; this one was not.
+
+### What happened
+
+Suite 8 returned **4 failures in 4587 tests**, all in `test_invariant_registry` — a ratchet whose
+existence I did not know about. Its census for *"a contested identity's borrowed price is refused
+on every path"* moved **10 -> 11**, and the new member was `live_source.py:388` — my `price_rows`.
+
+The population note had described the defect in advance, in the past tense:
+
+> the roster path decided differently from the pool and handed a drafted player the very number
+> the board refused him — and it did that through a **DIRECT `merge_player` call**, which a census
+> over the conforming name alone could not see.
+
+`price_rows` was a direct `merge_player` call on the roster path. Same defect, same shape, new
+file.
+
+### MEASURED, on the committed rankings
+
+    merge_player('Bijan Robinson', RB, ATL) -> trade_value = 99.0
+    merge_player('Brian Robinson', RB, ATL) -> trade_value = 99.0
+
+    through price_rows, BEFORE:   Bijan 99.0 priced=True
+                                  Brian 99.0 priced=True
+
+Two real men, one `B Robinson RB ATL` vendor row, and no name/position/team test can split them.
+`_drop_contested_identities` refuses that number to both. My path handed it to both — and
+`bye_collision` would then have counted a value belonging to exactly one of them **twice**.
+
+    AFTER:   Bijan 0.0 priced=False
+             Brian 0.0 priced=False
+             Patrick Mahomes 28.0 priced=True
+
+**The price is declined, the player is not** (`#196`). The row keeps its identity, its
+eligibility and its bye; it is simply unpriced, which the solvers already handle and the page
+already renders honestly.
+
+### THE POPULATION THE CONTEST IS COUNTED OVER
+
+**Every player identified in the league, not the one roster being rendered.** Counting over the
+rendered roster would reproduce the original defect exactly — the note says *"the contest itself
+evaporated as soon as either player was drafted, because it was counted over available rows"* —
+and the common case is that the other claimant sits on somebody else's roster.
+
+**RESIDUE, STATED RATHER THAN ACCEPTED SILENTLY:** this is still narrower than the pool's, which
+counts over the identified universe. A contest with a player on NO roster in this league is
+invisible to it. Smaller than the defect it replaces, and not zero.
+
+### THE REGISTRY CAUGHT MY REPAIR TOO
+
+The fix added `contested_keys`, a second resolution site — so the census moved **11 -> 12** and
+made me judge that one as well. That is the mechanism working rather than a nuisance: a guard is
+also a place that resolves a player, and it would itself be a place to decide if it ever read a
+number rather than a key. It reads only `match_canonical_key`.
+
+The registry has no `--write`, by design: *"Re-verify the claim over the NEW population, THEN
+update `census`. Updating the number first is how a registry becomes a rubber stamp."* Both moves
+were verified before the number changed, and the first verification FAILED, which is the only
+reason this entry exists.
+
+### WHY NO EARLIER STEP COULD HAVE FOUND THIS
+
+Nine ratchets green with real flags. 44 new tests green. 4/4 mutation arms green. The defect lived
+in an invariant held by a module my new code never imports, over a population my new code had
+silently joined. **The full suite is the only thing that reaches it** — and the suite reached it
+only because somebody had previously written down which population each invariant was proven over.

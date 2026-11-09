@@ -45,11 +45,12 @@ import time
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
-from starlette.responses import HTMLResponse, PlainTextResponse
+from starlette.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
 import front_claims as fc
 import live_source as ls
+import page_assets as pa
 
 ROOT = pathlib.Path(__file__).resolve().parent
 R7 = ROOT / "ui_explore" / "round7"
@@ -88,6 +89,13 @@ class Engine:
         self.started_at = time.time()
         self.players_db: dict | None = None
         self.byes: dict | None = None
+        self.merger = None
+        #: `set_league_format` MUTATES the merger -- it selects a different rankings export, and
+        #: that is how `rec` and `bonus_rec_te` reach a price at all (they do NOT propagate
+        #: through scoring_settings). So pricing is not thread-safe on a shared merger, and ONE
+        #: PROCESS DOES NOT MEAN SERIALISED WRITES once threads are involved. Every priced read
+        #: takes this lock. Readers of already-rendered pages never touch it.
+        self._price_lock = threading.Lock()
         self.warm_seconds: float | None = None
         self.warm_error: str | None = None
         self.busy: str | None = None
@@ -112,7 +120,8 @@ class Engine:
                 # 373 ids collide with the real universe -- coincidentally (`#201`). A live
                 # roster's Sleeper ids resolve against the capture-backed db and nothing else.
                 self.players_db, _prov = rdb.build_players_db_from_capture()
-                self.byes = dm.DataMerger().bye_week_by_team()
+                self.merger = dm.DataMerger()
+                self.byes = self.merger.bye_week_by_team()
                 self.warm_seconds = time.perf_counter() - t0
                 self.last_result = f"warm-up ok ({len(self.players_db)} players)"
             except Exception as exc:  # reported, never swallowed
@@ -178,13 +187,22 @@ async def index(request):
         "</tr></table>")))
 
 
+#: Extracted images, keyed by content hash. Written only by `_render`, and a hash key always maps
+#: to identical bytes, so two threads racing on the same key write the same value -- which is why
+#: this needs no lock. It is a cache, not state: an entry missing is a 404 on one image, and the
+#: next render of that page puts it back.
+ASSETS: dict[str, pa.Asset] = {}
+
+
 def _render(fx, report) -> HTMLResponse:
-    """Build the page, and put the source's verdict ABOVE it when the wire is wrong.
+    """Build the page, externalise its images, and put the source's verdict ABOVE it when the
+    wire is wrong.
 
     A banner rather than a quiet field, because a failed read must not be mistakable for the
     absence contract behaving well -- which is the entire reason this module exists.
     """
-    page = DASH.build(fx)
+    page, found = pa.externalize(DASH.build(fx))
+    ASSETS.update(found)
     if report.failures:
         names = ", ".join(f.name for f in report.failures)
         banner = (
@@ -219,8 +237,19 @@ async def league(request):
             f"<h1>Snapshot unreadable</h1><p class=\"bad\">{html.escape(str(exc))}</p>"
             '<p class="dim">Re-sync in app.py; a corrupt cache is a cache miss, not data '
             "loss.</p>")), status_code=500)
-    fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
-                                  owner_id=request.query_params.get("owner"))
+    # Priced under the lock, because `set_league_format` mutates the shared merger.
+    with ENGINE._price_lock:
+        ENGINE.busy = f"pricing {league_id}"
+        try:
+            fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
+                                          owner_id=request.query_params.get("owner"),
+                                          merger=ENGINE.merger)
+            ENGINE.last_result = f"rendered {league_id}: {report.verdict}"
+        except Exception as exc:
+            ENGINE.last_result = f"render FAILED for {league_id}: {type(exc).__name__}: {exc}"
+            raise
+        finally:
+            ENGINE.busy = None
     return _render(fx, report)
 
 
@@ -232,6 +261,24 @@ async def fixture(request):
         return PlainTextResponse("no such fixture", status_code=404)
     fx, report = ls.from_fixture(path)
     return _render(fx, report)
+
+
+async def asset(request):
+    """Serve one content-addressed image, cached for a year and never revalidated.
+
+    `immutable` is only honest because the NAME IS THE CONTENT HASH: change the image and the
+    URL changes with it, so a stale entry is unreachable rather than wrong. The two halves are
+    one decision (`#358`).
+    """
+    item = ASSETS.get(request.path_params["name"])
+    if item is None:
+        # A cold server has rendered no page yet, so it holds no assets. Saying so beats a bare
+        # 404: the fix is to load the page that references it, not to hunt for a missing file.
+        return PlainTextResponse(
+            "no such asset in this process. Assets are extracted when a page renders; "
+            "load the page first.", status_code=404)
+    return Response(item.body, media_type=item.content_type,
+                    headers={"Cache-Control": pa.CACHE_CONTROL})
 
 
 async def status(request):
@@ -255,7 +302,9 @@ async def status(request):
     for league_id in snaps:
         try:
             snap = json.loads(ls.snapshot_path(league_id).read_text())
-            fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes)
+            with ENGINE._price_lock:
+                fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
+                                              merger=ENGINE.merger)
         except Exception as exc:
             body.append(f'<h2>{html.escape(league_id)}</h2>'
                         f'<p class="bad">{html.escape(type(exc).__name__)}: '
@@ -308,6 +357,7 @@ app = Starlette(
         Route("/status", status),
         Route("/league/{league_id}", league),
         Route("/fixture/{name}", fixture),
+        Route("/assets/{name}", asset),
     ],
     middleware=[Middleware(GZipMiddleware, minimum_size=1024)],
 )
