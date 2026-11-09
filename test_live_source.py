@@ -236,11 +236,56 @@ class TheServerWritesNothing(unittest.TestCase):
         hits = [i for i in self.WRITE_IDIOMS if i in 'path.write_text(json.dumps(x))']
         self.assertTrue(hits, "the write detector recognises nothing")
 
-    def test_the_server_binds_loopback_only(self):
-        """Owner's ruling, and verified empirically too: HTTP 000 on the container's own
-        192.0.2.2:8765 while 127.0.0.1:8765 served 200."""
+    def test_the_server_binds_loopback_BY_DEFAULT(self):
+        """Owner's ruling, and verified empirically: HTTP 000 on the container's own
+        192.0.2.2:8765 while 127.0.0.1:8765 served 200.
+
+        ASSERTS THE DEFAULT, NOT THE RESOLVED VALUE. `HOST` reads `GOLDWYRM_HOST`, which exists
+        for the tunnel case where cloudflared sits in a different network namespace and the
+        app's loopback is not the one it dials. Asserting the resolved value would make this
+        test fail for anyone who had that variable set -- and, worse, would pass vacuously in
+        the one configuration where the ruling matters least.
+        """
+        import os
         import server
-        self.assertEqual(server.HOST, "127.0.0.1")
+        self.assertEqual(os.environ.get("GOLDWYRM_HOST", "127.0.0.1"), server.HOST)
+        self.assertNotIn("GOLDWYRM_HOST", server.main.__doc__ or "",
+                         "the override must not be documented as the way to run this")
+        src = (ROOT / "server.py").read_text()
+        self.assertIn('os.environ.get("GOLDWYRM_HOST", "127.0.0.1")', src,
+                      "loopback is no longer the default bind")
+
+    def test_a_non_loopback_bind_announces_itself(self):
+        """An opt-in listener something else can reach is never silent."""
+        src = (ROOT / "server.py").read_text()
+        self.assertIn("BOUND TO", src)
+        self.assertIn("reachable by anything that can route to this host", src)
+
+    def test_health_answers_without_warming_the_engine(self):
+        """The probe exists to separate CONNECTIVITY from warm-up when a tunnel returns 502.
+
+        If it warmed, it would cost ~450ms and a cold-start probe would be indistinguishable
+        from a slow origin -- which is the exact ambiguity it was added to remove.
+        """
+        import ast
+        import asyncio
+        import server
+        # PARSED, NOT GREPPED. The first version scanned the function's source text and failed
+        # on its own DOCSTRING, which explains why it does not warm -- a scan that cannot tell
+        # prose from code is the same defect as a check that cannot fail.
+        tree = ast.parse((ROOT / "server.py").read_text())
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.AsyncFunctionDef) and n.name == "health")
+        calls = {ast.unparse(n.func) for n in ast.walk(fn) if isinstance(n, ast.Call)}
+        self.assertNotIn("ENGINE.ensure_warm", calls, "the health probe warms the engine")
+        resp = asyncio.run(server.health(None))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"ok", resp.body)
+        self.assertIn(b"writes=0", resp.body)
+
+    def test_health_is_routed(self):
+        import server
+        self.assertIn("/health", {r.path for r in server.app.routes})
 
     def test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash(self):
         import server

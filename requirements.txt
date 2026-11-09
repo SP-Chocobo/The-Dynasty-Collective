@@ -16,3 +16,8 @@ playwright  # #173: the board-execution tests EXECUTE the real board in Chromium
 scipy  # linear_sum_assignment -- exact max-value bipartite matching for lineup_optimizer.py's
        # roster-to-slot assignment; a hand-rolled greedy heuristic can silently mis-assign a
        # multi-eligible player, and that's exactly the number this app's draft engine leans on
+starlette  # #357: the read-only web server. A minimal ASGI toolkit, chosen over FastAPI
+           # because the builders already emit complete HTML -- there is no request/response
+           # modelling to do, so pydantic and the rest would be weight for nothing.
+uvicorn  # #357: the ASGI server that runs it. Without these two, `python server.py` fails on
+         # import with no hint that the dependency list is the thing that is wrong.

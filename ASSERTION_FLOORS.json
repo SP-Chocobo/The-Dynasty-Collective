@@ -10748,17 +10748,17 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 34,
+      "test_methods": 37,
       "asserts": {
-        "assertEqual": 31,
+        "assertEqual": 32,
         "assertFalse": 3,
-        "assertIn": 9,
+        "assertIn": 15,
         "assertIs": 5,
         "assertIsInstance": 3,
         "assertIsNone": 3,
         "assertIsNotNone": 4,
         "assertNotEqual": 1,
-        "assertNotIn": 3,
+        "assertNotIn": 5,
         "assertTrue": 4
       },
       "by_method": {
@@ -10874,14 +10874,27 @@
         "TheServerWritesNothing.test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash": {
           "assertIn": 3
         },
+        "TheServerWritesNothing.test_a_non_loopback_bind_announces_itself": {
+          "assertIn": 2
+        },
+        "TheServerWritesNothing.test_health_answers_without_warming_the_engine": {
+          "assertEqual": 1,
+          "assertIn": 2,
+          "assertNotIn": 1
+        },
+        "TheServerWritesNothing.test_health_is_routed": {
+          "assertIn": 1
+        },
         "TheServerWritesNothing.test_no_write_idiom_appears_in_the_server": {
           "assertEqual": 1
         },
         "TheServerWritesNothing.test_the_detector_would_catch_a_write": {
           "assertTrue": 1
         },
-        "TheServerWritesNothing.test_the_server_binds_loopback_only": {
-          "assertEqual": 1
+        "TheServerWritesNothing.test_the_server_binds_loopback_BY_DEFAULT": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertNotIn": 1
         }
       },
       "disabled": {

@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import html
 import importlib.util
+import os
 import json
 import pathlib
 import threading
@@ -54,7 +55,21 @@ import page_assets as pa
 
 ROOT = pathlib.Path(__file__).resolve().parent
 R7 = ROOT / "ui_explore" / "round7"
-HOST, PORT = "127.0.0.1", 8765
+#: LOOPBACK BY DEFAULT, by the owner's ruling (`#354`): milestone 1 is not exposed, and binding
+#: to 127.0.0.1 makes that structural rather than disciplinary -- there is no public listener to
+#: get impatient about.
+#:
+#: THE OVERRIDE EXISTS FOR ONE REAL CASE, and it is not "make it public". cloudflared connects
+#: to the origin over the loopback of ITS OWN network namespace. If the tunnel daemon and this
+#: server are not in the same namespace -- cloudflared on Windows with the app in WSL, or either
+#: one in Docker -- then `127.0.0.1:8765` from cloudflared's side is a DIFFERENT loopback with
+#: nothing on it, and the tunnel returns 502 while the app is running perfectly. The fix is to
+#: bind an address the daemon can actually reach and point the route there.
+#:
+#: Anything other than 127.0.0.1 is a listener something else can reach, so it is opt-in,
+#: per-run, and announced on startup rather than silent.
+HOST = os.environ.get("GOLDWYRM_HOST", "127.0.0.1")
+PORT = int(os.environ.get("GOLDWYRM_PORT", "8765"))
 
 
 def _load(name: str, path: pathlib.Path):
@@ -263,6 +278,20 @@ async def fixture(request):
     return _render(fx, report)
 
 
+async def health(request):
+    """A liveness probe that does NOT warm the engine.
+
+    Every other route calls `ensure_warm`, which builds a 6,594-player universe and a DataMerger
+    -- around 450ms here and longer on a cold disk. A tunnel or proxy checking whether the origin
+    is up should not pay that, and more usefully: if THIS answers through the tunnel while `/`
+    does not, the problem is warm-up time or a request timeout, not connectivity. If neither
+    answers, nothing is listening on this port from the tunnel's point of view.
+    """
+    return PlainTextResponse(
+        f"ok  warm={ENGINE.warm}  uptime={ls.age_seconds(ENGINE.started_at):.0f}s  "
+        f"writes=0\n")
+
+
 async def asset(request):
     """Serve one content-addressed image, cached for a year and never revalidated.
 
@@ -355,6 +384,7 @@ app = Starlette(
     routes=[
         Route("/", index),
         Route("/status", status),
+        Route("/health", health),
         Route("/league/{league_id}", league),
         Route("/fixture/{name}", fixture),
         Route("/assets/{name}", asset),
@@ -365,7 +395,10 @@ app = Starlette(
 
 def main() -> int:
     import uvicorn
-    print(f"Gold Wyrm, read-only, on http://{HOST}:{PORT}  (loopback only)")
+    where = "loopback only" if HOST in ("127.0.0.1", "localhost") else (
+        f"*** BOUND TO {HOST} -- reachable by anything that can route to this host ***")
+    print(f"Gold Wyrm, read-only, on http://{HOST}:{PORT}  ({where})")
+    print(f"  probe:  curl -s http://{HOST}:{PORT}/health     (does not warm the engine)")
     uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
     return 0
 
