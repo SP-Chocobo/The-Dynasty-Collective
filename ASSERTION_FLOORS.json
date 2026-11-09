@@ -10747,6 +10747,96 @@
         "early_returns": 0
       }
     },
+    "test_live_source.py": {
+      "test_methods": 19,
+      "asserts": {
+        "assertEqual": 13,
+        "assertFalse": 2,
+        "assertIn": 8,
+        "assertIs": 1,
+        "assertIsInstance": 3,
+        "assertIsNone": 3,
+        "assertIsNotNone": 3,
+        "assertNotIn": 3,
+        "assertTrue": 3
+      },
+      "by_method": {
+        "AFailedReadIsNotAnAbsence.test_a_snapshot_missing_its_league_name_is_a_READ_FAILURE": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "AFailedReadIsNotAnAbsence.test_a_wired_snapshot_reports_no_failures_at_all": {
+          "assertEqual": 2
+        },
+        "AFailedReadIsNotAnAbsence.test_every_expected_field_is_named_in_the_source_table": {
+          "assertTrue": 1
+        },
+        "AFailedReadIsNotAnAbsence.test_the_same_field_missing_from_a_FIXTURE_is_structural": {
+          "assertEqual": 1,
+          "assertFalse": 1
+        },
+        "AFailedReadIsNotAnAbsence.test_the_verdict_counts_the_failures_rather_than_describing_them": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "ByeProfileRefusesAnUnpricedRoster.test_a_priced_roster_does_get_a_profile": {
+          "assertEqual": 1,
+          "assertIsNotNone": 3
+        },
+        "ByeProfileRefusesAnUnpricedRoster.test_an_unpriced_roster_gets_no_profile_and_a_reason": {
+          "assertIn": 2,
+          "assertIsNone": 1
+        },
+        "TheProducerKeepsTheAbsenceContract.test_a_measured_empty_hole_list_IS_a_list": {
+          "assertIn": 1,
+          "assertIsInstance": 1
+        },
+        "TheProducerKeepsTheAbsenceContract.test_an_uncomputed_claim_is_OMITTED_from_the_fixture_not_emptied": {
+          "assertNotIn": 2
+        },
+        "TheProducerKeepsTheAbsenceContract.test_the_page_cannot_claim_all_clean_when_two_checks_never_ran": {
+          "assertEqual": 2,
+          "assertFalse": 1
+        },
+        "TheRowShapeTheSolversNeed.test_a_bye_week_is_none_rather_than_zero_when_the_team_is_unknown": {
+          "assertIsNone": 1
+        },
+        "TheRowShapeTheSolversNeed.test_an_unknown_player_id_still_yields_a_row": {
+          "assertEqual": 2,
+          "assertIsNone": 1
+        },
+        "TheRowShapeTheSolversNeed.test_eligible_is_a_SET_in_memory_and_never_its_repr": {
+          "assertEqual": 1,
+          "assertIsInstance": 1
+        },
+        "TheRowShapeTheSolversNeed.test_value_is_a_number_and_priced_travels_beside_it": {
+          "assertIs": 1,
+          "assertIsInstance": 1
+        },
+        "TheServerWritesNothing.test_a_clean_read_gets_no_banner": {
+          "assertNotIn": 1
+        },
+        "TheServerWritesNothing.test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash": {
+          "assertIn": 3
+        },
+        "TheServerWritesNothing.test_no_write_idiom_appears_in_the_server": {
+          "assertEqual": 1
+        },
+        "TheServerWritesNothing.test_the_detector_would_catch_a_write": {
+          "assertTrue": 1
+        },
+        "TheServerWritesNothing.test_the_server_binds_loopback_only": {
+          "assertEqual": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_llm_engine.py": {
       "test_methods": 2,
       "asserts": {

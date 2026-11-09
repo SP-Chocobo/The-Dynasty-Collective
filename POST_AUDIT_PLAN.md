@@ -21167,3 +21167,115 @@ pass and this instrument has no business ratcheting a convention. `test_skip_gat
 `test_boundary_census.py` still never call their own `main()`, which is why the hollow path
 survived in them; the new guard covers the bare-invocation property for all nine, but their mains
 remain otherwise untested by their own modules.
+---
+
+## `#356` / `#357` — MILESTONE 1: THE SEAM IS WIRED, AND THE ABSENCE CONTRACT CAN MASK A WIRING ERROR
+
+Owner's rulings (`#354`): server-rendered, one process, **127.0.0.1 only**, gate on `app.py` only.
+Milestone 1 proves the seam; it does not deliver the dashboard.
+
+### `#356` — THE DEFECT THE VOCABULARY EXISTS FOR
+
+`#187` makes an absence render as an em dash CARRYING ITS REASON. That protects a reader from an
+invented number and gives them **nothing at all** against a field that should have arrived and did
+not. Read the wrong Sleeper key and `league.name` is `None`, and the page prints
+
+    — (this capture carries a league CONFIG but no league name)
+
+**which is indistinguishable from the contract working perfectly.** The owner loads their league,
+sees a tidy labelled absence, and cannot tell it from a bug. This matters here more than anywhere
+because I CANNOT VERIFY THIS AGAINST THEIR LEAGUE: `data/sleeper_snapshots/` holds nothing but a
+`.gitkeep`, and the committed league captures carry settings with no rosters. The page has to be
+the instrument.
+
+So `live_source.py` labels every field with WHY it is entitled to be missing:
+
+| state | meaning | renders as |
+|---|---|---|
+| `measured` | the source supplied it | the value |
+| `structurally_absent` | this source genuinely cannot supply it | em dash + reason (`#187`) |
+| `read_failed` | the source OWES it and it did not arrive | **loud banner, never an em dash** |
+| `not_computed` | supplied, but a derived claim was deliberately not built | the reason |
+
+`None` looks identical in all four, so the distinction cannot come from the data. It comes from
+`EXPECTS` — per SOURCE KIND, the fields that source owes. A snapshot owes a league name because
+every Sleeper league has one; a fixture does not, because a replayed draft never had one. It is
+data rather than conditionals so a reader can check it against Sleeper's API in one sitting.
+
+**FIVE FIELDS FLIP on a real league**, which is why they are exactly the ones a wiring error hides
+in: `current_week`, `league_name`, `record`, `starters`, `team`. The round-7 dashboard references
+`starters` **zero times** and `league_name` zero times — there was never anything to draw.
+
+### A DEFECT THIS BRIDGE SHIPPED IN ITS FIRST DRAFT, CAUGHT BY RUNNING IT
+
+`checks_run`'s docstring states the grammar and names the mistake in advance:
+
+> `[]` is a measured empty result — holes were counted, there were none — while a missing key or
+> `None` never ran. **A caller that hands `[]` for something it did not measure has broken the
+> absence contract at the producer, and that is its defect to fix, not this function's to guess
+> around.**
+
+The first draft wrote `"thin_positions": []`. `checks_run` duly reported the depth check **CLEAN
+on a check that had never run** — so a league with no structural holes would have rendered
+"nothing open" with two of three checks never performed. Omitted rather than emptied, and pinned
+end to end: `ran=1`, `absent=['byes','depth']`, `all_clean=False`.
+
+### `bye_profile` REFUSES AN UNPRICED ROSTER, AND THE REFUSAL IS IN THE CODE
+
+`bye_collision` negates `value` to build a maximisation, so an unpriced roster — every row at the
+neutral `0.0` that `#346` requires — returns `value_lost: 0.0` for **every week**. A
+measured-looking zero meaning "nothing was priced": `#346`'s defect through a different door. The
+guard refuses unless every row is priced, so a caller cannot reach the wrong answer by forgetting.
+Pricing is not wired in this pass, so `structural_holes` is the one claim a snapshot supplies —
+`slot_coverage` takes no `value` by design, because legality in a slot has nothing to do with price.
+
+### `#357` — WHAT THE SERVER MEASURED
+
+Starlette + uvicorn (both already installed; no FastAPI, no pydantic). Four routes: `/`,
+`/status`, `/league/{id}`, `/fixture/{name}`. **It writes nothing** — pinned by a source scan with
+its own non-vacuity control, because that is the single property making it safe beside `app.py`'s
+unsynchronised single writer.
+
+| | measured |
+|---|---|
+| warm-up (6,594 players + merger) | **once**, ~450ms on first request |
+| `compose()` | 0.00ms median, 0.04ms worst |
+| page assembly | 0.5ms |
+| **full HTTP request, end to end** | **1.7–3.2ms, median ~2.0ms** |
+| transfer | **226,303 bytes** |
+
+**LOOPBACK-ONLY VERIFIED EMPIRICALLY, not from the bind argument:** `127.0.0.1:8765` served 200
+while the container's own `192.0.2.2:8765` returned HTTP 000, refused.
+
+The end-to-end figure is the one that was missing. Composition was never the request: HTTP and the
+socket add ~1.5ms over it, and on any real network the 226KB dominates both.
+
+### GZIP WAS ADDED AND THE MEASUREMENT ARGUES AGAINST IT
+
+Starlette compresses nothing by default. Turning it on:
+
+    plain   226,303 bytes    3.6 ms
+    gzip    151,936 bytes   11.5-12.0 ms
+
+74KB bought for ~8ms of CPU — and milestone 1 is **loopback only**, where those 74KB cost nothing
+to send. **On this binding gzip is a net latency loss**, and quoting the byte count without the
+clock would be hiding half the result. It stays because it is right the moment there is a network
+and 12ms is imperceptible either way, but the order was wrong: 83% of this page is three inlined
+base64 images, and JPEG/PNG/WebP are already compressed, so gzip is paying full price to recover
+base64's inflation and nothing more. **Content-address those three first** — the HTML drops to
+~38KB, where gzip reaches ~10KB almost free. I optimised the part that cannot be compressed.
+
+### WHAT IS NOT BUILT
+
+- **Pricing**, so `bye_profile` and `thin_positions` are `not_computed` on a snapshot. They need
+  `depth_chart.positional_depth` over a merger-backed priced pool, with `set_league_format` called
+  first or the league's own scoring never reaches a price (`#192`/`#204`).
+- **The asset repair.** Content-addressed filenames, `Cache-Control: public, max-age=31536000,
+  immutable`. 148.4KB per navigation becomes 9.9KB after the first — but the win is caching, not
+  compression, and it exists only if the headers are right. The builders inline by design so the
+  committed pages stay double-clickable, so this needs a mode switch, not a replacement.
+- **The landing page over HTTP.** `build_landing.build(fx, seats)` wants the twelve-seat shape; a
+  live leagues list is its own bridge.
+- **Brotli.** Neither `brotli` nor `brotlicffi` is installed. Unmeasured, and an expected result
+  is not a measurement.
+- **`app.py` is untouched.** It remains the only writer, and the gate is not installed yet.
