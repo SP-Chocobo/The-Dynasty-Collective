@@ -686,21 +686,23 @@ a{color:inherit}
       </div>
       <div popover id="pop-add" class="pop">
   <p class="sub">Two different things, so they are two different fields.</p>
-  <div class="field">
-    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
-    <button class="btn"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 8v8M8 12h8"/></svg>Add</button>
-  </div>
+  <form class="field" method="post" action="/add">
+    <input type="text" name="league_id" placeholder="Sleeper league ID"
+           aria-label="Sleeper league ID" required>
+    <button class="btn" type="submit"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 8v8M8 12h8"/></svg>Add</button>
+  </form>
   <p class="hint">Adds <b>one</b> league by its Sleeper ID and leaves the rest of the list
      alone. For a league the account lookup does not return.</p>
   <div class="or">or</div>
-  <div class="field">
-    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username"
-           value="cincandella">
-    <button class="btn ghost"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21a8 8 0 0 1 16 0"/></svg>Sync account</button>
-  </div>
-  <p class="hint">Looks up the account and <b>replaces</b> the whole list with the leagues it
-     returns &mdash; that is how a league you have left stops appearing. No password: Sleeper
-     does not use one.</p></div>
+  <form class="field" method="post" action="/discover">
+    <input type="text" name="username" placeholder="Sleeper username"
+           aria-label="Sleeper username" value="cincandella" required>
+    <button class="btn ghost" type="submit"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21a8 8 0 0 1 16 0"/></svg>Find leagues</button>
+  </form>
+  <p class="hint">Looks up the account and shows what it returns: leagues you do not have yet,
+     offered to add, and leagues you track that it no longer lists &mdash; which is how a league
+     you have left is detected. It REPLACES nothing; you choose. No password: Sleeper does not
+     use one.</p></div>
       <div popover id="pop-manage" class="pop">
   <p class="sub">Archiving and ordering are local conveniences. Sleeper has no concept of
      either, so nothing here changes anything on Sleeper.</p>

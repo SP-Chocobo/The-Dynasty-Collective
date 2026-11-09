@@ -323,16 +323,19 @@ a{color:inherit}
     <div class="rail-left">
       <section class="panel"><div class="phead"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/></svg><h2>Connect to Sleeper</h2></div><div class="pbody">
   <p class="sub">Either route works, and both can be used together later.</p>
-  <div class="field">
-    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username">
-    <button class="btn"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21a8 8 0 0 1 16 0"/></svg>Sync account</button>
-  </div>
-  <p class="hint">Pulls every league on the account. No password: Sleeper does not use one.</p>
+  <form class="field" method="post" action="/discover">
+    <input type="text" name="username" placeholder="Sleeper username"
+           aria-label="Sleeper username" required>
+    <button class="btn" type="submit"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21a8 8 0 0 1 16 0"/></svg>Find leagues</button>
+  </form>
+  <p class="hint">FINDS the leagues on the account and lets you pick which to add &mdash; it
+     imports nothing on its own. No password: Sleeper does not use one.</p>
   <div class="or">or</div>
-  <div class="field">
-    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
-    <button class="btn ghost"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 8v8M8 12h8"/></svg>Add one</button>
-  </div>
+  <form class="field" method="post" action="/add">
+    <input type="text" name="league_id" placeholder="Sleeper league ID"
+           aria-label="Sleeper league ID" required>
+    <button class="btn ghost" type="submit"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 8v8M8 12h8"/></svg>Add one</button>
+  </form>
   <p class="hint">For a league the account lookup does not return.</p></div></section>
     </div>
     <div class="rail-main">

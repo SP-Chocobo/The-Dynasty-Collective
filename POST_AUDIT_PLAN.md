@@ -21426,3 +21426,107 @@ Nine ratchets green with real flags. 44 new tests green. 4/4 mutation arms green
 in an invariant held by a module my new code never imports, over a population my new code had
 silently joined. **The full suite is the only thing that reaches it** — and the suite reached it
 only because somebody had previously written down which population each invariant was proven over.
+---
+
+## `#361` — THE FRONT DOOR, AND THE TWO BUTTONS THAT WERE ALREADY DRAWN
+
+Owner, on seeing a file listing at his own domain: *"it shouldnt load an error landing page, it
+should just build to the website that is wired and functional"*. He was right, and the fix was
+smaller than the complaint deserved.
+
+### WHAT WAS AT `/` WAS A DEBUG SCREEN
+
+A list of fixtures and diagnostics. Pointing a domain at it made the product's first screen a
+developer index. Worse, my index globbed `ui_explore/*_fixture.json` and so **never even saw
+`ui_explore/round7/landing_fixture.json`** -- there was no route to the landing page at all.
+
+`/` now serves it; the fixture index moved to `/debug`, which is where a fixture index belongs.
+
+### THE SYNC UI WAS DESIGNED ROUNDS AGO AND NEVER WIRED
+
+`build_unsynced`'s own docstring calls it *"THE FIRST SCREEN, and the one a new user actually
+meets"*, and it already carried `Sleeper username -> Sync account` and `Sleeper league ID -> Add
+one`. Dead inputs: no `<form>`, no action, nothing behind them. The work was not inventing a
+feature, it was connecting one.
+
+### DISCOVER, THEN CHOOSE -- the owner's design, and better engineering
+
+> *"is there a way to manually decide which league you add, instead of it importing them all at
+> once in one fell swoop?"*
+
+`get_user_leagues` is ONE cheap call that syncs nothing, so the flow splits: find (instant), tick
+what you want, add only those. A wrong username fails in a second instead of after a long silent
+POST, each sync is bounded, and adding more later touches nothing already there.
+
+**AND IT PRESERVES A SEMANTIC THE OLD COPY DEPENDED ON.** The designed button *replaced* the whole
+list, and that was load-bearing: diffing Sleeper's list against what you track is how
+`left_leagues` is detected. Pure additive sync would lose that. Discovery returns both halves from
+the one call -- leagues Sleeper lists that are not on disk (offered), and leagues on disk Sleeper
+no longer lists (reported) -- so the same fact surfaces and nothing is destroyed.
+
+Filtering excludes leagues already added. Archived ones stay excluded too: an archived league is
+not new, and offering it as new would silently resurrect something deliberately put away.
+Re-adding it is *unarchive*, a control on that league.
+
+**SETUP ADDS; MANAGEMENT GOVERNS.** The owner's other ruling, and the design already agreed --
+`Resync this league`, `Delete local data`, `Archived` are drawn per league, not in setup.
+
+### `#187` OVER A LIST, NOT A NUMBER
+
+An empty result and a failed lookup must not look the same, so an account with nothing new says
+*"All N leagues on this account are already added"* rather than rendering an empty box. And a
+league that fails to sync is NAMED, with a 207 rather than a 200: "Added 3 of 5" without saying
+which two is a quiet absence.
+
+### THE PAGE WAS ASSERTING SOMETHING ABOUT ITSELF THAT HAD STOPPED BEING TRUE
+
+The heading read `Gold Wyrm, read-only, localhost` while being served at a real domain through a
+tunnel. I hardcoded a claim instead of deriving it -- in the title bar, in a project whose entire
+subject is not doing that. It reads the `Host` header now, and a non-loopback host says
+**PUBLICLY REACHABLE**, because that is the fact that matters when deciding whether the Access
+policy is attached.
+
+### A PROPERTY THAT STOPPED BEING TRUE, REPLACED RATHER THAN DELETED
+
+`TheServerWritesNothing` passed, correctly, while the server only read. Wiring the buttons made it
+false. Deleting it or loosening it until it could not fail were both available and both wrong:
+
+    BEFORE  the server performs no writes at all.
+    AFTER   the server's ONLY write is `sleeper_client.sync_league`, which persists through
+            `store_io.replace_atomically`. No handler writes directly, nothing writes outside
+            `data/sleeper_snapshots/`, and the server implements no second sync (`#126`).
+
+That is the property that actually protects a reader: `_write_snapshot`'s own comment says a torn
+read of `_latest.json` *"looks exactly like a league that has never been synced"*.
+
+### CSRF AND SINGLE-FLIGHT
+
+Cloudflare Access authenticates WHO is asking; it says nothing about WHICH PAGE submitted a form.
+A per-process token is injected server-side -- never by the builder, because the token is a
+property of this process and a builder that knew it would be writing a server secret into a
+committed standalone artifact. Single-flight REFUSES a second sync (409) rather than queueing it:
+queueing merely delays two writers onto one file.
+
+### MEASURED
+
+| | |
+|---|---|
+| `/` (real landing page, assets externalised) | 25,246 bytes |
+| POST with no token / wrong token | **403** |
+| empty username / no leagues selected | **400**, named |
+| sync already running | **409**, refused not queued |
+| forms + tokens on the served page | 2 forms, 2 tokens |
+| tokens in the COMMITTED pages | **0** |
+| mutation arms | **4/4 caught** |
+
+`league_rows_from` was split out so a server can arrange in-memory fixtures without a round trip
+through the filesystem; `league_rows` delegates to it and the committed pages rebuild
+byte-identically.
+
+### NOT VERIFIED HERE, AND IT CANNOT BE
+
+This container's network policy blocks `api.sleeper.app`, so the HAPPY path of discover and add is
+unverified. The failure path is: a lookup returns `SleeperAPIError: Failed to reach Sleeper API`
+and the route reports it as a 502 with the reason. Every guard, every refusal and every shape is
+tested here; only the owner's machine can test the call itself -- and the same client already
+worked from Streamlit there.

@@ -10748,17 +10748,17 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 37,
+      "test_methods": 51,
       "asserts": {
-        "assertEqual": 32,
+        "assertEqual": 39,
         "assertFalse": 3,
-        "assertIn": 15,
+        "assertIn": 27,
         "assertIs": 5,
         "assertIsInstance": 3,
         "assertIsNone": 3,
         "assertIsNotNone": 4,
-        "assertNotEqual": 1,
-        "assertNotIn": 5,
+        "assertNotEqual": 2,
+        "assertNotIn": 7,
         "assertTrue": 4
       },
       "by_method": {
@@ -10817,6 +10817,18 @@
           "assertIn": 2,
           "assertIsNone": 1
         },
+        "DiscoverOffersOnlyWhatIsNotAlreadyAdded.test_a_league_that_fails_to_sync_is_named": {
+          "assertIn": 2
+        },
+        "DiscoverOffersOnlyWhatIsNotAlreadyAdded.test_an_empty_result_says_so_rather_than_rendering_an_empty_box": {
+          "assertIn": 1
+        },
+        "DiscoverOffersOnlyWhatIsNotAlreadyAdded.test_it_detects_leagues_sleeper_no_longer_lists": {
+          "assertIn": 1
+        },
+        "DiscoverOffersOnlyWhatIsNotAlreadyAdded.test_the_route_filters_against_what_is_on_disk": {
+          "assertIn": 2
+        },
         "PricingKeepsTheCompanionFieldRule.test_a_player_measured_at_zero_IS_priced": {
           "assertEqual": 1,
           "assertIs": 1
@@ -10868,32 +10880,64 @@
           "assertIs": 1,
           "assertIsInstance": 1
         },
-        "TheServerWritesNothing.test_a_clean_read_gets_no_banner": {
+        "TheServerHasExactlyOneWritePath.test_a_clean_read_gets_no_banner": {
           "assertNotIn": 1
         },
-        "TheServerWritesNothing.test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash": {
+        "TheServerHasExactlyOneWritePath.test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash": {
           "assertIn": 3
         },
-        "TheServerWritesNothing.test_a_non_loopback_bind_announces_itself": {
+        "TheServerHasExactlyOneWritePath.test_a_non_loopback_bind_announces_itself": {
           "assertIn": 2
         },
-        "TheServerWritesNothing.test_health_answers_without_warming_the_engine": {
+        "TheServerHasExactlyOneWritePath.test_health_answers_without_warming_the_engine": {
           "assertEqual": 1,
           "assertIn": 2,
           "assertNotIn": 1
         },
-        "TheServerWritesNothing.test_health_is_routed": {
+        "TheServerHasExactlyOneWritePath.test_health_is_routed": {
           "assertIn": 1
         },
-        "TheServerWritesNothing.test_no_write_idiom_appears_in_the_server": {
+        "TheServerHasExactlyOneWritePath.test_no_handler_writes_directly": {
           "assertEqual": 1
         },
-        "TheServerWritesNothing.test_the_detector_would_catch_a_write": {
+        "TheServerHasExactlyOneWritePath.test_the_detector_would_catch_a_write": {
           "assertTrue": 1
         },
-        "TheServerWritesNothing.test_the_server_binds_loopback_BY_DEFAULT": {
+        "TheServerHasExactlyOneWritePath.test_the_one_write_is_sync_league_and_it_is_atomic": {
+          "assertIn": 2
+        },
+        "TheServerHasExactlyOneWritePath.test_the_server_binds_loopback_BY_DEFAULT": {
           "assertEqual": 1,
           "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "TheServerHasExactlyOneWritePath.test_the_server_implements_no_second_sync": {
+          "assertNotIn": 1
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_a_post_with_the_WRONG_token_is_refused": {
+          "assertEqual": 1
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_a_post_without_the_token_is_refused": {
+          "assertEqual": 1
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_a_sync_already_running_is_REFUSED_not_queued": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_an_empty_submission_is_named_rather_than_blank": {
+          "assertEqual": 1
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_the_committed_pages_do_carry_the_forms": {
+          "assertIn": 3
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_the_csrf_token_is_injected_into_every_post_form": {
+          "assertEqual": 2
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_the_right_token_gets_past_the_csrf_gate": {
+          "assertEqual": 1,
+          "assertNotEqual": 1
+        },
+        "TheSyncRoutesRefuseBeforeTheyAct.test_the_token_is_not_baked_into_the_committed_page": {
           "assertNotIn": 1
         }
       },

@@ -38,15 +38,18 @@ from __future__ import annotations
 import html
 import importlib.util
 import os
+import secrets
 import json
 import pathlib
+import re
 import threading
 import time
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
-from starlette.responses import HTMLResponse, PlainTextResponse, Response
+from starlette.responses import (HTMLResponse, PlainTextResponse, RedirectResponse,
+                                 Response)
 from starlette.routing import Route
 
 import front_claims as fc
@@ -87,6 +90,7 @@ def _load(name: str, path: pathlib.Path):
 
 
 DASH = _load("r7_dashboard_server", R7 / "build_dashboard.py")
+LAND = _load("r7_landing_server", R7 / "build_landing.py")
 
 
 class Engine:
@@ -172,6 +176,81 @@ def _shell(title: str, body: str) -> str:
 
 def _rows(pairs) -> str:
     return "".join(f"<tr><th>{html.escape(str(k))}</th><td>{v}</td></tr>" for k, v in pairs)
+
+
+#: Per-process, regenerated on every restart. Cloudflare Access authenticates WHO is asking; it
+#: says nothing about WHICH PAGE submitted the form, so a cross-site POST from a page the viewer
+#: happens to have open would otherwise reach a route that writes. One token, compared on every
+#: POST, is the cheapest thing that is not nothing.
+CSRF = secrets.token_urlsafe(32)
+_FORM_OPEN = re.compile(r'(<form\b[^>]*method="post"[^>]*>)', re.I)
+
+
+def _with_csrf(page: str) -> str:
+    """Inject the token into every POST form the builder emitted.
+
+    Done HERE rather than in the builder on purpose: the token is a property of this process,
+    and a builder that knew about it would be emitting a server's secret into a committed,
+    standalone artifact.
+    """
+    return _FORM_OPEN.sub(
+        lambda m: m.group(1) + f'<input type="hidden" name="csrf" value="{CSRF}">', page)
+
+
+async def _csrf_ok(request) -> tuple[bool, dict]:
+    form = await request.form()
+    return secrets.compare_digest(str(form.get("csrf") or ""), CSRF), form
+
+
+def _notice(title: str, body: str, status: int = 200) -> HTMLResponse:
+    return HTMLResponse(_shell(title, body), status_code=status)
+
+
+def _where(request) -> str:
+    """Where this page is ACTUALLY being reached, from the request rather than a constant.
+
+    The first version hardcoded "localhost" in the heading -- and then the page was served at a
+    real domain through a tunnel and went on saying localhost. A page asserting something about
+    itself that stopped being true is the defect this whole project exists to avoid, and I put
+    one in the title bar. The `Host` header is the fact; `HOST` is only what we asked to bind.
+    """
+    host = (request.headers.get("host") or f"{HOST}:{PORT}").split(":")[0]
+    if host in ("127.0.0.1", "localhost", "::1"):
+        return "localhost"
+    return f"{host} &mdash; PUBLICLY REACHABLE"
+
+
+def _snapshot_pairs():
+    """`(league_id, fixture)` for every snapshot on disk, priced. Read-only."""
+    pairs = []
+    for league_id in ls.available_snapshots():
+        try:
+            snap = json.loads(ls.snapshot_path(league_id).read_text())
+        except (json.JSONDecodeError, OSError):
+            continue          # a corrupt cache is a cache miss; /status reports it
+        with ENGINE._price_lock:
+            fx, _report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
+                                           merger=ENGINE.merger)
+        pairs.append((league_id, fx))
+    return pairs
+
+
+async def landing(request):
+    """THE FRONT DOOR. The real landing page, not a file listing.
+
+    What was here before was a developer index -- a list of fixtures and diagnostics -- and
+    pointing a domain at it meant the product's first screen was a debug view. `build_unsynced`
+    is the page the design has always called "THE FIRST SCREEN, and the one a new user actually
+    meets", and it carries the connect rail. The fixture index moved to `/debug`, which is where
+    a fixture index belongs.
+    """
+    ENGINE.ensure_warm()
+    fx = json.loads(LAND.FIXTURE.read_text())
+    pairs = _snapshot_pairs() if ENGINE.warm else []
+    page = LAND.build(fx, seat_pairs=pairs) if pairs else LAND.build_unsynced(fx)
+    page, found = pa.externalize(_with_csrf(page))
+    ASSETS.update(found)
+    return HTMLResponse(page)
 
 
 async def index(request):
@@ -380,9 +459,139 @@ async def status(request):
 #: where gzip reaches ~10KB for almost no CPU. THE ORDER MATTERS: content-addressing first, then
 #: this is free. Doing it the other way round -- which is the order I did it in -- optimises the
 #: part that cannot be compressed.
+async def discover(request):
+    """FIND, never import. One cheap call to Sleeper; nothing is written.
+
+    Splitting discovery from the import is the whole point: a wrong username fails in a second
+    instead of after a long silent POST, and you choose what to add rather than having ten
+    leagues imported in one swing. It also yields BOTH halves of the diff in one call -- leagues
+    Sleeper lists that are not on disk, and leagues on disk Sleeper no longer lists, which is how
+    a league you have left is detected without replacing anything.
+    """
+    ok, form = await _csrf_ok(request)
+    if not ok:
+        return _notice("Refused", "<h1>Refused</h1><p class=\"bad\">This form did not carry "
+                       "this server's token. Reload the page and try again.</p>", 403)
+    username = str(form.get("username") or "").strip()
+    if not username:
+        return _notice("No username", '<h1>No username</h1><p class="warn">Nothing to look '
+                       'up.</p><p><a href="/">back</a></p>', 400)
+
+    import sleeper_client
+    client = sleeper_client.SleeperClient()
+    try:
+        user = client.get_user(username)
+        leagues = client.get_user_leagues(user["user_id"]) if user else []
+    except Exception as exc:
+        return _notice("Lookup failed", f'<h1>Lookup failed</h1><p class="bad">'
+                       f'{html.escape(type(exc).__name__)}: {html.escape(str(exc))}</p>'
+                       f'<p><a href="/">back</a></p>', 502)
+    if user is None:
+        return _notice("No such account", f'<h1>No Sleeper account '
+                       f'&ldquo;{html.escape(username)}&rdquo;</h1>'
+                       f'<p class="warn">Sleeper returned nothing for that username.</p>'
+                       f'<p><a href="/">back</a></p>', 404)
+
+    have = set(ls.available_snapshots())
+    listed = {str(l.get("league_id")): l for l in leagues}
+    new = {lid: l for lid, l in listed.items() if lid not in have}
+    gone = sorted(have - set(listed))
+
+    if not new:
+        # AN EMPTY LIST AND A FAILED LOOKUP MUST NOT LOOK THE SAME (`#187` over a list, not a
+        # number). Saying "all of them are already added" is a different fact from showing a box
+        # with nothing in it.
+        body = (f"<h1>Nothing new to add</h1><p class=\"ok\">All "
+                f"{len(listed)} league(s) on &ldquo;{html.escape(username)}&rdquo; are already "
+                f"added.</p>")
+    else:
+        rows = "".join(
+            f'<tr><td><input type="checkbox" name="league_ids" value="{html.escape(lid)}" '
+            f'checked id="L{html.escape(lid)}"></td>'
+            f'<th><label for="L{html.escape(lid)}">{html.escape(str(l.get("name") or lid))}'
+            f'</label></th>'
+            f'<td class="dim">{html.escape(str(l.get("season") or "&mdash;"))} &middot; '
+            f'{html.escape(str(l.get("total_rosters") or "?"))} teams</td></tr>'
+            for lid, l in sorted(new.items(), key=lambda kv: str(kv[1].get("name") or "")))
+        body = (f"<h1>{len(new)} league(s) to add</h1>"
+                f'<p class="dim">Already added: {len(listed) - len(new)} of {len(listed)}. '
+                f"Untick anything you do not want.</p>"
+                f'<form method="post" action="/add">'
+                f'<input type="hidden" name="csrf" value="{CSRF}">'
+                f"<table>{rows}</table>"
+                f'<p><button class="btn" type="submit">Add selected</button> '
+                f'<span class="dim">a few seconds each</span></p></form>')
+    if gone:
+        body += ('<h2>You no longer appear in</h2><p class="warn">' +
+                 ", ".join(html.escape(g) for g in gone) +
+                 '</p><p class="dim">Tracked here, not listed by Sleeper for this account: left, '
+                 "removed, or deleted. Nothing was changed &mdash; removing local data is a "
+                 "control on that league, not part of setup.</p>")
+    body += '<p><a href="/">back</a></p>'
+    return _notice("Found", body)
+
+
+async def add(request):
+    """Sync the chosen leagues. THE ONLY WRITE PATH IN THIS SERVER.
+
+    It calls `sleeper_client.sync_league` and reports what that returns. It implements no second
+    sync (`#126`), composes nothing, and derives nothing (`#338`). The write itself is
+    `_write_snapshot`'s atomic replace, which is why a page rendering mid-sync cannot see a torn
+    file -- `_write_snapshot`'s own comment notes that a torn read "looks exactly like a league
+    that has never been synced".
+    """
+    ok, form = await _csrf_ok(request)
+    if not ok:
+        return _notice("Refused", "<h1>Refused</h1><p class=\"bad\">This form did not carry "
+                       "this server's token.</p>", 403)
+    ids = [str(v).strip() for v in form.getlist("league_ids") if str(v).strip()]
+    one = str(form.get("league_id") or "").strip()
+    if one:
+        ids.append(one)
+    if not ids:
+        return _notice("Nothing selected", '<h1>Nothing selected</h1>'
+                       '<p><a href="/">back</a></p>', 400)
+
+    if ENGINE.busy:
+        # SINGLE-FLIGHT: refused, never queued. A second sync while one runs would have two
+        # writers on one league's file, which is the one thing the single-process design exists
+        # to prevent.
+        return _notice("Busy", f'<h1>Already working</h1><p class="warn">'
+                       f'{html.escape(ENGINE.busy)}</p><p class="dim">Refused rather than '
+                       f'queued.</p><p><a href="/">back</a></p>', 409)
+
+    done, failed = [], []
+    with ENGINE._price_lock:
+        ENGINE.busy = f"syncing {len(ids)} league(s)"
+        try:
+            import sleeper_client
+            client = sleeper_client.SleeperClient()
+            for lid in ids:
+                try:
+                    client.sync_league(lid)
+                    done.append(lid)
+                except Exception as exc:
+                    failed.append((lid, f"{type(exc).__name__}: {exc}"))
+        finally:
+            ENGINE.busy = None
+            ENGINE.last_result = f"synced {len(done)}, failed {len(failed)}"
+
+    if not failed:
+        return RedirectResponse("/", status_code=303)
+    # A LEAGUE THAT FAILED IS NAMED. "Added 3 of 5" without saying which two is a quiet absence.
+    body = (f'<h1>Added {len(done)}, failed {len(failed)}</h1><table>' +
+            "".join(f'<tr><th>{html.escape(lid)}</th><td class="bad">{html.escape(why)}</td></tr>'
+                    for lid, why in failed) +
+            '</table><p><a href="/">back</a></p>')
+    return _notice("Partly added", body, 207)
+
+
 app = Starlette(
     routes=[
-        Route("/", index),
+        Route("/", landing),
+        Route("/debug", index),
+        Route("/discover", discover, methods=["POST"]),
+        Route("/add", add, methods=["POST"]),
         Route("/status", status),
         Route("/health", health),
         Route("/league/{league_id}", league),

@@ -228,10 +228,25 @@ def league_rows(paths, archived_ids):
 
     A PURE FUNCTION OF THE FIXTURES. The engine decides what is open; this only arranges.
     """
+    return league_rows_from(
+        [(pathlib.Path(p).stem, json.loads(pathlib.Path(p).read_text())) for p in sorted(paths)],
+        archived_ids)
+
+
+def league_rows_from(pairs, archived_ids):
+    """The same arrangement, over `(id, fixture)` pairs ALREADY IN MEMORY.
+
+    `league_rows` reads fixtures off disk, which is right for the committed page and wrong for a
+    server: `live_source.from_snapshot` produces this same shape from a live snapshot without
+    ever writing a file, and making it write one so the builder could read it back would be a
+    round trip through the filesystem for no reason -- and a second place a fixture could go
+    stale (`#332`).
+
+    Split out rather than duplicated: `league_rows` now delegates here, so there is ONE
+    arrangement and the committed pages rebuild byte-identically (`#126`).
+    """
     rows = []
-    for path in sorted(paths):
-        stem = pathlib.Path(path).stem
-        fx = json.loads(pathlib.Path(path).read_text())
+    for stem, fx in sorted(pairs, key=lambda kv: kv[0]):
         band = fc.compose(fx)
         shown, hidden = band["shown"], band["hidden"]
         top = shown[0] if shown else None
@@ -892,9 +907,18 @@ def panel(ic, title, body):
             f'<div class="pbody">{body}</div></section>')
 
 
-def build(fx, seat_paths) -> str:
+def build(fx, seat_paths=None, *, seat_pairs=None) -> str:
+    """`seat_pairs` is the in-memory form, for a server rendering live snapshots.
+
+    Exactly one of the two is supplied. The committed page passes paths and rebuilds
+    byte-identically; `server.py` passes `(league_id, fixture)` pairs built by
+    `live_source.from_snapshot`, which never touch disk.
+    """
     arch = set(fx.get("archived_seats") or [])
-    attention, quiet, archived = league_rows(seat_paths, arch)
+    if (seat_paths is None) == (seat_pairs is None):
+        raise ValueError("pass exactly one of seat_paths / seat_pairs")
+    attention, quiet, archived = (league_rows(seat_paths, arch) if seat_pairs is None
+                                  else league_rows_from(seat_pairs, arch))
     total = len(attention) + len(quiet)
     sl, left = fx["sleeper"], (fx.get("left_leagues") or [])
     uri = banner_data_uri()
@@ -907,21 +931,23 @@ def build(fx, seat_paths) -> str:
 
     add_body = f"""
   <p class="sub">Two different things, so they are two different fields.</p>
-  <div class="field">
-    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
-    <button class="btn">{icon('plus', 17)}Add</button>
-  </div>
+  <form class="field" method="post" action="/add">
+    <input type="text" name="league_id" placeholder="Sleeper league ID"
+           aria-label="Sleeper league ID" required>
+    <button class="btn" type="submit">{icon('plus', 17)}Add</button>
+  </form>
   <p class="hint">Adds <b>one</b> league by its Sleeper ID and leaves the rest of the list
      alone. For a league the account lookup does not return.</p>
   <div class="or">or</div>
-  <div class="field">
-    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username"
-           value="{esc(sl['username'])}">
-    <button class="btn ghost">{icon('user', 17)}Sync account</button>
-  </div>
-  <p class="hint">Looks up the account and <b>replaces</b> the whole list with the leagues it
-     returns &mdash; that is how a league you have left stops appearing. No password: Sleeper
-     does not use one.</p>"""
+  <form class="field" method="post" action="/discover">
+    <input type="text" name="username" placeholder="Sleeper username"
+           aria-label="Sleeper username" value="{esc(sl['username'])}" required>
+    <button class="btn ghost" type="submit">{icon('user', 17)}Find leagues</button>
+  </form>
+  <p class="hint">Looks up the account and shows what it returns: leagues you do not have yet,
+     offered to add, and leagues you track that it no longer lists &mdash; which is how a league
+     you have left is detected. It REPLACES nothing; you choose. No password: Sleeper does not
+     use one.</p>"""
 
     manage_body = f"""
   <p class="sub">Archiving and ordering are local conveniences. Sleeper has no concept of
@@ -1041,16 +1067,19 @@ def build_unsynced(fx) -> str:
     uri = banner_data_uri()
     connect_body = f"""
   <p class="sub">Either route works, and both can be used together later.</p>
-  <div class="field">
-    <input type="text" placeholder="Sleeper username" aria-label="Sleeper username">
-    <button class="btn">{icon('user', 17)}Sync account</button>
-  </div>
-  <p class="hint">Pulls every league on the account. No password: Sleeper does not use one.</p>
+  <form class="field" method="post" action="/discover">
+    <input type="text" name="username" placeholder="Sleeper username"
+           aria-label="Sleeper username" required>
+    <button class="btn" type="submit">{icon('user', 17)}Find leagues</button>
+  </form>
+  <p class="hint">FINDS the leagues on the account and lets you pick which to add &mdash; it
+     imports nothing on its own. No password: Sleeper does not use one.</p>
   <div class="or">or</div>
-  <div class="field">
-    <input type="text" placeholder="Sleeper league ID" aria-label="Sleeper league ID">
-    <button class="btn ghost">{icon('plus', 17)}Add one</button>
-  </div>
+  <form class="field" method="post" action="/add">
+    <input type="text" name="league_id" placeholder="Sleeper league ID"
+           aria-label="Sleeper league ID" required>
+    <button class="btn ghost" type="submit">{icon('plus', 17)}Add one</button>
+  </form>
   <p class="hint">For a league the account lookup does not return.</p>"""
 
     disk_body = f"""

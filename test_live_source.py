@@ -30,6 +30,7 @@ import front_claims as fc
 import live_source as ls
 
 ROOT = pathlib.Path(__file__).resolve().parent
+R7 = ROOT / "ui_explore" / "round7"
 
 PLAYERS = {
     "1": {"full_name": "A Quarterback", "position": "QB", "fantasy_positions": ["QB"],
@@ -205,18 +206,30 @@ class TheProducerKeepsTheAbsenceContract(unittest.TestCase):
                       "the holes check must report as having RUN")
 
 
-class TheServerWritesNothing(unittest.TestCase):
-    """`#354`: one process is an architectural constraint that protects data integrity.
+class TheServerHasExactlyOneWritePath(unittest.TestCase):
+    """`#361`. THIS TEST REPLACES ONE THAT WAS TRUE AND IS NOT ANY MORE.
 
-    `app.py` persists to local files with no locking and no notion of who is asking, so the
-    server's value is that it is a pure READER beside that single writer. Asserted against the
-    source rather than described in a docstring, because a docstring cannot fail.
+    It used to assert the server performed NO writes at all, and that was correct while the
+    server only read snapshots `app.py` had synced. Wiring the sync buttons made it false. The
+    wrong response would have been to delete the test, or to loosen it until it could not fail;
+    the honest one is to replace a property that stopped holding with the narrower one that
+    still does, and to say in the open that it narrowed:
+
+        BEFORE  the server performs no writes at all.
+        AFTER   the server's ONLY write is `sleeper_client.sync_league`, which persists through
+                `store_io.replace_atomically`. No handler writes directly, and nothing writes
+                outside `data/sleeper_snapshots/`.
+
+    That is the property that actually protects a reader. `_write_snapshot`'s own comment is the
+    argument: a torn read of `_latest.json` "looks exactly like a league that has never been
+    synced", so the atomic replace is what stops a page rendering mid-sync from seeing one.
     """
 
     WRITE_IDIOMS = ("write_text(", "json.dump(", "open(", ".write(", "os.replace",
                     "store_io.write", "store_io.mutate", "mkdir(", "unlink(")
 
-    def test_no_write_idiom_appears_in_the_server(self):
+    def test_no_handler_writes_directly(self):
+        """The scan still runs; what changed is that `sync_league` is the one allowed call."""
         source = (ROOT / "server.py").read_text()
         offenders = []
         for lineno, line in enumerate(source.splitlines(), 1):
@@ -227,14 +240,38 @@ class TheServerWritesNothing(unittest.TestCase):
                 if idiom in stripped:
                     offenders.append(f"server.py:{lineno}: {idiom}")
         self.assertEqual(offenders, [],
-                         "the read-only server writes. That is the one property that makes it "
-                         "safe beside app.py's single writer (`#354`)")
+                         "a handler writes directly. The only write may be sync_league's, "
+                         "which is atomic (`#361`)")
 
     def test_the_detector_would_catch_a_write(self):
-        """Non-vacuity. The scan above passes on a tree where nothing writes for any reason,
+        """Non-vacuity. The scan passes on a tree where nothing writes for any reason,
         including a broken scan, which is this session's recurring defect (`#352`)."""
         hits = [i for i in self.WRITE_IDIOMS if i in 'path.write_text(json.dumps(x))']
         self.assertTrue(hits, "the write detector recognises nothing")
+
+    def test_the_one_write_is_sync_league_and_it_is_atomic(self):
+        """Pins BOTH halves: that the route delegates, and that the delegate replaces atomically.
+
+        Asserting only the first would let the write stop being atomic without failing; asserting
+        only the second would let a handler grow its own write beside it.
+        """
+        import inspect
+        import sleeper_client
+        import server
+        self.assertIn("sync_league", inspect.getsource(server.add),
+                      "the add route does not delegate to sleeper_client.sync_league")
+        self.assertIn("replace_atomically", inspect.getsource(sleeper_client.SleeperClient
+                                                              ._write_snapshot),
+                      "the snapshot write is no longer atomic, so a render can see a torn file")
+
+    def test_the_server_implements_no_second_sync(self):
+        """`#126`: one home. A route that re-implemented the sync would be a second source of
+        truth for what a synced league IS."""
+        src = (ROOT / "server.py").read_text()
+        for forbidden in ("get_rosters(", "get_matchups(", "get_traded_picks("):
+            self.assertNotIn(forbidden, src,
+                             f"server.py calls {forbidden} itself rather than through "
+                             f"sync_league")
 
     def test_the_server_binds_loopback_BY_DEFAULT(self):
         """Owner's ruling, and verified empirically: HTTP 000 on the container's own
@@ -507,6 +544,116 @@ class AContestedIdentityIsRefusedOnTheRosterPath(unittest.TestCase):
         contest each other into a false refusal."""
         merger = FakeMerger({})   # returns no canonical key at all
         self.assertEqual(ls.contested_keys(self._rows(), merger), set())
+
+
+class TheSyncRoutesRefuseBeforeTheyAct(unittest.TestCase):
+    """`#361` — every guard on the two routes that write, driven rather than described."""
+
+    @staticmethod
+    def _post(route, data):
+        import asyncio
+        import server
+        from starlette.requests import Request
+
+        body = "&".join(f"{k}={v}" for k, v in data).encode()
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        scope = {"type": "http", "method": "POST", "path": route, "headers": [
+            (b"content-type", b"application/x-www-form-urlencoded"),
+            (b"content-length", str(len(body)).encode())], "query_string": b""}
+        handler = getattr(server, route.strip("/"))
+        return asyncio.run(handler(Request(scope, receive)))
+
+    def test_a_post_without_the_token_is_refused(self):
+        """Cloudflare Access authenticates WHO is asking, never WHICH PAGE submitted the form."""
+        for route in ("/discover", "/add"):
+            with self.subTest(route=route):
+                self.assertEqual(self._post(route, [("username", "x")]).status_code, 403)
+
+    def test_a_post_with_the_WRONG_token_is_refused(self):
+        for route in ("/discover", "/add"):
+            with self.subTest(route=route):
+                self.assertEqual(
+                    self._post(route, [("csrf", "nope"), ("username", "x")]).status_code, 403)
+
+    def test_the_right_token_gets_past_the_csrf_gate(self):
+        """Non-vacuity: a gate that refuses EVERYTHING is not a gate, it is a wall."""
+        import server
+        resp = self._post("/add", [("csrf", server.CSRF)])
+        self.assertNotEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 400, "an empty selection should be named, not refused")
+
+    def test_an_empty_submission_is_named_rather_than_blank(self):
+        import server
+        self.assertEqual(self._post("/discover",
+                                    [("csrf", server.CSRF), ("username", "")]).status_code, 400)
+
+    def test_a_sync_already_running_is_REFUSED_not_queued(self):
+        """Single-flight. Two writers on one league's file is the thing one process exists to
+        prevent, and queueing would merely delay it."""
+        import server
+        server.ENGINE.busy = "syncing something"
+        try:
+            resp = self._post("/add", [("csrf", server.CSRF), ("league_ids", "123")])
+            self.assertEqual(resp.status_code, 409)
+            self.assertIn(b"Refused rather than", resp.body)
+        finally:
+            server.ENGINE.busy = None
+
+    def test_the_csrf_token_is_injected_into_every_post_form(self):
+        page = '<form method="post" action="/add"></form><form method="post"></form>'
+        import server
+        out = server._with_csrf(page)
+        self.assertEqual(out.count('name="csrf"'), 2)
+        self.assertEqual(out.count(server.CSRF), 2)
+
+    def test_the_token_is_not_baked_into_the_committed_page(self):
+        """It is a property of THIS PROCESS. A builder that knew it would be writing a server's
+        secret into a committed, standalone artifact."""
+        for name in ("landing.html", "landing_unsynced.html"):
+            self.assertNotIn('name="csrf"', (R7 / name).read_text(),
+                             f"{name} carries a server token")
+
+    def test_the_committed_pages_do_carry_the_forms(self):
+        """The forms are the builder's; only the token is the server's."""
+        page = (R7 / "landing_unsynced.html").read_text()
+        self.assertIn('action="/discover"', page)
+        self.assertIn('action="/add"', page)
+        self.assertIn('name="username"', page)
+
+
+class DiscoverOffersOnlyWhatIsNotAlreadyAdded(unittest.TestCase):
+    """The owner's rule: setup ADDS; removing is a control on the league, not part of set-up."""
+
+    def test_the_route_filters_against_what_is_on_disk(self):
+        import inspect
+        import server
+        src = inspect.getsource(server.discover)
+        self.assertIn("available_snapshots", src,
+                      "discover does not consult what is already added")
+        self.assertIn("lid not in have", src, "discover does not filter out added leagues")
+
+    def test_it_detects_leagues_sleeper_no_longer_lists(self):
+        """Both halves of the diff come from the one call, so nothing has to be REPLACED to
+        notice you left a league."""
+        import inspect
+        import server
+        self.assertIn("have - set(listed)", inspect.getsource(server.discover))
+
+    def test_an_empty_result_says_so_rather_than_rendering_an_empty_box(self):
+        """`#187` over a list rather than a number: an empty list and a failed lookup must not
+        look the same."""
+        import inspect
+        self.assertIn("already added", inspect.getsource(__import__("server").discover))
+
+    def test_a_league_that_fails_to_sync_is_named(self):
+        """"Added 3 of 5" without saying which two is a quiet absence."""
+        import inspect
+        src = inspect.getsource(__import__("server").add)
+        self.assertIn("failed.append", src)
+        self.assertIn("207", src, "a partial result returns 200 as though it were complete")
 
 
 if __name__ == "__main__":
