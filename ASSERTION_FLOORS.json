@@ -10748,18 +10748,18 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 108,
+      "test_methods": 112,
       "asserts": {
-        "assertEqual": 67,
+        "assertEqual": 70,
         "assertFalse": 3,
-        "assertIn": 57,
+        "assertIn": 59,
         "assertIs": 8,
         "assertIsInstance": 4,
         "assertIsNone": 4,
         "assertIsNotNone": 4,
         "assertLess": 1,
         "assertNotEqual": 2,
-        "assertNotIn": 19,
+        "assertNotIn": 20,
         "assertRaises": 2,
         "assertRegex": 1,
         "assertTrue": 9
@@ -10977,6 +10977,20 @@
         },
         "TheBrowserStopsAskingForSomethingThatIsNotThere.test_the_route_exists": {
           "assertIn": 1
+        },
+        "TheFirstScreenReadsItsOwnDisk.test_a_merger_that_raises_yields_absences_never_a_fabricated_date": {
+          "assertEqual": 1
+        },
+        "TheFirstScreenReadsItsOwnDisk.test_live_chrome_works_with_no_leagues_at_all": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "TheFirstScreenReadsItsOwnDisk.test_the_unsynced_page_is_not_built_from_the_committed_fixture": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "TheFirstScreenReadsItsOwnDisk.test_with_no_merger_the_manifest_is_never_consulted": {
+          "assertEqual": 1
         },
         "TheFormatLabelSaysTheExceptionNotTheDefault.test_a_league_that_is_not_dynasty_says_so": {
           "assertTrue": 1

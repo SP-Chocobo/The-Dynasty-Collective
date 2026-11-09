@@ -287,7 +287,18 @@ async def landing(request):
                           link=LAND.seat_route, unbuilt=UNBUILT_ROOMS,
                           seat_pairs=pairs, standin=None)
     else:
-        page = LAND.build_unsynced(json.loads(LAND.FIXTURE.read_text()),
+        # DERIVED HERE TOO (`#370`). The branch above carries a comment saying "DERIVED CHROME,
+        # never the fixture's" -- and this branch, two lines below it, read the fixture. It is
+        # the page a NEW USER meets first, its panel is headed WHAT IS ALREADY ON DISK, and its
+        # own footer claims it is "composed from the same freshness rows the synced page
+        # reports, so the two cannot disagree". Measured: 6 of 6 source rows disagreed. On
+        # somebody else's laptop it reported THIS repository's capture dates as theirs.
+        #
+        # `build_unsynced` reads exactly one key, `sources`, so `live_chrome` over no leagues is
+        # the whole fix. With no merger the manifest raises, `live_chrome` catches it and the
+        # rows render as measured absences -- which is honest, and strictly better than a date
+        # that belongs to someone else's machine.
+        page = LAND.build_unsynced(ls.live_chrome([], ls.load_identity(), ENGINE.merger),
                                    unbuilt=UNBUILT_ROOMS)
     page, found = pa.externalize(_with_csrf(page))
     ASSETS.update(found)

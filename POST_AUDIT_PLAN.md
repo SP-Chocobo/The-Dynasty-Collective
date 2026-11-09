@@ -21885,3 +21885,57 @@ contains instead of what code DOES**:
 Mutation: reasons stop crossing **1+3**, capture date dropped **1**, panel back to tooltip-only
 **1**, Engine discards provenance **1**, favicon route removed **2**, verdict stops leading when
 stacked **1**.
+---
+
+## `#370` — THE FIRST SCREEN A NEW USER MEETS REPORTED THIS REPOSITORY'S DATES AS THEIRS
+
+The unsynced landing page carries a panel headed **WHAT IS ALREADY ON DISK** and a footer
+promising it is *"composed from the same freshness rows the synced page reports, so the two
+cannot disagree"*. It was built from `landing_fixture.json`.
+
+    source rows compared          6
+    rows that disagreed           6
+
+    Draft Sharks Dynasty Rankings     on disk 2026-08-25 (76d)    page said 2026-11-05 (3d)
+    Draft Sharks Trade Value Chart    on disk 2026-08-20 (81d)    page said 2026-11-05 (3d)
+    Sleeper player database           never fetched               page said 2026-09-07 (62d)
+
+Run on anyone else's machine it reported **this repository's capture dates as theirs**, under a
+heading that says "on disk", beside a sentence promising it could not disagree with the page
+that reads the real thing.
+
+**THE IRONY IS IN THE FILE.** The synced branch of `landing` carries a comment I wrote at `#363`
+reading *"DERIVED CHROME, never the fixture's"* -- and the unsynced branch, two lines below it,
+read the fixture. The rule was written, cited, and then not applied to the branch directly
+underneath. This is the SIXTH defect of this family, and the one with the least excuse.
+
+It is also the hardest of the six to catch by looking, which is why it survived a screenshot
+pass that found five other things: **on the unsynced page there is no live data anywhere to
+contrast the fixture against.** Every other instance was caught because something true sat next
+to something borrowed. Here the whole panel was borrowed, so it was internally consistent and
+entirely wrong. It took comparing the page against `build_freshness_manifest` directly.
+
+`build_unsynced` reads exactly one key, `sources`, so `live_chrome` over no leagues is the whole
+repair. With no merger the manifest is never consulted and the rows render as measured absences
+-- honest, and strictly better than a date belonging to another machine.
+
+### A VACUOUS TEST OF MY OWN, CAUGHT BY ITS OWN MUTATION ARM
+
+The first test I wrote for this asserted `live_chrome([], {}, None)["sources"] == []` and claimed
+in its docstring: *"With no merger the manifest raises; the rows come back EMPTY."*
+
+**The manifest is never called.** `if merger is not None` stops short of it, so the `[]` being
+measured was the initial assignment, not the except branch. A mutation that made that branch
+fabricate a date **SURVIVED**. The assertion was right; the reason given for it was false; and
+the test guarded nothing.
+
+Split into two, each on an input that actually reaches the path it is about: `None` exercises the
+guard, and a merger that raises on attribute access exercises the except. The second arm now
+fires on that mutation.
+
+**I twice reported a mutation as "survived" when it had simply not applied** -- a `sed` whose
+pattern did not match, and a `str.replace` on a line with a trailing comment. A mutation that
+does not apply and a mutation that survives are opposite findings and look identical in a
+terminal. Every mutation here now fails loudly if its edit does not land.
+
+Mutation: front door reads the fixture again **1**, except branch fabricates a date **1**.

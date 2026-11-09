@@ -1308,5 +1308,62 @@ class TheBrowserStopsAskingForSomethingThatIsNotThere(unittest.TestCase):
 
 
 
+
+class TheFirstScreenReadsItsOwnDisk(unittest.TestCase):
+    """`#370`. The page a NEW USER meets first carries a panel headed WHAT IS ALREADY ON DISK
+    and a footer promising it is "composed from the same freshness rows the synced page reports,
+    so the two cannot disagree". It was built from `landing_fixture.json`.
+
+        source rows compared          6
+        rows that disagreed           6
+
+    On somebody else's laptop it reported THIS repository's capture dates as theirs -- the same
+    defect as `#363`, on the one screen where there is no live data to contrast it against, so
+    nothing on the page could have given it away.
+
+    The irony is in the file: the synced branch carries a comment reading "DERIVED CHROME, never
+    the fixture's", and the unsynced branch two lines below it read the fixture.
+    """
+
+    def test_the_unsynced_page_is_not_built_from_the_committed_fixture(self):
+        import ast
+        import inspect
+        import textwrap
+        import server
+        src = textwrap.dedent(inspect.getsource(server.landing))
+        calls = {(n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", ""))
+                 for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call)}
+        self.assertIn("live_chrome", calls)
+        self.assertNotIn("read_text", calls,
+                         "the front door reads a committed fixture off disk again")
+
+    def test_live_chrome_works_with_no_leagues_at_all(self):
+        """Which is the whole case: this path exists precisely when nothing has been synced."""
+        chrome = ls.live_chrome([], {}, None)
+        self.assertIn("sources", chrome)
+        self.assertEqual(chrome["archived_seats"], [])
+
+    def test_with_no_merger_the_manifest_is_never_consulted(self):
+        """A GUARD, not a rescue, and the first version of this test said otherwise.
+
+        It asserted `[]` and claimed "the manifest raises and the rows come back empty". The
+        manifest is never CALLED -- `if merger is not None` stops short of it -- so the `[]`
+        being measured was the initial assignment, and a mutation that made the except branch
+        fabricate a date SURVIVED the test. Asserting the right value for the wrong reason is
+        the vacuous-test shape this repo keeps finding; the fix is to exercise each path on its
+        own input.
+        """
+        self.assertEqual(ls.live_chrome([], {}, None)["sources"], [])
+
+    def test_a_merger_that_raises_yields_absences_never_a_fabricated_date(self):
+        """THE EXCEPT PATH, on an input that actually reaches it. A plausible date belonging to
+        another machine is worse than no date at all (`#187`)."""
+        class Exploding:
+            def __getattr__(self, name):
+                raise RuntimeError("this merger is broken")
+        self.assertEqual(ls.live_chrome([], {}, Exploding())["sources"], [])
+
+
+
 if __name__ == "__main__":
     unittest.main()
