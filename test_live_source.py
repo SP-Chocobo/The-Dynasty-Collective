@@ -24,6 +24,7 @@ from __future__ import annotations
 import io
 import json
 import pathlib
+import re
 import tempfile
 import sys
 import unittest
@@ -1143,6 +1144,167 @@ class TheServerStillHasOnlyNamedWritePaths(unittest.TestCase):
             self.assertEqual(ls.load_archived(), set())
         finally:
             ls.ARCHIVED = real
+
+
+
+
+class AnAbsenceCarriesItsReasonAllTheWayToTheReader(unittest.TestCase):
+    """`#368`. `bye_profile_from` composes an exact sentence naming how many rostered players
+    are unpriced and why that forbids the measurement. Only the WORD "not_computed" crossed into
+    the fixture, so every served dashboard showed a bare em dash where an exact answer existed.
+
+    `#187` says an absence carries its reason. It was computed. It just never travelled.
+    """
+
+    def _fx(self, **over):
+        snap = {"league": {"name": "L", "roster_positions": ["QB", "RB", "WR"],
+                           "total_rosters": 12, "settings": {"type": 2, "num_teams": 12},
+                           "scoring_settings": {"rec": 1.0}},
+                "rosters": [{"roster_id": 1, "owner_id": "me", "players": ["1", "2"],
+                             "settings": {}}],
+                "users": [{"user_id": "me", "display_name": "me"}],
+                "nfl_state": {"week": 15}}
+        snap.update(over)
+        return ls.from_snapshot(snap, {}, {}, owner_id="me")[0]
+
+    def test_the_reason_reaches_the_fixture(self):
+        why = (self._fx().get("_provenance") or {}).get("why") or {}
+        self.assertIn("bye_profile", why, "the refusal was computed and then dropped")
+        self.assertIn("carry no price", why["bye_profile"])
+
+    def test_the_reason_names_the_count(self):
+        """"Some players are unpriced" is not actionable; "16 of 17" is."""
+        why = (self._fx().get("_provenance") or {}).get("why") or {}
+        self.assertRegex(why["bye_profile"], r"\d+ of \d+ rostered players")
+
+    def test_the_reason_is_not_stale(self):
+        """IT WAS. It ended "Pricing is not wired in this pass" -- true when written, false from
+        `#359`, and shown to the owner the whole time. A reason is part of the product and ages
+        like one."""
+        why = (self._fx().get("_provenance") or {}).get("why") or {}
+        self.assertNotIn("not wired", why["bye_profile"])
+
+    def test_the_reason_carries_no_leaked_markup(self):
+        """This string is RENDERED. The house's ASCII `--` and a backticked item number read as
+        leaked source when they land on a page."""
+        why = (self._fx().get("_provenance") or {}).get("why") or {}
+        text = why["bye_profile"]
+        self.assertNotIn("--", text, "an ASCII double hyphen reached the page")
+        self.assertNotIn("`", text, "a backticked item number reached the page")
+
+    def test_the_capture_date_travels_when_the_caller_knows_it(self):
+        """The server held it in a local variable and threw it away, so Provenance rendered an
+        absence for a date it was holding."""
+        snap = {"league": {"name": "L", "roster_positions": [], "total_rosters": 12,
+                           "settings": {"type": 2, "num_teams": 12},
+                           "scoring_settings": {"rec": 1.0}},
+                "rosters": [], "users": [], "nfl_state": {"week": 15}}
+        fx, _r = ls.from_snapshot(snap, {}, {}, owner_id=None,
+                                  capture_prov={"captured_at": "2026-09-07T08:14:10"})
+        self.assertEqual((fx["_provenance"] or {}).get("players_db"),
+                         {"captured_at": "2026-09-07T08:14:10"})
+
+    def test_a_caller_that_does_not_know_it_says_nothing_rather_than_guessing(self):
+        self.assertIsNone((self._fx()["_provenance"] or {}).get("players_db"))
+
+    def test_the_server_keeps_the_provenance_it_builds(self):
+        import ast
+        import inspect
+        import textwrap
+        import server
+        # DEDENT FIRST: a method's source carries its class indentation, and `ast.parse` raises
+        # IndentationError on it. The first version of this test errored rather than failed,
+        # which looks different in a run and means the same thing.
+        src = textwrap.dedent(inspect.getsource(server.Engine.ensure_warm))
+        code = ast.unparse(ast.parse(src))
+        self.assertIn("players_prov", code,
+                      "the Engine discards the capture provenance again")
+
+
+class AnEmptyPanelSpeaksRatherThanHovers(unittest.TestCase):
+    """`#368`. `absent` renders an em dash with its reason in a `title`, which is right for one
+    missing cell in a table and wrong for a panel this size: the whole section is empty, a phone
+    has no hover at all, and the reader is left guessing at what should be the clearest thing on
+    the page."""
+
+    def _r5(self):
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location(
+            "r5_dash_reason", ROOT / "ui_explore" / "round5" / "build_dashboard.py")
+        mod = ilu.module_from_spec(spec)
+        sys.modules.setdefault("r5_dash_reason", mod)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_reason_is_in_the_text_not_only_the_tooltip(self):
+        r5 = self._r5()
+        out = r5.bye_ledger({"bye_profile": None}, "14 of 17 rostered players carry no price")
+        body = re.sub(r"<[^>]+>", "", out)
+        self.assertIn("14 of 17 rostered players carry no price", body,
+                      "the reason is only reachable by hovering")
+
+    def test_the_em_dash_marker_is_still_there(self):
+        """The visible sentence is added BESIDE the convention, not instead of it."""
+        r5 = self._r5()
+        self.assertIn("&mdash;", r5.bye_ledger({"bye_profile": None}, "a reason"))
+
+    def test_a_caller_that_passes_no_reason_renders_exactly_as_before(self):
+        """Which is why round5's own three committed pages did not move."""
+        r5 = self._r5()
+        self.assertIn("no bye profile was measured", r5.bye_ledger({"bye_profile": None}))
+
+
+class NoPageClaimsAPositionTheLayoutCanTakeAway(unittest.TestCase):
+    """`#368`. "The register on the left" is true at 1440px and false at 390px, where the
+    columns stack and that register sits ABOVE. A sentence that a media query can falsify is a
+    claim the page cannot keep."""
+
+    def test_no_served_page_says_on_the_left(self):
+        """OUTSIDE `<style>`, because a CSS comment describing the wide layout is not a claim
+        made TO a reader. The first version of this test scanned the raw file and failed on
+        `/* two rails: standing state on the left ... */` -- which is the fourth time in this
+        repo that a scan caught prose it was never about."""
+        for name in ("dashboard.html", "dashboard_quiet.html", "landing.html"):
+            page = (ROOT / "ui_explore" / "round7" / name).read_text()
+            visible = re.sub(r"<style\b.*?</style>", "", page, flags=re.S | re.I)
+            self.assertNotIn("on the left", visible,
+                             f"{name} claims a position the layout can take away")
+
+    def test_the_answer_leads_once_the_columns_stack(self):
+        """On a phone the page that exists to say WHICH LEAGUE WANTS ME put Connections and On
+        Disk above its own headline, and the answer landed about two screens down. The markup's
+        order is right for the wide layout and for a screen reader either way, so this is fixed
+        in CSS rather than by moving the rails."""
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location(
+            "r7_land_order", ROOT / "ui_explore" / "round7" / "build_landing.py")
+        mod = ilu.module_from_spec(spec)
+        sys.modules.setdefault("r7_land_order", mod)
+        spec.loader.exec_module(mod)
+        css = mod.css()
+        self.assertIn(".rail-main{order:1}", css, "the verdict does not lead when stacked")
+        self.assertIn(".rail-left{order:2}", css)
+        self.assertLess(css.index("@media (max-width:1080px)"), css.index(".rail-main{order:1}"),
+                        "the reorder is outside the stacked query, so it would apply at every "
+                        "width and break the wide layout")
+
+
+class TheBrowserStopsAskingForSomethingThatIsNotThere(unittest.TestCase):
+    """`#368`. A browser requests /favicon.ico on every page load whether or not a page mentions
+    one. There was no route, so every load logged a 404 -- harmless alone, and exactly the kind
+    of standing noise that hides a real error when one appears."""
+
+    def test_the_route_exists(self):
+        import server
+        self.assertIn("/favicon.ico", {r.path for r in server.app.routes})
+
+    def test_it_serves_an_image_with_the_immutable_header(self):
+        from starlette.testclient import TestClient
+        import server
+        r = TestClient(server.app).get("/favicon.ico")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["content-type"], "image/png")
+        self.assertIn("immutable", r.headers.get("cache-control", ""))
 
 
 

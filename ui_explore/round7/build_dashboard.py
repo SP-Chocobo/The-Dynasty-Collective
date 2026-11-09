@@ -308,6 +308,9 @@ def room_title(fx: dict) -> str:
 
 def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
     title = room_title(fx)
+    # Absence reasons the source layer computed. Empty for the committed fixtures, which is why
+    # those pages do not move.
+    why = (fx.get("_provenance") or {}).get("why") or {}
     # The nav rail marks a ROOM as current. When this page is one league rather than the mockup's
     # Matchup room, no room is current, and highlighting one would be a claim about where you are
     # that is not true.
@@ -332,7 +335,7 @@ def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
     else:
         figure = (f'<div><span class="big">{summary["ran"]}</span>'
                   f'<span class="u">checks, all clean</span></div>')
-        prose = ("Every check this page runs came back clean. The register on the left is what "
+        prose = ("Every check this page runs came back clean. The register on this page is what "
                  "was examined to say so.")
         sub = f'<p class="sub">{esc(", ".join(summary["clean"]))}</p>'
 
@@ -357,7 +360,7 @@ def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
             f'<p>{parts["body"]}</p>{basis_note(basis, key)}'
             f'<div class="row">{"".join(controls)}</div></article>')
     if not cards:
-        cards.append('<p class="stamp">Nothing is standing. The register on the left is what '
+        cards.append('<p class="stamp">Nothing is standing. The register on this page is what '
                      'was examined to say so.</p>')
     if hidden:
         cards.append('<p class="stamp">Also standing: '
@@ -425,7 +428,7 @@ def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
       {sechead("chart", "The bye weeks",
                "Each week below is the lineup solved again with that week&rsquo;s byes removed. "
                "The figure is value lost, not bodies away.")}
-      {panel("swap", "Week by week", bye_ledger(fx))}
+      {panel("swap", "Week by week", bye_ledger(fx, why.get("bye_profile", "")))}
     </div>
   </div>
   {"".join(pops)}

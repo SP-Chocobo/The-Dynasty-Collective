@@ -189,10 +189,19 @@ def bye_profile_from(rows: list[dict], roster_positions: list[str]) -> tuple[dic
     """
     unpriced = [r for r in rows if not r.get("priced")]
     if unpriced:
-        return None, (f"{len(unpriced)} of {len(rows)} rostered players are unpriced, and "
-                      f"`bye_collision` negates `value` to build its maximisation -- an unpriced "
-                      f"roster returns a loss of 0.0 for every week, which reads as a measured "
-                      f"zero (`#346`). Pricing is not wired in this pass")
+        # THE SENTENCE A PERSON READS, not an internals note. It used to end "Pricing is not
+        # wired in this pass", which was true when it was written and went stale at `#359` --
+        # the same class of defect as `#363`, in a string the page shows to the owner. A reason
+        # is part of the product (`#187`), so it ages like the product and is corrected like it.
+        # WRITTEN AS ENGLISH, because this string is RENDERED. The previous version carried
+        # the house's ASCII `--` and a backticked item number straight onto the page, where
+        # they read as leaked markup. Comments can cite `#346`; a sentence the owner reads
+        # should not have to.
+        return None, (f"{len(unpriced)} of {len(rows)} rostered players carry no price, so a "
+                      f"bye cost cannot be measured for this roster. The lineup solve subtracts "
+                      f"value, and an unpriced player is worth 0.0 to it \u2014 so every week "
+                      f"would come back as 0.0 lost, which reads as \u201cno bye damage\u201d "
+                      f"when what it means is \u201cnot priced\u201d.")
     if not rows:
         return None, "no rostered players"
     shape = lo.bye_concentration(rows, list(roster_positions or []))
@@ -253,7 +262,8 @@ def format_label(league: dict) -> str:
 
 
 def from_snapshot(snap: dict, players_db: dict, byes: dict,
-                  owner_id: str | None = None, merger=None) -> tuple[dict, Report]:
+                  owner_id: str | None = None, merger=None,
+                  capture_prov: dict | None = None) -> tuple[dict, Report]:
     """A snapshot `sleeper_client.sync_league` wrote -> the fixture shape, plus its report.
 
     The snapshot is READ, never written. This module holds no lock and performs no mutation,
@@ -349,8 +359,19 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
         "roster": [{k: (sorted(v) if isinstance(v, set) else v) for k, v in r.items()}
                    for r in rows],
         "structural_holes": holes,
-        "_provenance": {"source": kind, "synced_at": (snap or {}).get("synced_at"),
-                        "basis": {f.name: f.state for f in fields}},
+        "_provenance": {
+            "source": kind, "synced_at": (snap or {}).get("synced_at"),
+            "basis": {f.name: f.state for f in fields},
+            # `#368`: the STATE crossed this boundary and the REASON did not. `bye_profile_from`
+            # composes an exact sentence -- "7 of 25 rostered players are unpriced, and
+            # `bye_collision` negates `value` ..." -- and the page rendered a generic em dash
+            # instead, because the only thing that travelled was the word "not_computed".
+            # `#187` says an absence carries its reason. It was computed; it just never arrived.
+            "why": {f.name: f.why for f in fields if f.why},
+            # What the ids were resolved against, so Provenance can DATE the capture instead of
+            # rendering an absence for something the server is holding.
+            "players_db": capture_prov,
+        },
     }
     # `thin_positions` AND `bye_profile` ARE OMITTED, NOT EMPTIED, and the difference is the
     # whole contract. `checks_run`'s docstring states the grammar: "`[]` is a measured empty

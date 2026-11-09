@@ -470,7 +470,7 @@ def basis_note(basis: dict, key: str) -> str:
     return f'<span class="basis" title="{esc(body)}">{esc(kind)} &middot; {esc(short)}</span>'
 
 
-def bye_ledger(fx: dict) -> str:
+def bye_ledger(fx: dict, reason: str = "") -> str:
     """deck's densest panel, and the one the owner singled out: the weeks, what each costs, and
     WHO is away.
 
@@ -481,8 +481,20 @@ def bye_ledger(fx: dict) -> str:
     roster = fx.get("roster") or []
     cw = fx.get("current_week")
     if not weeks:
-        return ('<p class="stamp">' + absent("no bye profile was measured for this roster")
-                + "</p>")
+        # THE EXACT REASON WHEN THERE IS ONE (`#368`). `bye_profile_from` composes a sentence
+        # naming how many rostered players are unpriced and why that forbids the measurement;
+        # it reached the fixture and stopped there, so this panel said "no bye profile was
+        # measured" -- true, unhelpful, and indistinguishable from "this roster has no byes".
+        # Defaulted to the old wording, so callers that pass nothing render exactly as before.
+        # VISIBLE PROSE, not only a tooltip. `absent` renders an em dash carrying its reason in
+        # a `title`, which is right for a missing cell in a table and wrong for a panel this
+        # size: the whole section is empty, there is nothing to hover on a phone, and a reader
+        # is left guessing at what should be the clearest thing on the page. The em dash stays
+        # as the marker; the sentence is spoken beside it.
+        if reason:
+            return (f'<p class="stamp">{absent(reason)} {esc(reason)}</p>')
+        return ('<p class="stamp">'
+                + absent("no bye profile was measured for this roster") + "</p>")
     losses = {w: (v.get("value_lost") if isinstance(v, dict) else v) for w, v in weeks.items()}
     numeric = [v for v in losses.values() if isinstance(v, (int, float))]
     peak = max(numeric) if numeric else 0

@@ -287,6 +287,14 @@ a{color:inherit}
 @media (max-width:1200px){.band{height:124px}.bandart{opacity:.46}}
 @media (max-width:1080px){
   .shell{grid-template-columns:1fr}
+  /* THE ANSWER FIRST ONCE THE COLUMNS STACK (`#369`). Side by side, a reader takes the verdict
+     and the reference panels in at once and the DOM order does not matter. Stacked, DOM order
+     IS reading order, and `rail-left` comes first in the markup -- so on a phone the page that
+     exists to say WHICH LEAGUE WANTS ME put Connections and On Disk above its own headline, and
+     the answer landed about two screens down. Reordered here rather than in the markup, because
+     the markup's order is right for the wide layout and for a screen reader either way. */
+  .rail-main{order:1}
+  .rail-left{order:2}
   .band{width:40%}
   .commands{grid-template-columns:1fr 1fr}
 }
@@ -428,9 +436,9 @@ a{color:inherit}
     <div class="rail-main">
       <section class="lead">
         <div><span class="big">3</span><span class="u">checks, all clean</span></div>
-        <div><h1>Nothing open this week.</h1><p>Every check this page runs came back clean. The register on the left is what was examined to say so.</p><p class="sub">holes, byes, depth</p></div>
+        <div><h1>Nothing open this week.</h1><p>Every check this page runs came back clean. The register on this page is what was examined to say so.</p><p class="sub">holes, byes, depth</p></div>
       </section>
-      <p class="stamp">Nothing is standing. The register on the left is what was examined to say so.</p>
+      <p class="stamp">Nothing is standing. The register on this page is what was examined to say so.</p>
       <div class="sechead"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><p class="eyebrow">The bye weeks</p><span class="rule"></span></div><p class="snote">Each week below is the lineup solved again with that week&rsquo;s byes removed. The figure is value lost, not bodies away.</p>
       <section class="panel"><div class="phead"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg><h2>Week by week</h2></div><div class="pbody"><table class="led"><thead><tr><th>Week</th><th style="text-align:right">Lost</th><th></th><th>Away</th></tr></thead><tbody><tr class=""><td class="wk">Wk 5</td><td class="n">10</td><td class="barcell"><span class="bar recede" style="width:15%"></span></td><td><div class="who"><span class="chip"><i style="background:#2a81fc"></i>Patrick Mahomes<s>28</s></span></div></td></tr><tr class=""><td class="wk">Wk 6</td><td class="n">0</td><td class="barcell"><span class="bar recede" style="width:3%"></span></td><td><div class="who"><span class="chip"><i style="background:#fab87e"></i>Evan McPherson<s>6</s></span></div></td></tr><tr class=""><td class="wk">Wk 7</td><td class="n">35</td><td class="barcell"><span class="bar mid" style="width:51%"></span></td><td><div class="who"><span class="chip"><i style="background:#0ca89c"></i>James Cook<s>54</s></span><span class="chip"><i style="background:#ff6042"></i>Brenton Strange<s>10</s></span></div></td></tr><tr class=""><td class="wk">Wk 8</td><td class="n">68</td><td class="barcell"><span class="bar hot" style="width:100%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>Malik Nabers<s>81</s></span><span class="chip"><i style="background:#fab87e"></i>Ka'imi Fairbairn<s>12</s></span><span class="chip"><i style="background:#ef7fc0"></i>San Francisco 49ers<s>0</s></span></div></td></tr><tr class=""><td class="wk">Wk 10</td><td class="n">63</td><td class="barcell"><span class="bar hot" style="width:93%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>DeVonta Smith<s>37</s></span><span class="chip"><i style="background:#0ca89c"></i>D'Andre Swift<s>19</s></span><span class="chip"><i style="background:#4aa8ef"></i>Emeka Egbuka<s>51</s></span><span class="chip"><i style="background:#ef7fc0"></i>Chicago Bears<s>0</s></span></div></td></tr><tr class=""><td class="wk">Wk 11</td><td class="n">29</td><td class="barcell"><span class="bar mid" style="width:43%"></span></td><td><div class="who"><span class="chip"><i style="background:#ff6042"></i>Tucker Kraft<s>28</s></span><span class="chip"><i style="background:#2a81fc"></i>Jordan Love<s>18</s></span><span class="chip"><i style="background:#0ca89c"></i>Jadarian Price<s>30</s></span><span class="chip"><i style="background:#0ca89c"></i>Blake Corum<s>15</s></span></div></td></tr><tr class=""><td class="wk">Wk 14</td><td class="n">63</td><td class="barcell"><span class="bar hot" style="width:93%"></span></td><td><div class="who"><span class="chip"><i style="background:#4aa8ef"></i>CeeDee Lamb<s>82</s></span></div></td></tr></tbody></table><div class="ledfoot"><span>season <b>268</b></span><span>worst week <b>25%</b> of it</span><span>unknown byes <b>0</b></span></div></div></section>
     </div>

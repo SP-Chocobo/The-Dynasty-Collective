@@ -10748,18 +10748,20 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 94,
+      "test_methods": 108,
       "asserts": {
-        "assertEqual": 64,
+        "assertEqual": 67,
         "assertFalse": 3,
-        "assertIn": 47,
+        "assertIn": 57,
         "assertIs": 8,
         "assertIsInstance": 4,
-        "assertIsNone": 3,
+        "assertIsNone": 4,
         "assertIsNotNone": 4,
+        "assertLess": 1,
         "assertNotEqual": 2,
-        "assertNotIn": 15,
+        "assertNotIn": 19,
         "assertRaises": 2,
+        "assertRegex": 1,
         "assertTrue": 9
       },
       "by_method": {
@@ -10868,6 +10870,36 @@
         "AServerThatNeverServedDoesNotExitSuccessfully.test_uvicorn_is_handed_the_import_string_not_the_app_object": {
           "assertEqual": 1
         },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_a_caller_that_does_not_know_it_says_nothing_rather_than_guessing": {
+          "assertIsNone": 1
+        },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_the_capture_date_travels_when_the_caller_knows_it": {
+          "assertEqual": 1
+        },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_the_reason_carries_no_leaked_markup": {
+          "assertNotIn": 2
+        },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_the_reason_is_not_stale": {
+          "assertNotIn": 1
+        },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_the_reason_names_the_count": {
+          "assertRegex": 1
+        },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_the_reason_reaches_the_fixture": {
+          "assertIn": 2
+        },
+        "AnAbsenceCarriesItsReasonAllTheWayToTheReader.test_the_server_keeps_the_provenance_it_builds": {
+          "assertIn": 1
+        },
+        "AnEmptyPanelSpeaksRatherThanHovers.test_a_caller_that_passes_no_reason_renders_exactly_as_before": {
+          "assertIn": 1
+        },
+        "AnEmptyPanelSpeaksRatherThanHovers.test_the_em_dash_marker_is_still_there": {
+          "assertIn": 1
+        },
+        "AnEmptyPanelSpeaksRatherThanHovers.test_the_reason_is_in_the_text_not_only_the_tooltip": {
+          "assertIn": 1
+        },
         "ByeProfileRefusesAnUnpricedRoster.test_a_priced_roster_does_get_a_profile": {
           "assertEqual": 1,
           "assertIsNotNone": 3
@@ -10917,6 +10949,13 @@
           "assertIn": 1,
           "assertNotIn": 1
         },
+        "NoPageClaimsAPositionTheLayoutCanTakeAway.test_no_served_page_says_on_the_left": {
+          "assertNotIn": 1
+        },
+        "NoPageClaimsAPositionTheLayoutCanTakeAway.test_the_answer_leads_once_the_columns_stack": {
+          "assertIn": 2,
+          "assertLess": 1
+        },
         "PricingKeepsTheCompanionFieldRule.test_a_player_measured_at_zero_IS_priced": {
           "assertEqual": 1,
           "assertIs": 1
@@ -10931,6 +10970,13 @@
         "PricingKeepsTheCompanionFieldRule.test_the_name_comes_from_its_one_home": {
           "assertEqual": 2,
           "assertNotEqual": 1
+        },
+        "TheBrowserStopsAskingForSomethingThatIsNotThere.test_it_serves_an_image_with_the_immutable_header": {
+          "assertEqual": 2,
+          "assertIn": 1
+        },
+        "TheBrowserStopsAskingForSomethingThatIsNotThere.test_the_route_exists": {
+          "assertIn": 1
         },
         "TheFormatLabelSaysTheExceptionNotTheDefault.test_a_league_that_is_not_dynasty_says_so": {
           "assertTrue": 1

@@ -21807,3 +21807,81 @@ Mutation: unarchive becomes archive **1**, resync stops refusing an unknown id *
 stops reaching the page **1**, a corrupt file raises **3**, `save_archived` bypasses `store_io`
 **1**. Driven end to end in a real browser: popover opens, both forms carry the server's token,
 archiving persists and the ARCHIVED section appears.
+---
+
+## `#368` / `#369` — AN EXACT REASON WAS COMPUTED, THEN DROPPED ONE FUNCTION SHORT OF THE PAGE
+
+Every served dashboard carried an 800-pixel panel headed THE BYE WEEKS whose entire content was
+a bare em dash. The reason was not missing. It was computed, in full, and discarded at a
+boundary:
+
+    bye_profile_from  ->  "16 of 17 rostered players carry no price, so a bye cost cannot
+                           be measured for this roster ..."
+    Field             ->  Field("bye_profile", None, NOT_COMPUTED, that sentence)
+    _provenance       ->  {"basis": {f.name: f.STATE for f in fields}}      <- the state only
+    the page          ->  "--"
+
+`#187` says an absence carries its reason. It did, right up to the last hop, where only the word
+`not_computed` crossed. **A rule obeyed everywhere except at the one place a reader stands is not
+obeyed.**
+
+### THREE THINGS WERE WRONG WITH THAT SENTENCE ONCE IT ARRIVED
+
+**It was STALE.** It ended *"Pricing is not wired in this pass"* -- true when written, false from
+`#359`, and it would have been shown to the owner as the explanation for an empty panel. This is
+`#363` again in a different medium: **a reason is part of the product, so it ages like the
+product and has to be corrected like it.** Nothing in this repo checks sentences.
+
+**It leaked markup.** The house writes `--` for an em dash and backticks item numbers, which is
+right in a comment and reads as spilled source on a page. Rewritten with a real em dash and no
+citation; the citation lives in the code comment, where it belongs.
+
+**It was only a tooltip.** `absent()` renders `<span title="...">&mdash;</span>`, which is exactly
+right for one missing cell in a table and wrong for a whole empty section: there is nothing to
+hover on a phone, and the reader is left guessing at what should be the clearest thing on screen.
+The panel now speaks the sentence beside the em dash. The dash stays -- the convention is added
+to, not replaced -- and a caller that passes no reason renders exactly as before, which is why
+round5's three committed pages did not move.
+
+### THE SAME SHAPE, THREE MORE TIMES
+
+| what | measured |
+|---|---|
+| "Players captured" | an absence for a date **the server was holding in a local variable** -- `build_players_db_from_capture` returns it and `ensure_warm` threw it away |
+| `/favicon.ico` | **404 on every page load.** Harmless alone, and exactly the standing noise that hides a real error when one appears |
+| `/status` on a phone | **120px of sideways scroll**, from a wire-check table whose machine strings have no spaces to break at |
+
+All three now measured clean: the harness reports **no problems detected** across 14
+page/viewport combinations, where it previously reported two.
+
+### `#369` — ON A PHONE THE PAGE'S OWN ANSWER WAS TWO SCREENS DOWN
+
+Side by side, a reader takes the verdict and the reference rails in at once and DOM order does
+not matter. Stacked, **DOM order IS reading order** -- and `rail-left` comes first in the markup.
+So the page that exists to answer *which league wants me* put CONNECTIONS and ON DISK above its
+own headline on every phone. Fixed in the stacked media query rather than by moving the rails,
+because the markup's order is right for the wide layout and for a screen reader at either width.
+
+The dashboard inherits the same fix for free: `shell_css` IS the landing page's `css()`.
+
+And a sentence that a media query can falsify: **"The register on the left is what was examined
+to say so"** is true at 1440px and false at 390px, where that register sits above. Both
+occurrences corrected to "on this page", which holds at every width.
+
+### FOUR TEST BUGS OF MY OWN, IN ONE PASS
+
+Recorded because they are all one mistake wearing different hats -- **asking what source TEXT
+contains instead of what code DOES**:
+
+  * `ast.unparse` on a METHOD raised IndentationError, so the test errored rather than failed.
+    A method's source carries its class indentation; `textwrap.dedent` first.
+  * A scan for "on the left" matched a **CSS comment** describing the wide layout -- not a claim
+    made to anyone. Narrowed to the text outside `<style>`.
+  * An assertion I wrote failed on `add`'s **docstring** before it ever reached the code.
+  * And the one that matters most: `test_the_one_write_is_sync_league_and_it_is_atomic` had been
+    **green for the wrong reason** -- it searched `add` for the words "sync_league" and found
+    them in the docstring after the call had moved to `_sync_ids`.
+
+Mutation: reasons stop crossing **1+3**, capture date dropped **1**, panel back to tooltip-only
+**1**, Engine discards provenance **1**, favicon route removed **2**, verdict stops leading when
+stacked **1**.

@@ -126,6 +126,10 @@ class Engine:
         self._lock = threading.Lock()
         self.started_at = time.time()
         self.players_db: dict | None = None
+        #: The capture's OWN provenance, which `build_players_db_from_capture` returns and this
+        #: threw away -- so Provenance rendered "Players captured --" for a date the server was
+        #: holding in a local variable at the time (`#368`).
+        self.players_prov: dict | None = None
         self.byes: dict | None = None
         self.merger = None
         #: `set_league_format` MUTATES the merger -- it selects a different rankings export, and
@@ -157,7 +161,7 @@ class Engine:
                 # VENDOR RECONSTRUCTION in a different id space with no eligibility, and only
                 # 373 ids collide with the real universe -- coincidentally (`#201`). A live
                 # roster's Sleeper ids resolve against the capture-backed db and nothing else.
-                self.players_db, _prov = rdb.build_players_db_from_capture()
+                self.players_db, self.players_prov = rdb.build_players_db_from_capture()
                 self.merger = dm.DataMerger()
                 self.byes = self.merger.bye_week_by_team()
                 self.warm_seconds = time.perf_counter() - t0
@@ -182,12 +186,18 @@ def _shell(title: str, body: str) -> str:
         "{--bg:#fbfbfc;--fg:#15181c;--dim:#5b646e;--line:#dfe3e8}}"
         "body{margin:0;background:var(--bg);color:var(--fg);padding:28px 16px;"
         "font:400 15px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}"
-        "main{max-width:860px;margin:0 auto}h1{font-size:1.15rem;margin:0 0 4px}"
+        # A 16px GUTTER AND BREAKABLE CELLS. Measured: /status scrolled sideways 120px at
+        # 390px wide, because its wire-check table carries long unbroken values (paths,
+        # ids) and a table at width:100% still overflows when one cell cannot wrap.
+        # `anywhere` rather than `break-word`: these are machine strings with no spaces
+        # to break at, which is the whole case.
+        "main{max-width:860px;margin:0 auto;padding:0 16px}"
+        "h1{font-size:1.15rem;margin:0 0 4px}"
         "h2{font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);"
         "margin:26px 0 8px;font-weight:600}"
         "table{border-collapse:collapse;width:100%;font-size:.86rem}"
         "td,th{text-align:left;padding:5px 10px 5px 0;border-bottom:1px solid var(--line);"
-        "vertical-align:top}th{color:var(--dim);font-weight:600}"
+        "vertical-align:top;overflow-wrap:anywhere}th{color:var(--dim);font-weight:600}"
         ".bad{color:var(--bad);font-weight:700}.ok{color:var(--ok)}.warn{color:var(--warn)}"
         ".dim{color:var(--dim)}a{color:inherit}code{color:var(--dim)}"
         "</style></head><body><main>" + body + "</main></body></html>")
@@ -248,7 +258,7 @@ def _snapshot_pairs():
         except (json.JSONDecodeError, OSError):
             continue          # a corrupt cache is a cache miss; /status reports it
         with ENGINE._price_lock:
-            fx, _report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
+            fx, _report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes, capture_prov=ENGINE.players_prov,
                                            owner_id=ls.load_identity().get("user_id"),
                                            merger=ENGINE.merger)
         pairs.append((league_id, fx))
@@ -377,7 +387,7 @@ async def league(request):
         ENGINE.busy = f"pricing {league_id}"
         try:
             fx, report = ls.from_snapshot(
-                snap, ENGINE.players_db, ENGINE.byes,
+                snap, ENGINE.players_db, ENGINE.byes, capture_prov=ENGINE.players_prov,
                 owner_id=(request.query_params.get("owner")
                           or ls.load_identity().get("user_id")),
                 merger=ENGINE.merger)
@@ -454,7 +464,7 @@ async def status(request):
         try:
             snap = json.loads(ls.snapshot_path(league_id).read_text())
             with ENGINE._price_lock:
-                fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
+                fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes, capture_prov=ENGINE.players_prov,
                                               merger=ENGINE.merger)
         except Exception as exc:
             body.append(f'<h2>{html.escape(league_id)}</h2>'
@@ -604,6 +614,24 @@ async def add(request):
     return _sync_ids(ids, "Added")
 
 
+async def favicon(request):
+    """The browser asks for this on every page load whether or not a page mentions it.
+
+    There was no route, so every load logged a 404 in the console -- harmless on its own, and
+    exactly the kind of standing noise that hides a real error when one appears. Measured on the
+    landing page, which was otherwise clean. Served from the emblem the pages already carry, so
+    it adds no new asset; `immutable` is safe here for the same reason it is on `/assets`: the
+    bytes are fixed for the life of the build.
+    """
+    art = ROOT / "assets" / "wyrm_emblem.png"
+    if not art.exists():
+        # NOT a 500, and not an empty 200 pretending to be an icon: 404 is the honest answer to
+        # "do you have one", and the browser's own default is a better answer than a blank.
+        return PlainTextResponse("no icon on this install", status_code=404)
+    return Response(art.read_bytes(), media_type="image/png",
+                    headers={"Cache-Control": pa.CACHE_CONTROL})
+
+
 def _sync_ids(ids, verb: str):
     """Pull these leagues from Sleeper and report, naming anything that failed.
 
@@ -711,6 +739,7 @@ app = Starlette(
         Route("/league/{league_id}", league),
         Route("/fixture/{name}", fixture),
         Route("/assets/{name}", asset),
+        Route("/favicon.ico", favicon),
     ],
     middleware=[Middleware(GZipMiddleware, minimum_size=1024)],
 )

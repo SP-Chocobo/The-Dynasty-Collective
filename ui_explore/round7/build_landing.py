@@ -858,6 +858,14 @@ a{color:inherit}
 @media (max-width:1200px){.band{height:124px}.bandart{opacity:.46}}
 @media (max-width:1080px){
   .shell{grid-template-columns:1fr}
+  /* THE ANSWER FIRST ONCE THE COLUMNS STACK (`#369`). Side by side, a reader takes the verdict
+     and the reference panels in at once and the DOM order does not matter. Stacked, DOM order
+     IS reading order, and `rail-left` comes first in the markup -- so on a phone the page that
+     exists to say WHICH LEAGUE WANTS ME put Connections and On Disk above its own headline, and
+     the answer landed about two screens down. Reordered here rather than in the markup, because
+     the markup's order is right for the wide layout and for a screen reader either way. */
+  .rail-main{order:1}
+  .rail-left{order:2}
   .band{width:40%}
   .commands{grid-template-columns:1fr 1fr}
 }
