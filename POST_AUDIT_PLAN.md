@@ -21740,3 +21740,70 @@ horizontal overflow and console errors. In every synthetic league the owner's ro
 deliberately NOT index 0, so `#362`'s repair is re-proved on every run. It cannot check a CLAIM --
 the rosters are invented -- but it checks everything structural, and structure is where all five
 of these defects lived.
+---
+
+## `#367` — THE LEAGUE MANAGEMENT CONTROLS WERE THREE BUTTONS WITH NO FORM AROUND THEM
+
+The owner's ruling was *"deleting leagues should be a control feature in that league's
+management, not an aspect of set-up"*. The management popover existed and said exactly the right
+things. All three of its controls were bare `<button>` elements with nothing behind them, and the
+top bar's RESYNC ALL was a fourth.
+
+| control | now |
+|---|---|
+| Resync this league | `POST /resync` with that league's id |
+| Resync all | `POST /resync` with no id -- everything on disk |
+| Archive / Unarchive | `POST /archive`, local only, nothing deleted |
+| Delete local data | **deliberately still not wired** -- see below |
+
+**ONE SYNC BODY, NOT TWO.** `_sync_ids` was lifted out of `/add` so `/resync` could share it.
+The two routes differ by a word in the report, never by an implementation (`#126`), and a test
+walks both for CALL NODES to keep it that way. `/resync` **refuses an id that has no snapshot on
+disk**, by name, before a client is ever built: refreshing must never become a second way to add,
+so a typo cannot pull down a league the owner never chose.
+
+**ARCHIVING IS LOCAL AND REVERSIBLE.** It touches no network, so it cannot fail upstream; it
+writes a list of ids and nothing else, so the snapshot is untouched and unarchiving restores the
+row with no refetch. A test walks the route for calls to `unlink`, `remove`, `rmtree` and
+`sync_league` and fails if any appears, because "archive" sits one keystroke from "delete" in
+someone's head and the code should say which one it is.
+
+A corrupt archive file reads as **nothing archived**, never as an error. Failing closed would
+make leagues vanish for a reason the page could not explain.
+
+**DELETE IS LEFT UNWIRED ON PURPOSE, AND SAYS SO.** It is irreversible, it removes five local
+stores, and the owner is away and cannot look at the result. So it renders disabled with the
+reason in plain sight rather than as a live button nobody has watched work. That is `#365`'s own
+rule applied to myself: a served page may not offer a door it has not got -- and it may not offer
+one it has not had a hand on the wheel for either.
+
+### THREE TESTS POINTED AT A FUNCTION WHOSE BODY HAD MOVED, AND TWO WERE PASSING ON PROSE
+
+Lifting the sync body out of `add` broke every test that scanned that function's TEXT. Two of
+them had been green for the wrong reason:
+
+  * `test_a_league_that_fails_to_sync_is_named` searched `add` for `failed.append`. That string
+    left with the body.
+  * `test_the_one_write_is_sync_league_and_it_is_atomic` searched `add` for `sync_league` -- and
+    **kept passing because the DOCSTRING still contained the words**. It only failed once I
+    corrected that docstring, which means the assertion had been measuring prose, not code.
+  * A test I wrote in this same pass made the identical mistake, failing on `add`'s docstring
+    before it ever ran against the code.
+
+**`ast.unparse` DROPS COMMENTS BUT KEEPS DOCSTRINGS.** That is the whole trap, and it has now
+cost four tests here. The repair is to stop asking what a function's text contains and start
+asking what it CALLS: walk for `ast.Call` and compare names. All three now do.
+
+### A STALE SENTENCE, FOUND BESIDE A CHECK THAT WAS NEVER WRONG
+
+`TheServerHasExactlyOneWritePath` said *"the server's ONLY write is `sleeper_client.sync_league`"*.
+That stopped being true at `#362`, when `save_identity` landed -- one commit before this one. The
+SCAN underneath it tests behaviour and kept passing correctly the whole time; only the sentence
+was wrong, and nothing in this repo checks sentences. Renamed to `TheServersWritePathsAreAllNamed`
+and corrected to the three paths that exist: `sync_league`, `save_identity`, `save_archived` --
+all through `store_io`, none outside `data/`, no handler writing directly.
+
+Mutation: unarchive becomes archive **1**, resync stops refusing an unknown id **1**, archive list
+stops reaching the page **1**, a corrupt file raises **3**, `save_archived` bypasses `store_io`
+**1**. Driven end to end in a real browser: popover opens, both forms carry the server's token,
+archiving persists and the ARCHIVED section appears.

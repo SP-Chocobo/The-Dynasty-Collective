@@ -580,10 +580,11 @@ async def discover(request):
 
 
 async def add(request):
-    """Sync the chosen leagues. THE ONLY WRITE PATH IN THIS SERVER.
+    """Bring in leagues this install does not have. One of three named write paths.
 
-    It calls `sleeper_client.sync_league` and reports what that returns. It implements no second
-    sync (`#126`), composes nothing, and derives nothing (`#338`). The write itself is
+    It routes through `_sync_ids`, which is the single shared sync body -- `/resync` uses the
+    same one, so the two differ by a word in the report and not by an implementation (`#126`).
+    It composes nothing and derives nothing (`#338`). The write itself is
     `_write_snapshot`'s atomic replace, which is why a page rendering mid-sync cannot see a torn
     file -- `_write_snapshot`'s own comment notes that a torn read "looks exactly like a league
     that has never been synced".
@@ -600,6 +601,16 @@ async def add(request):
         return _notice("Nothing selected", '<h1>Nothing selected</h1>'
                        '<p><a href="/">back</a></p>', 400)
 
+    return _sync_ids(ids, "Added")
+
+
+def _sync_ids(ids, verb: str):
+    """Pull these leagues from Sleeper and report, naming anything that failed.
+
+    ONE sync body, shared by `/add` and `/resync` (`#126`). The two routes differ only in what
+    the owner meant -- "bring in a league I do not have" versus "refresh one I do" -- and that
+    difference is a word in the report, not a second implementation that could drift.
+    """
     if ENGINE.busy:
         # SINGLE-FLIGHT: refused, never queued. A second sync while one runs would have two
         # writers on one league's file, which is the one thing the single-process design exists
@@ -627,11 +638,64 @@ async def add(request):
     if not failed:
         return RedirectResponse("/", status_code=303)
     # A LEAGUE THAT FAILED IS NAMED. "Added 3 of 5" without saying which two is a quiet absence.
-    body = (f'<h1>Added {len(done)}, failed {len(failed)}</h1><table>' +
+    body = (f'<h1>{html.escape(verb)} {len(done)}, failed {len(failed)}</h1><table>' +
             "".join(f'<tr><th>{html.escape(lid)}</th><td class="bad">{html.escape(why)}</td></tr>'
                     for lid, why in failed) +
             '</table><p><a href="/">back</a></p>')
-    return _notice("Partly added", body, 207)
+    return _notice(f"Partly {verb.lower()}", body, 207)
+
+
+async def resync(request):
+    """Refresh leagues ALREADY on disk: one when `league_id` is given, otherwise every one.
+
+    Separate from `/add` because the two are different intentions, and because resyncing
+    everything must never be reachable by typing an id wrong. It adds nothing: an id with no
+    snapshot on disk is refused by name rather than quietly fetched, so this route can only ever
+    refresh what the owner already chose.
+    """
+    ok, form = await _csrf_ok(request)
+    if not ok:
+        return _notice("Refused", "<h1>Refused</h1><p class=\"bad\">This form did not carry "
+                       "this server's token. Reload the page and try again.</p>", 403)
+    one = str(form.get("league_id") or "").strip()
+    have = set(ls.available_snapshots())
+    if one and one not in have:
+        return _notice("Not on disk", f'<h1>Nothing to refresh</h1><p class="warn">'
+                       f'{html.escape(one)} has no snapshot here, so there is nothing to bring '
+                       f'up to date. Add it first.</p><p><a href="/">back</a></p>', 404)
+    ids = [one] if one else sorted(have)
+    if not ids:
+        return _notice("Nothing synced yet", '<h1>No leagues yet</h1><p class="warn">Nothing '
+                       'has been added, so there is nothing to refresh.</p>'
+                       '<p><a href="/">back</a></p>', 400)
+    return _sync_ids(ids, "Refreshed")
+
+
+async def archive(request):
+    """Hide a league from the list, or bring it back. LOCAL ONLY, and nothing is deleted.
+
+    No network, so it cannot fail upstream and is instant. The snapshot is untouched: unarchiving
+    restores the row exactly as it was with no refetch. The owner ruled this belongs to a
+    league's own management rather than to set-up, which is why it is reached from that league's
+    popover and not from the ADD panel.
+    """
+    ok, form = await _csrf_ok(request)
+    if not ok:
+        return _notice("Refused", "<h1>Refused</h1><p class=\"bad\">This form did not carry "
+                       "this server's token.</p>", 403)
+    lid = str(form.get("league_id") or "").strip()
+    if not lid:
+        return _notice("No league", '<h1>No league named</h1><p><a href="/">back</a></p>', 400)
+    want_on = str(form.get("action") or "").strip() != "unarchive"
+    have = ls.load_archived()
+    now = (have | {lid}) if want_on else (have - {lid})
+    if now != have and not ls.save_archived(now):
+        # A WRITE THAT DID NOT LAND IS REPORTED. Redirecting to a page that still shows the old
+        # state would read as "it did not work" at best and be silently wrong at worst.
+        return _notice("Could not save", '<h1>The archive list did not save</h1>'
+                       '<p class="bad">Nothing changed. <code>data/</code> may not be '
+                       'writable.</p><p><a href="/">back</a></p>', 500)
+    return RedirectResponse("/", status_code=303)
 
 
 app = Starlette(
@@ -640,6 +704,8 @@ app = Starlette(
         Route("/debug", index),
         Route("/discover", discover, methods=["POST"]),
         Route("/add", add, methods=["POST"]),
+        Route("/resync", resync, methods=["POST"]),
+        Route("/archive", archive, methods=["POST"]),
         Route("/status", status),
         Route("/health", health),
         Route("/league/{league_id}", league),

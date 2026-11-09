@@ -320,7 +320,7 @@ a{color:inherit}
       <a class="room on" title="Home" aria-label="Home" href="#home"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>Home</a>
       <a class="room" title="Matchup" aria-label="Matchup" href="#matchup"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5zM2 14l10 5 10-5M2 11l10 5 10-5"/></svg>Matchup</a><a class="room" title="Roster" aria-label="Roster" href="#roster"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Roster</a><a class="room" title="Draft Room" aria-label="Draft Room" href="#draft-room"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Draft Room</a><a class="room" title="League" aria-label="League" href="#league"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17h18M4 17 3 7l5 4 4-6 4 6 5-4-1 10"/></svg>League</a><a class="room" title="Import Audit" aria-label="Import Audit" href="#import-audit"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14M16 16l5 5"/></svg>Import Audit</a>
     </nav>
-    <div class="conn"><p class="who">Sleeper <b>cincandella</b><br>synced 4 hours ago</p><button class="btn"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>Resync all</button></div>
+    <div class="conn"><p class="who">Sleeper <b>cincandella</b><br>synced 4 hours ago</p><form method="post" action="/resync"><button class="btn" type="submit"><svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>Resync all</button></form></div>
   </header>
   <hr class="hr">
 
@@ -409,13 +409,21 @@ a{color:inherit}
   <div popover id="pop-seat02" class="pop">
     <p class="popttl">Team 2</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat02">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat02">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -432,13 +440,21 @@ a{color:inherit}
   <div popover id="pop-seat04" class="pop">
     <p class="popttl">Team 4</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat04">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat04">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -455,13 +471,21 @@ a{color:inherit}
   <div popover id="pop-seat05" class="pop">
     <p class="popttl">Team 5</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat05">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat05">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -478,13 +502,21 @@ a{color:inherit}
   <div popover id="pop-seat01" class="pop">
     <p class="popttl">Team 1</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat01">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat01">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -501,13 +533,21 @@ a{color:inherit}
   <div popover id="pop-seat07" class="pop">
     <p class="popttl">Team 7</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat07">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat07">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -524,13 +564,21 @@ a{color:inherit}
   <div popover id="pop-seat08" class="pop">
     <p class="popttl">Team 8</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat08">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat08">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -547,13 +595,21 @@ a{color:inherit}
   <div popover id="pop-seat03" class="pop">
     <p class="popttl">Team 3</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat03">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat03">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -570,13 +626,21 @@ a{color:inherit}
   <div popover id="pop-seat06" class="pop">
     <p class="popttl">Team 6</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat06">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat06">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div></div>
 
@@ -596,13 +660,21 @@ a{color:inherit}
   <div popover id="pop-seat10" class="pop">
     <p class="popttl">Team 10</p>
     <p class="popmeta"> &middot; 3 checks, all clean &mdash; holes, byes, depth</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat10">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat10">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow quiet">
@@ -619,13 +691,21 @@ a{color:inherit}
   <div popover id="pop-seat11" class="pop">
     <p class="popttl">Team 11</p>
     <p class="popmeta"> &middot; 3 checks, all clean &mdash; holes, byes, depth</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat11">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Archive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat11">
+      <input type="hidden" name="action" value="archive">
+      <button class="pact" type="submit">Archive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div></div>
 
@@ -645,13 +725,21 @@ a{color:inherit}
   <div popover id="pop-seat09" class="pop">
     <p class="popttl">Team 9</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat09">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Unarchive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat09">
+      <input type="hidden" name="action" value="unarchive">
+      <button class="pact" type="submit">Unarchive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div>
 <div class="lrow thin">
@@ -668,13 +756,21 @@ a{color:inherit}
   <div popover id="pop-seat12" class="pop">
     <p class="popttl">Team 12</p>
     <p class="popmeta"> &middot; 3 checks &mdash; depth raised something; holes, byes clean</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="seat12">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">Unarchive</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes 5 local stores.
-      It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="seat12">
+      <input type="hidden" name="action" value="unarchive">
+      <button class="pact" type="submit">Unarchive</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove 5 local stores and
+      cannot be undone, so it waits for a hand on the wheel. It never touches Sleeper. If you are still a member the league reappears, unsynced, the next time you sync the account.</p>
   </div>
 </div></div>
 

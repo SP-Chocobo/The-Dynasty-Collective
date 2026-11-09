@@ -10748,17 +10748,17 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 82,
+      "test_methods": 94,
       "asserts": {
-        "assertEqual": 54,
+        "assertEqual": 64,
         "assertFalse": 3,
-        "assertIn": 41,
+        "assertIn": 47,
         "assertIs": 8,
         "assertIsInstance": 4,
         "assertIsNone": 3,
         "assertIsNotNone": 4,
         "assertNotEqual": 2,
-        "assertNotIn": 13,
+        "assertNotIn": 15,
         "assertRaises": 2,
         "assertTrue": 9
       },
@@ -10888,6 +10888,35 @@
         "DiscoverOffersOnlyWhatIsNotAlreadyAdded.test_the_route_filters_against_what_is_on_disk": {
           "assertIn": 2
         },
+        "LeagueManagementIsAControlNotASetupStep.test_a_league_can_be_archived_and_brought_back": {
+          "assertEqual": 4
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_archiving_names_no_league_is_refused": {
+          "assertEqual": 1
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_archiving_never_deletes_the_snapshot": {
+          "assertNotIn": 1
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_archiving_without_the_token_is_refused": {
+          "assertEqual": 2
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_resync_without_the_token_is_refused": {
+          "assertEqual": 1
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_resyncing_a_league_that_is_not_on_disk_is_refused_by_name": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_the_archive_list_reaches_the_page": {
+          "assertIn": 1
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_the_single_flight_guard_still_covers_both": {
+          "assertIn": 1
+        },
+        "LeagueManagementIsAControlNotASetupStep.test_there_is_exactly_one_sync_body": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
         "PricingKeepsTheCompanionFieldRule.test_a_player_measured_at_zero_IS_priced": {
           "assertEqual": 1,
           "assertIs": 1
@@ -10977,46 +11006,55 @@
           "assertIs": 1,
           "assertIsInstance": 1
         },
-        "TheServerHasExactlyOneWritePath.test_a_clean_read_gets_no_banner": {
+        "TheServerStillHasOnlyNamedWritePaths.test_an_unreadable_archive_file_hides_nothing": {
+          "assertEqual": 1
+        },
+        "TheServerStillHasOnlyNamedWritePaths.test_archiving_goes_through_store_io": {
+          "assertIn": 1
+        },
+        "TheServerStillHasOnlyNamedWritePaths.test_the_three_stores_are_all_under_data": {
+          "assertIn": 1
+        },
+        "TheServersWritePathsAreAllNamed.test_a_clean_read_gets_no_banner": {
           "assertNotIn": 1
         },
-        "TheServerHasExactlyOneWritePath.test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash": {
+        "TheServersWritePathsAreAllNamed.test_a_failed_read_reaches_the_page_as_a_banner_not_an_em_dash": {
           "assertIn": 3
         },
-        "TheServerHasExactlyOneWritePath.test_a_non_loopback_bind_announces_itself": {
+        "TheServersWritePathsAreAllNamed.test_a_non_loopback_bind_announces_itself": {
           "assertIn": 2
         },
-        "TheServerHasExactlyOneWritePath.test_an_unreadable_identity_is_an_unknown_user_not_a_crash": {
+        "TheServersWritePathsAreAllNamed.test_an_unreadable_identity_is_an_unknown_user_not_a_crash": {
           "assertEqual": 1,
           "assertIsInstance": 1
         },
-        "TheServerHasExactlyOneWritePath.test_health_answers_without_warming_the_engine": {
+        "TheServersWritePathsAreAllNamed.test_health_answers_without_warming_the_engine": {
           "assertEqual": 1,
           "assertIn": 2,
           "assertNotIn": 1
         },
-        "TheServerHasExactlyOneWritePath.test_health_is_routed": {
+        "TheServersWritePathsAreAllNamed.test_health_is_routed": {
           "assertIn": 1
         },
-        "TheServerHasExactlyOneWritePath.test_no_handler_writes_directly": {
+        "TheServersWritePathsAreAllNamed.test_no_handler_writes_directly": {
           "assertEqual": 1
         },
-        "TheServerHasExactlyOneWritePath.test_the_detector_would_catch_a_write": {
+        "TheServersWritePathsAreAllNamed.test_the_detector_would_catch_a_write": {
           "assertTrue": 1
         },
-        "TheServerHasExactlyOneWritePath.test_the_one_write_is_sync_league_and_it_is_atomic": {
+        "TheServersWritePathsAreAllNamed.test_the_one_write_is_sync_league_and_it_is_atomic": {
           "assertIn": 2
         },
-        "TheServerHasExactlyOneWritePath.test_the_second_write_path_is_the_identity_and_it_is_named": {
+        "TheServersWritePathsAreAllNamed.test_the_second_write_path_is_the_identity_and_it_is_named": {
           "assertIn": 2,
           "assertTrue": 1
         },
-        "TheServerHasExactlyOneWritePath.test_the_server_binds_loopback_BY_DEFAULT": {
+        "TheServersWritePathsAreAllNamed.test_the_server_binds_loopback_BY_DEFAULT": {
           "assertEqual": 1,
           "assertIn": 1,
           "assertNotIn": 1
         },
-        "TheServerHasExactlyOneWritePath.test_the_server_implements_no_second_sync": {
+        "TheServersWritePathsAreAllNamed.test_the_server_implements_no_second_sync": {
           "assertNotIn": 1
         },
         "TheSyncRoutesRefuseBeforeTheyAct.test_a_post_with_the_WRONG_token_is_refused": {

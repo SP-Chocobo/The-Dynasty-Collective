@@ -612,6 +612,40 @@ def save_identity(user_id: str, username: str) -> bool:
         "user_id": str(user_id), "username": str(username)})
 
 
+#: Leagues hidden from the list. A LOCAL idea only -- Sleeper has no concept of it, which is why
+#: archiving can never fail upstream and never needs the network (`#367`).
+ARCHIVED = ROOT / "data" / "archived_leagues.json"
+
+
+def load_archived() -> set:
+    """The set of league ids hidden from the list, or an empty set.
+
+    Never raises. An unreadable file means nothing is archived, which is the same thing the page
+    renders on a fresh install -- a degraded read must not hide a league the owner can still see.
+    """
+    try:
+        got = json.loads(ARCHIVED.read_text()) or {}
+    except (json.JSONDecodeError, OSError):
+        return set()
+    return {str(x) for x in (got.get("league_ids") or [])}
+
+
+def save_archived(ids) -> bool:
+    """Through `store_io`, like every other store here. Returns whether it landed.
+
+    The THIRD of the server's named write paths, after `sleeper_client.sync_league` and
+    `save_identity`. It writes a list of ids and nothing else: no league data is copied here, so
+    an archived league's snapshot stays exactly as it was and unarchiving restores the row with
+    no refetch.
+    """
+    import store_io
+    return store_io.write(ARCHIVED, {
+        "_comment": ("League ids hidden from the landing list. LOCAL ONLY -- Sleeper has no "
+                     "concept of archiving, nothing is deleted, and removing an id here brings "
+                     "the league back exactly as it was."),
+        "league_ids": sorted(str(i) for i in ids)})
+
+
 def live_chrome(pairs, identity, merger=None) -> dict:
     """The landing page's STANDING STATE, derived rather than borrowed (`#363`).
 
@@ -667,8 +701,11 @@ def live_chrome(pairs, identity, merger=None) -> dict:
         # (`#348`), and the fixture's list claimed a key the owner does not have.
         "configured_credentials": [providers.get(pid).key_field for pid in providers.ids()
                                    if providers.get(pid).is_configured()],
-        # Management is not built, so these are EMPTY rather than borrowed. An empty list here is
-        # a measured "none", which is true: nothing can archive a league yet.
-        "archived_seats": [],
+        # ARCHIVING IS BUILT NOW (`#367`), so this is read from its store rather than being the
+        # measured "none" it used to be. Still never borrowed from a fixture.
+        "archived_seats": sorted(load_archived()),
+        # `left_leagues` is still empty, and still measured rather than borrowed: detecting a
+        # league you have LEFT needs Sleeper's current list to compare against, which only
+        # `/discover` fetches. Nothing on this path can see it, so "none" is what is known.
         "left_leagues": [],
     }

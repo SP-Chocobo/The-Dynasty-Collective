@@ -208,23 +208,31 @@ class TheProducerKeepsTheAbsenceContract(unittest.TestCase):
                       "the holes check must report as having RUN")
 
 
-class TheServerHasExactlyOneWritePath(unittest.TestCase):
-    """`#361`. THIS TEST REPLACES ONE THAT WAS TRUE AND IS NOT ANY MORE.
+class TheServersWritePathsAreAllNamed(unittest.TestCase):
+    """`#361`, NARROWED TWICE, and both narrowings are stated rather than quietly absorbed.
 
-    It used to assert the server performed NO writes at all, and that was correct while the
-    server only read snapshots `app.py` had synced. Wiring the sync buttons made it false. The
-    wrong response would have been to delete the test, or to loosen it until it could not fail;
-    the honest one is to replace a property that stopped holding with the narrower one that
-    still does, and to say in the open that it narrowed:
+    It began by asserting the server performed NO writes at all -- true while it only read
+    snapshots `app.py` had synced. Wiring the sync buttons made that false, and the honest
+    response was to replace the property that stopped holding with the narrower one that still
+    did, rather than delete the test or loosen it until it could not fail.
 
-        BEFORE  the server performs no writes at all.
-        AFTER   the server's ONLY write is `sleeper_client.sync_league`, which persists through
-                `store_io.replace_atomically`. No handler writes directly, and nothing writes
-                outside `data/sleeper_snapshots/`.
+        FIRST   the server performs no writes at all.
+        SECOND  the server's ONLY write is `sleeper_client.sync_league`.
+        NOW     the server has THREE named write paths and no unnamed ones --
+                `sleeper_client.sync_league` (snapshots), `save_identity` (which Sleeper user
+                this install is), `save_archived` (which leagues are hidden). All three go
+                through `store_io`, no handler writes directly, and nothing writes outside
+                `data/`.
 
-    That is the property that actually protects a reader. `_write_snapshot`'s own comment is the
-    argument: a torn read of `_latest.json` "looks exactly like a league that has never been
-    synced", so the atomic replace is what stops a page rendering mid-sync from seeing one.
+    THE SECOND LINE WAS ALREADY STALE BEFORE `#367` TOUCHED IT. `#362` added `save_identity`
+    and this docstring went on claiming one write path, while the scan below -- which tests
+    behaviour rather than prose -- kept passing and so never said so. Recorded because it is the
+    small version of the thing this whole project keeps finding: the check was right and the
+    sentence beside it was not.
+
+    The property that actually protects a reader is unchanged. `_write_snapshot`'s own comment
+    is the argument: a torn read of `_latest.json` "looks exactly like a league that has never
+    been synced", so the atomic replace is what stops a page rendering mid-sync from seeing one.
     """
 
     WRITE_IDIOMS = ("write_text(", "json.dump(", "open(", ".write(", "os.replace",
@@ -275,11 +283,20 @@ class TheServerHasExactlyOneWritePath(unittest.TestCase):
         Asserting only the first would let the write stop being atomic without failing; asserting
         only the second would let a handler grow its own write beside it.
         """
+        import ast
         import inspect
         import sleeper_client
         import server
-        self.assertIn("sync_league", inspect.getsource(server.add),
-                      "the add route does not delegate to sleeper_client.sync_league")
+        # `_sync_ids`, NOT `add`. `#367` lifted the body out so `/resync` could share it, and
+        # this assertion went on passing against `add` purely because its DOCSTRING still said
+        # the words "sleeper_client.sync_league". Removing that phrase is what exposed it --
+        # the third text-scanning test in this file to be caught by one refactor, and the
+        # second to have been passing on prose rather than on code.
+        tree = ast.parse(inspect.getsource(server._sync_ids))
+        calls = {(n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", ""))
+                 for n in ast.walk(tree) if isinstance(n, ast.Call)}
+        self.assertIn("sync_league", calls,
+                      "the shared sync body does not call sleeper_client.sync_league")
         self.assertIn("replace_atomically", inspect.getsource(sleeper_client.SleeperClient
                                                               ._write_snapshot),
                       "the snapshot write is no longer atomic, so a render can see a torn file")
@@ -669,9 +686,15 @@ class DiscoverOffersOnlyWhatIsNotAlreadyAdded(unittest.TestCase):
         self.assertIn("already added", inspect.getsource(__import__("server").discover))
 
     def test_a_league_that_fails_to_sync_is_named(self):
-        """"Added 3 of 5" without saying which two is a quiet absence."""
+        """"Added 3 of 5" without saying which two is a quiet absence.
+
+        READS `_sync_ids`, not `add`. `#367` lifted the sync body out of `add` so `/resync`
+        could share it, and this test kept passing against the wrong function for exactly as
+        long as the text it searched for happened to still be there. It now points at where the
+        behaviour lives.
+        """
         import inspect
-        src = inspect.getsource(__import__("server").add)
+        src = inspect.getsource(__import__("server")._sync_ids)
         self.assertIn("failed.append", src)
         self.assertIn("207", src, "a partial result returns 200 as though it were complete")
 
@@ -982,6 +1005,144 @@ class APageOffersNoDoorItHasNotGot(unittest.TestCase):
         land = self._land()
         self.assertEqual(set(server.UNBUILT_ROOMS), {lbl for _i, lbl in land.ROOMS})
         self.assertTrue(server.UNBUILT_ROOMS, "no rooms named -- the nav would lie again")
+
+
+
+
+class LeagueManagementIsAControlNotASetupStep(unittest.TestCase):
+    """`#367` -- the owner's ruling: "deleting leagues should be a control feature in that
+    league's management, not an aspect of set-up". Resync and archive are reached from a
+    league's own popover, and both were dead `<button>` elements with no form around them.
+
+    NOTHING HERE TOUCHES THE NETWORK. Every case is one the route settles before it would build
+    a client, which is deliberate: a test that needs Sleeper to be up is a test that fails for
+    reasons that are not the code's.
+    """
+
+    def setUp(self):
+        import tempfile
+        from starlette.testclient import TestClient
+        import server
+        self.server = server
+        self.client = TestClient(server.app)
+        self._real = ls.ARCHIVED
+        self.tmp = pathlib.Path(tempfile.mkdtemp()) / "archived_leagues.json"
+        ls.ARCHIVED = self.tmp
+
+    def tearDown(self):
+        ls.ARCHIVED = self._real
+
+    def _post(self, path, data, token=True):
+        if token:
+            data = dict(data, csrf=self.server.CSRF)
+        return self.client.post(path, data=data, follow_redirects=False)
+
+    def test_archiving_without_the_token_is_refused(self):
+        r = self._post("/archive", {"league_id": "L1"}, token=False)
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(ls.load_archived(), set(), "a refused post still wrote")
+
+    def test_a_league_can_be_archived_and_brought_back(self):
+        r = self._post("/archive", {"league_id": "L1", "action": "archive"})
+        self.assertEqual(r.status_code, 303)
+        self.assertEqual(ls.load_archived(), {"L1"})
+        r = self._post("/archive", {"league_id": "L1", "action": "unarchive"})
+        self.assertEqual(r.status_code, 303)
+        self.assertEqual(ls.load_archived(), set())
+
+    def test_archiving_names_no_league_is_refused(self):
+        self.assertEqual(self._post("/archive", {"league_id": "  "}).status_code, 400)
+
+    def test_archiving_never_deletes_the_snapshot(self):
+        """The whole reason unarchiving needs no refetch. Pinned because "archive" is one
+        keystroke from "delete" in someone's head, and this says which one it is."""
+        import ast
+        import inspect
+        tree = ast.parse(inspect.getsource(self.server.archive))
+        calls = {(n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", ""))
+                 for n in ast.walk(tree) if isinstance(n, ast.Call)}
+        for word in ("unlink", "remove", "rmtree", "sync_league"):
+            self.assertNotIn(word, calls, f"the archive route CALLS {word}")
+
+    def test_the_archive_list_reaches_the_page(self):
+        ls.save_archived({"L9"})
+        self.assertIn("L9", ls.live_chrome([], {}, None)["archived_seats"])
+
+    def test_resyncing_a_league_that_is_not_on_disk_is_refused_by_name(self):
+        """`/resync` REFRESHES; it must never become a second way to add. An unknown id stops
+        here, before any client exists, so a typo cannot pull down a league you never chose."""
+        r = self._post("/resync", {"league_id": "definitely-not-on-disk"})
+        self.assertEqual(r.status_code, 404)
+        self.assertIn("nothing to bring", r.text.lower())
+
+    def test_resync_without_the_token_is_refused(self):
+        self.assertEqual(self._post("/resync", {}, token=False).status_code, 403)
+
+    def test_there_is_exactly_one_sync_body(self):
+        """`/add` and `/resync` differ by a word in the report, not by an implementation.
+
+        CALL NODES, not unparsed text. The first version of this test read
+        `ast.unparse(...)` and failed on `add`'s DOCSTRING, which mentions
+        `sleeper_client.sync_league` while the code does not call it. `ast.unparse` drops
+        comments but KEEPS docstrings, and that difference has now cost four tests in this repo.
+        Walking for `ast.Call` asks about what RUNS, which is the only thing a rule like this
+        can honestly be about.
+        """
+        import ast
+        import inspect
+
+        def called(fn):
+            tree = ast.parse(inspect.getsource(fn))
+            names = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    f = node.func
+                    names.add(f.attr if isinstance(f, ast.Attribute) else
+                              getattr(f, "id", ""))
+            return names
+
+        for fn in (self.server.add, self.server.resync):
+            names = called(fn)
+            self.assertIn("_sync_ids", names, f"{fn.__name__} does not share the sync body")
+            self.assertNotIn("sync_league", names,
+                             f"{fn.__name__} CALLS sync_league directly -- that is the second "
+                             "implementation this test exists to prevent")
+
+    def test_the_single_flight_guard_still_covers_both(self):
+        """Two writers on one league's file is the thing the single-process design prevents."""
+        import ast
+        import inspect
+        code = ast.unparse(ast.parse(inspect.getsource(self.server._sync_ids)))
+        self.assertIn("ENGINE.busy", code)
+
+
+class TheServerStillHasOnlyNamedWritePaths(unittest.TestCase):
+    """Archiving adds a THIRD write path, and a write path that nobody counted is how a
+    read-only server stops being one. So it is counted."""
+
+    def test_the_three_stores_are_all_under_data(self):
+        for path in (ls.IDENTITY, ls.ARCHIVED):
+            self.assertIn("data", path.parts, f"{path} is written outside data/")
+
+    def test_archiving_goes_through_store_io(self):
+        import ast
+        import inspect
+        code = ast.unparse(ast.parse(inspect.getsource(ls.save_archived)))
+        self.assertIn("store_io.write", code,
+                      "a store wrote its own file -- `#351` exists because that drifted once")
+
+    def test_an_unreadable_archive_file_hides_nothing(self):
+        """A degraded read must not hide a league the owner can still see. Failing CLOSED here
+        would make leagues vanish for a reason the page could not explain."""
+        import tempfile
+        real = ls.ARCHIVED
+        try:
+            bad = pathlib.Path(tempfile.mkdtemp()) / "nope.json"
+            bad.write_text("{not json")
+            ls.ARCHIVED = bad
+            self.assertEqual(ls.load_archived(), set())
+        finally:
+            ls.ARCHIVED = real
 
 
 

@@ -357,13 +357,21 @@ def row_html(row, idx, link=seat_fragment):
   <div popover id="{pop}" class="pop">
     <p class="popttl">{esc(name)}</p>
     <p class="popmeta">{esc(row['arm'] or '')} &middot; {row['summary']}</p>
-    <button class="pact">Resync this league</button>
+    <form method="post" action="/resync">
+      <input type="hidden" name="league_id" value="{esc(row['seat'])}">
+      <button class="pact" type="submit">Resync this league</button>
+    </form>
     <p class="pcost">Re-pulls rosters and this week&rsquo;s projections for this league only.</p>
-    <button class="pact">{'Unarchive' if row['archived'] else 'Archive'}</button>
-    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it.</p>
-    <button class="pact danger">Delete local data&hellip;</button>
-    <p class="pcost">Asks first. Removes {len(DELETE_COSTS)} local stores.
-      {DELETE_NOT}</p>
+    <form method="post" action="/archive">
+      <input type="hidden" name="league_id" value="{esc(row['seat'])}">
+      <input type="hidden" name="action" value="{'unarchive' if row['archived'] else 'archive'}">
+      <button class="pact" type="submit">{'Unarchive' if row['archived'] else 'Archive'}</button>
+    </form>
+    <p class="pcost">Hides it from the list. Local only &mdash; Sleeper has no concept of it,
+      nothing is deleted, and unarchiving brings it back exactly as it was.</p>
+    <button class="pact danger" disabled title="Not built yet">Delete local data&hellip;</button>
+    <p class="pcost">Not built yet &mdash; it would remove {len(DELETE_COSTS)} local stores and
+      cannot be undone, so it waits for a hand on the wheel. {DELETE_NOT}</p>
   </div>
 </div>"""
 
@@ -913,7 +921,9 @@ def topbar(sl=None, uri=None, home=True, active=None, home_href=None, unbuilt=()
     if sl:
         conn = (f'<div class="conn"><p class="who">Sleeper <b>{esc(sl["username"])}</b><br>'
                 f'synced {esc(sl["synced_at_human"])}</p>'
-                f'<button class="btn">{icon("refresh", 17)}Resync all</button></div>')
+                f'<form method="post" action="/resync">'
+                f'<button class="btn" type="submit">{icon("refresh", 17)}Resync all</button>'
+                f'</form></div>')
     return f"""
   <header class="top">
     {hero_band(uri)}
