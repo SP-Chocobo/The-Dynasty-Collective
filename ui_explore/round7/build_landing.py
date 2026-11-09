@@ -907,7 +907,7 @@ def panel(ic, title, body):
             f'<div class="pbody">{body}</div></section>')
 
 
-def build(fx, seat_paths=None, *, seat_pairs=None) -> str:
+def build(fx, seat_paths=None, *, seat_pairs=None, standin=STANDIN) -> str:
     """`seat_pairs` is the in-memory form, for a server rendering live snapshots.
 
     Exactly one of the two is supplied. The committed page passes paths and rebuilds
@@ -1011,8 +1011,8 @@ def build(fx, seat_paths=None, *, seat_pairs=None) -> str:
              label. Open a league for the detail; this page only says which.</p>
         </div>
       </section>
-      <p class="standin"><span class="stamp">{icon('layers', 14)}Constructed</span>
-         <span>{STANDIN}.</span></p>
+      {f'''<p class="standin"><span class="stamp">{icon('layers', 14)}Constructed</span>
+         <span>{standin}.</span></p>''' if standin else ''}
 
       {sechead('crown', 'Needs you')}
       <div class="leagues">{''.join(row_html(r, i) for i, r in enumerate(attention))}</div>

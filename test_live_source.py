@@ -21,6 +21,7 @@ exercises exactly as well and in milliseconds.
 """
 from __future__ import annotations
 
+import io
 import json
 import pathlib
 import tempfile
@@ -248,6 +249,24 @@ class TheServerHasExactlyOneWritePath(unittest.TestCase):
         including a broken scan, which is this session's recurring defect (`#352`)."""
         hits = [i for i in self.WRITE_IDIOMS if i in 'path.write_text(json.dumps(x))']
         self.assertTrue(hits, "the write detector recognises nothing")
+
+    def test_the_second_write_path_is_the_identity_and_it_is_named(self):
+        """`#362`. TWO write paths now, both named, both atomic, both inside `data/`.
+
+        The identity exists because without it every league page renders as a read failure. The
+        alternative the first version took was worse than useless: it silently described
+        whichever roster Sleeper happened to list first.
+        """
+        import inspect
+        import live_source
+        self.assertIn("store_io.write", inspect.getsource(live_source.save_identity))
+        self.assertTrue(str(live_source.IDENTITY).endswith("sleeper_identity.json"))
+        self.assertIn("data", str(live_source.IDENTITY))
+
+    def test_an_unreadable_identity_is_an_unknown_user_not_a_crash(self):
+        import live_source
+        self.assertEqual(live_source.load_identity.__doc__.count("Never raises"), 1)
+        self.assertIsInstance(live_source.load_identity(), dict)
 
     def test_the_one_write_is_sync_league_and_it_is_atomic(self):
         """Pins BOTH halves: that the route delegates, and that the delegate replaces atomically.
@@ -654,6 +673,168 @@ class DiscoverOffersOnlyWhatIsNotAlreadyAdded(unittest.TestCase):
         src = inspect.getsource(__import__("server").add)
         self.assertIn("failed.append", src)
         self.assertIn("207", src, "a partial result returns 200 as though it were complete")
+
+
+class TheOwnersRosterIsResolvedNeverGuessed(unittest.TestCase):
+    """`#362` — the defect that shipped to the owner's own domain.
+
+    `_snapshot_pairs` called `from_snapshot` with no `owner_id`, and the fallback was
+    `rosters[0]`. Every league row on the landing page then described whoever Sleeper happened
+    to list first: real team names, real priced rosters, real depth labels, ALL ABOUT OTHER
+    MANAGERS. Not a crash -- a complete, confident page about somebody else.
+
+    `sleeper_client.find_roster_for_user` already owned this question and returns None rather
+    than guessing ("never guesses ... the same fail-soft-not-fabricate posture as the rest of
+    this client"). I wrote a second resolution beside it that fabricates (`#126`).
+    """
+
+    def test_no_owner_means_a_READ_FAILURE_not_another_managers_roster(self):
+        """FAILS ON THE OLD CODE, which returned a fully-populated page for rosters[0]."""
+        fx, report = ls.from_snapshot(snapshot(), PLAYERS, BYES)      # no owner_id
+        field = report.by_name("whose_roster")
+        self.assertEqual(field.state, ls.READ_FAILED)
+        self.assertTrue(field.loud)
+        self.assertIn("NOT substitute", field.why)
+
+    def test_an_owner_with_no_roster_in_this_league_is_also_a_READ_FAILURE(self):
+        fx, report = ls.from_snapshot(snapshot(), PLAYERS, BYES, owner_id="not-in-this-league")
+        self.assertEqual(report.by_name("whose_roster").state, ls.READ_FAILED)
+
+    def test_the_right_owner_resolves(self):
+        """Non-vacuity: a resolver that fails on everything is not a resolver."""
+        fx, report = ls.from_snapshot(snapshot(), PLAYERS, BYES, owner_id="u1")
+        self.assertEqual(report.by_name("whose_roster").state, ls.MEASURED)
+        self.assertEqual(fx["team"], "SP-Chocobo")
+
+    def test_resolution_goes_through_the_one_home(self):
+        """`#126`. A second implementation of this question is what produced the wrong page."""
+        import inspect
+        self.assertIn("find_roster_for_user", inspect.getsource(ls.from_snapshot))
+
+    def test_rosters_zero_is_never_substituted(self):
+        """The specific fallback that shipped, named so it cannot come back.
+
+        PARSED, NOT GREPPED -- for the third time tonight a text scan could not tell prose from
+        code. The first version of this test searched the function's source for `rosters[0]` and
+        failed on the COMMENT explaining that the fallback had been removed. `ast.unparse` drops
+        comments, so what is checked is what runs.
+        """
+        import ast
+        import inspect
+        code = ast.unparse(ast.parse(inspect.getsource(ls.from_snapshot)))
+        self.assertNotIn("rosters[0]", code,
+                         "the arbitrary-first-roster fallback is back in executable code")
+
+
+class AServerThatNeverServedDoesNotExitSuccessfully(unittest.TestCase):
+    """`#364` -- `python server.py` on the owner's laptop printed its banner and exited 0 having
+    served nothing, which read as a clean shutdown. An exit code is a claim about what happened,
+    and 0 was the wrong claim.
+
+    WHY THE GUARD IS TIMING AND NOT A CAUSE CHECK. The failure did not reproduce on this
+    container, so the mechanism is unmeasured and `main` does not name one. What is certain is
+    arithmetic: a server you leave open runs for longer than a second and a half, so a `run` that
+    returns faster than that did not shut down -- it failed to start. The guard needs no cause.
+    """
+
+    def _run_main(self, duration):
+        """Call `main` with `uvicorn.run` replaced by a fake that lasts `duration`."""
+        import time
+        import unittest.mock as mock
+        import server
+        seen = {}
+
+        def fake_run(target, **kw):
+            seen["target"] = target
+            seen["kw"] = kw
+            time.sleep(duration)
+
+        with mock.patch.object(server, "MIN_SERVE_SECONDS", 0.05), \
+                mock.patch("uvicorn.run", fake_run), \
+                mock.patch("sys.stdout", io.StringIO()) as out:
+            code = server.main()
+        return code, seen, out.getvalue()
+
+    def test_an_instant_return_is_reported_as_a_failure_to_start(self):
+        code, _, said = self._run_main(0.0)
+        self.assertEqual(code, 1, "a run that served nothing exited successfully")
+        self.assertIn("FAILED TO START", said)
+
+    def test_the_message_names_the_invocation_that_works(self):
+        """The owner was handed this workaround in chat. Chat is not where it belongs."""
+        _, _, said = self._run_main(0.0)
+        self.assertIn("python -m uvicorn server:app", said)
+
+    def test_a_run_that_lasted_exits_zero(self):
+        """The other branch, so the guard cannot be satisfied by always failing (`#352`)."""
+        code, _, said = self._run_main(0.1)
+        self.assertEqual(code, 0)
+        self.assertNotIn("FAILED TO START", said)
+
+    def test_uvicorn_is_handed_the_import_string_not_the_app_object(self):
+        """The app object is the spelling that failed; the import string is the one that worked.
+
+        Asserted on the ARGUMENT rather than on source text, so it is the call that is pinned.
+        """
+        _, seen, _ = self._run_main(0.1)
+        self.assertEqual(seen["target"], "server:app",
+                         "main() passes the app OBJECT -- the spelling that served nothing")
+
+    def test_nothing_at_module_scope_does_work_that_cannot_run_twice(self):
+        """The import string costs a SECOND import of this module, under the name `server` beside
+        the `__main__` copy. That is only safe while module scope is cheap and side-effect-free,
+        so the thing that makes it safe is pinned here rather than left as a comment.
+
+        `Engine()` takes locks and defers warming; `CSRF` is a fresh token per process and only
+        the served process's forms are ever checked.
+        """
+        import ast
+        import inspect
+        import server
+        tree = ast.parse(pathlib.Path(inspect.getfile(server)).read_text())
+        for node in tree.body:
+            if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+                continue
+            val = node.value
+            if isinstance(val, ast.Call) and isinstance(val.func, ast.Name):
+                self.assertIn(val.func.id, {"Engine", "Starlette", "_load", "dict", "list",
+                                            "set", "frozenset", "int", "str", "Path"},
+                              f"module scope calls {val.func.id}() -- it runs TWICE under the "
+                              "import string")
+
+    def test_loading_a_builder_twice_returns_the_same_module(self):
+        """`_load` IS on the whitelist above, and this is the reason it is allowed to be.
+
+        It ran twice under the import string and built two module objects per builder: 0.712s of
+        duplicated work, measured, and two live copies of one builder, which is `#126` by
+        another route. The second call is now a lookup, and this is what says so.
+        """
+        import server
+        first = server._load("probe_landing_idem", pathlib.Path(server.R7 / "build_landing.py"))
+        second = server._load("probe_landing_idem", pathlib.Path(server.R7 / "build_landing.py"))
+        self.assertIs(first, second, "_load built a second copy of the same builder")
+
+    def test_the_two_builders_the_server_uses_are_the_cached_ones(self):
+        """Not a synthetic name: the real registrations, so the whitelist covers what ships."""
+        import sys
+        import server
+        self.assertIs(sys.modules.get("r7_dashboard_server"), server.DASH)
+        self.assertIs(sys.modules.get("r7_landing_server"), server.LAND)
+
+    def test_a_builder_that_fails_to_execute_is_not_left_registered(self):
+        """A half-executed module in `sys.modules` would be SERVED as if complete -- the import
+        system's oldest trap, and the reason the registration is rolled back on failure."""
+        import sys
+        import tempfile
+        import server
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as fh:
+            fh.write("raise RuntimeError('builder is broken')\n")
+            broken = pathlib.Path(fh.name)
+        with self.assertRaises(RuntimeError):
+            server._load("probe_broken_builder", broken)
+        self.assertNotIn("probe_broken_builder", sys.modules,
+                         "a builder that raised is still registered and would be served")
+        broken.unlink()
 
 
 if __name__ == "__main__":

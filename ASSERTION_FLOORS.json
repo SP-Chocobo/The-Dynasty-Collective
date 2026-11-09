@@ -10748,18 +10748,19 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 51,
+      "test_methods": 66,
       "asserts": {
-        "assertEqual": 39,
+        "assertEqual": 47,
         "assertFalse": 3,
-        "assertIn": 27,
-        "assertIs": 5,
-        "assertIsInstance": 3,
+        "assertIn": 34,
+        "assertIs": 8,
+        "assertIsInstance": 4,
         "assertIsNone": 3,
         "assertIsNotNone": 4,
         "assertNotEqual": 2,
-        "assertNotIn": 7,
-        "assertTrue": 4
+        "assertNotIn": 10,
+        "assertRaises": 1,
+        "assertTrue": 6
       },
       "by_method": {
         "AContestedIdentityIsRefusedOnTheRosterPath.test_an_uncontested_player_keeps_his_price": {
@@ -10809,6 +10810,33 @@
         "AMissedJoinIsAWiringErrorNotAnAbsence.test_the_depth_key_prefers_the_display_name": {
           "assertEqual": 1
         },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_a_builder_that_fails_to_execute_is_not_left_registered": {
+          "assertNotIn": 1,
+          "assertRaises": 1
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_a_run_that_lasted_exits_zero": {
+          "assertEqual": 1,
+          "assertNotIn": 1
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_an_instant_return_is_reported_as_a_failure_to_start": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_loading_a_builder_twice_returns_the_same_module": {
+          "assertIs": 1
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_nothing_at_module_scope_does_work_that_cannot_run_twice": {
+          "assertIn": 1
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_the_message_names_the_invocation_that_works": {
+          "assertIn": 1
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_the_two_builders_the_server_uses_are_the_cached_ones": {
+          "assertIs": 2
+        },
+        "AServerThatNeverServedDoesNotExitSuccessfully.test_uvicorn_is_handed_the_import_string_not_the_app_object": {
+          "assertEqual": 1
+        },
         "ByeProfileRefusesAnUnpricedRoster.test_a_priced_roster_does_get_a_profile": {
           "assertEqual": 1,
           "assertIsNotNone": 3
@@ -10854,6 +10882,23 @@
         "TheLeagueFormatIsSetBeforeAnythingIsPriced.test_the_hint_is_derived_from_the_leagues_own_settings": {
           "assertEqual": 1
         },
+        "TheOwnersRosterIsResolvedNeverGuessed.test_an_owner_with_no_roster_in_this_league_is_also_a_READ_FAILURE": {
+          "assertEqual": 1
+        },
+        "TheOwnersRosterIsResolvedNeverGuessed.test_no_owner_means_a_READ_FAILURE_not_another_managers_roster": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "TheOwnersRosterIsResolvedNeverGuessed.test_resolution_goes_through_the_one_home": {
+          "assertIn": 1
+        },
+        "TheOwnersRosterIsResolvedNeverGuessed.test_rosters_zero_is_never_substituted": {
+          "assertNotIn": 1
+        },
+        "TheOwnersRosterIsResolvedNeverGuessed.test_the_right_owner_resolves": {
+          "assertEqual": 2
+        },
         "TheProducerKeepsTheAbsenceContract.test_a_measured_empty_hole_list_IS_a_list": {
           "assertIn": 1,
           "assertIsInstance": 1
@@ -10889,6 +10934,10 @@
         "TheServerHasExactlyOneWritePath.test_a_non_loopback_bind_announces_itself": {
           "assertIn": 2
         },
+        "TheServerHasExactlyOneWritePath.test_an_unreadable_identity_is_an_unknown_user_not_a_crash": {
+          "assertEqual": 1,
+          "assertIsInstance": 1
+        },
         "TheServerHasExactlyOneWritePath.test_health_answers_without_warming_the_engine": {
           "assertEqual": 1,
           "assertIn": 2,
@@ -10905,6 +10954,10 @@
         },
         "TheServerHasExactlyOneWritePath.test_the_one_write_is_sync_league_and_it_is_atomic": {
           "assertIn": 2
+        },
+        "TheServerHasExactlyOneWritePath.test_the_second_write_path_is_the_identity_and_it_is_named": {
+          "assertIn": 2,
+          "assertTrue": 1
         },
         "TheServerHasExactlyOneWritePath.test_the_server_binds_loopback_BY_DEFAULT": {
           "assertEqual": 1,

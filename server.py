@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import html
 import importlib.util
+import sys
 import os
 import secrets
 import json
@@ -82,10 +83,28 @@ def _load(name: str, path: pathlib.Path):
     any import that puts round5's directory on the path first, `import build_dashboard` resolves
     to the wrong one. That cost ten suite errors once already (`409b8a9`); the fix is to never
     let the name decide.
+
+    IDEMPOTENT, and that is `#364`'s other half. `main()` hands uvicorn the import string, so
+    this module is executed TWICE in one process -- once as `__main__`, once as `server` -- and
+    an unguarded loader therefore built two module objects per builder. Measured: 0.712s of
+    duplicated work, and, worse, two live copies of one builder (`#126`). Registering under the
+    requested name and returning an existing registration makes the second execution a lookup.
+
+    The name is still never allowed to RESOLVE the file -- `spec_from_file_location` takes the
+    path, as above. The name is only the cache key, and it is this module's own invention
+    (`r7_dashboard_server`), so it cannot collide with a real importable module.
     """
+    cached = sys.modules.get(name)
+    if cached is not None and getattr(cached, "__file__", None) == str(path):
+        return cached
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    sys.modules[name] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except BaseException:
+        sys.modules.pop(name, None)   # a half-executed module must not be served as complete
+        raise
     return mod
 
 
@@ -230,6 +249,7 @@ def _snapshot_pairs():
             continue          # a corrupt cache is a cache miss; /status reports it
         with ENGINE._price_lock:
             fx, _report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
+                                           owner_id=ls.load_identity().get("user_id"),
                                            merger=ENGINE.merger)
         pairs.append((league_id, fx))
     return pairs
@@ -245,9 +265,15 @@ async def landing(request):
     a fixture index belongs.
     """
     ENGINE.ensure_warm()
-    fx = json.loads(LAND.FIXTURE.read_text())
     pairs = _snapshot_pairs() if ENGINE.warm else []
-    page = LAND.build(fx, seat_pairs=pairs) if pairs else LAND.build_unsynced(fx)
+    if pairs:
+        # DERIVED CHROME, never the fixture's. The first version passed `landing_fixture.json`
+        # here alongside live rows, so the page reported another user's name, a hardcoded sync
+        # age and an API key the owner does not have (`#363`).
+        page = LAND.build(ls.live_chrome(pairs, ls.load_identity(), ENGINE.merger),
+                          seat_pairs=pairs, standin=None)
+    else:
+        page = LAND.build_unsynced(json.loads(LAND.FIXTURE.read_text()))
     page, found = pa.externalize(_with_csrf(page))
     ASSETS.update(found)
     return HTMLResponse(page)
@@ -335,9 +361,11 @@ async def league(request):
     with ENGINE._price_lock:
         ENGINE.busy = f"pricing {league_id}"
         try:
-            fx, report = ls.from_snapshot(snap, ENGINE.players_db, ENGINE.byes,
-                                          owner_id=request.query_params.get("owner"),
-                                          merger=ENGINE.merger)
+            fx, report = ls.from_snapshot(
+                snap, ENGINE.players_db, ENGINE.byes,
+                owner_id=(request.query_params.get("owner")
+                          or ls.load_identity().get("user_id")),
+                merger=ENGINE.merger)
             ENGINE.last_result = f"rendered {league_id}: {report.verdict}"
         except Exception as exc:
             ENGINE.last_result = f"render FAILED for {league_id}: {type(exc).__name__}: {exc}"
@@ -492,6 +520,11 @@ async def discover(request):
                        f'<p class="warn">Sleeper returned nothing for that username.</p>'
                        f'<p><a href="/">back</a></p>', 404)
 
+    # REMEMBER WHO ASKED. Without it, every league page renders as a read failure -- which is
+    # honest but useless, and the alternative the first version chose was to silently describe
+    # whichever roster Sleeper listed first.
+    ls.save_identity(user["user_id"], username)
+
     have = set(ls.available_snapshots())
     listed = {str(l.get("league_id")): l for l in leagues}
     new = {lid: l for lid, l in listed.items() if lid not in have}
@@ -602,13 +635,38 @@ app = Starlette(
 )
 
 
+#: A `uvicorn.run` that returns faster than this did not shut down -- it never started.
+#: `#364`: on the owner's Windows laptop (Python 3.14) `python server.py` printed its banner and
+#: exited 0 in well under a second, having served nothing, while `python -m uvicorn server:app`
+#: on the same machine worked. **THE CAUSE IS NOT PROVEN AND IS NOT CLAIMED HERE** -- it did not
+#: reproduce on this Linux container, so there is nothing measured to name. What IS known is the
+#: symptom and the working invocation, and the guard below is built on the symptom alone: a run
+#: this short is reported as a failure to start, with a non-zero exit, whatever the cause.
+MIN_SERVE_SECONDS = 1.5
+
+
 def main() -> int:
+    import time
+
     import uvicorn
     where = "loopback only" if HOST in ("127.0.0.1", "localhost") else (
         f"*** BOUND TO {HOST} -- reachable by anything that can route to this host ***")
     print(f"Gold Wyrm, read-only, on http://{HOST}:{PORT}  ({where})")
     print(f"  probe:  curl -s http://{HOST}:{PORT}/health     (does not warm the engine)")
-    uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
+    started = time.monotonic()
+    # The IMPORT STRING, not the `app` object: this is the spelling the owner's working
+    # invocation used, so it is the spelling shipped. It costs a second import of this module
+    # under the name `server` (the first is `__main__`), which is why nothing at module scope
+    # may do work -- `Engine()` only takes locks, and warming is lazy and per-process.
+    uvicorn.run("server:app", host=HOST, port=PORT, log_level="warning")
+    served = time.monotonic() - started
+    if served < MIN_SERVE_SECONDS:
+        print(f"\nFAILED TO START: uvicorn returned after {served:.2f}s having served nothing.")
+        print("  A server that shut down cleanly ran for as long as you left it open; this did")
+        print("  not run at all. Exiting non-zero so this is not mistaken for a clean stop.")
+        print(f"\n  Try:  python -m uvicorn server:app --host {HOST} --port {PORT}")
+        print("  and report what that prints -- it is the same app through uvicorn's own CLI.")
+        return 1
     return 0
 
 

@@ -221,8 +221,23 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
     users = (snap or {}).get("users") or []
     nfl = (snap or {}).get("nfl_state") or {}
 
-    mine = next((r for r in rosters if owner_id and r.get("owner_id") == owner_id),
-                rosters[0] if rosters else {})
+    # WHOSE ROSTER THIS PAGE IS ABOUT, resolved through the one home that already owns the
+    # question (`#126`). `sleeper_client.find_roster_for_user` returns None rather than guessing
+    # -- "never guesses ... the same fail-soft-not-fabricate posture as the rest of this client"
+    # -- and the first version of this function ignored it and fell back to `rosters[0]`.
+    #
+    # THAT FALLBACK SHIPPED. Every league row on the landing page described whoever Sleeper
+    # happened to list first: real team names, real priced rosters, real depth labels, all about
+    # OTHER MANAGERS. Not a crash -- a complete, confident page about somebody else, which is the
+    # exact failure this project's measurement discipline exists for. An unknown owner is a
+    # READ_FAILED (below), never a quietly substituted roster.
+    import sleeper_client as _sc
+    mine = _sc.find_roster_for_user(rosters, owner_id) if owner_id else None
+    owner_unresolved = "" if mine else (
+        f"no roster in this league belongs to {owner_id!r}" if owner_id else
+        "this server does not know which Sleeper user you are, so it cannot tell which roster "
+        "is yours -- it will NOT substitute another one")
+    mine = mine or {}
     user = next((u for u in users if u.get("user_id") == mine.get("owner_id")), {})
     settings = mine.get("settings") or {}
     wins, losses = settings.get("wins"), settings.get("losses")
@@ -265,6 +280,9 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
         _state_for("starters", mine.get("starters") or None, kind),
         _state_for("record", f"{wins}-{losses}" if wins is not None and losses is not None
                    else None, kind),
+        (Field("whose_roster", user.get("display_name") or mine.get("roster_id"), MEASURED)
+         if not owner_unresolved
+         else Field("whose_roster", None, READ_FAILED, owner_unresolved)),
         Field("structural_holes", holes, MEASURED),
         (Field("bye_profile", profile, MEASURED) if profile is not None
          else Field("bye_profile", None, NOT_COMPUTED, refusal)),
@@ -513,3 +531,97 @@ def priced_claims(snap: dict, players_db: dict, merger, owner_id: str | None = N
             f"an empty row reads downstream as 'no thin positions and every slot unfillable'. "
             f"Keys present: {sorted(depth)[:4]}")
     return thin_from_depth(depth, my_key), my_key, ""
+
+
+# ---------------------------------------------------------------------------------------------
+# WHO THE VIEWER IS (`#362`). One small record, because a page that cannot answer this renders
+# every claim as a READ_FAILED -- correct, and useless.
+
+IDENTITY = ROOT / "data" / "sleeper_identity.json"
+
+
+def load_identity() -> dict:
+    """`{"user_id", "username"}` or `{}`. Never raises: an unreadable file is an unknown user,
+    which the page already knows how to say."""
+    try:
+        return json.loads(IDENTITY.read_text()) or {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_identity(user_id: str, username: str) -> bool:
+    """Through `store_io`, like every other store here (`#361`). Returns whether it landed.
+
+    This is the SECOND of the server's two write paths, and it is named rather than incidental:
+    the first is `sleeper_client.sync_league`. Both replace atomically; neither writes outside
+    `data/`.
+    """
+    import store_io
+    return store_io.write(IDENTITY, {
+        "_comment": ("Which Sleeper user this install is. Written when an account lookup "
+                     "succeeds; read when deciding WHOSE roster each league page is about. "
+                     "Without it every claim renders as a read failure rather than silently "
+                     "describing another manager's team."),
+        "user_id": str(user_id), "username": str(username)})
+
+
+def live_chrome(pairs, identity, merger=None) -> dict:
+    """The landing page's STANDING STATE, derived rather than borrowed (`#363`).
+
+    THE DEFECT THIS EXISTS FOR, and it shipped to the owner's own domain. `build()` reads five
+    keys off its fixture -- `sleeper`, `sources`, `configured_credentials`, `archived_seats`,
+    `left_leagues` -- and the server handed it `landing_fixture.json` while supplying live rows.
+    So the league rows were real and EVERYTHING FRAMING THEM WAS THE FIXTURE'S, rendered as fact:
+
+      * "cincandella" and "synced 4 hours ago" -- the fixture's `sleeper` block. The owner typed
+        a different username and the page never read it. `synced_at_human` is a hardcoded string.
+      * "Claude  configured" -- the fixture's `configured_credentials`. The owner has no
+        Anthropic key. The page asserted a credential that does not exist.
+      * the Draft Sharks dates and "62d" -- the fixture's `sources`.
+      * "twelve seats of one replayed league standing in for twelve leagues" -- the `STANDIN`
+        note, over nine real leagues.
+
+    One defect, four symptoms, and the worst of them claimed a configured API key. A page half
+    derived from live data and half from a fixture is more dangerous than one that is entirely a
+    mockup, because nothing marks the seam.
+
+    EVERY VALUE HERE IS DERIVED OR ABSENT. `#187` applies: what cannot be known renders as an
+    absence carrying its reason, never as a fixture's plausible stand-in.
+    """
+    import providers
+    newest = max((fx.get("_provenance", {}).get("synced_at") or 0 for _lid, fx in pairs),
+                 default=None)
+    age = age_seconds(newest) if newest else None
+    sources = []
+    if merger is not None:
+        try:
+            import freshness
+            snap = {"synced_at": newest} if newest else {}
+            sources = [{"label": lbl, "as_of": as_of, "days": days}
+                       for lbl, as_of, days in freshness.build_freshness_manifest(snap, merger)]
+        except Exception:
+            sources = []          # reported as absent below, never as a fabricated date
+    return {
+        "sleeper": {
+            "username": identity.get("username") or "&mdash;",
+            "user_id": identity.get("user_id") or "&mdash;",
+            # A BUILT FILE HAS NO CLOCK, but a SERVER DOES -- this is the one place the round-7
+            # restraint (`#345d`) legitimately lifts, because the age is measured at request
+            # time from the snapshot's own `synced_at` rather than implied by a static page.
+            "synced_at_human": (f"{int(age // 3600)}h ago" if age and age >= 3600 else
+                                f"{int(age // 60)}m ago" if age else "&mdash;"),
+            "synced_at_basis": ("measured -- the newest snapshot's own synced_at, read at "
+                                "request time" if newest else
+                                "ABSENT -- no snapshot carries a sync time"),
+        },
+        "sources": sources,
+        # MEASURED FROM THE ENVIRONMENT, not from a fixture. A provider is configured only if
+        # its own `is_configured` callable says so -- the registry already owns that question
+        # (`#348`), and the fixture's list claimed a key the owner does not have.
+        "configured_credentials": [providers.get(pid).key_field for pid in providers.ids()
+                                   if providers.get(pid).is_configured()],
+        # Management is not built, so these are EMPTY rather than borrowed. An empty list here is
+        # a measured "none", which is true: nothing can archive a league yet.
+        "archived_seats": [],
+        "left_leagues": [],
+    }

@@ -21530,3 +21530,132 @@ unverified. The failure path is: a lookup returns `SleeperAPIError: Failed to re
 and the route reports it as a 502 with the reason. Every guard, every refusal and every shape is
 tested here; only the owner's machine can test the call itself -- and the same client already
 worked from Streamlit there.
+---
+
+## `#362` / `#363` — THE PAGE WAS ABOUT THE WRONG TEAM, AND ITS CHROME WAS THE FIXTURE'S
+
+Both found by the owner loading his own league at his own domain. Neither would have been caught
+by any test in this repo, because both produce a COMPLETE, CONFIDENT, CORRECT-LOOKING PAGE.
+
+### `#362` — every league row described another manager
+
+`_snapshot_pairs` called `from_snapshot` with no `owner_id`, and the fallback was `rosters[0]`:
+whoever Sleeper happened to list first. The landing page then showed real team names, real priced
+rosters and real depth labels -- **all about other people**. "CP3015 -- RB rates Weak, 13
+rostered, 9 priced" was a true statement about somebody else's roster. One manager appeared twice
+because two leagues both listed him first.
+
+**`sleeper_client.find_roster_for_user` already owned this question** and returns `None` rather
+than guessing -- *"never guesses ... the same fail-soft-not-fabricate posture as the rest of this
+client"*. I wrote a second resolution beside it that fabricates (`#126`), and the fabrication is
+what shipped.
+
+Routed to the one home. An unresolved owner is now a `READ_FAILED` carrying its reason, never a
+substituted roster -- my own vocabulary, violated by my own code. `#361`'s identity record
+(`data/sleeper_identity.json`, written through `store_io` at a successful lookup) is what lets the
+page answer the question at all; without it every claim would render as a read failure, which is
+honest and useless.
+
+### `#363` — only the ROWS were live; everything framing them was the fixture
+
+`build()` reads five keys off its fixture. The server supplied live rows and `landing_fixture.json`
+for the rest, so the page asserted, as fact:
+
+| the page said | it came from |
+|---|---|
+| "cincandella", "synced 4 hours ago" | the fixture's `sleeper` block -- `synced_at_human` is a hardcoded string |
+| **"Claude &check; configured"** | the fixture's `configured_credentials` -- **the owner has no Anthropic key** |
+| the Draft Sharks dates, "62d" | the fixture's `sources` |
+| "twelve seats of one replayed league standing in for twelve leagues" | the `STANDIN` constant, over nine real leagues |
+
+One defect, four symptoms, and the worst of them **claimed an API key that does not exist**.
+
+**A page half derived from live data and half from a fixture is more dangerous than one that is
+entirely a mockup, because nothing marks the seam.** The fixture had been built with the owner's
+real username at some point, so the wrong value looked right.
+
+`live_chrome` derives all of it: the username and user id from the stored identity, the sync age
+measured at request time from the newest snapshot's own `synced_at`, the configured providers from
+each provider's own `is_configured` callable (`#348` already owns that question), and the source
+freshness from `freshness.build_freshness_manifest`. `archived_seats` and `left_leagues` are EMPTY
+rather than borrowed -- management is not built, so "none" is the measured truth. `STANDIN` became
+a parameter, suppressed when the rows are real; the committed pages pass the default and rebuild
+byte-identically.
+
+**THE CLOCK, AND WHY LIFTING `#345d`'s RESTRAINT IS LEGITIMATE HERE.** A built file has no clock,
+so the round-7 pages refuse to render an age. A SERVER has one. The age is measured at request
+time from the snapshot's own `synced_at`, so it is a measurement rather than an implication -- and
+with no snapshot it is an absence carrying its reason, not a zero.
+
+### A CORRECTION TO MY OWN FIRST DIAGNOSIS
+
+I told the owner "the page never read what you typed". He corrected me, and he was right: the
+DISCOVER route read his username correctly -- that is how it found his eleven leagues and returned
+their real names. Only the LANDING page displayed a stale value. The input worked; a different
+surface showed the fixture's. Conflating the two overstated the defect.
+
+### WHAT CAUGHT THESE, AND WHAT COULD NOT
+
+Nine ratchets green. 4609 tests green. Every page-level guard green -- including
+`test_no_python_repr_reaches_the_page`, which exists precisely to catch a renderer saying
+something false. None of them fire on a page whose every value is well-formed, plausible, and
+about the wrong subject.
+
+The owner loaded it, recognised that those were not his teams, and noticed a configured key he has
+never owned. **That is the check no test in this repo performs: someone who knows what the answer
+should be, looking at it.**
+---
+
+## `#364` — A SERVER THAT NEVER SERVED EXITED 0, AND THE WORKAROUND LIVED IN CHAT
+
+The owner ran `python server.py` on his Windows laptop (Python 3.14). It printed its banner and
+exited **successfully**, in well under a second, having served nothing. `python -m uvicorn
+server:app --host 127.0.0.1 --port 8765` on the same machine worked. He had to be handed that
+second spelling in conversation, which is the real defect: **the knowledge was in chat and not in
+the program.**
+
+**THE CAUSE IS STILL NOT PROVEN, AND IS DELIBERATELY NOT NAMED IN THE CODE.** It did not
+reproduce on this Linux container, so there is no measurement to point at, and a comment naming a
+mechanism nobody verified would be the fourth wrong instrument of this stretch. I told the owner
+I would add the guard "once I know the actual cause, so the message can name it". That was the
+wrong condition and I am not waiting on it: **the guard does not need the cause.**
+
+What it needs is arithmetic. A server you leave open runs for longer than a second and a half.
+So a `uvicorn.run` that returns faster than that did not shut down -- it failed to start, whatever
+the reason -- and `main` now says exactly that and exits **1**, naming the invocation that works.
+An exit code is a claim about what happened, and `0` was the wrong claim.
+
+`main` also hands uvicorn the **import string** rather than the `app` object, because the import
+string is the spelling that was observed to work. Pinned on the ARGUMENT, not on source text.
+
+### THE SECOND DEFECT, FOUND BY THE TEST WRITTEN FOR THE FIRST
+
+The import string executes this module TWICE in one process -- once as `__main__`, once as
+`server`. A test asking "does anything at module scope do work that cannot run twice" answered:
+**`_load` does.**
+
+    two full loads of build_dashboard.py    0.712s
+
+Two module objects per builder, every start. The wasted second is the smaller half; **two live
+copies of one builder is `#126` arriving by a route I had not considered**, and it would have
+shipped silently, since both copies behave identically until one of them is edited.
+
+`_load` is now idempotent -- it registers under its requested name and returns an existing
+registration -- so the second execution is a lookup. Two properties kept deliberately:
+
+  * **the name still never RESOLVES the file.** `spec_from_file_location` takes the path, which is
+    the whole point of `_load` (`build_dashboard.py` exists in both round5 and round7, and
+    resolving by name cost ten suite errors at `409b8a9`). The name is only a cache key, and it is
+    this module's own invention, so it cannot collide with anything importable.
+  * **a builder that raises is UNREGISTERED before the exception leaves.** A half-executed module
+    left in `sys.modules` is served as though complete -- the import system's oldest trap.
+
+Mutation: guard removed **2 failures**, app object restored **1**, loader cache removed **1**,
+failure rollback removed **1**. 8 new tests.
+
+### WHAT THIS SAYS ABOUT THE LAST FOUR FINDINGS
+
+`#362`, `#363` and both halves of `#364` were all found by **running the thing on a real machine
+for a real person**, and none of them by the 4609-test suite. The suite is what stops regressions;
+it has never once been what found a defect in something newly built. Worth remembering before the
+next "the tests are green" is offered as evidence that anything works.
