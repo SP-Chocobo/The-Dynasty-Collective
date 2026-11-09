@@ -179,7 +179,7 @@ def render(buckets: dict[str, list[Path]]) -> str:
     lines = [
         "# Document index — derived, not curated",
         "",
-        f"`python3 doc_index.py` regenerates this. {total} markdown documents.",
+        f"`python3 doc_index.py --write` regenerates this. {total} markdown documents.",
         "",
         "Classified by what each file says about ITSELF in its first "
         f"{HEADER_LINES} lines. Nothing here is a judgement about whether a document is *good* — "
@@ -208,13 +208,20 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     buckets = index()
     text = render(buckets)
-    if "--check" in argv:
+    # BARE RUNS THE CHECK. It used to WRITE, which made this instrument self-defeating: running
+    # it bare regenerated the artifact `--check` compares against, so a bare run followed by a
+    # check passed unconditionally, whatever had drifted. Writing now needs `--write` (`#352`).
+    if not argv or "--check" in argv:
         existing = Path("DOC_INDEX.md")
         if not existing.exists() or existing.read_text(encoding="utf-8") != text:
-            print("DOC_INDEX.md is stale -- run `python3 doc_index.py`")
+            print("DOC_INDEX.md is stale -- run `python3 doc_index.py --write`")
             return 1
         print("DOC_INDEX.md current")
         return 0
+    if "--write" not in argv:
+        print(f"unrecognised arguments: {' '.join(argv)}\n"
+              f"usage: doc_index.py [--check | --write]   (no argument runs --check)")
+        return 2
     Path("DOC_INDEX.md").write_text(text, encoding="utf-8")
     for name, items in buckets.items():
         print(f"{name:12s} {len(items):3d}")

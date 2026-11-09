@@ -153,10 +153,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--check", action="store_true",
                         help="fail if a fourth vocabulary appeared or the shared set shrank")
+    parser.add_argument("--list", action="store_true",
+                        help="print the inventory instead of checking it")
     args = parser.parse_args(argv)
 
     d = divergence()
-    if not args.check:
+    if args.list:
         for surface, words in d["per_surface"].items():
             spec = VOCABULARIES[surface]
             print(f"  {surface:12} ({len(words)})  {', '.join(words)}")

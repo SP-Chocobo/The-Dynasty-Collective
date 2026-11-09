@@ -14647,6 +14647,62 @@
         "early_returns": 0
       }
     },
+    "test_register_index.py": {
+      "test_methods": 12,
+      "asserts": {
+        "assertEqual": 12,
+        "assertIn": 4,
+        "assertNotIn": 2,
+        "assertTrue": 1
+      },
+      "by_method": {
+        "EveryRatchetsBareInvocationRunsItsCheck.test_bare_invocation_produces_the_checks_own_output": {
+          "assertEqual": 2
+        },
+        "EveryRatchetsBareInvocationRunsItsCheck.test_every_ratchet_module_exposes_main": {
+          "assertTrue": 1
+        },
+        "EveryRatchetsBareInvocationRunsItsCheck.test_no_ratchet_prints_usage_instead_of_checking": {
+          "assertNotIn": 1
+        },
+        "EveryRatchetsBareInvocationRunsItsCheck.test_the_ratchet_list_is_complete": {
+          "assertEqual": 1
+        },
+        "RegisterIndexFiresOnANewUnmentionedCitation.test_a_citation_the_register_never_mentions_fails_the_check": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "RegisterIndexFiresOnANewUnmentionedCitation.test_a_missing_baseline_fails_rather_than_holding_nothing": {
+          "assertEqual": 1,
+          "assertIn": 1
+        },
+        "RegisterIndexFiresOnANewUnmentionedCitation.test_a_recorded_exception_does_not_fail_the_check": {
+          "assertEqual": 1
+        },
+        "RegisterIndexFiresOnANewUnmentionedCitation.test_shrinkage_is_free": {
+          "assertEqual": 1
+        },
+        "TheDigitBoundAndTheMentionTest.test_a_six_digit_hex_colour_is_not_an_item": {
+          "assertEqual": 2
+        },
+        "TheDigitBoundAndTheMentionTest.test_an_item_number_with_a_letter_suffix_resolves_to_its_number": {
+          "assertEqual": 1
+        },
+        "TheDigitBoundAndTheMentionTest.test_only_backticked_citations_count": {
+          "assertEqual": 2
+        },
+        "TheDigitBoundAndTheMentionTest.test_the_register_is_searched_for_MENTIONS_not_headings": {
+          "assertIn": 2,
+          "assertNotIn": 1
+        }
+      },
+      "disabled": {
+        "skip_decorators": 0,
+        "expected_failures": 0,
+        "skipTest_calls": 0,
+        "early_returns": 0
+      }
+    },
     "test_render_trace.py": {
       "test_methods": 16,
       "asserts": {

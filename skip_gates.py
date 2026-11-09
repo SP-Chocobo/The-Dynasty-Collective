@@ -153,7 +153,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"no module gained a skip gate ({sum(present.values())} registered across "
               f"{len(present)} modules)")
     if not (args.write or args.check or args.list):
-        parser.print_help()
+        # NO FLAG RUNS THE CHECK. This branch used to `parser.print_help()` and return 0, which
+        # at the call site is indistinguishable from a pass -- and that is exactly how "all 8
+        # ratchets PASS" came to be published about a ratchet that had examined nothing. A
+        # verification tool must have no zero-exit path that verifies nothing (`#352`).
+        return main(["--check"])
     return 0
 
 

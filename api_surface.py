@@ -351,9 +351,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--check", action="store_true",
                         help="fail if a reached module has no layer, or an operation is unbuildable")
+    parser.add_argument("--list", action="store_true",
+                        help="print the inventory instead of checking it")
     args = parser.parse_args(argv)
 
-    if not args.check:
+    if args.list:
         print("\n".join(report()))
         return 0
 

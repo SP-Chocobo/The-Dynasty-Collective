@@ -146,11 +146,13 @@ def widened(path: pathlib.Path = HULL) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--check", action="store_true", help="fail if the boundary widened")
+    parser.add_argument("--list", action="store_true",
+                        help="print the inventory instead of checking it")
     args = parser.parse_args(argv)
 
     found = reaches()
     total, allowed_total = sum(found.values()), sum(CENSUS.values())
-    if not args.check:
+    if args.list:
         for reach, count in sorted(found.items(), key=lambda kv: (-kv[1], kv[0])):
             ceiling = CENSUS.get(reach)
             mark = " NEW" if ceiling is None else ("" if count <= ceiling else " WIDENED")

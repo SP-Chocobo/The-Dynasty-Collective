@@ -1,6 +1,6 @@
 # Document index — derived, not curated
 
-`python3 doc_index.py` regenerates this. 286 markdown documents.
+`python3 doc_index.py --write` regenerates this. 286 markdown documents.
 
 Classified by what each file says about ITSELF in its first 12 lines. Nothing here is a judgement about whether a document is *good* — only about whether it tells a cold reader what it is before it starts making claims.
 

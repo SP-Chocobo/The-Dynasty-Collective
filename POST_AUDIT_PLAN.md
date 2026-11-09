@@ -21049,3 +21049,121 @@ data and no demo fixtures; cold start; warm request; consecutive requests; direc
 browser refresh; empty vs populated account; missing or stale source data; no mutation of league
 state; **and end-to-end request latency plus real transfer size measured — not composition time,
 which is the 0.5 ms figure and was never the request.**
+---
+
+## `#355` — THE NINTH RATCHET, AND FIVE OF THE EIGHT COULD NOT FAIL EITHER
+
+`#353` was a rule with no instrument. This is the instrument — and building it found that the
+rule's own enforcers had the same defect.
+
+### The ratchet
+
+`register_index.py` counts item numbers CITED in tracked `.py`/`.md` that `POST_AUDIT_PLAN.md`
+never mentions, baselines the population in `REGISTER_INDEX.json`, and fails on GROWTH.
+`skip_gates`' bargain, not `assertion_floors`': **shrinkage is free, and zero is not the target.**
+Driving it to zero would mean inventing entries for items that may not be items — `#3` and `#7`
+appear only in a round-2 revision document and are almost certainly revision numbers. Writing an
+entry to satisfy a counter is the exact defect `#351` records.
+
+**MEASURED, 5/5 mutation arms against the REAL tree** (a citation appended to a tracked file, the
+check run, the file restored — not a mock):
+
+| arm | expected | result |
+|---|---|---|
+| untouched tree | pass | exit 0 |
+| `` `#399` `` cited, never mentioned | **FAIL** | exit 1, names the file |
+| `#398` cited WITHOUT backticks | pass (documented blind spot) | exit 0 |
+| `` `#755024` `` — a hex colour | pass (not an item) | exit 0 |
+| a citation removed | pass (shrinkage is free) | exit 0 |
+
+Arms 3 and 4 are the ones worth having: they prove the documented limits are real rather than
+asserted.
+
+### The observer effect, which is why the baseline reads 0
+
+When `#353b` was written it listed the nine then-unmentioned items BY NUMBER while explaining that
+they were unmentioned. **Documenting the gap closed the gap as this instrument measures it.** That
+is a legitimate closure rather than an accident that hid something — a reader who looks up `#34`
+now reaches `#353b`, which states what `#34` is and why it has no entry, and traceability is what
+`#353` required. But the number must be read knowing how it got there, and the stated limit is
+blunt: **this cannot tell a RECORD from a MENTION-AS-GAP.** No text-matching instrument can. That
+is the boundary of what the check is evidence for, not a defect to be fixed inside it.
+
+### A FOURTH SIZING ATTEMPT, MEASURED AND REJECTED
+
+Requiring the register to cite back in BACKTICKS — symmetric with how citations are read — gives
+**17** rather than 0, and looked like the stricter, better rule. It is not. **The register uses
+both forms**: its headings carry `` `#348` `` and its prose carries a bare `#187`, `#166`, `#174`.
+So a backtick requirement measures the register's internal formatting inconsistency, not whether a
+record exists — which is attempt 2's error in a new costume, three paragraphs after naming it. The
+17 are items the register discusses without backticking them; worth tidying, not worth ratcheting.
+
+### AND THEN THE FINDING THAT WAS NOT THE POINT OF THIS PASS
+
+`#352` says a verification tool must have no zero-exit path that verifies nothing. Measuring the
+eight existing ratchets against their own rule:
+
+| ratchet | bare invocation | verdict |
+|---|---|---|
+| `assertion_floors`, `suite_reach`, `prose_names` | bare **is** the check | sound |
+| `skip_gates` | printed help, exit 0 | **hollow** |
+| `boundary_census`, `api_surface`, `state_vocabulary` | printed a listing, exit 0 | **hollow** |
+| `doc_index` | **WROTE `DOC_INDEX.md`**, exit 0 | **self-defeating** |
+
+**Five of eight, not one.** The published claim "all 8 ratchets PASS" was made after running them
+bare; it could have been false about any of the five, and was false about `skip_gates`.
+
+`doc_index` is the worst and was the least visible: bare invocation regenerated the very artifact
+`--check` compares against, so `doc_index.py && doc_index.py --check` passed **unconditionally**,
+whatever had drifted. An unrecognised flag did the same — `doc_index.py --oops` silently rewrote
+the index and exited 0. A self-defeating instrument is not a weak check; it is an anti-check, and
+it had been in the tree since the ratchet was written.
+
+**All five repaired: bare now runs the check.** Listings moved behind `--list`, `doc_index`'s write
+behind `--write` (its generated header and its own stale-message updated to name the flag), and an
+unrecognised argument exits 2 rather than writing.
+
+**The guard that keeps it repaired** is `EveryRatchetsBareInvocationRunsItsCheck`, which holds all
+nine to the rule. It compares bare OUTPUT against `--check` OUTPUT, not exit codes, and the
+distinction is the whole design: **in a green tree a hollow ratchet and a sound one both exit 0,**
+which is exactly why the defect survived long enough to be published. Help text and a census
+listing do not equal a verdict line. It shells out rather than calling `main` in-process because
+the nine do not share a signature — `prose_names.main()` takes no argv — and because the command
+line is the surface where the false pass actually happened.
+
+**Mutation-verified:** reverting `skip_gates` bare to `parser.print_help()` fires **2 failures**
+and names the culprit. Cost: 39.9s for the module, 2.9% of the suite, spent on the one test that
+would have caught the error I published.
+
+### THE FULL SUITE CAUGHT THE NEW RATCHET BREAKING AN OLD CONTRACT
+
+The first full run of this pass returned **1 failure in 4543 tests**, and it was correct:
+
+    FAIL: test_store_io.EveryStoreGoesThroughItTests.test_no_module_writes_a_json_store_outside_store_io
+    AssertionError: Lists differ: ['register_index.py:151'] != []
+
+`register_index.write` wrote `REGISTER_INDEX.json` with `write_text(json.dumps(...))`. Every JSON
+store in this repo goes through `store_io.write`, which replaces the file ATOMICALLY and **returns
+a bool because it can decline** -- it refuses to overwrite a store it reads as damaged (`#52`
+phase 7.5). `skip_gates` and `assertion_floors` both already route their baselines that way; the
+new one did not, because I wrote it from the shape of the problem rather than from the shape of
+its neighbours.
+
+Routed through `store_io.write`, and the returned bool is NOT ignored: a declined write now raises
+rather than returning a baseline that never reached disk. Ignoring it is the measured defect that
+bool exists for -- `upload_batches.record` once returned a batch id for a batch that was never
+written, while the interface reported success.
+
+Worth stating plainly because it is the whole argument for the full-suite rule: **every targeted
+check passed before this run.** Nine ratchets green with real flags, 12 new tests green, 5/5
+mutation arms green against the real tree. The defect was in a contract the new file had no reason
+to know about, held by a test module it never touches. That is `#144`'s failure mode exactly, and
+the only thing standing between it and a push was the step that takes 23 minutes.
+
+### What is NOT fixed
+
+The 17 backtick-inconsistent citations are left alone, deliberately — tidying them is a formatting
+pass and this instrument has no business ratcheting a convention. `test_skip_gates.py` and
+`test_boundary_census.py` still never call their own `main()`, which is why the hollow path
+survived in them; the new guard covers the bare-invocation property for all nine, but their mains
+remain otherwise untested by their own modules.

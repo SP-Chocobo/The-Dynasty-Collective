@@ -1,0 +1,5 @@
+{
+  "_comment": "Items cited in tracked .py/.md that POST_AUDIT_PLAN.md never mentions -- see register_index.py. GROWTH is the regression: a new unmentioned citation must either get a register entry or be argued for in the commit message. Shrinkage is free. This is NOT a to-do list -- driving it to zero would mean inventing entries for items that may not be items. Regenerate with `python3 register_index.py --write`.",
+  "total": 0,
+  "items": {}
+}
