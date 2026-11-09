@@ -270,10 +270,15 @@ async def landing(request):
         # DERIVED CHROME, never the fixture's. The first version passed `landing_fixture.json`
         # here alongside live rows, so the page reported another user's name, a hardcoded sync
         # age and an API key the owner does not have (`#363`).
+        # `link=LAND.seat_route` is `#365`: each league row opens THAT league's dashboard.
+        # Without it the rows carry the committed page's fragment hrefs, which resolve to
+        # nothing -- measured: 0 of 18 fragment links on that page hit an id that exists.
         page = LAND.build(ls.live_chrome(pairs, ls.load_identity(), ENGINE.merger),
+                          link=LAND.seat_route, unbuilt=UNBUILT_ROOMS,
                           seat_pairs=pairs, standin=None)
     else:
-        page = LAND.build_unsynced(json.loads(LAND.FIXTURE.read_text()))
+        page = LAND.build_unsynced(json.loads(LAND.FIXTURE.read_text()),
+                                   unbuilt=UNBUILT_ROOMS)
     page, found = pa.externalize(_with_csrf(page))
     ASSETS.update(found)
     return HTMLResponse(page)
@@ -307,6 +312,13 @@ async def index(request):
         "</tr></table>")))
 
 
+#: THE ROOMS THIS SERVER CANNOT SERVE. All five are per-league views that live in `app.py` and
+#: have no route here, so every page this server renders marks them as unbuilt rather than
+#: offering a tab that does nothing (`#365`). Derived from the builder's own tuple, never
+#: restated, so adding a room cannot leave this list behind (`#126`).
+UNBUILT_ROOMS = tuple(label for _icon, label in LAND.ROOMS)
+
+
 #: Extracted images, keyed by content hash. Written only by `_render`, and a hash key always maps
 #: to identical bytes, so two threads racing on the same key write the same value -- which is why
 #: this needs no lock. It is a cache, not state: an entry missing is a 404 on one image, and the
@@ -321,7 +333,10 @@ def _render(fx, report) -> HTMLResponse:
     A banner rather than a quiet field, because a failed read must not be mistakable for the
     absence contract behaving well -- which is the entire reason this module exists.
     """
-    page, found = pa.externalize(DASH.build(fx))
+    # `home="/"` gives the served dashboard a way back to the league list. The COMMITTED
+    # dashboards are standalone files with no server, so they are built without it and get no
+    # link rather than a dead one.
+    page, found = pa.externalize(DASH.build(fx, home="/", unbuilt=UNBUILT_ROOMS))
     ASSETS.update(found)
     if report.failures:
         names = ", ".join(f.name for f in report.failures)

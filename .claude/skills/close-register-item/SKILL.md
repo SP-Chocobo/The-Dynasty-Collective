@@ -136,7 +136,7 @@ the same suite took 1977s three measurements ago and nothing in the record expla
 modules cost 30.2s, 1.8s and ~0.2s standalone, nowhere near the ~660s of total growth. **The
 remainder is unattributed and is not claimed.** Do not extrapolate from the trend; re-measure.
 
-The `dbae709` entry is in turn the one that proves this paragraph's point. The figure before IT said **3347 tests in
+The `dbae709` entry is in turn the one that proves this paragraph's point. The figure before IT said **4624 tests in 1454.602s** at `7448f23` (2026-11-09). Before it: **3347 tests in
 878.3s** at `3bb81a7` (2026-09-20) and had gone six weeks without a re-measure: the suite grew by
 888 tests and 398s in that time, so a `timeout` sized from the old number would have killed a
 healthy run at 70% complete. Note the per-test cost barely moved (262ms -> 301ms) while the total

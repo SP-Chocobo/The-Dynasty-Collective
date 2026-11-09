@@ -10748,19 +10748,19 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 66,
+      "test_methods": 82,
       "asserts": {
-        "assertEqual": 47,
+        "assertEqual": 54,
         "assertFalse": 3,
-        "assertIn": 34,
+        "assertIn": 41,
         "assertIs": 8,
         "assertIsInstance": 4,
         "assertIsNone": 3,
         "assertIsNotNone": 4,
         "assertNotEqual": 2,
-        "assertNotIn": 10,
-        "assertRaises": 1,
-        "assertTrue": 6
+        "assertNotIn": 13,
+        "assertRaises": 2,
+        "assertTrue": 9
       },
       "by_method": {
         "AContestedIdentityIsRefusedOnTheRosterPath.test_an_uncontested_player_keeps_his_price": {
@@ -10799,6 +10799,16 @@
           "assertEqual": 1,
           "assertIn": 1
         },
+        "ALeagueIsNamedByItsLeague.test_a_fixture_with_no_league_name_still_falls_back_to_team": {
+          "assertIn": 1
+        },
+        "ALeagueIsNamedByItsLeague.test_the_rendered_row_shows_the_league_not_the_username": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "ALeagueIsNamedByItsLeague.test_the_row_carries_the_leagues_own_name": {
+          "assertEqual": 1
+        },
         "AMissedJoinIsAWiringErrorNotAnAbsence.test_a_snapshot_with_no_rosters_states_that_rather_than_returning_empty": {
           "assertEqual": 1,
           "assertIn": 1,
@@ -10808,6 +10818,27 @@
           "assertEqual": 1
         },
         "AMissedJoinIsAWiringErrorNotAnAbsence.test_the_depth_key_prefers_the_display_name": {
+          "assertEqual": 1
+        },
+        "APageOffersNoDoorItHasNotGot.test_a_room_that_is_built_stays_a_link": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "APageOffersNoDoorItHasNotGot.test_an_unbuilt_room_is_not_a_link": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "APageOffersNoDoorItHasNotGot.test_home_points_at_the_server_when_there_is_one": {
+          "assertIn": 1
+        },
+        "APageOffersNoDoorItHasNotGot.test_the_committed_page_keeps_a_fragment_because_it_has_no_server": {
+          "assertTrue": 1
+        },
+        "APageOffersNoDoorItHasNotGot.test_the_server_marks_every_room_it_cannot_serve": {
+          "assertEqual": 1,
+          "assertTrue": 1
+        },
+        "APageOffersNoDoorItHasNotGot.test_the_server_routes_a_row_to_that_leagues_dashboard": {
           "assertEqual": 1
         },
         "AServerThatNeverServedDoesNotExitSuccessfully.test_a_builder_that_fails_to_execute_is_not_left_registered": {
@@ -10871,6 +10902,27 @@
         "PricingKeepsTheCompanionFieldRule.test_the_name_comes_from_its_one_home": {
           "assertEqual": 2,
           "assertNotEqual": 1
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_a_league_that_is_not_dynasty_says_so": {
+          "assertTrue": 1
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_a_renamed_key_fails_loudly_instead_of_shortening_the_label": {
+          "assertRaises": 1
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_a_snapshot_carries_the_label": {
+          "assertEqual": 1
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_an_empty_league_yields_no_label_rather_than_a_guess": {
+          "assertEqual": 2
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_dynasty_is_implied_and_not_printed": {
+          "assertEqual": 1
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_superflex_is_named": {
+          "assertIn": 1
+        },
+        "TheFormatLabelSaysTheExceptionNotTheDefault.test_the_scoring_key_is_the_one_that_exists": {
+          "assertIn": 1
         },
         "TheLeagueFormatIsSetBeforeAnythingIsPriced.test_half_ppr_and_standard_are_distinguished": {
           "assertEqual": 1

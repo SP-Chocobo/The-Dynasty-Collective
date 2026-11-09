@@ -84,6 +84,11 @@ a{color:inherit}
 .room:hover{color:var(--gold-b);background:rgba(117,80,36,.12)}
 .room.on{color:var(--gold-b);border-color:var(--line-2);
   background:linear-gradient(180deg,rgba(117,80,36,.3),rgba(117,80,36,.08))}
+/* A ROOM THAT IS NOT BUILT. Dimmed and not hoverable, so the tab reads as "later" rather than
+   as "broken" -- `#365`. It is a <span>, not an <a>, so there is nothing to click and nothing
+   for a keyboard or a screen reader to land on and then fail at. */
+.room.off{color:var(--muted);opacity:.38;cursor:default}
+.room.off:hover{background:none;color:var(--muted)}
 .conn{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:1}
 /* A LOCAL SCRIM, because a global overlay cannot solve this one. The band's art is anchored
    `right center`, so the wider the viewport the further the lit subject slides underneath this

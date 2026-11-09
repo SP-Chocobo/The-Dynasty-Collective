@@ -25,6 +25,7 @@ import io
 import json
 import pathlib
 import tempfile
+import sys
 import unittest
 
 import front_claims as fc
@@ -798,7 +799,7 @@ class AServerThatNeverServedDoesNotExitSuccessfully(unittest.TestCase):
             val = node.value
             if isinstance(val, ast.Call) and isinstance(val.func, ast.Name):
                 self.assertIn(val.func.id, {"Engine", "Starlette", "_load", "dict", "list",
-                                            "set", "frozenset", "int", "str", "Path"},
+                                            "set", "frozenset", "tuple", "int", "str", "Path"},
                               f"module scope calls {val.func.id}() -- it runs TWICE under the "
                               "import string")
 
@@ -835,6 +836,153 @@ class AServerThatNeverServedDoesNotExitSuccessfully(unittest.TestCase):
         self.assertNotIn("probe_broken_builder", sys.modules,
                          "a builder that raised is still registered and would be served")
         broken.unlink()
+
+
+
+class ALeagueIsNamedByItsLeague(unittest.TestCase):
+    """`#366` -- the landing page listed nine leagues and titled every row "spchocobo".
+
+    `team` is the user's own Sleeper display name. It is the SAME STRING in every league they
+    are in, so a list keyed on it is a list of identical rows. The league's own name was in the
+    fixture the whole time, one key away, under `league_name`.
+
+    The mockup never showed this because its twelve seat fixtures carry twelve different `team`
+    values -- "Team 1".."Team 12" -- standing in for twelve leagues. One user across nine real
+    leagues is the case the fixtures could not represent.
+    """
+
+    def _rows(self, **over):
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location(
+            "r7_landing_test", ROOT / "ui_explore" / "round7" / "build_landing.py")
+        mod = ilu.module_from_spec(spec)
+        sys.modules.setdefault("r7_landing_test", mod)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_row_carries_the_leagues_own_name(self):
+        land = self._rows()
+        fx, _ = ls.from_fixture(ROOT / "ui_explore" / "front_fixture.json")
+        fx = dict(fx, league_name="The Chocobo Stable", team="spchocobo")
+        att, quiet, _arch = land.league_rows_from([("L1", fx)], set())
+        row = (att + quiet)[0]
+        self.assertEqual(row["league"], "The Chocobo Stable")
+
+    def test_the_rendered_row_shows_the_league_not_the_username(self):
+        land = self._rows()
+        fx, _ = ls.from_fixture(ROOT / "ui_explore" / "front_fixture.json")
+        fx = dict(fx, league_name="The Chocobo Stable", team="spchocobo")
+        att, quiet, _a = land.league_rows_from([("L1", fx)], set())
+        html_out = land.row_html((att + quiet)[0], 0)
+        self.assertIn("The Chocobo Stable", html_out)
+        self.assertNotIn("<p class=\"lname\">spchocobo", html_out)
+
+    def test_a_fixture_with_no_league_name_still_falls_back_to_team(self):
+        """Which is WHY the committed pages did not move: the seat fixtures have no
+        `league_name`, so they render exactly as before and stay byte-identical."""
+        land = self._rows()
+        fx, _ = ls.from_fixture(ROOT / "ui_explore" / "front_fixture.json")
+        fx = dict(fx, team="Team 1")
+        fx.pop("league_name", None)
+        att, quiet, _a = land.league_rows_from([("L1", fx)], set())
+        self.assertIn("Team 1", land.row_html((att + quiet)[0], 0))
+
+
+class TheFormatLabelSaysTheExceptionNotTheDefault(unittest.TestCase):
+    """`#366`. The row's second line was EMPTY on every served page, because no snapshot ever
+    carried `arm` or `format` and the builder read only those two keys."""
+
+    LG = {"name": "x", "total_rosters": 12, "settings": {"type": 2, "num_teams": 12},
+          "scoring_settings": {"rec": 1.0}, "roster_positions": ["QB", "RB", "WR"]}
+
+    def test_dynasty_is_implied_and_not_printed(self):
+        """In a dynasty app it is the default, and the owner's rule is that a page carries what
+        is worth knowing rather than every variable there is."""
+        self.assertEqual(ls.format_label(self.LG), "12 team \u00b7 Full PPR")
+
+    def test_a_league_that_is_not_dynasty_says_so(self):
+        """Informative by exception: the one redraft league among nine is the one worth naming."""
+        lg = dict(self.LG, settings={"type": 0, "num_teams": 12})
+        self.assertTrue(ls.format_label(lg).startswith("Redraft"), ls.format_label(lg))
+
+    def test_superflex_is_named(self):
+        lg = dict(self.LG, roster_positions=["QB", "QB", "RB"])
+        self.assertIn("superflex", ls.format_label(lg))
+
+    def test_the_scoring_key_is_the_one_that_exists(self):
+        """THE BUG THIS PINS. The first version read `ppr_label`, which is not a key
+        `league_format_summary` returns -- `.get` gave None, the branch was skipped, and every
+        label came back silently short. A missing key is not a missing value (`#187`)."""
+        self.assertIn("Full PPR", ls.format_label(self.LG))
+
+    def test_a_renamed_key_fails_loudly_instead_of_shortening_the_label(self):
+        import sleeper_client as sc
+        real = sc.league_format_summary
+        sc.league_format_summary = lambda lg: {"type": "Dynasty"}
+        try:
+            with self.assertRaises(KeyError):
+                ls.format_label(self.LG)
+        finally:
+            sc.league_format_summary = real
+
+    def test_an_empty_league_yields_no_label_rather_than_a_guess(self):
+        self.assertEqual(ls.format_label({}), "")
+        self.assertEqual(ls.format_label(None), "")
+
+    def test_a_snapshot_carries_the_label(self):
+        """The whole point: `from_snapshot` now fills the key the row reads."""
+        snap = {"league": self.LG, "rosters": [], "users": [], "nfl_state": {"week": 15}}
+        fx, _rep = ls.from_snapshot(snap, players_db=None, byes={}, merger=None, owner_id=None)
+        self.assertEqual(fx["arm"], "12 team \u00b7 Full PPR")
+
+
+class APageOffersNoDoorItHasNotGot(unittest.TestCase):
+    """`#365`. Measured on the committed landing page before this: 18 fragment links, 0 of which
+    resolved to an id that exists on the page. Every one dead."""
+
+    def _land(self):
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location(
+            "r7_landing_nav", ROOT / "ui_explore" / "round7" / "build_landing.py")
+        mod = ilu.module_from_spec(spec)
+        sys.modules.setdefault("r7_landing_nav", mod)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_server_routes_a_row_to_that_leagues_dashboard(self):
+        land = self._land()
+        self.assertEqual(land.seat_route("1180000000000000002"),
+                         "/league/1180000000000000002")
+
+    def test_the_committed_page_keeps_a_fragment_because_it_has_no_server(self):
+        land = self._land()
+        self.assertTrue(land.seat_fragment("seat01").startswith("#"))
+
+    def test_an_unbuilt_room_is_not_a_link(self):
+        """A dimmed label is honest; an anchor that goes nowhere is not. It is a <span>, so
+        there is nothing for a keyboard or a screen reader to land on and then fail at."""
+        land = self._land()
+        bar = land.topbar(unbuilt=("Draft Room",))
+        self.assertIn('<span class="room off"', bar)
+        self.assertNotIn('href="#draft-room"', bar)
+
+    def test_a_room_that_is_built_stays_a_link(self):
+        land = self._land()
+        bar = land.topbar(unbuilt=())
+        self.assertIn('href="#draft-room"', bar)
+        self.assertNotIn('room off', bar)
+
+    def test_home_points_at_the_server_when_there_is_one(self):
+        land = self._land()
+        self.assertIn('href="/"', land.topbar(home_href="/"))
+
+    def test_the_server_marks_every_room_it_cannot_serve(self):
+        """Derived from the builder's own tuple, so adding a room cannot leave this behind."""
+        import server
+        land = self._land()
+        self.assertEqual(set(server.UNBUILT_ROOMS), {lbl for _i, lbl in land.ROOMS})
+        self.assertTrue(server.UNBUILT_ROOMS, "no rooms named -- the nav would lie again")
+
 
 
 if __name__ == "__main__":

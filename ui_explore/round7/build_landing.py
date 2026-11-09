@@ -252,6 +252,12 @@ def league_rows_from(pairs, archived_ids):
         top = shown[0] if shown else None
         rows.append({
             "seat": stem,
+            # `#366`: the LEAGUE's name, which is what a list of leagues is a list OF. `team` is
+            # the user's own Sleeper display name, identical in every league they are in, so a
+            # page titled by it showed nine rows all reading "spchocobo". The committed seat
+            # fixtures carry no `league_name`, so they fall through to `team` and those pages
+            # rebuild byte-identically.
+            "league": str(fx.get("league_name") or "").strip() or None,
             "team": str(fx.get("team") or "").strip() or None,
             "arm": fx.get("arm") or fx.get("format"),
             "shown": shown,
@@ -313,23 +319,40 @@ def claim_line(row):
     return "".join(bits)
 
 
-def row_html(row, idx):
+def seat_fragment(seat):
+    """Where a league row points when nothing better is supplied.
+
+    A FRAGMENT, because the committed page is a standalone file with no server to route to.
+    `server.py` passes `seat_route` instead. Measured before this existed: all 18 links on the
+    committed landing page were fragments and NONE of them resolved to an id on the page, so
+    every one was dead -- fine in a mockup, useless in a product (`#365`).
+    """
+    return f"#{esc(seat)}"
+
+
+def seat_route(seat):
+    """The server's answer: the dashboard for this league, which `/league/{id}` already serves."""
+    return f"/league/{esc(seat)}"
+
+
+def row_html(row, idx, link=seat_fragment):
     """One league line: identity, what is open, and the verbs that act on it."""
     kind = RUNG_CLASS.get(row["top"]["kind"], "") if row["top"] else "quiet"
-    name = row["team"] or "this league"
+    name = row.get("league") or row["team"] or "this league"
     pop = f'pop-{row["seat"]}'
-    team_absent = "" if row["team"] else absent("no league name in this capture")
+    href = link(row["seat"])
+    team_absent = "" if name != "this league" else absent("no league name in this capture")
     return f"""
 <div class="lrow {kind}">
   <span class="rail"></span>
-  <a class="lid" href="#{esc(row['seat'])}">
-    <p class="lname">{esc(name) if row['team'] else team_absent}</p>
+  <a class="lid" href="{href}">
+    <p class="lname">{esc(name) if not team_absent else team_absent}</p>
     <p class="lmeta">{esc(row['arm'] or '')}</p>
   </a>
   <div class="lclaim">{claim_line(row)}</div>
   <div class="lacts">
     <button class="act" popovertarget="{pop}" aria-label="Manage {esc(name)}">&middot;&middot;&middot;</button>
-    <a class="go" href="#{esc(row['seat'])}" aria-label="Open {esc(name)}">&rsaquo;</a>
+    <a class="go" href="{href}" aria-label="Open {esc(name)}">&rsaquo;</a>
   </div>
   <div popover id="{pop}" class="pop">
     <p class="popttl">{esc(name)}</p>
@@ -345,14 +368,14 @@ def row_html(row, idx):
 </div>"""
 
 
-def section(title, note, rows, empty=None):
+def section(title, note, rows, empty=None, link=seat_fragment):
     if not rows:
         return f"""
 <section class="band">
   <p class="eyebrow">{esc(title)}</p>
   <p class="bnote">{empty or ''}</p>
 </section>"""
-    body = "".join(row_html(r, i) for i, r in enumerate(rows))
+    body = "".join(row_html(r, i, link) for i, r in enumerate(rows))
     return f"""
 <section class="band">
   <p class="eyebrow">{esc(title)}</p>
@@ -624,6 +647,11 @@ a{color:inherit}
 .room:hover{color:var(--gold-b);background:rgba(117,80,36,.12)}
 .room.on{color:var(--gold-b);border-color:var(--line-2);
   background:linear-gradient(180deg,rgba(117,80,36,.3),rgba(117,80,36,.08))}
+/* A ROOM THAT IS NOT BUILT. Dimmed and not hoverable, so the tab reads as "later" rather than
+   as "broken" -- `#365`. It is a <span>, not an <a>, so there is nothing to click and nothing
+   for a keyboard or a screen reader to land on and then fail at. */
+.room.off{color:var(--muted);opacity:.38;cursor:default}
+.room.off:hover{background:none;color:var(--muted)}
 .conn{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:1}
 /* A LOCAL SCRIM, because a global overlay cannot solve this one. The band's art is anchored
    `right center`, so the wider the viewport the further the lit subject slides underneath this
@@ -859,17 +887,27 @@ ROOMS = (("layers", "Matchup"), ("swap", "Roster"), ("chart", "Draft Room"),
          ("crown", "League"), ("search", "Import Audit"))
 
 
-def topbar(sl=None, uri=None, home=True, active=None):
+def topbar(sl=None, uri=None, home=True, active=None, home_href=None, unbuilt=()):
     """The shared top bar. `active` names the ROOM that is current, for the in-league pages.
 
     Default `None` keeps Home lit, which is what the landing pages want and what this rendered
     before the parameter existed -- so both landing pages still rebuild byte-identically, which
     is how this edit was checked rather than assumed.
+
+    `home_href` and `unbuilt` are `#365`. A MOCKUP may carry a tab that goes nowhere; a served
+    page may not. Measured on the committed landing page: 18 fragment links, 0 of which resolved
+    to an id that exists -- every one dead, including all five room tabs and Home. `server.py`
+    passes a real `home_href` and names the rooms it cannot serve, and an unbuilt room renders
+    as TEXT rather than as a link, so the page stops offering a door it has not got. Both
+    default to the old behaviour, so the committed pages do not move.
     """
     rooms = "".join(
-        f'<a class="room{" on" if label == active else ""}" title="{esc(label)}" '
-        f'aria-label="{esc(label)}" '
-        f'href="#{esc(label.lower().replace(" ", "-"))}">{icon(name, 19)}{esc(label)}</a>'
+        (f'<span class="room off" title="{esc(label)} is not built yet" '
+         f'aria-disabled="true">{icon(name, 19)}{esc(label)}</span>'
+         if label in unbuilt else
+         f'<a class="room{" on" if label == active else ""}" title="{esc(label)}" '
+         f'aria-label="{esc(label)}" '
+         f'href="#{esc(label.lower().replace(" ", "-"))}">{icon(name, 19)}{esc(label)}</a>')
         for name, label in ROOMS)
     conn = ""
     if sl:
@@ -881,7 +919,7 @@ def topbar(sl=None, uri=None, home=True, active=None):
     {hero_band(uri)}
     <div class="crestmark">{emblem()}<p class="word">Gold Wyrm<b>Dynasty</b></p></div>
     <nav class="rooms">
-      <a class="room{' on' if home and not active else ''}" title="Home" aria-label="Home" href="#home">{icon("disk", 19)}Home</a>
+      <a class="room{' on' if home and not active else ''}" title="Home" aria-label="Home" href="{home_href or '#home'}">{icon("disk", 19)}Home</a>
       {rooms}
     </nav>
     {conn}
@@ -907,12 +945,18 @@ def panel(ic, title, body):
             f'<div class="pbody">{body}</div></section>')
 
 
-def build(fx, seat_paths=None, *, seat_pairs=None, standin=STANDIN) -> str:
+def build(fx, seat_paths=None, *, seat_pairs=None, standin=STANDIN,
+          link=seat_fragment, unbuilt=()) -> str:
     """`seat_pairs` is the in-memory form, for a server rendering live snapshots.
 
     Exactly one of the two is supplied. The committed page passes paths and rebuilds
     byte-identically; `server.py` passes `(league_id, fixture)` pairs built by
     `live_source.from_snapshot`, which never touch disk.
+
+    `link` decides where a league row points. It defaults to a fragment so the committed page
+    stays a standalone file; `server.py` passes `seat_route` so each row opens that league's own
+    dashboard (`#365`). A parameter rather than a mode flag, because a builder reading global
+    state from a threaded server is the thing `#358` already refused to do.
     """
     arch = set(fx.get("archived_seats") or [])
     if (seat_paths is None) == (seat_pairs is None):
@@ -993,7 +1037,7 @@ def build(fx, seat_paths=None, *, seat_pairs=None, standin=STANDIN) -> str:
                   "a league missing from the page would read as an error, not as calm.")
 
     return f"""{head('Your Leagues')}
-{topbar(sl, uri)}
+{topbar(sl, uri, unbuilt=unbuilt)}
 
   <div class="shell">
     <div class="rail-left">
@@ -1015,13 +1059,13 @@ def build(fx, seat_paths=None, *, seat_pairs=None, standin=STANDIN) -> str:
          <span>{standin}.</span></p>''' if standin else ''}
 
       {sechead('crown', 'Needs you')}
-      <div class="leagues">{''.join(row_html(r, i) for i, r in enumerate(attention))}</div>
+      <div class="leagues">{''.join(row_html(r, i, link) for i, r in enumerate(attention))}</div>
 
       {sechead('check', 'Nothing open', quiet_note)}
-      <div class="leagues">{''.join(row_html(r, i) for i, r in enumerate(quiet))}</div>
+      <div class="leagues">{''.join(row_html(r, i, link) for i, r in enumerate(quiet))}</div>
 
       {sechead('archive', 'Archived', 'Hidden from the list above. Still synced.') if archived else ''}
-      {'<div class="leagues">' + ''.join(row_html(r, i) for i, r in enumerate(archived)) + '</div>' if archived else ''}
+      {'<div class="leagues">' + ''.join(row_html(r, i, link) for i, r in enumerate(archived)) + '</div>' if archived else ''}
 
       {sechead('gear', 'Set up')}
       <div class="commands">
@@ -1051,7 +1095,7 @@ def build(fx, seat_paths=None, *, seat_pairs=None, standin=STANDIN) -> str:
 </body></html>"""
 
 
-def build_unsynced(fx) -> str:
+def build_unsynced(fx, *, unbuilt=()) -> str:
     """THE FIRST SCREEN, and the one a new user actually meets.
 
     `front_page.compose_unsynced` already composes this state with an `action` and an
@@ -1091,7 +1135,7 @@ def build_unsynced(fx) -> str:
      with the sync.</p>"""
 
     return f"""{head('Connect Sleeper')}
-{topbar(None, uri)}
+{topbar(None, uri, unbuilt=unbuilt)}
 
   <div class="shell">
     <div class="rail-left">

@@ -125,19 +125,37 @@ def room_crest():
             f'alt="" aria-hidden="true">')
 
 
-def seat_line(fx: dict) -> str:
-    """WHO THIS IS ABOUT, with every absence labelled rather than blank (`#187`)."""
+def seat_line(fx: dict, omit_league: bool = False) -> str:
+    """WHO THIS IS ABOUT, with every absence labelled rather than blank (`#187`).
+
+    `omit_league` drops the league's name from the line. The served page puts that name in the
+    `<h1>` directly above, and repeating it there AND again under Provenance printed it three
+    times on one screen -- "I dont need all the variables, i dont need every everything". The
+    Provenance row still carries the full line, because that panel's job IS the full record.
+    """
     from build_landing import absent
     bits = []
     team = str(fx.get("team") or "").strip()
     bits.append(f'<b>{esc(team)}</b>' if team else absent("no team name in this capture"))
-    # `league` IS A CONFIG DICT, not a name -- {'roster_positions': [...], 'starting_slots': 10}.
-    # An earlier draft did `str(fx.get("league") or "")` and printed that whole dict into the
-    # page header. Guard on the TYPE, not on truthiness: a non-empty dict is truthy, so the
-    # falsy-check that reads as a safe default was the thing that let it through.
+    # `league_name` FIRST, and that ordering is `#366`. `from_snapshot` has always written the
+    # league's name under `league_name`; this line read `league`, so every served dashboard
+    # rendered the absence below while the name sat in the fixture one key away. Two names for
+    # one fact (`#126`), and the page showed the emptier of them.
+    #
+    # `league` IS A CONFIG DICT in the committed fixtures, not a name --
+    # {'roster_positions': [...], 'starting_slots': 10}. An earlier draft did
+    # `str(fx.get("league") or "")` and printed that whole dict into the page header. Guard on
+    # the TYPE, not on truthiness: a non-empty dict is truthy, so the falsy-check that reads as
+    # a safe default was the thing that let it through.
+    named = str(fx.get("league_name") or "").strip()
     league = fx.get("league")
-    bits.append(esc(league.strip()) if isinstance(league, str) and league.strip()
-                else absent("this capture carries a league CONFIG but no league name"))
+    if named and omit_league:
+        pass
+    elif named:
+        bits.append(esc(named))
+    elif not omit_league:
+        bits.append(esc(league.strip()) if isinstance(league, str) and league.strip()
+                    else absent("this capture carries a league CONFIG but no league name"))
     arm = fx.get("arm") or fx.get("format")
     if arm:
         bits.append(f'<code>{esc(arm)}</code>')
@@ -255,6 +273,8 @@ def dash_css() -> str:
   max-width:34rem;background:linear-gradient(180deg,var(--surface),var(--surface-2));
   color:var(--ink);box-shadow:0 18px 60px rgba(0,0,0,.66)}
 .dash [popover]::backdrop{background:rgba(0,0,0,.64)}
+.backlink{color:var(--gold-b);text-decoration:none;border-bottom:1px solid var(--line-2)}
+.backlink:hover{color:var(--gold)}
 .dash [popover] h4{font:400 1.05rem/1.25 var(--sans);margin:0 0 12px;color:var(--gold-b)}
 .dash .popclose{margin-top:16px}
 
@@ -274,7 +294,24 @@ def dash_css() -> str:
 """
 
 
-def build(fx: dict) -> str:
+def room_title(fx: dict) -> str:
+    """What this page is ABOUT, which is a league and not a room (`#366`).
+
+    `ROOM` is the mockup's name for this layout -- the Matchup room -- and it shipped as the
+    served `<h1>`, so opening any of nine leagues gave a page headed "Matchup" with no way to
+    tell which league you were looking at. A fixture that names its league is titled by it; the
+    committed fixtures carry no `league_name`, so those pages keep `ROOM` and rebuild
+    byte-identically.
+    """
+    return str(fx.get("league_name") or "").strip() or ROOM
+
+
+def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
+    title = room_title(fx)
+    # The nav rail marks a ROOM as current. When this page is one league rather than the mockup's
+    # Matchup room, no room is current, and highlighting one would be a claim about where you are
+    # that is not true.
+    active = ROOM if title == ROOM else None
     band = fc.compose(fx)
     shown, hidden = band["shown"], band["hidden"]
     summary = fc.checks_summary(band["checks"])
@@ -339,6 +376,11 @@ def build(fx: dict) -> str:
                     f'<div><b>{esc(check["name"])}</b><span>{esc(said)}</span>'
                     f'{basis_note(basis, key)}</div></div>')
 
+    # A LINK ONLY WHEN THERE IS SOMEWHERE TO GO. The committed pages are standalone files with
+    # no server behind them, so they get no back link rather than a dead one -- the defect this
+    # whole pass exists to stop repeating (`#365`).
+    back = (f'<a class="backlink" href="{esc(home)}">&lsaquo; All leagues</a> &middot; '
+            if home else "")
     prov = (fx.get("_provenance") or {})
     captured = capture_date(prov.get("players_db"))
     prov_rows = (f'<dl class="kv"><dt>Seat</dt><dd>{seat_line(fx)}</dd>'
@@ -350,19 +392,19 @@ def build(fx: dict) -> str:
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{esc(ROOM)}</title>
+<title>{esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>{ds.root_css_block()}{font_vars()}{ds.position_pill_css_block()}{shell_css()}{dash_css()}</style>
 </head><body>
 <div class="wrap dash">
-{topbar(None, league_band(), home=False, active=ROOM)}
+{topbar(None, league_band(), home=False, active=active, home_href=home, unbuilt=unbuilt)}
 
   <div class="roomhead">
     {room_crest()}
     <div>
-      <h1>{esc(ROOM)}</h1>
-      <p>{seat_line(fx)}</p>
+      <h1>{esc(title)}</h1>
+      <p>{seat_line(fx, omit_league=title != ROOM)}</p>
     </div>
   </div>
 
@@ -388,7 +430,7 @@ def build(fx: dict) -> str:
   </div>
   {"".join(pops)}
 
-  <p class="foot">
+  <p class="foot">{back}
     One league, in depth. Which league wants you is the landing page&rsquo;s question, not this
     one&rsquo;s.<br>
     Every figure here is the engine&rsquo;s own; this page arranges them and computes nothing.

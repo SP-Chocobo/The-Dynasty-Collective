@@ -208,6 +208,50 @@ def bye_profile_from(rows: list[dict], roster_positions: list[str]) -> tuple[dic
     }, ""
 
 
+def format_label(league: dict) -> str:
+    """The short label a league wears in a list: "Dynasty . 12 team . Full PPR", superflex and
+    TE premium appended only when true.
+
+    `#366`. Composed HERE and not in a builder, because `#338` says the render layer computes
+    nothing -- a page may place this string but may not derive it. The parts come from
+    `sleeper_client.league_format_summary`, which is already the one home for reading a league's
+    own settings (`#126`); this adds no second opinion about what a league IS, only how to say it
+    in four words.
+
+    Returns "" rather than a guess when the league carries nothing to say, so the absence
+    contract (`#187`) is the caller's to apply.
+    """
+    if not isinstance(league, dict) or not league:
+        return ""
+    import sleeper_client as _sc
+    sm = _sc.league_format_summary(league)
+    bits = []
+    # DYNASTY IS NOT SAID, because in this app it is the default and saying it on every row is
+    # noise the owner explicitly does not want ("I dont need all the variables"). Keeper and
+    # Redraft ARE said, because those are the exception and the exception is the information.
+    if sm.get("type") and sm["type"] != "Dynasty":
+        bits.append(str(sm["type"]))
+    if sm.get("superflex"):
+        bits.append("superflex")
+    if sm.get("teams"):
+        bits.append(f"{sm['teams']} team")
+    # KEYED ON "scoring", and the first version of this read "ppr_label" -- a name that does not
+    # exist in that dict. It raised nothing: `.get` returned None, the branch was skipped, and
+    # every label silently came back one part shorter. A missing key is not a missing value
+    # (`#187`), so the floor below turns that class of mistake into a failure instead of a
+    # quieter sentence.
+    if sm.get("scoring"):
+        bits.append(str(sm["scoring"]) + (" TE+" if sm.get("te_premium") else ""))
+    if len(bits) < 2:
+        # Every real league has a size and a scoring rule, whatever else it is or is not. Fewer
+        # than two parts means a key this function reads was renamed out from under it, which is
+        # the defect that already happened once -- so it is loud rather than short.
+        raise KeyError(
+            f"league_format_summary gave only {len(bits)} of the 2 parts this label needs "
+            f"({bits}); a key it reads has been renamed")
+    return " \u00b7 ".join(bits)
+
+
 def from_snapshot(snap: dict, players_db: dict, byes: dict,
                   owner_id: str | None = None, merger=None) -> tuple[dict, Report]:
     """A snapshot `sleeper_client.sync_league` wrote -> the fixture shape, plus its report.
@@ -296,6 +340,9 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
         "league": {"roster_positions": positions,
                    "starting_slots": len(lo.slots_from_roster_positions(list(positions)))},
         "league_name": league.get("name"),
+        # `#366`: the row's second line. Absent from every snapshot until now, so
+        # `row["arm"] or row["format"]` was None and the line rendered EMPTY.
+        "arm": format_label(league),
         "team": user.get("display_name"),
         "record": report.by_name("record").value,
         "current_week": nfl.get("week"),

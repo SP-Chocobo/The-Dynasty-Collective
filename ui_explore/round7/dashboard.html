@@ -84,6 +84,11 @@ a{color:inherit}
 .room:hover{color:var(--gold-b);background:rgba(117,80,36,.12)}
 .room.on{color:var(--gold-b);border-color:var(--line-2);
   background:linear-gradient(180deg,rgba(117,80,36,.3),rgba(117,80,36,.08))}
+/* A ROOM THAT IS NOT BUILT. Dimmed and not hoverable, so the tab reads as "later" rather than
+   as "broken" -- `#365`. It is a <span>, not an <a>, so there is nothing to click and nothing
+   for a keyboard or a screen reader to land on and then fail at. */
+.room.off{color:var(--muted);opacity:.38;cursor:default}
+.room.off:hover{background:none;color:var(--muted)}
 .conn{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:1}
 /* A LOCAL SCRIM, because a global overlay cannot solve this one. The band's art is anchored
    `right center`, so the wider the viewport the further the lit subject slides underneath this
@@ -373,6 +378,8 @@ a{color:inherit}
   max-width:34rem;background:linear-gradient(180deg,var(--surface),var(--surface-2));
   color:var(--ink);box-shadow:0 18px 60px rgba(0,0,0,.66)}
 .dash [popover]::backdrop{background:rgba(0,0,0,.64)}
+.backlink{color:var(--gold-b);text-decoration:none;border-bottom:1px solid var(--line-2)}
+.backlink:hover{color:var(--gold)}
 .dash [popover] h4{font:400 1.05rem/1.25 var(--sans);margin:0 0 12px;color:var(--gold-b)}
 .dash .popclose{margin-top:16px}
 

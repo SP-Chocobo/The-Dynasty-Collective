@@ -21659,3 +21659,84 @@ failure rollback removed **1**. 8 new tests.
 for a real person**, and none of them by the 4609-test suite. The suite is what stops regressions;
 it has never once been what found a defect in something newly built. Worth remembering before the
 next "the tests are green" is offered as evidence that anything works.
+---
+
+## `#365` / `#366` — THE PAGE COULD NOT NAME A LEAGUE, AND EVERY DOOR ON IT WAS PAINTED ON
+
+Found by starting the server over synthetic snapshots and PHOTOGRAPHING what it served. Both
+defects survived 4624 tests and ten ratchets, because both produce a complete, well-formed page.
+
+### `#366` — nine leagues, one name
+
+The landing page titled every league row with `team`. **`team` is the user's own Sleeper display
+name**, which is the same string in every league they are in, so the page rendered:
+
+    spchocobo    TE rates Weak . 1 rostered, 0 priced
+    spchocobo    Nothing open. 2 checks -- holes, depth clean
+    spchocobo    Nothing open. 2 checks -- holes, depth clean
+    spchocobo    Nothing open. 2 checks -- holes, depth clean
+
+The league's own name was in the fixture the whole time, one key away, under `league_name`. The
+page whose single job is *which league wants me* could not say which league.
+
+The second line was empty for the same family of reason: it reads `row["arm"] or row["format"]`
+and **no snapshot has ever carried either key**, so every served row had an identity of one wrong
+line and one blank one.
+
+The dashboard was worse. It was titled `ROOM` -- the literal string **"Matchup"**, the mockup's
+name for that layout -- so opening any of nine leagues gave a page headed "Matchup". Its subtitle
+read `fx["league"]`, looking for a string under a key that holds a CONFIG DICT, while the name sat
+under `league_name`: **two names for one fact (`#126`), and the page displayed the emptier one.**
+And the nav rail lit "Matchup" as the current room, a claim about where you were that was false.
+
+**WHY THE MOCKUP NEVER SHOWED ANY OF THIS.** Its twelve seat fixtures carry twelve different
+`team` values -- "Team 1".."Team 12" -- standing in for twelve leagues. One user across nine real
+leagues is precisely the case twelve fixtures of one replayed league cannot represent. This is the
+fifth defect in this family and they all have one shape: **the fixture is not the world.**
+
+`format_label` is the new one home for the short label, built on `league_format_summary`. Dynasty
+is NOT printed -- in this app it is the default, and the owner's rule is that a page carries what
+is worth knowing rather than every variable there is. Keeper, Redraft and superflex ARE printed,
+because the exception is the information:
+
+    12 team . Full PPR
+    superflex . 10 team . Full PPR
+    Redraft . 12 team . Standard
+
+**A CORRECTION TO MY OWN FIRST ATTEMPT**, recorded because it is the same failure as `#363` one
+layer down: I keyed that function on `ppr_label`, which is not a key `league_format_summary`
+returns. It raised nothing. `.get` gave `None`, the branch was skipped, and every label came back
+silently one part shorter -- *a missing key is not a missing value* (`#187`), and I wrote the bug
+that rule exists to prevent, in the commit that cites it. There is now a floor: fewer than two
+parts raises, so a rename fails loudly instead of quietly shortening every row.
+
+### `#365` — eighteen links, none of which went anywhere
+
+    fragment links on the committed landing page      18
+    that resolve to an id that exists on it            0
+
+Twelve league rows and six nav tabs, every one dead. Correct in a mockup, useless in a product.
+A league row now opens that league's dashboard at `/league/{id}` -- a route that already existed,
+pointed at by an id the row already carried.
+
+**A SERVED PAGE MAY NOT OFFER A DOOR IT HAS NOT GOT.** The five rooms are `app.py` views with no
+route here, so the server names them and they render as dimmed TEXT, not anchors -- nothing to
+click, nothing for a keyboard or a screen reader to land on and then fail at. Home points at `/`,
+and the dashboard carries a way back. The list of unbuilt rooms is derived from the builder's own
+tuple, never restated, so adding a room cannot leave it behind (`#126`).
+
+Every one of these is a PARAMETER with the mockup's behaviour as its default, so all four
+committed pages rebuild byte-identically. Verified, not assumed -- and the first attempt DID move
+them, by two words of my own line-rewrapping, which is why it is verified.
+
+Mutation: row named by username **1**, scoring key renamed **15**, Dynasty always printed **2**,
+unbuilt rooms linkable **1**, route degraded to a fragment **1**, server naming no rooms **1**.
+
+### THE METHOD, since it found all of this in one sitting
+
+A harness starts the real server over synthetic snapshots built from REAL capture ids, injects an
+identity, and screenshots every page at desktop and phone width, reporting status, load time,
+horizontal overflow and console errors. In every synthetic league the owner's roster is
+deliberately NOT index 0, so `#362`'s repair is re-proved on every run. It cannot check a CLAIM --
+the rosters are invented -- but it checks everything structural, and structure is where all five
+of these defects lived.
