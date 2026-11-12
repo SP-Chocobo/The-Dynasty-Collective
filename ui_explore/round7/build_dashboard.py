@@ -324,20 +324,42 @@ def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
     # ---- the lead claim. COMPOSED BY ROUND 5; this only places it. -------------------------
     n = len(shown) + len(hidden)
     words = {0: "Nothing", 1: "One thing", 2: "Two things", 3: "Three things", 4: "Four things"}
-    headline = ("Nothing open this week." if not n
-                else f'{words.get(n, str(n) + " things")} {"is" if n == 1 else "are"} open.')
+    # THREE CASES, NOT TWO (`#371`). "No claims" was being read as "all clear", so a page that
+    # had failed to read ANYTHING printed "Nothing open this week. 0 checks, all clean" -- the
+    # all-clear sitting directly beneath a red banner naming eight fields that never arrived.
+    #
+    # `checks_summary` has always computed `all_clean` correctly, and its own comment says why:
+    # "TRUE ONLY IF SOMETHING RAN. With every check absent, `not fired` is vacuously true and
+    # 'all clean' would be the most dishonest sentence this page could print." The function was
+    # right; this renderer simply never asked it (`#338` from the other direction -- not the
+    # page computing something it should not, but the page ignoring what was computed for it).
+    headline = (f'{words.get(n, str(n) + " things")} {"is" if n == 1 else "are"} open.' if n
+                else "Nothing open this week." if summary["all_clean"]
+                else "Nothing was checked.")
     if shown:
         lead = claim_parts(shown[0])
         figure = (f'<div><span class="big">{lead["figure"]}</span>'
                   f'<span class="u">{lead["unit"]}</span></div>')
         prose = verdict_prose(shown + hidden, fx)
         sub = f'<p class="sub">{lead["eyebrow"]} &middot; {lead["headline"]}</p>'
-    else:
+    elif summary["all_clean"]:
         figure = (f'<div><span class="big">{summary["ran"]}</span>'
                   f'<span class="u">checks, all clean</span></div>')
         prose = ("Every check this page runs came back clean. The register on this page is what "
                  "was examined to say so.")
         sub = f'<p class="sub">{esc(", ".join(summary["clean"]))}</p>'
+    else:
+        # A CHECK THAT DID NOT RUN IS NOT A CLEAN CHECK. The figure counts what DID run, so it
+        # reads 0 when nothing did, and the unit says which word applies rather than borrowing
+        # the reassuring one.
+        missing = summary["absent"]
+        figure = (f'<div><span class="big">{summary["ran"]}</span>'
+                  f'<span class="u">of {len(band["checks"])} checks ran</span></div>')
+        prose = ("This page could not run its checks, so it is not reporting that anything is "
+                 "fine \u2014 it is reporting that it does not know. The banner above names "
+                 "what failed to arrive and why.")
+        sub = (f'<p class="sub">not measured: {esc(", ".join(missing))}</p>' if missing
+               else "")
 
     cards, pops = [], []
     for i, c in enumerate(shown):
@@ -360,8 +382,13 @@ def build(fx: dict, *, home: str | None = None, unbuilt=()) -> str:
             f'<p>{parts["body"]}</p>{basis_note(basis, key)}'
             f'<div class="row">{"".join(controls)}</div></article>')
     if not cards:
+        # "Nothing is standing" is a RESULT, and it needs something to have run. With every
+        # check read_failed it repeated the all-clear the lead has just refused to give, two
+        # lines under it (`#371`).
         cards.append('<p class="stamp">Nothing is standing. The register on this page is what '
-                     'was examined to say so.</p>')
+                     'was examined to say so.</p>' if summary["all_clean"] else
+                     '<p class="stamp">No claim is made either way. Nothing was examined, so '
+                     'there is nothing to stand on.</p>')
     if hidden:
         cards.append('<p class="stamp">Also standing: '
                      + "; ".join(claim_headline(c) for c in hidden) + ".</p>")

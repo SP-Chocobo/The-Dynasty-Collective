@@ -21939,3 +21939,87 @@ does not apply and a mutation that survives are opposite findings and look ident
 terminal. Every mutation here now fails loudly if its edit does not land.
 
 Mutation: front door reads the fixture again **1**, except branch fabricates a date **1**.
+---
+
+## `#371` — `#362` WAS FIXED IN ONE OF ITS TWO HOMES, AND THE TEST I WROTE COULD ONLY SEE ONE
+
+The owner opened a real fourteen-team superflex league and sent back a page carrying **two
+different people at once**:
+
+    the banner        WIRED WRONG -- 5 expected field(s) did not arrive: team, roster,
+                      starters, record, whose_roster. These are NOT absences in your data.
+    the verdict       "No rostered player can fill DB, DL, FLEX, IDP_FLEX, LB, QB, RB,
+                      SUPER_FLEX, TE, WR. No amount of value fixes it."
+    the claims        "RB . 6 rostered", "Unknown . 1 rostered", "WR thin"
+    the bye panel     "no rostered players"
+
+Those are not one story. The top half is HIS roster, which did not resolve, so `rows` was empty
+and `holes_from([])` dutifully reported that nothing can fill anything. The bottom half is
+**somebody else's roster**, because:
+
+```python
+mine = next((r for r in rosters if owner_id and r.get("owner_id") == owner_id), rosters[0])
+```
+
+`#362` removed exactly that fallback from `from_snapshot` four days ago and **left this copy in
+`priced_claims`**. The test written to prevent its return reads:
+
+```python
+code = ast.unparse(ast.parse(inspect.getsource(ls.from_snapshot)))
+self.assertNotIn("rosters[0]", code)
+```
+
+One function. The rule was stated as general, enforced in a single place, and reported as kept.
+**A rule that holds "in the function I fixed" is not a rule**, and the new test scans the whole
+module for a roster selected by POSITION, so the next copy fails wherever anyone puts it.
+
+### WHAT ELSE THAT ONE LINE WAS DOING
+
+`priced_claims` called `merger.set_league_format(...)` **above** the owner check. That mutates a
+merger shared across threads -- it selects which rankings export everything prices against -- so
+a request this function was always going to refuse still reached in and changed global state on
+its way to refusing. Resolution moved above the side effect.
+
+### THE WORST SENTENCE ON THE PAGE, PRINTED UNDER A RED BANNER
+
+With every check failing to read, the dashboard printed:
+
+> **Nothing open this week.**   0 checks, all clean
+> Every check this page runs came back clean.
+
+directly beneath a banner naming eight fields that never arrived. A page that read nothing told
+the owner everything was fine.
+
+**`checks_summary` has computed this correctly since the day it was written**, and its own
+comment says why: *"TRUE ONLY IF SOMETHING RAN. With every check absent, `not fired` is
+vacuously true and 'all clean' would be the most dishonest sentence this page could print."*
+
+The function was right. **The renderer never asked it.** This is `#338` arriving from the
+opposite direction -- not a page computing something it should not, but a page ignoring what was
+computed for it -- and it is the same shape as `#368`, where the exact reason sat one function
+away from the reader. There are now three cases where there were two: something open, nothing
+open *(only when something ran)*, and nothing checked.
+
+### THE MESSAGE NOW NAMES THE WAY OUT
+
+*"This server does not know which Sleeper user you are"* states a problem and leaves the reader
+stuck. The identity is recorded by exactly one action, so the refusal now says which: enter the
+username, press FIND LEAGUES. It adds nothing and changes no league.
+
+**This is why the owner hit it at all.** `save_identity` shipped in `#362`, AFTER he had already
+synced. His install has no `data/sleeper_identity.json`, so every roster-derived claim on every
+league page had nothing to resolve against.
+
+### MUTATION, REPORTED HONESTLY
+
+| arm | result |
+|---|---|
+| `priced_claims` substitutes `rosters[0]` again | **2 failures + 1 error** |
+| the `structural_holes` Field stops reporting READ_FAILED | **1 failure + 1 error** |
+| a failed read claims nothing is open again | **2 failures** |
+| the `if owner_unresolved` guard around `holes_from` removed | **SURVIVES** |
+
+The fourth survives and is recorded rather than quietly dropped: that guard is **not
+load-bearing**. It stops a pointless computation over an empty list and makes the intent
+explicit, but the state the page renders comes from the Field line, which is covered. Claiming
+four arms would have overstated what is pinned.

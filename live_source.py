@@ -290,7 +290,9 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
     owner_unresolved = "" if mine else (
         f"no roster in this league belongs to {owner_id!r}" if owner_id else
         "this server does not know which Sleeper user you are, so it cannot tell which roster "
-        "is yours -- it will NOT substitute another one")
+        "is yours \u2014 and it will not substitute another one. Enter your Sleeper username "
+        "on the home page and press FIND LEAGUES: that records who you are. It adds nothing "
+        "and changes none of your leagues")
     mine = mine or {}
     user = next((u for u in users if u.get("user_id") == mine.get("owner_id")), {})
     settings = mine.get("settings") or {}
@@ -322,8 +324,20 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
         else:
             thin_state, thin_why = MEASURED, ""
 
-    holes = holes_from(rows, positions)
-    profile, refusal = bye_profile_from(rows, positions)
+    # `#371`: WITH NO RESOLVED OWNER THERE IS NO ROSTER, so nothing roster-derived is computed.
+    # `rows` is empty in that case, and `holes_from([])` dutifully reports that no rostered
+    # player can fill ANY slot -- which rendered on the owner's own league as "No rostered
+    # player can fill DB, DL, FLEX, IDP_FLEX, LB, QB, RB, SUPER_FLEX, TE, WR. No amount of value
+    # fixes it." That is a true statement about an empty list and a false one about his team,
+    # and it sat directly beneath a banner saying the read had failed.
+    #
+    # An empty list is not a measurement of anything. These become READ_FAILED carrying the same
+    # reason the banner carries, so the page cannot contradict its own header.
+    if owner_unresolved:
+        holes, profile, refusal = None, None, ""
+    else:
+        holes = holes_from(rows, positions)
+        profile, refusal = bye_profile_from(rows, positions)
 
     fields = [
         _state_for("league_name", league.get("name"), kind),
@@ -337,9 +351,12 @@ def from_snapshot(snap: dict, players_db: dict, byes: dict,
         (Field("whose_roster", user.get("display_name") or mine.get("roster_id"), MEASURED)
          if not owner_unresolved
          else Field("whose_roster", None, READ_FAILED, owner_unresolved)),
-        Field("structural_holes", holes, MEASURED),
+        (Field("structural_holes", holes, MEASURED) if not owner_unresolved
+         else Field("structural_holes", None, READ_FAILED, owner_unresolved)),
         (Field("bye_profile", profile, MEASURED) if profile is not None
-         else Field("bye_profile", None, NOT_COMPUTED, refusal)),
+         else Field("bye_profile", None,
+                    READ_FAILED if owner_unresolved else NOT_COMPUTED,
+                    owner_unresolved or refusal)),
         (Field("thin_positions", thin, MEASURED) if thin_state == MEASURED
          else Field("thin_positions", None, thin_state, thin_why)),
     ]
@@ -582,9 +599,31 @@ def priced_claims(snap: dict, players_db: dict, merger, owner_id: str | None = N
     if not rosters:
         return [], "", "the snapshot carries no rosters"
 
+    # `#371`: THE SECOND HOME OF THE FALLBACK `#362` REMOVED. That item took `rosters[0]` out
+    # of `from_snapshot` and left it here, and the test written for it parsed `from_snapshot`
+    # alone -- so this line went on substituting an arbitrary manager's roster while the repair
+    # was reported as done. On the owner's own fourteen-team league the result was a page with
+    # BOTH failures on it at once: an empty roster above (his, unresolved) and depth claims
+    # below (someone else's, from this line).
+    #
+    # Routed to `sleeper_client.find_roster_for_user`, which is the one home and returns None
+    # rather than guessing. An unresolved owner is a stated FAILURE on the rail this function
+    # already has -- `join_fail` -- never a substitution.
+    import sleeper_client as _sc
+    mine = _sc.find_roster_for_user(rosters, owner_id) if owner_id else None
+    if mine is None:
+        return [], "", (
+            f"no roster in this league belongs to {owner_id!r}" if owner_id else
+            "this server does not know which Sleeper user you are, so it cannot tell which "
+            "roster is yours \u2014 and it will not substitute another one. Enter your Sleeper "
+            "username on the home page and press FIND LEAGUES: that records who you are. It "
+            "adds nothing and changes none of your leagues")
+    # REFUSE BEFORE THE SIDE EFFECT. `set_league_format` MUTATES the shared merger, and it used
+    # to run above the owner check -- so a request this function was always going to refuse
+    # still reached in and changed which rankings export every other caller would price against.
+    # Resolving first costs nothing and takes no lock that is not needed (`#371`).
     merger.set_league_format(db.league_format_hint(league))   # BEFORE anything is priced
 
-    mine = next((r for r in rosters if owner_id and r.get("owner_id") == owner_id), rosters[0])
     user = next((u for u in users if u.get("user_id") == mine.get("owner_id")), {})
     my_key = depth_key(mine, user)
 

@@ -10748,21 +10748,21 @@
       }
     },
     "test_live_source.py": {
-      "test_methods": 112,
+      "test_methods": 121,
       "asserts": {
-        "assertEqual": 70,
+        "assertEqual": 73,
         "assertFalse": 3,
-        "assertIn": 59,
+        "assertIn": 66,
         "assertIs": 8,
         "assertIsInstance": 4,
         "assertIsNone": 4,
         "assertIsNotNone": 4,
         "assertLess": 1,
         "assertNotEqual": 2,
-        "assertNotIn": 20,
+        "assertNotIn": 22,
         "assertRaises": 2,
         "assertRegex": 1,
-        "assertTrue": 9
+        "assertTrue": 10
       },
       "by_method": {
         "AContestedIdentityIsRefusedOnTheRosterPath.test_an_uncontested_player_keeps_his_price": {
@@ -10799,6 +10799,19 @@
         },
         "AFailedReadIsNotAnAbsence.test_the_verdict_counts_the_failures_rather_than_describing_them": {
           "assertEqual": 1,
+          "assertIn": 1
+        },
+        "AFailedReadNeverReportsAnAllClear.test_a_genuinely_clean_page_still_says_all_clean": {
+          "assertIn": 1
+        },
+        "AFailedReadNeverReportsAnAllClear.test_a_page_that_checked_nothing_says_so": {
+          "assertIn": 1,
+          "assertNotIn": 1
+        },
+        "AFailedReadNeverReportsAnAllClear.test_it_does_not_claim_nothing_is_open": {
+          "assertNotIn": 1
+        },
+        "AFailedReadNeverReportsAnAllClear.test_it_says_plainly_that_it_does_not_know": {
           "assertIn": 1
         },
         "ALeagueIsNamedByItsLeague.test_a_fixture_with_no_league_name_still_falls_back_to_team": {
@@ -10956,6 +10969,23 @@
           "assertIn": 2,
           "assertLess": 1
         },
+        "NoPathAnywhereSubstitutesARoster.test_an_unresolved_owner_computes_no_roster_claims_at_all": {
+          "assertEqual": 1
+        },
+        "NoPathAnywhereSubstitutesARoster.test_every_owner_resolution_routes_through_the_one_home": {
+          "assertIn": 1
+        },
+        "NoPathAnywhereSubstitutesARoster.test_no_function_in_live_source_indexes_a_roster_list": {
+          "assertEqual": 1
+        },
+        "NoPathAnywhereSubstitutesARoster.test_priced_claims_refuses_rather_than_substituting": {
+          "assertEqual": 1,
+          "assertIn": 1,
+          "assertTrue": 1
+        },
+        "NoPathAnywhereSubstitutesARoster.test_the_reason_is_the_same_one_the_banner_carries": {
+          "assertIn": 1
+        },
         "PricingKeepsTheCompanionFieldRule.test_a_player_measured_at_zero_IS_priced": {
           "assertEqual": 1,
           "assertIs": 1
@@ -11028,7 +11058,7 @@
         },
         "TheOwnersRosterIsResolvedNeverGuessed.test_no_owner_means_a_READ_FAILURE_not_another_managers_roster": {
           "assertEqual": 1,
-          "assertIn": 1,
+          "assertIn": 2,
           "assertTrue": 1
         },
         "TheOwnersRosterIsResolvedNeverGuessed.test_resolution_goes_through_the_one_home": {

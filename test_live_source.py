@@ -719,7 +719,13 @@ class TheOwnersRosterIsResolvedNeverGuessed(unittest.TestCase):
         field = report.by_name("whose_roster")
         self.assertEqual(field.state, ls.READ_FAILED)
         self.assertTrue(field.loud)
-        self.assertIn("NOT substitute", field.why)
+        self.assertIn("not substitute", field.why.lower(),
+                      "the refusal no longer says it refuses to substitute")
+        # `#371`: AND IT NAMES THE WAY OUT. "This server does not know which Sleeper user you
+        # are" states the problem and leaves the reader stuck; the identity is recorded by one
+        # specific action and the message now says which.
+        self.assertIn("FIND LEAGUES", field.why,
+                      "the refusal states the problem without naming the remedy")
 
     def test_an_owner_with_no_roster_in_this_league_is_also_a_READ_FAILURE(self):
         fx, report = ls.from_snapshot(snapshot(), PLAYERS, BYES, owner_id="not-in-this-league")
@@ -1362,6 +1368,154 @@ class TheFirstScreenReadsItsOwnDisk(unittest.TestCase):
             def __getattr__(self, name):
                 raise RuntimeError("this merger is broken")
         self.assertEqual(ls.live_chrome([], {}, Exploding())["sources"], [])
+
+
+
+
+class NoPathAnywhereSubstitutesARoster(unittest.TestCase):
+    """`#371`. `#362` removed `rosters[0]` from `from_snapshot` and declared the rule kept. The
+    test written for it parsed `from_snapshot` ALONE, so `priced_claims` went on substituting an
+    arbitrary manager's roster for four days while the repair was reported as done.
+
+    On the owner's own fourteen-team league that produced a page carrying BOTH failures at once:
+    an empty roster above (his, unresolved) and depth claims below (someone else's, from that
+    line) -- "RB . 6 rostered", "Unknown . 1 rostered" -- under a banner correctly reporting
+    that five fields had failed to arrive.
+
+    THE LESSON IS ABOUT THE TEST, NOT THE LINE. A rule that holds "in the function I fixed" is
+    not a rule. This scans the WHOLE MODULE, so the next copy of that fallback fails here
+    wherever someone puts it.
+    """
+
+    def test_no_function_in_live_source_indexes_a_roster_list(self):
+        import ast
+        tree = ast.parse(pathlib.Path(ls.__file__).read_text())
+        offenders = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Subscript):
+                continue
+            base = node.value
+            if not (isinstance(base, ast.Name) and base.id in {"rosters", "league_rows"}):
+                continue
+            idx = node.slice
+            if isinstance(idx, ast.Constant) and isinstance(idx.value, int):
+                offenders.append(f"line {node.lineno}: {base.id}[{idx.value}]")
+        self.assertEqual(offenders, [],
+                         "a roster is being picked by POSITION somewhere in live_source -- "
+                         "`sleeper_client.find_roster_for_user` is the one home and it returns "
+                         "None rather than guessing: " + "; ".join(offenders))
+
+    def test_every_owner_resolution_routes_through_the_one_home(self):
+        """Both functions that need to know whose roster it is must ask the same question."""
+        import ast
+        import inspect
+        for fn in (ls.from_snapshot, ls.priced_claims):
+            calls = {(n.func.attr if isinstance(n.func, ast.Attribute)
+                      else getattr(n.func, "id", ""))
+                     for n in ast.walk(ast.parse(inspect.getsource(fn)))
+                     if isinstance(n, ast.Call)}
+            self.assertIn("find_roster_for_user", calls,
+                          f"{fn.__name__} resolves the owner some other way")
+
+    def test_priced_claims_refuses_rather_than_substituting(self):
+        snap = {"league": {"name": "L", "roster_positions": ["QB"], "total_rosters": 2,
+                           "settings": {"type": 2, "num_teams": 2},
+                           "scoring_settings": {"rec": 1.0}},
+                "rosters": [{"roster_id": 1, "owner_id": "somebody_else", "players": ["1"]}],
+                "users": [{"user_id": "somebody_else", "display_name": "Not Me"}],
+                "nfl_state": {"week": 15}}
+        thin, my_key, failure = ls.priced_claims(snap, {}, None, owner_id="me")
+        self.assertEqual(thin, [])
+        self.assertTrue(failure, "an unresolved owner produced no stated failure")
+        self.assertIn("no roster in this league belongs to", failure)
+
+    def test_an_unresolved_owner_computes_no_roster_claims_at_all(self):
+        """An empty roster is not a measurement. `holes_from([])` reports that no rostered
+        player can fill ANY slot, which rendered as "No rostered player can fill DB, DL, FLEX,
+        IDP_FLEX, LB, QB, RB, SUPER_FLEX, TE, WR. No amount of value fixes it." -- a true
+        statement about an empty list and a false one about a real team."""
+        snap = {"league": {"name": "L", "roster_positions": ["QB", "RB"], "total_rosters": 2,
+                           "settings": {"type": 2, "num_teams": 2},
+                           "scoring_settings": {"rec": 1.0}},
+                "rosters": [{"roster_id": 1, "owner_id": "somebody_else", "players": ["1"]}],
+                "users": [{"user_id": "somebody_else", "display_name": "Not Me"}],
+                "nfl_state": {"week": 15}}
+        fx, report = ls.from_snapshot(snap, {}, {}, owner_id="me")
+        basis = (fx["_provenance"] or {})["basis"]
+        # `thin_positions` is NOT in this list, and that is a real distinction rather than an
+        # omission: with no merger `priced_claims` is never called at all, so that field is
+        # not_computed (nothing tried) rather than read_failed (something tried and broke).
+        # Its refusal is pinned separately, where a merger exists to refuse with.
+        for field in ("structural_holes", "bye_profile", "whose_roster"):
+            self.assertEqual(basis[field], ls.READ_FAILED,
+                             f"{field} was computed over a roster nobody could identify")
+
+    def test_the_reason_is_the_same_one_the_banner_carries(self):
+        """So the page cannot contradict its own header."""
+        snap = {"league": {"name": "L", "roster_positions": ["QB"], "total_rosters": 2,
+                           "settings": {"type": 2, "num_teams": 2},
+                           "scoring_settings": {"rec": 1.0}},
+                "rosters": [{"roster_id": 1, "owner_id": "x", "players": []}],
+                "users": [], "nfl_state": {"week": 15}}
+        fx, _r = ls.from_snapshot(snap, {}, {}, owner_id=None)
+        why = (fx["_provenance"] or {})["why"]
+        self.assertIn("does not know which Sleeper user you are", why["structural_holes"])
+
+
+class AFailedReadNeverReportsAnAllClear(unittest.TestCase):
+    """`#371`. A page that had read NOTHING printed "Nothing open this week. 0 checks, all
+    clean" -- the all-clear sitting directly beneath a red banner naming eight fields that never
+    arrived. It is the worst sentence this page can print and it printed it on the owner's own
+    league.
+
+    `checks_summary` has computed `all_clean` correctly since it was written, and its own comment
+    says why: "TRUE ONLY IF SOMETHING RAN. With every check absent, `not fired` is vacuously
+    true and 'all clean' would be the most dishonest sentence this page could print." The
+    function was right. The renderer never asked it.
+    """
+
+    def _page(self, states):
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location(
+            "r7_dash_verdict", ROOT / "ui_explore" / "round7" / "build_dashboard.py")
+        mod = ilu.module_from_spec(spec)
+        sys.modules.setdefault("r7_dash_verdict", mod)
+        spec.loader.exec_module(mod)
+        fx, _r = ls.from_fixture(ROOT / "ui_explore" / "front_fixture.json")
+        fx = dict(fx)
+        for key in states:
+            fx.pop(key, None)
+        fx["_provenance"] = dict(fx.get("_provenance") or {},
+                                 basis={k: ls.READ_FAILED for k in states},
+                                 why={k: "the read is at fault" for k in states})
+        return mod.build(fx)
+
+    def test_a_page_that_checked_nothing_says_so(self):
+        page = self._page(["structural_holes", "bye_profile", "thin_positions"])
+        self.assertIn("Nothing was checked", page)
+        self.assertNotIn("checks, all clean", page)
+
+    def test_it_does_not_claim_nothing_is_open(self):
+        """"Nothing open" is a RESULT. It needs something to have run."""
+        self.assertNotIn("Nothing open this week",
+                         self._page(["structural_holes", "bye_profile", "thin_positions"]))
+
+    def test_it_says_plainly_that_it_does_not_know(self):
+        page = self._page(["structural_holes", "bye_profile", "thin_positions"])
+        self.assertIn("it is reporting that it does not know", page)
+
+    def test_a_genuinely_clean_page_still_says_all_clean(self):
+        """The other branch, so the guard cannot be satisfied by never reporting clean
+        (`#352`): a verification that cannot pass is no better than one that cannot fail."""
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location(
+            "r7_dash_clean", ROOT / "ui_explore" / "round7" / "build_dashboard.py")
+        mod = ilu.module_from_spec(spec)
+        sys.modules.setdefault("r7_dash_clean", mod)
+        spec.loader.exec_module(mod)
+        fx, _r = ls.from_fixture(ROOT / "ui_explore" / "quiet_fixture.json")
+        page = mod.build(fx)
+        self.assertIn("all clean", page)
 
 
 
